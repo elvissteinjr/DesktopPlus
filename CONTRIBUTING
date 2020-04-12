@@ -1,0 +1,15 @@
+Short version:
+Any contribution is welcomed with open arms. In the rare case something would be off, it'll be taken care of.
+
+Long version:
+I want to preface this with stating that the Desktop+ code is no way trying to be professional. Just read the comments.
+It's provided as-is, in hope somebody finds a use in it. 
+The code grew with time, overall structure may not be up to best practice. If you want to re-organize it to be "better", feel free.
+
+In terms of actually adding code, there are no strict style guidelines. Just don't make the code look foreign in the middle of the existing mess.
+If you plan to add something big, consider opening an issue for it first.
+I take some needless pride in the low memory footprint, both runtime and size on disk. Try to not add bloat without reason.
+It's fine for code to be a tiny bit awkward in order to use system libraries instead of pulling megabytes of additional dependencies.
+Perhaps also avoid stacks of abstraction. The code may run on typically beefy machines, but it's running in the background most of time. Make sane decisions.
+
+Just felt like I should mention this stuff somewhere. Not like anyone reads this anyways.

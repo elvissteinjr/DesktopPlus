@@ -1,0 +1,19 @@
+{
+	"source" : "builtin",
+	"applications": [{
+		"app_key": "elvissteinjr.DesktopPlus",
+		
+		"launch_type": "binary",
+		"binary_path_windows": "DesktopPlus.exe",
+		"is_dashboard_overlay": true,
+		"action_manifest_path" : "action_manifest.json",
+		"image_path" : "images/desktop_plus_capsule.png",
+
+		"strings": {
+			"en_us": {
+				"name": "Desktop+",
+				"description": "Desktop+ Overlay"
+			}
+		}
+	}]
+}

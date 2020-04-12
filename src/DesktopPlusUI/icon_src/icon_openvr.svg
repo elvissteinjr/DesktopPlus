@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   id="svg12067"
+   viewBox="0 0 47.999999 48.000002"
+   version="1.1"
+   width="48"
+   height="48">
+  <defs
+     id="defs9" />
+  <g
+     id="layer1"
+     transform="matrix(0.04499055,0,0,0.05747354,7.070699,-6.6620298)"
+     style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:9.83275865;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;stroke-dashoffset:0">
+    <path
+       id="rect5467"
+       d="m -36.19244,140.88 c -44.45378,0 -88.90756,34.79863 -88.90756,69.59725 v 521.97933 c 0,34.79862 44.45378,69.59724 88.90756,69.59724 h 200.04201 v 69.59725 H 52.715119 c -22.22689,0 -22.22689,0 -22.22689,17.39931 v 17.39931 c 0,17.39931 0,17.39931 22.22689,17.39931 H 697.29493 c 22.22689,0 22.22689,0 22.22689,-17.39931 v -17.39931 c 0,-17.39931 0,-17.39931 -22.22689,-17.39931 H 586.16048 v -69.59725 h 200.042 c 44.45378,0 88.90756,-34.79862 88.90756,-69.59724 V 210.47725 c 0,-34.79862 -44.45378,-69.59725 -88.90756,-69.59725 z m 0,69.59725 H 786.20248 V 715.05727 H -36.19244 Z"
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:9.83275865;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;stroke-dashoffset:0" />
+  </g>
+  <metadata
+     id="metadata4">
+    <rdf:RDF>
+      <cc:Work>
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+        <dc:title></dc:title>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     aria-label="D"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:38.89684677px;line-height:125%;font-family:Calibri;-inkscape-font-specification:Calibri;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.00311947;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+     id="text1367"
+     transform="matrix(0.99689029,0,0,0.99689029,1.5633715,-1.7094272)">
+    <path
+       d="m 31.897638,21.350928 c 0,2.127171 -0.272227,3.988446 -0.816682,5.583824 -0.544455,1.582717 -1.342144,2.899538 -2.393068,3.950461 -1.038262,1.038263 -2.317097,1.816959 -3.836505,2.33609 C 23.331975,33.740434 21.521347,34 19.419499,34 H 14 c -1,0 -1,0 -1,-1 V 10.426694 c 0,-1.0031196 0,-1.0031196 1.003119,-1.0031196 h 5.777239 c 2.127171,0 3.925138,0.2785582 5.393899,0.8356746 1.468761,0.544455 2.69695,1.335813 3.684565,2.374075 1.000277,1.025601 1.75365,2.272781 2.260119,3.741542 0.519131,1.468761 0.778697,3.127449 0.778697,4.976062 z m -3.437661,0.132948 c 0,-1.329482 -0.164603,-2.564001 -0.493808,-3.703557 -0.329205,-1.152218 -0.848336,-2.146164 -1.557393,-2.981839 -0.696395,-0.835674 -1.582717,-1.487753 -2.658964,-1.956237 -1.076247,-0.468485 -2.462707,-0.702727 -4.15938,-0.702727 h -3.323705 v 19.125549 h 3.361691 c 1.570055,0 2.893206,-0.196257 3.969453,-0.58877 1.076247,-0.392514 1.975231,-0.993946 2.69695,-1.804297 0.721719,-0.810351 1.259842,-1.82329 1.614371,-3.038816 0.36719,-1.228189 0.550785,-2.677957 0.550785,-4.349306 z"
+       style="fill:#000000;stroke:none;stroke-width:1.00311947;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="path1488" />
+  </g>
+  <g
+     aria-label="+"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.59198189px;line-height:125%;font-family:Calibri;-inkscape-font-specification:Calibri;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.00715923;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+     id="text1371"
+     transform="matrix(0.99289164,0,0,0.99289164,0.66712233,-1.5743953)">
+    <path
+       d="m 27.135614,21.671818 c -0.0054,0.620885 -0.0054,0.616951 -1.012527,0.618469 h -2.131354 v 2.394419 c 0.0012,1.007159 0.0012,1.007159 -0.635649,1.007159 -0.637195,0 -0.633261,0 -0.635648,-1.007159 v -2.394419 h -2.136725 c -1.007159,0.0024 -1.007159,0.0024 -1.007159,-0.618469 0,-0.612886 0,-0.612886 1.007159,-0.609879 h 2.136725 V 18.64175 c 0,-1.007159 -0.0015,-1.007159 0.635648,-1.007159 0.636861,0 0.635649,0 0.635649,1.007159 v 2.420189 h 2.131354 c 1.007159,9.34e-4 1.007159,-0.003 1.012527,0.609879 z"
+       style="fill:#000000;stroke:none;stroke-width:1.00715923;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="path1491" />
+  </g>
+</svg>

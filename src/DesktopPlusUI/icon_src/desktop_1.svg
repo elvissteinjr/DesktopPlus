@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   height="48"
+   width="48"
+   version="1.1"
+   viewBox="0 0 47.999999 48.000002"
+   id="svg12067">
+  <defs
+     id="defs9" />
+  <g
+     style="fill:#ffffff;fill-opacity:1"
+     transform="matrix(0.04499055,0,0,0.05747354,7.1283179,-6.5968724)"
+     id="layer1">
+    <path
+       style="fill:#ffffff;fill-opacity:1"
+       d="m -36.19244,140.88 c -44.45378,0 -88.90756,34.79863 -88.90756,69.59725 v 521.97933 c 0,34.79862 44.45378,69.59724 88.90756,69.59724 h 200.04201 v 69.59725 H 52.715119 c -22.22689,0 -22.22689,0 -22.22689,17.39931 v 17.39931 c 0,17.39931 0,17.39931 22.22689,17.39931 H 697.29493 c 22.22689,0 22.22689,0 22.22689,-17.39931 v -17.39931 c 0,-17.39931 0,-17.39931 -22.22689,-17.39931 H 586.16048 v -69.59725 h 200.042 c 44.45378,0 88.90756,-34.79862 88.90756,-69.59724 V 210.47725 c 0,-34.79862 -44.45378,-69.59725 -88.90756,-69.59725 z m 0,69.59725 H 786.20248 V 715.05727 H -36.19244 Z"
+       id="rect5467" />
+  </g>
+  <metadata
+     id="metadata4">
+    <rdf:RDF>
+      <cc:Work>
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+        <dc:title></dc:title>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="text5187"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:6.3499999px;line-height:125%;font-family:Calibri;-inkscape-font-specification:Calibri;letter-spacing:0px;word-spacing:0px;display:inline;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26458332px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     aria-label="1"
+     transform="matrix(3.7795276,0,0,3.7795276,-114.68925,-594.51839)">
+    <path
+       id="path5199"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:6.3499999px;font-family:Calibri;-inkscape-font-specification:Calibri;fill:#ffffff;stroke-width:0.26458332px"
+       d="m 36.694605,164.70799 c -0.265648,0 -0.265648,9.3e-4 -0.265648,-0.26253 v -3.21595 l -0.775265,0.46199 c -0.03927,0.0207 -0.07131,0.0331 -0.09612,0.0372 -0.02274,0.004 -0.04134,-1.3e-4 -0.05581,-0.0124 -0.01447,-0.0145 -0.0248,-0.0372 -0.03101,-0.0682 -0.0041,-0.031 -0.0062,-0.0703 -0.0062,-0.11782 0,-0.0351 0.001,-0.0651 0.0031,-0.0899 0.0041,-0.0248 0.0093,-0.0455 0.0155,-0.062 0.0062,-0.0165 0.01447,-0.031 0.0248,-0.0434 0.0124,-0.0124 0.0279,-0.0248 0.04651,-0.0372 l 0.923975,-0.59221 c 0.0083,-0.006 0.0186,-0.0112 0.03101,-0.0155 0.0124,-0.004 0.0279,-0.008 0.04651,-0.0124 0.01861,-0.004 0.04031,-0.006 0.06511,-0.006 0.02481,-0.002 0.05581,-0.003 0.09302,-0.003 0.04961,0 0.09095,0.002 0.124024,0.006 0.03307,0.004 0.05891,0.0102 0.07751,0.0186 0.01861,0.006 0.03101,0.0153 0.03721,0.0279 0.0062,0.0103 0.0093,0.0217 0.0093,0.0341 l -3.8e-5,3.68727 c -3.41e-4,0.26545 -0.004,0.26545 -0.267482,0.26545 z" />
+  </g>
+</svg>

@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <FxCompile Include="PixelShader.hlsl" />
+    <FxCompile Include="PixelShaderCursor.hlsl" />
+    <FxCompile Include="VertexShader.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="DesktopPlus.cpp" />
+    <ClCompile Include="DisplayManager.cpp" />
+    <ClCompile Include="DuplicationManager.cpp" />
+    <ClCompile Include="InputSimulator.cpp" />
+    <ClCompile Include="OutputManager.cpp" />
+    <ClCompile Include="ThreadManager.cpp" />
+    <ClCompile Include="VRInput.cpp" />
+    <ClCompile Include="..\Shared\Util.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Shared\InterprocessMessaging.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Shared\ConfigManager.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Shared\Matrices.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Shared\Actions.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CommonTypes.h" />
+    <ClInclude Include="DisplayManager.h" />
+    <ClInclude Include="DuplicationManager.h" />
+    <ClInclude Include="InputSimulator.h" />
+    <ClInclude Include="OutputManager.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="ThreadManager.h" />
+    <ClInclude Include="VRInput.h" />
+    <ClInclude Include="..\Shared\Util.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\InterprocessMessaging.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\ConfigManager.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\Ini.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\Matrices.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\openvr.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\Vectors.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\Actions.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="DesktopPlus.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Shared">
+      <UniqueIdentifier>{0572e516-12c3-49ec-a3ae-3696d6eb2490}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="DesktopPlus.ruleset" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="DesktopPlus.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\Shared\icon_desktop.ico" />
+  </ItemGroup>
+</Project>
