@@ -148,7 +148,7 @@ void WindowSettings::UpdateCatOverlay()
 
             float& width = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_width);
 
-            if (ImGui::SliderWithButtonsFloat("OverlayWidth", width, 0.1f, 0.05f, 20.0f, "%.2f m"))
+            if (ImGui::SliderWithButtonsFloat("OverlayWidth", width, 0.1f, 0.05f, 10.0f, "%.2f m"))
             {
                 if (width < 0.05f)
                     width = 0.05f;
@@ -212,7 +212,7 @@ void WindowSettings::UpdateCatOverlay()
 
             float& up = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_up);
                 
-            if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, -20.0f, 20.0f, "%.2f m"))
+            if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, -5.0f, 5.0f, "%.2f m"))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_up), *(LPARAM*)&up);
             }
@@ -224,7 +224,7 @@ void WindowSettings::UpdateCatOverlay()
 
             float& right = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_right);
                 
-            if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, -20.0f, 20.0f, "%.2f m"))
+            if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, -5.0f, 5.0f, "%.2f m"))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_right), *(LPARAM*)&right);
             }
@@ -236,7 +236,7 @@ void WindowSettings::UpdateCatOverlay()
 
             float& forward = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_forward);
                 
-            if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, -20.0f, 20.0f, "%.2f m"))
+            if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, -5.0f, 5.0f, "%.2f m"))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_forward), *(LPARAM*)&forward);
             }
@@ -444,7 +444,9 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::NextColumn();
 
             float& width = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_detached_width);
-            if (ImGui::SliderWithButtonsFloat("OverlayDetachedWidth", width, 0.1f, 0.05f, 20.0f, "%.2f m"))
+            float width_slider_max = (mode_origin >= ovrl_origin_right_hand) ? 1.5f : 10.0f;
+
+            if (ImGui::SliderWithButtonsFloat("OverlayDetachedWidth", width, 0.1f, 0.05f, width_slider_max, "%.2f m"))
             {
                 if (width < 0.05f)
                     width = 0.05f;
