@@ -218,9 +218,6 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
             IDXGIOutput* output_ptr;
             while (adapter_ptr->EnumOutputs(output_count, &output_ptr) != DXGI_ERROR_NOT_FOUND)
             {
-                output_ptr->Release();
-                ++output_count;
-
                 //Check if this happens to be the output we're looking for
                 if ( (adapter_ptr_preferred == nullptr) && (SingleOutput == output_count) )
                 {
@@ -229,6 +226,9 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
                     output_id_adapter = output_count - first_output_adapter;
                 }
+
+                output_ptr->Release();
+                ++output_count;
             }
 
             adapter_ptr->Release();

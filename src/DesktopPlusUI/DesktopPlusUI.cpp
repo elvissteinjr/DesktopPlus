@@ -73,25 +73,23 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     else
         hwnd = ::CreateWindow(wc.lpszClassName, L"Desktop+ UI", 0, 0, 0, 1, 1, HWND_MESSAGE, nullptr, wc.hInstance, nullptr);
 
-    // Initialize Direct3D
-    if (!CreateDeviceD3D(hwnd, desktop_mode))
-    {
-        CleanupDeviceD3D();
-        ::UnregisterClass(wc.lpszClassName, wc.hInstance);
-        return 1;
-    }
-
-
     //Init OpenVR
     //Don't try to init OpenVR without the dashboard app running since checking for active VR means launching SteamVR
     if ( (!desktop_mode) || (IPCManager::IsDashboardAppRunning()) )
     {
         if (ui_manager.InitOverlay() != vr::VRInitError_None)
         {
-            CleanupDeviceD3D();
             ::UnregisterClass(wc.lpszClassName, wc.hInstance);
             return 2;
         }
+    }
+
+    // Initialize Direct3D
+    if (!CreateDeviceD3D(hwnd, desktop_mode))
+    {
+        CleanupDeviceD3D();
+        ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+        return 1;
     }
     
     InitImGui(hwnd);
@@ -378,8 +376,52 @@ bool CreateDeviceD3D(HWND hWnd, bool desktop_mode)
     {
         D3D_FEATURE_LEVEL featureLevel;
         const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
-        if (D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, featureLevelArray, 2, D3D11_SDK_VERSION, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
-            return false;
+
+        //Get the adapter recommended by OpenVR
+        IDXGIFactory1* factory_ptr;
+        IDXGIAdapter* adapter_ptr_vr = nullptr;
+        int32_t vr_gpu_id;
+        vr::VRSystem()->GetDXGIOutputInfo(&vr_gpu_id);  
+
+        HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
+        if (!FAILED(hr))
+        {
+            IDXGIAdapter* adapter_ptr = nullptr;
+            UINT i = 0;
+
+            while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
+            {
+                if (i == vr_gpu_id)
+                {
+                    adapter_ptr_vr = adapter_ptr;
+                    adapter_ptr_vr->AddRef();
+
+                    adapter_ptr->Release();
+                    break;
+                }
+
+                adapter_ptr->Release();
+                ++i;
+            }
+
+            factory_ptr->Release();
+            factory_ptr = nullptr;
+        }
+
+        if (adapter_ptr_vr != nullptr)
+        {
+            if (D3D11CreateDevice(adapter_ptr_vr, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, featureLevelArray, 2, D3D11_SDK_VERSION, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
+            {
+                return false;
+            }
+        }
+        else //Still try /something/, but it probably won't work
+        {
+            if (D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, featureLevelArray, 2, D3D11_SDK_VERSION, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
+            {
+                return false;
+            }
+        }
     }
 
     CreateRenderTarget(desktop_mode);
