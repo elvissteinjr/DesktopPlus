@@ -2322,30 +2322,47 @@ void WindowSettings::Update()
 
     ImGui::Begin("WindowSettings", nullptr, flags);
 
+    //Left
+    static int selected = 0;
+    const float pane_left_width = ImGui::GetFontSize() * 5.0f;
+
+    //Interesting clip rect and style pushing is in order to get ImGui to ignore the window and widget padding on this side of the window
+    ImGui::PushClipRect({ImGui::GetStyle().WindowBorderSize, 0.0f}, {FLT_MAX, FLT_MAX}, false);
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() - ImGui::GetStyle().WindowPadding.x);
+
     //Early pop as we have popups which should have a normal border
     if (UIManager::Get()->IsInDesktopMode())
         ImGui::PopStyleVar(); //ImGuiStyleVar_WindowBorderSize
 
-    //Left
-    static int selected = 0;
-        ImGui::BeginChild("left pane", ImVec2(ImGui::GetFontSize() * 5, 0), false);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, ImGui::GetStyle().ItemSpacing.y});
 
-            ImGui::Dummy(ImVec2(ImGui::GetFontSize() * 5, (m_Size.y / 2.0f) - (ImGui::GetFrameHeightWithSpacing()*2.5f) ));
+    ImGui::BeginChild("LeftPane", {pane_left_width, 0.0f}, false);
 
-            if (ImGui::Selectable("Overlay", selected == 0))
-                selected = 0;
-            if (ImGui::Selectable("Interface", selected == 1))
-                selected = 1;
-            if (ImGui::Selectable("Input", selected == 2))
-                selected = 2;
-            if (ImGui::Selectable("Performance", selected == 3))
-                selected = 3;
-            if (ImGui::Selectable("Misc", selected == 4))
-                selected = 4;
-            /*if (ImGui::Selectable("Debug", selected == 5))
-                selected = 5;*/
+        static float selectable_height = 0.0f;
 
-        ImGui::EndChild();
+        //Dummy sets pane width and pushes the selectables down so they're middle aligned
+        ImGui::Dummy({ pane_left_width, ((ImGui::GetWindowSize().y - ImGui::GetStyle().ItemSpacing.y) / 2.0f) - (selectable_height * 2.5f) });
+
+        ImGui::PushClipRect({0.0f, 0.0f}, {FLT_MAX, FLT_MAX}, true); //Push another clip rect as BeginChild() adds its own in-between
+
+        if (ImGui::Selectable("  Overlay", selected == 0))
+            selected = 0;
+        if (ImGui::Selectable("  Interface", selected == 1))
+            selected = 1;
+        if (ImGui::Selectable("  Input", selected == 2))
+            selected = 2;
+        if (ImGui::Selectable("  Performance", selected == 3))
+            selected = 3;
+        if (ImGui::Selectable("  Misc", selected == 4))
+            selected = 4;
+
+        selectable_height = ImGui::GetItemRectSize().y;
+        ImGui::PopClipRect();
+
+    ImGui::EndChild();
+
+    ImGui::PopClipRect();
+
     ImGui::SameLine();
 
     //Vertical separator
@@ -2353,6 +2370,8 @@ void WindowSettings::Update()
     ImGui::BeginChild("vsep", ImVec2(1.0f, 0.0f), true);
     ImGui::EndChild();
     ImGui::PopStyleColor();
+
+    ImGui::PopStyleVar(); //ImGuiStyleVar_ItemSpacing
 
     ImGui::SameLine();
 
