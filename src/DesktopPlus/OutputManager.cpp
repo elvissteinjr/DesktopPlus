@@ -2084,7 +2084,7 @@ bool OutputManager::HandleOpenVREvents()
     m_vrinput.HandleGlobalActionShortcuts(*this);
 
     //If dashboard closed (opening dashboard removes toggled or held input) and detached state changed from shortcut
-    if ( (!vr::VROverlay()->IsDashboardVisible()) && (m_vrinput.HandleSetOverlayDetachedShortcut()) )
+    if ( (!vr::VROverlay()->IsDashboardVisible()) && (m_vrinput.HandleSetOverlayDetachedShortcut(m_OvrlDetachedInteractive)) )
     {
         ApplySettingTransform();
     }

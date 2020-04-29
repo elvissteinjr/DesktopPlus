@@ -106,13 +106,18 @@ void VRInput::HandleGlobalActionShortcuts(OutputManager& outmgr)
     }
 }
 
-bool VRInput::HandleSetOverlayDetachedShortcut()
+bool VRInput::HandleSetOverlayDetachedShortcut(bool is_detached_interactive)
 {
     vr::InputDigitalActionData_t data;
     vr::EVRInputError input_error = vr::VRInput()->GetDigitalActionData(m_handle_action_set_overlay_detached, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
 
     if ((input_error == vr::VRInputError_None) && (data.bChanged))
     {
+        if ((data.bState == false) && (is_detached_interactive))
+        {
+            return false;
+        }
+
         ConfigManager::Get().SetConfigBool(configid_bool_overlay_detached, data.bState);
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_detached), data.bState);
 

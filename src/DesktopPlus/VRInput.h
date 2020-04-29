@@ -21,7 +21,7 @@ class VRInput
         bool Init();
         void Update();
         void HandleGlobalActionShortcuts(OutputManager& outmgr);
-        bool HandleSetOverlayDetachedShortcut();                    //Returns true when it changed
+        bool HandleSetOverlayDetachedShortcut(bool is_detached_interactive);    //Returns true when it changed
 
         bool GetSetDetachedInteractiveDown();
 };
