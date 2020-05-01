@@ -70,7 +70,7 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     ImVector<ImWchar> ranges;
     ImFontGlyphRangesBuilder builder;
 
-    for (CustomAction& action : ConfigManager::Get().GetCustomActions())
+    for (const CustomAction& action : ConfigManager::Get().GetCustomActions())
     {
         builder.AddText(action.Name.c_str());
 
@@ -79,6 +79,11 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
             builder.AddText(action.StrMain.c_str());
             builder.AddText(action.StrArg.c_str());
         }
+    }
+
+    for (const std::string& str : ConfigManager::Get().GetOverlayProfileList()) //Also from overlay profiles
+    {
+        builder.AddText(str.c_str());
     }
 
     builder.AddRanges(io.Fonts->GetGlyphRangesDefault());

@@ -133,22 +133,218 @@ void WindowSettings::UpdateCatOverlay()
 
         bool& detached = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_detached);
 
+        //Profiles
+        {
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Profiles");
+            ImGui::Columns(2, "ColumnProfiles", false);
+            ImGui::SetColumnWidth(0, column_width_0);
+
+            static std::vector<std::string> overlay_profile_list;
+            static int overlay_profile_selected_id = 0;       
+            static bool overwrite_confirm_state = false;
+            static bool delete_confirm_state = false;
+
+            if (ImGui::IsWindowAppearing())
+            {
+                overlay_profile_list = ConfigManager::Get().GetOverlayProfileList();
+                overwrite_confirm_state = false;
+                delete_confirm_state = false;
+            }
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Overlay Profile");
+            ImGui::NextColumn();
+
+            ImGui::SetNextItemWidth(-1);
+            int index = 0;
+
+            if (ImGui::BeginCombo("##OverlayProfileCombo", overlay_profile_list[overlay_profile_selected_id].c_str()))
+            {
+                for (const auto& str : overlay_profile_list)
+                {
+                    if (ImGui::Selectable(str.c_str(), (index == overlay_profile_selected_id)))
+                    {
+                        overlay_profile_selected_id = index;
+
+                        overwrite_confirm_state = false;
+                        delete_confirm_state = false;
+                    }
+
+                    index++;
+                }
+                ImGui::EndCombo();
+            }
+
+            ImGui::NextColumn();
+            ImGui::NextColumn();
+
+            const bool is_first = (overlay_profile_selected_id == 0);
+            const bool is_last  = (overlay_profile_selected_id == overlay_profile_list.size() - 1);
+
+            if (is_last)
+                ImGui::PushItemDisabled();
+
+            if (ImGui::Button("Load"))
+            {
+                if (overlay_profile_selected_id == 0)
+                {
+                    ConfigManager::Get().LoadOverlayProfileDefault();
+                }
+                else
+                {
+                    ConfigManager::Get().LoadOverlayProfileFromFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
+                }
+
+                //Adjust sort order in case it was changed by the profile
+                if (!UIManager::Get()->IsInDesktopMode())
+                {
+                    vr::VROverlay()->SetOverlaySortOrder(UIManager::Get()->GetOverlayHandle(), (detached) ? 0 : 1);
+                }
+
+                //Tell dashboard app to load the profile as well
+                IPCManager::Get().SendStringToDashboardApp(configid_str_state_profile_name_load, overlay_profile_list[overlay_profile_selected_id], UIManager::Get()->GetWindowHandle());
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_profile_load);
+
+                UIManager::Get()->RepeatFrame();
+
+                overwrite_confirm_state = false;
+                delete_confirm_state = false;
+            }
+
+            if (is_last)
+                ImGui::PopItemDisabled();
+
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+            if (is_first)
+                ImGui::PushItemDisabled();
+
+            if (overwrite_confirm_state)
+            {
+                if (ImGui::Button("Overwrite?"))
+                {
+                    ConfigManager::Get().SaveOverlayProfileToFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
+
+                    overwrite_confirm_state = false;
+                    delete_confirm_state = false;
+                }
+            }
+            else
+            {
+                if (ImGui::Button("Save"))
+                {
+                    if (!is_last)
+                    {
+                        overwrite_confirm_state = true;
+                    }
+                    else
+                    {
+                        ImGui::OpenPopup("NewOverlayProfilePopup");
+                    }
+
+                    delete_confirm_state = false;
+                }
+            }
+
+            if (is_first)
+                ImGui::PopItemDisabled();
+
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+            if ( (is_first) || (is_last) )
+                ImGui::PushItemDisabled();
+
+            if (delete_confirm_state)
+            {
+                if (ImGui::Button("Really?"))
+                {
+                    if (ConfigManager::Get().DeleteOverlayProfile(overlay_profile_list[overlay_profile_selected_id] + ".ini"))
+                    {
+                        overlay_profile_list = ConfigManager::Get().GetOverlayProfileList();
+                        overlay_profile_selected_id = 0;
+                    }
+
+                    delete_confirm_state = false;
+                }
+            }
+            else
+            {
+                if (ImGui::Button("Delete"))
+                {
+                    delete_confirm_state = true;
+                    overwrite_confirm_state = false;
+                }
+            }
+           
+            ImGui::NextColumn();
+
+            if ( (is_first) || (is_last) )
+                ImGui::PopItemDisabled();
+
+            ImGui::Columns(1);
+
+            PopupNewOverlayProfile(overlay_profile_list, overlay_profile_selected_id);
+        }
+
         //General
         {
             ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "General");
             ImGui::Columns(2, "ColumnGeneral", false);
             ImGui::SetColumnWidth(0, column_width_0);
 
-            if (detached)   //Disable dashboard setting when they're not relevant to avoid confusion
-                ImGui::PushItemDisabled();
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Type");
+            ImGui::NextColumn();
+
+            bool detached_radio_changed = false;
+
+            if (ImGui::RadioButton("Dashboard Overlay", !detached))
+            {
+                detached = false;
+                detached_radio_changed = true;
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::RadioButton("Floating Overlay", detached))
+            {
+                detached = true;
+                detached_radio_changed = true;
+            }
+
+            if (detached_radio_changed)
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_detached), detached);
+
+                //Automatically reset the matrix to a saner default if it still has the zero value
+                if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
+                {
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
+                }
+
+                if (!UIManager::Get()->IsInDesktopMode())
+                {
+                    vr::VROverlay()->SetOverlaySortOrder(UIManager::Get()->GetOverlayHandle(), (detached) ? 0 : 1);
+                }
+
+                UIManager::Get()->RepeatFrame();
+            }
+
+            ImGui::NextColumn();
 
             ImGui::AlignTextToFramePadding();
             ImGui::Text("Width");
             ImGui::NextColumn();
 
             float& width = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_width);
+            float width_slider_max = 10.0f;
+            
+            if (detached) //Variable max slider ranges for detached
+            {
+                width_slider_max = (ConfigManager::Get().GetConfigIntRef(configid_int_overlay_detached_origin) >= ovrl_origin_right_hand) ? 1.5f : 10.0f;
+            }
 
-            if (ImGui::SliderWithButtonsFloat("OverlayWidth", width, 0.1f, 0.05f, 10.0f, "%.2f m"))
+            if (ImGui::SliderWithButtonsFloat("OverlayWidth", width, 0.1f, 0.05f, width_slider_max, "%.2f m"))
             {
                 if (width < 0.05f)
                     width = 0.05f;
@@ -156,9 +352,6 @@ void WindowSettings::UpdateCatOverlay()
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_width), *(LPARAM*)&width);
             }
             ImGui::NextColumn();
-
-            if (detached)
-                ImGui::PopItemDisabled();
 
             ImGui::AlignTextToFramePadding();
             ImGui::Text("Curvature");
@@ -197,7 +390,8 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::Columns(1);
         }
 
-        //Position
+        //Position (Dashboard)
+        if (!detached)
         {
             ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Position");
             ImGui::Columns(2, "ColumnPosition", false);
@@ -245,6 +439,166 @@ void WindowSettings::UpdateCatOverlay()
 
             if (detached)
                 ImGui::PopItemDisabled();
+        }
+        else //Position (Detached)
+        {
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Position");
+            ImGui::Columns(2, "ColumnPositionDetached", false);
+            ImGui::SetColumnWidth(0, column_width_0);
+
+            static bool is_generic_tracker_connected = false;
+
+            if ((ImGui::IsWindowAppearing()) && (UIManager::Get()->IsOpenVRLoaded()))
+            {
+                is_generic_tracker_connected = (GetFirstVRTracker() != vr::k_unTrackedDeviceIndexInvalid);
+            }
+
+            ImGui::NextColumn();
+            ImGui::NextColumn();
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Display Mode");
+            ImGui::NextColumn();
+
+            int& mode_origin = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_detached_origin);
+
+            if (mode_origin == ovrl_origin_hmd)
+                ImGui::PushItemDisabled();
+
+            ImGui::SetNextItemWidth(-1);
+
+            int& mode_display = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_detached_display_mode);
+
+            const char* items_display[] = {"Always", "Only in Dashboard", "Only in Scene", "Only in Desktop+ Tab"};
+            if (ImGui::BeginCombo("##ComboDetachedDisplayMode", items_display[mode_display]))
+            {
+                int mode_display_old = mode_display;
+
+                //Displays some only when origin isn't dashboard
+                if ( (mode_origin != ovrl_origin_dashboard) && (ImGui::Selectable(items_display[ovrl_dispmode_always], (mode_display == ovrl_dispmode_always))) )
+                    mode_display = ovrl_dispmode_always;
+                if (ImGui::Selectable(items_display[ovrl_dispmode_dashboard], (mode_display == ovrl_dispmode_dashboard)))
+                    mode_display = ovrl_dispmode_dashboard;
+                if ( (mode_origin != ovrl_origin_dashboard) && (ImGui::Selectable(items_display[ovrl_dispmode_scene], (mode_display == ovrl_dispmode_scene))) )
+                    mode_display = ovrl_dispmode_scene;
+                if (ImGui::Selectable(items_display[ovrl_dispmode_dplustab], (mode_display == ovrl_dispmode_dplustab)))
+                    mode_display = ovrl_dispmode_dplustab;
+
+                if (mode_display != mode_display_old)
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_detached_display_mode), mode_display);
+
+                ImGui::EndCombo();
+            }
+
+            if (mode_origin == ovrl_origin_hmd)
+                ImGui::PopItemDisabled();
+
+            ImGui::NextColumn();
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Position Origin");
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::FixedHelpMarker("Some origins are restricted to certain display modes");
+            ImGui::NextColumn();
+
+            ImGui::SetNextItemWidth(-1);
+
+            const char* items_origin[] = {"Play Area", "HMD Floor Position", "Dashboard", "HMD", "Right Controller", "Left Controller", "Tracker #1"};
+            if (ImGui::BeginCombo("##ComboDetachedOrigin", items_origin[mode_origin]))
+            {
+                int mode_origin_old = mode_origin;
+
+                //Displays tracker option only when one is connected
+                if ( (ImGui::Selectable(items_origin[ovrl_origin_room],       (mode_origin == ovrl_origin_room))) )
+                    mode_origin = ovrl_origin_room;
+                if ( (ImGui::Selectable(items_origin[ovrl_origin_hmd_floor],  (mode_origin == ovrl_origin_hmd_floor))) )
+                    mode_origin = ovrl_origin_hmd_floor;
+                if ( (ImGui::Selectable(items_origin[ovrl_origin_dashboard],  (mode_origin == ovrl_origin_dashboard))) )
+                    mode_origin = ovrl_origin_dashboard;
+                if ( (ImGui::Selectable(items_origin[ovrl_origin_hmd],        (mode_origin == ovrl_origin_hmd))) )
+                    mode_origin = ovrl_origin_hmd;
+                if ( (ImGui::Selectable(items_origin[ovrl_origin_right_hand], (mode_origin == ovrl_origin_right_hand))) )
+                    mode_origin = ovrl_origin_right_hand;
+                if ( (ImGui::Selectable(items_origin[ovrl_origin_left_hand],  (mode_origin == ovrl_origin_left_hand))) )
+                    mode_origin = ovrl_origin_left_hand;
+                if ( (is_generic_tracker_connected) && (ImGui::Selectable(items_origin[ovrl_origin_aux], (mode_origin == ovrl_origin_aux))) )
+                    mode_origin = ovrl_origin_aux;
+
+                if (mode_origin != mode_origin_old)
+                {
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_detached_origin), mode_origin);
+
+                    if (mode_origin == ovrl_origin_dashboard)
+                    {
+                        mode_display = ovrl_dispmode_dashboard;
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_detached_display_mode), mode_display);
+                    }
+                    else if (mode_origin == ovrl_origin_hmd)
+                    {
+                        mode_display = ovrl_dispmode_scene;
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_detached_display_mode), mode_display);
+                    }
+
+                    //Automatically reset the matrix to a saner default if it still has the zero value
+                    if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
+                    {
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
+                    }
+                }
+
+                ImGui::EndCombo();
+            }
+
+            ImGui::NextColumn();
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Position");
+
+            if (!UIManager::Get()->IsOpenVRLoaded())
+            {
+                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                ImGui::FixedHelpMarker("Position can only be changed or reset when Desktop+ is running");
+            }
+
+            ImGui::NextColumn();
+
+            if (!UIManager::Get()->IsOpenVRLoaded())
+                ImGui::PushItemDisabled();
+
+            bool& is_changing_position = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_overlay_dragmode);
+
+            if (ImGui::Button("Change"))
+            {
+                ImGui::OpenPopup("OverlayChangePosPopup");
+
+                //Detach overlay if it isn't so it can actually be dragged around
+                if (!detached)
+                {
+                    detached = true;
+
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_detached), detached);
+
+                    //Automatically reset the matrix to a saner default if it still has the zero value
+                    if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
+                    {
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
+                    }
+                }
+
+                is_changing_position = true;
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_changing_position);
+            }
+
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+            if (ImGui::Button("Reset"))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
+            }
+
+            if (!UIManager::Get()->IsOpenVRLoaded())
+                ImGui::PopItemDisabled();
+
+            ImGui::Columns(1);
+
+            PopupOverlayDetachedPositionChange();
         }
 
         //Cropping
@@ -368,199 +722,6 @@ void WindowSettings::UpdateCatOverlay()
             }
 
             ImGui::Columns(1);
-        }
-
-        //Detached Overlay
-        {
-            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Detached Overlay");
-            ImGui::Columns(2, "ColumnDetached", false);
-            ImGui::SetColumnWidth(0, column_width_0);
-
-            static bool is_generic_tracker_connected = false;
-
-            if ((ImGui::IsWindowAppearing()) && (UIManager::Get()->IsOpenVRLoaded()))
-            {
-                is_generic_tracker_connected = (GetFirstVRTracker() != vr::k_unTrackedDeviceIndexInvalid);
-            }
-
-            if (ImGui::Checkbox("Detach Overlay", &detached))
-            {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_detached), detached);
-                
-                //Automatically reset the matrix to a saner default if it still has the zero value
-                if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
-                {
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
-                }
-
-                if (!UIManager::Get()->IsInDesktopMode())
-                {
-                    vr::VROverlay()->SetOverlaySortOrder(UIManager::Get()->GetOverlayHandle(), (detached) ? 0 : 1);
-                }
-            }
-
-            ImGui::NextColumn();
-            ImGui::NextColumn();
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Display Mode");
-            ImGui::NextColumn();
-                
-            int& mode_origin = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_detached_origin);
-
-            if (mode_origin == ovrl_origin_hmd)
-                ImGui::PushItemDisabled();
-
-            ImGui::SetNextItemWidth(-1);
-                
-            int& mode_display = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_detached_display_mode);
-
-            const char* items_display[] = {"Always", "Only in Dashboard", "Only in Scene", "Only in Desktop+ Tab"};
-            if (ImGui::BeginCombo("##ComboDetachedDisplayMode", items_display[mode_display]))
-            {
-                int mode_display_old = mode_display;
-
-                //Displays some only when origin isn't dashboard
-                if ( (mode_origin != ovrl_origin_dashboard) && (ImGui::Selectable(items_display[ovrl_dispmode_always], (mode_display == ovrl_dispmode_always))) )
-                    mode_display = ovrl_dispmode_always;
-                if (ImGui::Selectable(items_display[ovrl_dispmode_dashboard], (mode_display == ovrl_dispmode_dashboard)))
-                    mode_display = ovrl_dispmode_dashboard;
-                if ( (mode_origin != ovrl_origin_dashboard) && (ImGui::Selectable(items_display[ovrl_dispmode_scene], (mode_display == ovrl_dispmode_scene))) )
-                    mode_display = ovrl_dispmode_scene;
-                if (ImGui::Selectable(items_display[ovrl_dispmode_dplustab], (mode_display == ovrl_dispmode_dplustab)))
-                    mode_display = ovrl_dispmode_dplustab;
-
-                if (mode_display != mode_display_old)
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_detached_display_mode), mode_display);
-
-                ImGui::EndCombo();
-            }
-                
-            if (mode_origin == ovrl_origin_hmd)
-                ImGui::PopItemDisabled();
-
-            ImGui::NextColumn();
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Width");
-            ImGui::NextColumn();
-
-            float& width = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_detached_width);
-            float width_slider_max = (mode_origin >= ovrl_origin_right_hand) ? 1.5f : 10.0f;
-
-            if (ImGui::SliderWithButtonsFloat("OverlayDetachedWidth", width, 0.1f, 0.05f, width_slider_max, "%.2f m"))
-            {
-                if (width < 0.05f)
-                    width = 0.05f;
-
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_detached_width), *(LPARAM*)&width);
-            }
-
-            ImGui::NextColumn();
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Position Origin");
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-            ImGui::FixedHelpMarker("Some origins are restricted to certain display modes");
-            ImGui::NextColumn();
-                
-            ImGui::SetNextItemWidth(-1);
-
-            const char* items_origin[] = {"Play Area", "HMD Floor Position", "Dashboard", "HMD", "Right Controller", "Left Controller", "Tracker #1"};
-            if (ImGui::BeginCombo("##ComboDetachedOrigin", items_origin[mode_origin]))
-            {
-                int mode_origin_old = mode_origin;
-
-                //Displays tracker option only when one is connected
-                if ( (ImGui::Selectable(items_origin[ovrl_origin_room],       (mode_origin == ovrl_origin_room))) )
-                    mode_origin = ovrl_origin_room;
-                if ( (ImGui::Selectable(items_origin[ovrl_origin_hmd_floor],  (mode_origin == ovrl_origin_hmd_floor))) )
-                    mode_origin = ovrl_origin_hmd_floor;
-                if ( (ImGui::Selectable(items_origin[ovrl_origin_dashboard],  (mode_origin == ovrl_origin_dashboard))) )
-                    mode_origin = ovrl_origin_dashboard;
-                if ( (ImGui::Selectable(items_origin[ovrl_origin_hmd],        (mode_origin == ovrl_origin_hmd))) )
-                    mode_origin = ovrl_origin_hmd;
-                if ( (ImGui::Selectable(items_origin[ovrl_origin_right_hand], (mode_origin == ovrl_origin_right_hand))) )
-                    mode_origin = ovrl_origin_right_hand;
-                if ( (ImGui::Selectable(items_origin[ovrl_origin_left_hand],  (mode_origin == ovrl_origin_left_hand))) )
-                    mode_origin = ovrl_origin_left_hand;
-                if ( (is_generic_tracker_connected) && (ImGui::Selectable(items_origin[ovrl_origin_aux], (mode_origin == ovrl_origin_aux))) )
-                    mode_origin = ovrl_origin_aux;
-
-                if (mode_origin != mode_origin_old)
-                {
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_detached_origin), mode_origin);
-
-                    if (mode_origin == ovrl_origin_dashboard)
-                    {
-                        mode_display = ovrl_dispmode_dashboard;
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_detached_display_mode), mode_display);
-                    }
-                    else if (mode_origin == ovrl_origin_hmd)
-                    {
-                        mode_display = ovrl_dispmode_scene;
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_detached_display_mode), mode_display);
-                    }
-
-                    //Automatically reset the matrix to a saner default if it still has the zero value
-                    if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
-                    {
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
-                    }
-                }
-
-                ImGui::EndCombo();
-            }
-
-            ImGui::NextColumn();
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Position");
-
-            if (!UIManager::Get()->IsOpenVRLoaded())
-            {
-                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-                ImGui::FixedHelpMarker("Position can only be changed or reset when Desktop+ is running");
-            }
-                
-            ImGui::NextColumn();
-
-            if (!UIManager::Get()->IsOpenVRLoaded())
-                ImGui::PushItemDisabled();
-
-            bool& is_changing_position = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_overlay_dragmode);
-
-            if (ImGui::Button("Change"))
-            {
-                ImGui::OpenPopup("OverlayChangePosPopup");
-
-                //Detach overlay if it isn't so it can actually be dragged around
-                if (!detached)
-                {
-                    detached = true;
-
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_detached), detached);
-
-                    //Automatically reset the matrix to a saner default if it still has the zero value
-                    if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
-                    {
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
-                    }
-                }
-
-                is_changing_position = true;
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_changing_position);
-            }
-
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-
-            if (ImGui::Button("Reset"))
-            {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
-            }
-
-            if (!UIManager::Get()->IsOpenVRLoaded())
-                ImGui::PopItemDisabled();
-
-            ImGui::Columns(1);
-
-            PopupOverlayDetachedPositionChange();
         }
 
     ImGui::EndChild();
@@ -883,6 +1044,12 @@ void WindowSettings::UpdateCatInput()
 
         static int list_selected_index = -1;
         static bool delete_confirm_state = false; //Simple uninstrusive extra confirmation step for deleting actions 
+
+        if (ImGui::IsWindowAppearing())
+        {
+            //Reset state after switching panes or hiding the window
+            delete_confirm_state = false;
+        }
 
         std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
         int act_index = 0;
@@ -1646,6 +1813,158 @@ bool WindowSettings::ActionButtonRow(ActionID action_id, int list_pos, int& list
     return delete_pressed;
 }
 
+void WindowSettings::PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id)
+{
+    bool ret = false;
+
+    if (ImGui::BeginPopupModal("NewOverlayProfilePopup", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    {
+        ImGui::SetWindowSize(ImVec2(GetSize().x * 0.5f, -1.0f));
+
+        static char buf_name[1024] = "";
+        static bool is_name_taken = false;
+        static bool is_name_invalid = false;
+        static int list_id = 0;
+        static int popup_framecount = 0;
+
+        if (ImGui::IsWindowAppearing())
+        {
+            popup_framecount = ImGui::GetFrameCount();
+
+            std::string default_name("Profile 1");
+            int i = 1;
+
+            //Default to higher profile number if normal is already taken
+            while (std::find(overlay_profile_list.begin(), overlay_profile_list.end(), default_name) != overlay_profile_list.end())
+            {
+                ++i;
+                default_name = "Profile " + std::to_string(i);
+            }
+
+            size_t copied_length = default_name.copy(buf_name, 1023);
+            buf_name[copied_length] = '\0';
+        }
+
+        ImGui::Text("Enter new Profile Name");
+
+        if (is_name_taken)
+        {
+            ImGui::SameLine(0.0f);
+            ImGui::TextColored(Style_ImGuiCol_TextError, "(a profile with this name already exists)");
+        }
+
+        bool do_save = false;
+        bool buffer_changed = false;
+
+        ImGui::SetNextItemWidth(-1.0f);
+        //The idea is to have ImGui treat this as a new widget every time the popup is open, so the cursor position isn't remembered between popups
+        ImGui::PushID(popup_framecount);
+        if (ImGui::InputText("", buf_name, 1024, ImGuiInputTextFlags_CallbackCharFilter | ImGuiInputTextFlags_EnterReturnsTrue,
+                                                 [](ImGuiTextEditCallbackData* data)
+                                                 {
+                                                     //Filter forbidden characters, doesn't guarantee the name will work but should catch most cases
+                                                     if ( (data->EventChar < 256) && (data->EventChar >= 32) && (strchr("\\/\"<>|*?", (char)data->EventChar)) )
+                                                         return 1;
+                                                     return 0;
+                                                 }
+                            ))
+        {
+            do_save = true;
+        }
+        ImGui::PopID();
+
+        //Focus text input when the window is appearing
+        if (ImGui::IsWindowAppearing())
+        {
+            ImGui::SetKeyboardFocusHere();
+        }
+
+        if (ImGui::IsItemEdited())
+        {
+            buffer_changed = true;
+        }
+
+        if (ImGui::PopupContextMenuInputText(nullptr, buf_name, 1024))
+        {
+            //Filter forbidden characters from popup paste
+            std::wstring wstr = WStringConvertFromUTF8(buf_name);
+
+            wstr.erase(std::remove_if(wstr.begin(), wstr.end(), 
+                                                    [](wchar_t& w_char)
+                                                    {
+                                                        return ( (w_char < 256) && (w_char >= 32) && (strchr("\\/\"<>|*?", (char)w_char)) );
+                                                    }),
+                                                    wstr.end());                               
+
+            //Write back into buffer
+            size_t copied_length = StringConvertFromUTF16(wstr.c_str()).copy(buf_name, 1023);
+            buf_name[copied_length] = '\0';
+
+            buffer_changed = true;
+        }
+
+        if (buffer_changed)
+        {
+            if (strnlen(buf_name, 1024) == 0)
+            {
+                is_name_invalid = true;
+                is_name_taken = false;
+            }
+            else if (std::find(overlay_profile_list.begin(), overlay_profile_list.end(), std::string(buf_name) ) != overlay_profile_list.end())
+            {
+                is_name_invalid = true;
+                is_name_taken = true;
+            }
+            else
+            {
+                is_name_invalid = false;
+                is_name_taken = false;
+            }
+        }
+
+        ImGui::Separator();
+
+        if (is_name_invalid)
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Button("Ok")) 
+        {
+            do_save = true;
+        }
+
+        if (do_save)
+        {
+            std::string name_str(buf_name);
+            ConfigManager::Get().SaveOverlayProfileToFile(name_str + ".ini"); //Yes, we don't check for success. A lot of other things would go wrong as well if this did so...
+
+            //Update list
+            overlay_profile_list = ConfigManager::Get().GetOverlayProfileList();
+
+            //Find and select new profile in the list
+            auto it = std::find(overlay_profile_list.begin(), overlay_profile_list.end(), name_str);
+
+            if (it != overlay_profile_list.end())
+            {
+                overlay_profile_selected_id = (int)std::distance(overlay_profile_list.begin(), it);
+            }
+
+            ImGui::CloseCurrentPopup();
+        }
+
+        if (is_name_invalid)
+            ImGui::PopItemDisabled();
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel")) 
+        {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
 void WindowSettings::PopupActionEdit(CustomAction& action, int id)
 {
     ImGui::SetNextWindowSizeConstraints(ImVec2(GetSize().x * 0.5f, -1),  ImVec2(GetSize().x * 0.5f, -1));
@@ -2179,8 +2498,9 @@ bool WindowSettings::PopupIconSelect(std::string& filename)
             list_files.clear();
             list_files.emplace_back("[Text Label]");
 
+            const std::wstring wpath = WStringConvertFromUTF8(std::string(ConfigManager::Get().GetApplicationPath() + "images/icons/*.png").c_str());
             WIN32_FIND_DATA find_data;
-            HANDLE handle_find = FindFirstFileW(L"images/icons/*.png", &find_data);
+            HANDLE handle_find = ::FindFirstFileW(wpath.c_str(), &find_data);
 
             if (handle_find != INVALID_HANDLE_VALUE)
             {
@@ -2188,9 +2508,9 @@ bool WindowSettings::PopupIconSelect(std::string& filename)
                 {
                     list_files.push_back(StringConvertFromUTF16(find_data.cFileName));
                 }
-                while (FindNextFile(handle_find, &find_data) != 0);
+                while (::FindNextFileW(handle_find, &find_data) != 0);
 
-                FindClose(handle_find);
+                ::FindClose(handle_find);
             }
         }
 

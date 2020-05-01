@@ -172,6 +172,7 @@
   <ItemGroup>
     <ClCompile Include="..\Shared\Actions.cpp" />
     <ClCompile Include="..\Shared\ConfigManager.cpp" />
+    <ClCompile Include="..\Shared\Ini.cpp" />
     <ClCompile Include="..\Shared\Matrices.cpp" />
     <ClCompile Include="..\Shared\Util.cpp" />
     <ClCompile Include="DesktopPlusUI.cpp" />

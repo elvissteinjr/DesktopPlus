@@ -549,7 +549,6 @@ vr::EVRInitError OutputManager::InitOverlay()
             vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleDashboard, vr::VROverlayInputMethod_None);
 
             //ResetOverlay() is called later
-            ApplySetting3DMode();
 
             vr::VROverlay()->SetOverlayFromFile(m_OvrlHandleIcon, (ConfigManager::Get().GetApplicationPath() + "images/icon_dashboard.png").c_str());
         }
@@ -1049,6 +1048,22 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     HandleKeyboardHelperMessage(msg.lParam);
                     break;
                 }
+                case ipcact_overlay_profile_load:
+                {
+                    int desktop_id_prev = ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id);
+                    const std::string& profile_name = ConfigManager::Get().GetConfigString(configid_str_state_profile_name_load);
+
+                    if (profile_name == "Default")
+                        ConfigManager::Get().LoadOverlayProfileDefault();
+                    else
+                        ConfigManager::Get().LoadOverlayProfileFromFile(profile_name + ".ini");
+
+                    //Reset mirroing entirely if desktop was changed
+                    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id) != desktop_id_prev)
+                        return true; //Reset mirroring
+
+                    ResetOverlay(); //This does everything relevant
+                }
             }
             break;
         }
@@ -1174,7 +1189,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_float_overlay_offset_right:
                     case configid_float_overlay_offset_up:
                     case configid_float_overlay_offset_forward:
-                    case configid_float_overlay_detached_width:
                     {
                         ApplySettingTransform();
                         break;
@@ -1251,6 +1265,7 @@ void OutputManager::ResetOverlay()
     ApplySettingCrop();
     ApplySettingTransform();
     ApplySettingMouseInput();
+    ApplySetting3DMode();
 
     //Post resolution update to UI app
     IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_resolution_update);
@@ -2292,18 +2307,16 @@ void OutputManager::ApplySettingTransform()
     }
 
     //Update width
-    float width, width_dashboard;
+    float width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
+    float width_dashboard;
     OverlayOrigin overlay_origin;
 
     if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
     {
-        width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_detached_width);
         overlay_origin = (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin);
-
     }
     else
     {
-        width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
         overlay_origin = ovrl_origin_dashboard;
     }
 
@@ -2669,18 +2682,15 @@ Matrix4 OutputManager::DragGetBaseOffsetMatrix()
 {
     Matrix4 matrix; //Identity
 
-    float width;
+    float width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
     OverlayOrigin overlay_origin;
 
     if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
     {
-        width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_detached_width);
         overlay_origin = (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin);
-
     }
     else
     {
-        width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
         overlay_origin = ovrl_origin_dashboard;
     }
 

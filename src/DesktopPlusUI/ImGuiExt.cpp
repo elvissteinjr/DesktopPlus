@@ -252,8 +252,10 @@ namespace ImGui
         ImGui::PopStyleVar();
     }
 
-    void PopupContextMenuInputText(const char* str_id, char* str_buffer, size_t buffer_size)
+    bool PopupContextMenuInputText(const char* str_id, char* str_buffer, size_t buffer_size)
     {
+        bool ret = false;
+
         if (ImGui::BeginPopupContextItem(str_id))
         {
             if (ImGui::MenuItem("Copy all"))
@@ -266,10 +268,14 @@ namespace ImGui
                 std::string str(ImGui::GetClipboardText());
                 size_t copied_length = str.copy(str_buffer, buffer_size - 1);
                 str_buffer[copied_length] = '\0';
+
+                ret = true;
             }
 
             ImGui::EndPopup();
         }
+
+        return ret;
     }
 
     bool HasHoveredNewItem()

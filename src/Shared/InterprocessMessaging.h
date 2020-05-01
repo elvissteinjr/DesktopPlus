@@ -35,6 +35,7 @@ enum IPCActionID
     ipcact_action_stop,             //Sent by UI application to stop an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
     ipcact_keyboard_helper,         //Sent by UI application in response to a keyboard helper button press. lParam is win32 key code
     ipcact_vrkeyboard_closed,       //Sent by dashboard application when VREvent_Closed occured and the keyboard is open for the UI application. No data in lParam
+    ipcact_overlay_profile_load,    //Sent by UI application when loading a profile. No data in lParam, but profile name is stored in configid_str_state_profile_name_load beforehand
     ipcact_MAX
 };
 

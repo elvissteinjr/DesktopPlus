@@ -26,8 +26,8 @@ namespace ImGui
     void PushItemDisabled();
     void PopItemDisabled();
 
-    //Something loosely resembling an InputText context menu, except it doesn't operate on the current cursor position or selection at all
-    void PopupContextMenuInputText(const char* str_id, char* str_buffer, size_t buffer_size);
+    //Something loosely resembling an InputText context menu, except it doesn't operate on the current cursor position or selection at all. Returns if buffer was modified
+    bool PopupContextMenuInputText(const char* str_id, char* str_buffer, size_t buffer_size);
 
     //Returns true if the hovered item has changed to a different one
     bool HasHoveredNewItem();

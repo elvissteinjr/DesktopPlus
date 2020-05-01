@@ -4,7 +4,6 @@
 #include <sstream>
 
 #include "Util.h"
-#include "Ini.h"
 
 static ConfigManager g_ConfigManager;
 static const std::string g_EmptyString;       //This way we can still return a const reference. Worth it? iunno
@@ -61,10 +60,8 @@ ConfigManager& ConfigManager::Get()
     return g_ConfigManager;
 }
 
-bool ConfigManager::LoadConfigFromFile()
+void ConfigManager::LoadOverlayProfile(Ini& config)
 {
-    Ini config(m_ApplicationPath + "/config.ini");
-
     m_ConfigInt[configid_int_overlay_desktop_id]            = config.ReadInt("Overlay", "DesktopID", 0);
     m_ConfigBool[configid_bool_overlay_detached]            = config.ReadBool("Overlay", "Detached", false);
     m_ConfigFloat[configid_float_overlay_width]             = config.ReadInt("Overlay", "Width", 350) / 100.0f;
@@ -81,8 +78,11 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_overlay_3D_swapped]          = config.ReadBool("Overlay", "3DSwapped", false);
     m_ConfigBool[configid_bool_overlay_detached]            = config.ReadBool("Overlay", "Detached", false);
     m_ConfigInt[configid_int_overlay_detached_display_mode] = config.ReadInt("Overlay", "DetachedDisplayMode", ovrl_dispmode_always);
-    m_ConfigFloat[configid_float_overlay_detached_width]    = config.ReadInt("Overlay", "DetachedWidth", 350) / 100.0f;
     m_ConfigInt[configid_int_overlay_detached_origin]       = config.ReadInt("Overlay", "DetachedOrigin", ovrl_origin_room);
+
+    //Default the transform matrices to zero
+    float matrix_zero[16] = { 0.0f };
+    std::fill(std::begin(m_ConfigOverlayDetachedTransform), std::end(m_ConfigOverlayDetachedTransform), matrix_zero);
 
     std::string transform_str; //Only set these when it's really present in the file, or else it defaults to identity instead of zero
     transform_str = config.ReadString("Overlay", "DetachedTransformPlaySpace");
@@ -112,6 +112,45 @@ bool ConfigManager::LoadConfigFromFile()
     transform_str = config.ReadString("Overlay", "DetachedTransformAux");
     if (!transform_str.empty())
         m_ConfigOverlayDetachedTransform[ovrl_origin_aux] = transform_str;
+}
+
+void ConfigManager::SaveOverlayProfile(Ini& config)
+{
+    config.WriteInt( "Overlay", "DesktopID",           m_ConfigInt[configid_int_overlay_desktop_id]);
+    config.WriteBool("Overlay", "Detached",            m_ConfigBool[configid_bool_overlay_detached]);
+    config.WriteInt( "Overlay", "Width",               int(m_ConfigFloat[configid_float_overlay_width]           * 100.0f));
+    config.WriteInt( "Overlay", "Curvature",           int(m_ConfigFloat[configid_float_overlay_curvature]       * 100.0f));
+    config.WriteInt( "Overlay", "Opacity",             int(m_ConfigFloat[configid_float_overlay_opacity]         * 100.0f));
+    config.WriteInt( "Overlay", "OffsetRight",         int(m_ConfigFloat[configid_float_overlay_offset_right]    * 100.0f));
+    config.WriteInt( "Overlay", "OffsetUp",            int(m_ConfigFloat[configid_float_overlay_offset_up]       * 100.0f));
+    config.WriteInt( "Overlay", "OffsetForward",       int(m_ConfigFloat[configid_float_overlay_offset_forward]  * 100.0f));
+    config.WriteInt( "Overlay", "CroppingX",           m_ConfigInt[configid_int_overlay_crop_x]);
+    config.WriteInt( "Overlay", "CroppingY",           m_ConfigInt[configid_int_overlay_crop_y]);
+    config.WriteInt( "Overlay", "CroppingWidth",       m_ConfigInt[configid_int_overlay_crop_width]);
+    config.WriteInt( "Overlay", "CroppingHeight",      m_ConfigInt[configid_int_overlay_crop_height]);
+    config.WriteInt( "Overlay", "3DMode",              m_ConfigInt[configid_int_overlay_3D_mode]);
+    config.WriteBool("Overlay", "3DSwapped",           m_ConfigBool[configid_bool_overlay_3D_swapped]);
+    config.WriteBool("Overlay", "Detached",            m_ConfigBool[configid_bool_overlay_detached]);
+    config.WriteInt( "Overlay", "DetachedDisplayMode", m_ConfigInt[configid_int_overlay_detached_display_mode]);
+    config.WriteInt( "Overlay", "DetachedOrigin",      m_ConfigInt[configid_int_overlay_detached_origin]);
+
+    config.WriteString("Overlay", "DetachedTransformPlaySpace", m_ConfigOverlayDetachedTransform[ovrl_origin_room].toString().c_str());
+    config.WriteString("Overlay", "DetachedTransformHMDFloor",  m_ConfigOverlayDetachedTransform[ovrl_origin_hmd_floor].toString().c_str());
+    config.WriteString("Overlay", "DetachedTransformDashboard", m_ConfigOverlayDetachedTransform[ovrl_origin_dashboard].toString().c_str());
+    config.WriteString("Overlay", "DetachedTransformHMD",       m_ConfigOverlayDetachedTransform[ovrl_origin_hmd].toString().c_str());
+    config.WriteString("Overlay", "DetachedTransformRightHand", m_ConfigOverlayDetachedTransform[ovrl_origin_right_hand].toString().c_str());
+    config.WriteString("Overlay", "DetachedTransformLeftHand",  m_ConfigOverlayDetachedTransform[ovrl_origin_left_hand].toString().c_str());
+    config.WriteString("Overlay", "DetachedTransformAux",       m_ConfigOverlayDetachedTransform[ovrl_origin_aux].toString().c_str());
+}
+
+bool ConfigManager::LoadConfigFromFile()
+{
+    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config.ini").c_str() );
+    bool existed = FileExists(wpath.c_str());
+
+    Ini config(wpath.c_str());
+
+    LoadOverlayProfile(config);
 
     m_ConfigBool[configid_bool_interface_no_ui]                                = config.ReadBool("Interface", "NoUIAutoLaunch", false);
     m_ConfigInt[configid_int_interface_mainbar_desktop_listing]                = config.ReadInt("Interface", "DesktopButtonCyclingMode", mainbar_desktop_listing_individual);
@@ -245,40 +284,15 @@ bool ConfigManager::LoadConfigFromFile()
         m_ConfigInt[configid_int_input_shortcut03_action_id] = action_none;
     }
     
-    return config.Exists(); //We use default values if it doesn't, but still return if the file existed
+    return existed; //We use default values if it doesn't, but still return if the file existed
 }
 
 void ConfigManager::SaveConfigToFile()
 {
-    //return;
-    Ini config(m_ApplicationPath + "/config.ini");
+    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config.ini").c_str() );
+    Ini config(wpath.c_str());
 
-    config.WriteInt( "Overlay", "DesktopID",           m_ConfigInt[configid_int_overlay_desktop_id]);
-    config.WriteBool("Overlay", "Detached",            m_ConfigBool[configid_bool_overlay_detached]);
-    config.WriteInt( "Overlay", "Width",               int(m_ConfigFloat[configid_float_overlay_width]           * 100.0f));
-    config.WriteInt( "Overlay", "Curvature",           int(m_ConfigFloat[configid_float_overlay_curvature]       * 100.0f));
-    config.WriteInt( "Overlay", "Opacity",             int(m_ConfigFloat[configid_float_overlay_opacity]         * 100.0f));
-    config.WriteInt( "Overlay", "OffsetRight",         int(m_ConfigFloat[configid_float_overlay_offset_right]    * 100.0f));
-    config.WriteInt( "Overlay", "OffsetUp",            int(m_ConfigFloat[configid_float_overlay_offset_up]       * 100.0f));
-    config.WriteInt( "Overlay", "OffsetForward",       int(m_ConfigFloat[configid_float_overlay_offset_forward]  * 100.0f));
-    config.WriteInt( "Overlay", "CroppingX",           m_ConfigInt[configid_int_overlay_crop_x]);
-    config.WriteInt( "Overlay", "CroppingY",           m_ConfigInt[configid_int_overlay_crop_y]);
-    config.WriteInt( "Overlay", "CroppingWidth",       m_ConfigInt[configid_int_overlay_crop_width]);
-    config.WriteInt( "Overlay", "CroppingHeight",      m_ConfigInt[configid_int_overlay_crop_height]);
-    config.WriteInt( "Overlay", "3DMode",              m_ConfigInt[configid_int_overlay_3D_mode]);
-    config.WriteBool("Overlay", "3DSwapped",           m_ConfigBool[configid_bool_overlay_3D_swapped]);
-    config.WriteBool("Overlay", "Detached",            m_ConfigBool[configid_bool_overlay_detached]);
-    config.WriteInt( "Overlay", "DetachedDisplayMode", m_ConfigInt[configid_int_overlay_detached_display_mode]);
-    config.WriteInt( "Overlay", "DetachedWidth",       int(m_ConfigFloat[configid_float_overlay_detached_width]  * 100.0f));
-    config.WriteInt( "Overlay", "DetachedOrigin",      m_ConfigInt[configid_int_overlay_detached_origin]);
-
-    config.WriteString("Overlay", "DetachedTransformPlaySpace", m_ConfigOverlayDetachedTransform[ovrl_origin_room].toString().c_str());
-    config.WriteString("Overlay", "DetachedTransformHMDFloor",  m_ConfigOverlayDetachedTransform[ovrl_origin_hmd_floor].toString().c_str());
-    config.WriteString("Overlay", "DetachedTransformDashboard", m_ConfigOverlayDetachedTransform[ovrl_origin_dashboard].toString().c_str());
-    config.WriteString("Overlay", "DetachedTransformHMD",       m_ConfigOverlayDetachedTransform[ovrl_origin_hmd].toString().c_str());
-    config.WriteString("Overlay", "DetachedTransformRightHand", m_ConfigOverlayDetachedTransform[ovrl_origin_right_hand].toString().c_str());
-    config.WriteString("Overlay", "DetachedTransformLeftHand",  m_ConfigOverlayDetachedTransform[ovrl_origin_left_hand].toString().c_str());
-    config.WriteString("Overlay", "DetachedTransformAux",       m_ConfigOverlayDetachedTransform[ovrl_origin_aux].toString().c_str());
+    SaveOverlayProfile(config);
 
     config.WriteInt( "Interface", "DesktopButtonCyclingMode",          m_ConfigInt[configid_int_interface_mainbar_desktop_listing]);
     config.WriteBool("Interface", "DesktopButtonIncludeAll",           m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]);
@@ -320,6 +334,8 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Performance", "RapidLaserPointerUpdates", m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]);
 
     //Save custom actions
+    config.RemoveSection("CustomActions"); //Remove old section first to avoid any leftovers
+
     auto& custom_actions = m_ActionManager.GetCustomActions();
     int custom_action_count = (int)custom_actions.size();
     config.WriteInt("CustomActions", "Count", custom_action_count);
@@ -359,9 +375,70 @@ void ConfigManager::SaveConfigToFile()
         #endif
     }
 
-    //This one could return success by checking every single write call, but that seems excessive to be honest.
-    //There should be no reason for this to fail in a sane environment
-    //One will notice if it fails to save and it's not very dramatic if it does so. Further troubleshooting would be needed either way.
+    config.Save();
+}
+
+void ConfigManager::LoadOverlayProfileDefault()
+{
+    Ini config(L"");
+    LoadOverlayProfile(config); //All read calls will fail end fill in default values as a result
+}
+
+bool ConfigManager::LoadOverlayProfileFromFile(const std::string filename)
+{
+    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/profiles/overlays/" + filename).c_str() );
+
+    if (FileExists(wpath.c_str()))
+    {
+        Ini config(wpath);
+        LoadOverlayProfile(config);
+        return true;
+    }
+
+    return false;
+}
+
+void ConfigManager::SaveOverlayProfileToFile(const std::string filename)
+{
+    std::string path = m_ApplicationPath + "/profiles/overlays/" + filename;
+    Ini config(WStringConvertFromUTF8(path.c_str()));
+
+    SaveOverlayProfile(config);
+    config.Save();
+}
+
+bool ConfigManager::DeleteOverlayProfile(const std::string filename)
+{
+    std::string path = m_ApplicationPath + "/profiles/overlays/" + filename;
+    return (::DeleteFileW(WStringConvertFromUTF8(path.c_str()).c_str()) != 0);
+}
+
+std::vector<std::string> ConfigManager::GetOverlayProfileList()
+{
+    std::vector<std::string> list;
+    list.emplace_back("Default");
+
+    const std::wstring wpath = WStringConvertFromUTF8(std::string(m_ApplicationPath + "profiles/overlays/*.ini").c_str());
+    WIN32_FIND_DATA find_data;
+    HANDLE handle_find = ::FindFirstFileW(wpath.c_str(), &find_data);
+
+    if (handle_find != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            std::string name = StringConvertFromUTF16(find_data.cFileName);
+            name = name.substr(0, name.length() - 4);   //Remove extension
+
+            list.push_back(name);
+        }
+        while (::FindNextFileW(handle_find, &find_data) != 0);
+
+        ::FindClose(handle_find);
+    }
+
+    list.emplace_back("[New Profile]");
+
+    return list;
 }
 
 WPARAM ConfigManager::GetWParamForConfigID(ConfigID_Bool id)    //This is a no-op, but for consistencies' sake and in case anything changes there, it still exists

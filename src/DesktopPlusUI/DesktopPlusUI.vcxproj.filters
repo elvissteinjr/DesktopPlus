@@ -52,6 +52,9 @@
     </ClCompile>
     <ClCompile Include="ImGuiExt.cpp" />
     <ClCompile Include="WindowKeyboardHelper.cpp" />
+    <ClCompile Include="..\Shared\Ini.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imstb_truetype.h">

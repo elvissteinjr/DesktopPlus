@@ -12,6 +12,7 @@
 
 #include "Matrices.h"
 #include "Actions.h"
+#include "Ini.h"
 
 //Settings enums
 //These IDs are also passed via IPC
@@ -76,7 +77,6 @@ enum ConfigID_Float
     configid_float_overlay_offset_right,
     configid_float_overlay_offset_up,
     configid_float_overlay_offset_forward,
-    configid_float_overlay_detached_width,
     configid_float_input_keyboard_detached_size,
     configid_float_interface_last_vr_ui_scale,
     configid_float_performance_early_update_limit_multiplier,
@@ -89,6 +89,7 @@ enum ConfigID_String
     configid_str_state_action_value_string,
     configid_str_state_ui_keyboard_string,          //SteamVR keyboard input for the UI application
     configid_str_state_dashboard_error_string,      //Error messages are displayed in VR through the UI app
+    configid_str_state_profile_name_load,           //Name of the profile to load 
 	configid_str_MAX
 };
 
@@ -141,12 +142,22 @@ class ConfigManager
         std::string m_ApplicationPath;
         std::string m_ExecutableName;
 
+        void LoadOverlayProfile(Ini& config);
+        void SaveOverlayProfile(Ini& config);
+
 	public:
 		ConfigManager();
 		static ConfigManager& Get();
         
         bool LoadConfigFromFile();
         void SaveConfigToFile();
+
+        void LoadOverlayProfileDefault();
+        bool LoadOverlayProfileFromFile(const std::string filename);
+        void SaveOverlayProfileToFile(const std::string filename);
+        bool DeleteOverlayProfile(const std::string filename);
+        std::vector<std::string> GetOverlayProfileList();
+
         static WPARAM GetWParamForConfigID(ConfigID_Bool id);
         static WPARAM GetWParamForConfigID(ConfigID_Int id);
         static WPARAM GetWParamForConfigID(ConfigID_Float id);
