@@ -22,7 +22,7 @@
 class OutputManager
 {
     public:
-        OutputManager();
+        OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent);
         ~OutputManager();
         DUPL_RETURN InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
         vr::EVRInitError InitOverlay();
@@ -105,6 +105,9 @@ class OutputManager
         ID3D11ShaderResourceView* m_ShaderResource;
         IDXGIKeyedMutex* m_KeyMutex;
         HWND m_WindowHandle;
+        //These handles are not created or closed by this class, they're valid for the entire runtime though
+        HANDLE m_PauseDuplicationEvent;
+        HANDLE m_ResumeDuplicationEvent;
 
         int m_DesktopX;
         int m_DesktopY;

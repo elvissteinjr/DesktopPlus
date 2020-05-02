@@ -9,57 +9,60 @@ using namespace DirectX;
 
 #include "Util.h"
 
-OutputManager::OutputManager() : m_Device(nullptr),
-                                 m_Factory(nullptr),
-                                 m_DeviceContext(nullptr),
-                                 m_Sampler(nullptr),
-                                 m_BlendState(nullptr),
-                                 m_VertexShader(nullptr),
-                                 m_PixelShader(nullptr),
-                                 m_PixelShaderCursor(nullptr),
-                                 m_InputLayout(nullptr),
-                                 m_SharedSurf(nullptr),
-                                 m_VertexBuffer(nullptr),
-                                 m_ShaderResource(nullptr),
-                                 m_KeyMutex(nullptr),
-                                 m_WindowHandle(nullptr),
-                                 m_DesktopX(0),
-                                 m_DesktopY(0),
-                                 m_DesktopWidth(-1),
-                                 m_DesktopHeight(-1),
-                                 m_MaxRefreshDelay(16),
-                                 m_OutputInvalid(false),
-                                 m_OvrlHandleMain(vr::k_ulOverlayHandleInvalid),
-                                 m_OvrlHandleIcon(vr::k_ulOverlayHandleInvalid),
-                                 m_OvrlHandleDashboard(vr::k_ulOverlayHandleInvalid),
-                                 m_OvrlTex(nullptr),
-                                 m_OvrlRTV(nullptr),
-                                 m_OvrlShaderResView(nullptr),
-                                 m_OvrlActive(false),
-                                 m_OvrlActiveLastUpdate(false),
-                                 m_OvrlDashboardActive(false),
-                                 m_OvrlInputActive(false),
-                                 m_OvrlDetachedInteractive(false),
-                                 m_MouseTex(nullptr),
-                                 m_MouseShaderRes(nullptr),
-                                 m_MouseLastClickTick(0),
-                                 m_MouseIgnoreMoveEvent(false),
-                                 m_MouseLastVisible(false),
-                                 m_MouseLastCursorType(DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR),
-                                 m_MouseLastLaserPointerX(-1),
-                                 m_MouseLastLaserPointerY(-1),
-                                 m_MouseDefaultHotspotX(0),
-                                 m_MouseDefaultHotspotY(0),
-                                 m_MouseIgnoreMoveEventMissCount(0),
-                                 m_ComInitDone(false),
-                                 m_DragModeDeviceID(-1),
-                                 m_DashboardHMD_Y(-100.0f),
-                                 m_MultiGPUTargetDevice(nullptr),
-                                 m_MultiGPUTargetDeviceContext(nullptr),
-                                 m_MultiGPUTexStaging(nullptr),
-                                 m_MultiGPUTexTarget(nullptr),
-                                 m_PerformanceFrameCount(0),
-                                 m_PerformanceFrameCountStartTick(0)
+OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent) : 
+    m_Device(nullptr),
+    m_Factory(nullptr),
+    m_DeviceContext(nullptr),
+    m_Sampler(nullptr),
+    m_BlendState(nullptr),
+    m_VertexShader(nullptr),
+    m_PixelShader(nullptr),
+    m_PixelShaderCursor(nullptr),
+    m_InputLayout(nullptr),
+    m_SharedSurf(nullptr),
+    m_VertexBuffer(nullptr),
+    m_ShaderResource(nullptr),
+    m_KeyMutex(nullptr),
+    m_WindowHandle(nullptr),
+    m_PauseDuplicationEvent(PauseDuplicationEvent),
+    m_ResumeDuplicationEvent(ResumeDuplicationEvent),
+    m_DesktopX(0),
+    m_DesktopY(0),
+    m_DesktopWidth(-1),
+    m_DesktopHeight(-1),
+    m_MaxRefreshDelay(16),
+    m_OutputInvalid(false),
+    m_OvrlHandleMain(vr::k_ulOverlayHandleInvalid),
+    m_OvrlHandleIcon(vr::k_ulOverlayHandleInvalid),
+    m_OvrlHandleDashboard(vr::k_ulOverlayHandleInvalid),
+    m_OvrlTex(nullptr),
+    m_OvrlRTV(nullptr),
+    m_OvrlShaderResView(nullptr),
+    m_OvrlActive(false),
+    m_OvrlActiveLastUpdate(false),
+    m_OvrlDashboardActive(false),
+    m_OvrlInputActive(false),
+    m_OvrlDetachedInteractive(false),
+    m_MouseTex(nullptr),
+    m_MouseShaderRes(nullptr),
+    m_MouseLastClickTick(0),
+    m_MouseIgnoreMoveEvent(false),
+    m_MouseLastVisible(false),
+    m_MouseLastCursorType(DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR),
+    m_MouseLastLaserPointerX(-1),
+    m_MouseLastLaserPointerY(-1),
+    m_MouseDefaultHotspotX(0),
+    m_MouseDefaultHotspotY(0),
+    m_MouseIgnoreMoveEventMissCount(0),
+    m_ComInitDone(false),
+    m_DragModeDeviceID(-1),
+    m_DashboardHMD_Y(-100.0f),
+    m_MultiGPUTargetDevice(nullptr),
+    m_MultiGPUTargetDeviceContext(nullptr),
+    m_MultiGPUTexStaging(nullptr),
+    m_MultiGPUTexTarget(nullptr),
+    m_PerformanceFrameCount(0),
+    m_PerformanceFrameCountStartTick(0)
 {
     //Initialize ConfigManager
     ConfigManager::Get().LoadConfigFromFile();
@@ -107,6 +110,10 @@ void OutputManager::ShowMainOverlay()
     {
         ::timeBeginPeriod(1);   //This is somewhat frowned upon, but we want to hit the polling rate, it's only when active and we're in a high performance situation anyways
 
+        //Signal duplication threads to resume in case they're paused
+        ::ResetEvent(m_PauseDuplicationEvent);
+        ::SetEvent(m_ResumeDuplicationEvent);
+
         m_OvrlActive = true;
 
         ApplySettingTransform();
@@ -142,6 +149,10 @@ void OutputManager::HideMainOverlay()
     if (m_OvrlActive)
     {
         ::timeEndPeriod(1);
+
+        //Signal duplication threads to pause since we don't need them to do needless work
+        ::ResetEvent(m_ResumeDuplicationEvent);
+        ::SetEvent(m_PauseDuplicationEvent);
 
         m_OvrlActive = false;
     }

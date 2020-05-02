@@ -10,7 +10,8 @@ class THREADMANAGER
         ~THREADMANAGER();
         void Clean();
         DUPL_RETURN Initialize(INT SingleOutput, UINT OutputCount, HANDLE UnexpectedErrorEvent, HANDLE ExpectedErrorEvent, HANDLE NewFrameProcessedEvent,
-                               HANDLE TerminateThreadsEvent, HANDLE SharedHandle, _In_ RECT* DesktopDim, IDXGIAdapter* DXGIAdapter);
+                               HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent, HANDLE TerminateThreadsEvent,
+                               HANDLE SharedHandle, _In_ RECT* DesktopDim, IDXGIAdapter* DXGIAdapter);
         PTR_INFO* GetPointerInfo();
         void WaitForThreadTermination();
 

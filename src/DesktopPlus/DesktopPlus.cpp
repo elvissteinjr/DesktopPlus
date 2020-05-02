@@ -156,6 +156,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     HANDLE UnexpectedErrorEvent = nullptr;
     HANDLE ExpectedErrorEvent = nullptr;
     HANDLE NewFrameProcessedEvent = nullptr;
+    HANDLE PauseDuplicationEvent = nullptr;
+    HANDLE ResumeDuplicationEvent = nullptr;
     HANDLE TerminateThreadsEvent = nullptr;
 
     // Window
@@ -165,7 +167,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     StopProcessByWindowClass(g_WindowClassNameDashboardApp);
 
     // Event used by the threads to signal an unexpected error and we want to quit the app
-    UnexpectedErrorEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    UnexpectedErrorEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
     if (!UnexpectedErrorEvent)
     {
         ProcessFailure(nullptr, L"UnexpectedErrorEvent creation failed", L"Error", E_UNEXPECTED);
@@ -173,7 +175,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     }
 
     // Event for when a thread encounters an expected error
-    ExpectedErrorEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    ExpectedErrorEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
     if (!ExpectedErrorEvent)
     {
         ProcessFailure(nullptr, L"ExpectedErrorEvent creation failed", L"Error", E_UNEXPECTED);
@@ -181,15 +183,31 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     }
 
     // Event for when a thread succeeded in processing a frame
-    NewFrameProcessedEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    NewFrameProcessedEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
     if (!NewFrameProcessedEvent)
     {
         ProcessFailure(nullptr, L"NewFrameProcessedEvent creation failed", L"Error", E_UNEXPECTED);
         return 0;
     }
 
+    //Event to tell threads to pause duplication (signaled by default)
+    PauseDuplicationEvent = ::CreateEvent(nullptr, TRUE, TRUE, nullptr);
+    if (!PauseDuplicationEvent)
+    {
+        ProcessFailure(nullptr, L"PauseDuplicationEvent creation failed", L"Error", E_UNEXPECTED);
+        return 0;
+    }
+
+    //Event to tell threads to resume duplication
+    ResumeDuplicationEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    if (!ResumeDuplicationEvent)
+    {
+        ProcessFailure(nullptr, L"ResumeDuplicationEvent creation failed", L"Error", E_UNEXPECTED);
+        return 0;
+    }
+
     // Event to tell spawned threads to quit
-    TerminateThreadsEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    TerminateThreadsEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
     if (!TerminateThreadsEvent)
     {
         ProcessFailure(nullptr, L"TerminateThreadsEvent creation failed", L"Error", E_UNEXPECTED);
@@ -217,11 +235,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     }
 
     // Create window
-    WindowHandle = CreateWindowW(g_WindowClassNameDashboardApp, L"Desktop+ Overlay",
-                                 0,
-                                 0, 0,
-                                 1, 1,
-                                 HWND_MESSAGE, nullptr, hInstance, nullptr);
+    WindowHandle = ::CreateWindowW(g_WindowClassNameDashboardApp, L"Desktop+ Overlay",
+                                   0,
+                                   0, 0,
+                                   1, 1,
+                                   HWND_MESSAGE, nullptr, hInstance, nullptr);
     if (!WindowHandle)
     {
         ProcessFailure(nullptr, L"Window creation failed", L"Error", E_FAIL);
@@ -232,7 +250,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     IPCManager::Get().DisableUIPForRegisteredMessages(WindowHandle);
 
     THREADMANAGER ThreadMgr;
-    OutputManager OutMgr;
+    OutputManager OutMgr(PauseDuplicationEvent, ResumeDuplicationEvent);
     g_OutMgrPtr = &OutMgr;
     RECT DeskBounds;
     UINT OutputCount;
@@ -301,11 +319,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             if (!FirstTime)
             {
                 // Terminate other threads
+                ResetEvent(PauseDuplicationEvent);
+                SetEvent(ResumeDuplicationEvent);
                 SetEvent(TerminateThreadsEvent);
                 ThreadMgr.WaitForThreadTermination();
                 ResetEvent(TerminateThreadsEvent);
                 ResetEvent(ExpectedErrorEvent);
                 ResetEvent(NewFrameProcessedEvent);
+                ResetEvent(ResumeDuplicationEvent);
 
                 // Clean up
                 ThreadMgr.Clean();
@@ -342,8 +363,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 HANDLE SharedHandle = OutMgr.GetSharedHandle();
                 if (SharedHandle)
                 {
-                    Ret = ThreadMgr.Initialize(SingleOutput, OutputCount, UnexpectedErrorEvent, ExpectedErrorEvent, NewFrameProcessedEvent, TerminateThreadsEvent,
-                                               SharedHandle, &DeskBounds, OutMgr.GetDXGIAdapter());
+                    Ret = ThreadMgr.Initialize(SingleOutput, OutputCount, UnexpectedErrorEvent, ExpectedErrorEvent, NewFrameProcessedEvent, PauseDuplicationEvent,
+                                               ResumeDuplicationEvent, TerminateThreadsEvent, SharedHandle, &DeskBounds, OutMgr.GetDXGIAdapter());
                 }
                 else
                 {
@@ -479,6 +500,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     CloseHandle(UnexpectedErrorEvent);
     CloseHandle(ExpectedErrorEvent);
     CloseHandle(NewFrameProcessedEvent);
+    CloseHandle(PauseDuplicationEvent);
+    CloseHandle(ResumeDuplicationEvent);
     CloseHandle(TerminateThreadsEvent);
     g_OutMgrPtr = nullptr;
 
@@ -626,6 +649,12 @@ DWORD WINAPI DDProc(_In_ void* Param)
 
     while ((WaitForSingleObjectEx(TData->TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT))
     {
+        //Wait if pause event was signaled
+        if ((WaitForSingleObjectEx(TData->PauseDuplicationEvent, 0, FALSE) == WAIT_OBJECT_0))
+        {
+            WaitForSingleObjectEx(TData->ResumeDuplicationEvent, INFINITE, FALSE); //Wait forever. Thread shutdown will also signal resume
+        }
+
         if (!WaitToProcessCurrentFrame)
         {
             // Get new frame from desktop duplication

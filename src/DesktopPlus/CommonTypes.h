@@ -90,7 +90,8 @@ typedef struct _THREAD_DATA
     HANDLE ExpectedErrorEvent;
 
     HANDLE NewFrameProcessedEvent;
-    HANDLE NewFrameProcessedReceivedEvent;
+    HANDLE PauseDuplicationEvent;
+    HANDLE ResumeDuplicationEvent;
 
     // Used by WinProc to signal to threads to exit
     HANDLE TerminateThreadsEvent;
