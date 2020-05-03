@@ -846,28 +846,14 @@ void WindowSettings::UpdateCatInterface()
 
     //Windows Mixed Reality
     {
-        static bool is_wmr_system = false; //This stuff is only shown to WMR systems
-
-        bool ignore_selection = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection) == 1);
-        bool ignore_combined = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_combined_desktop) == 1);
-
-        if (ImGui::IsWindowAppearing())
+        //This stuff is only shown to WMR systems
+        //Assume it's WMR if these settings were changed, this way these option will be available in desktop mode if required
+        if ( (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection) != -1) || 
+             (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_combined_desktop) != -1) )
         {
-            if (UIManager::Get()->IsOpenVRLoaded()) //Check if it's a WMR system
-            {            
-                char buffer[vr::k_unMaxPropertyStringSize];
-                vr::VRSystem()->GetStringTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_TrackingSystemName_String, buffer, vr::k_unMaxPropertyStringSize);
+            bool ignore_selection = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection) == 1);
+            bool ignore_combined = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_combined_desktop) == 1);
 
-                is_wmr_system = (strcmp(buffer, "holographic") == 0);
-            }
-            else if ( (ignore_selection) || (ignore_combined) ) //Assume it's WMR if these settings were changed if there's no way to check for real
-            {
-                is_wmr_system = true;
-            }
-        }
-
-        if (is_wmr_system)
-        {
             ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Windows Mixed Reality");
             ImGui::Columns(2, "ColumnInterfaceWMR", false);
             ImGui::SetColumnWidth(0, column_width_0 * 2.0f);

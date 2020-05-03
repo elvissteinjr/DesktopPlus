@@ -300,8 +300,12 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Interface", "WarningCompositorResolutionHidden", m_ConfigBool[configid_bool_interface_warning_compositor_res_hidden]);
     config.WriteBool("Interface", "WarningCompositorQualityHidden",    m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]);
     config.WriteBool("Interface", "WarningProcessElevationHidden",     m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]);
-    config.WriteInt("Interface", "WMRIgnoreVScreensSelection",         m_ConfigInt[configid_int_interface_wmr_ignore_vscreens_selection]);
-    config.WriteInt("Interface", "WMRIgnoreVScreensCombinedDesktop",   m_ConfigInt[configid_int_interface_wmr_ignore_vscreens_combined_desktop]);
+
+    //Only write WMR settings when they're not -1 since they get set to that when using a non-WMR system. We want to preserve them for HMD-switching users
+    if (m_ConfigInt[configid_int_interface_wmr_ignore_vscreens_selection] != -1)
+        config.WriteInt("Interface", "WMRIgnoreVScreensSelection", m_ConfigInt[configid_int_interface_wmr_ignore_vscreens_selection]);
+    if (m_ConfigInt[configid_int_interface_wmr_ignore_vscreens_combined_desktop] != -1)
+        config.WriteInt("Interface", "WMRIgnoreVScreensCombinedDesktop", m_ConfigInt[configid_int_interface_wmr_ignore_vscreens_combined_desktop]);
 
     //Save action order
     std::stringstream ss;

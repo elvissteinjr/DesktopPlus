@@ -586,27 +586,9 @@ vr::EVRInitError OutputManager::InitOverlay()
         }
     }
 
-
-    //Check if system is WMR and set WMR-specific default values if needed
-    char buffer[vr::k_unMaxPropertyStringSize];
-    vr::VRSystem()->GetStringTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_TrackingSystemName_String, buffer, vr::k_unMaxPropertyStringSize);
-
-    bool is_wmr_system = (strcmp(buffer, "holographic") == 0);
-
-    if (is_wmr_system)
-    {
-        if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection) == -1)
-        {
-            ConfigManager::Get().SetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection, 1);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_wmr_ignore_vscreens_selection), 1);
-        }
-
-        if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_combined_desktop) == -1)
-        {
-            ConfigManager::Get().SetConfigInt(configid_int_interface_wmr_ignore_vscreens_combined_desktop, 1);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_wmr_ignore_vscreens_combined_desktop), 1);
-        }
-    }
+    //Check if it's a WMR system and set up for that if needed
+    SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens_selection), 
+                    ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens_combined_desktop));
 
     if ((ovrl_error == vr::VROverlayError_None) && (input_res))
         return vr::VRInitError_None;
