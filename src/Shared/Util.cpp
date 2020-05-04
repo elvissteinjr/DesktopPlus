@@ -91,6 +91,22 @@ void OffsetTransformFromSelf(Matrix4& matrix, float offset_right, float offset_u
     matrix[14] += offset_forward * matrix[10];
 }
 
+void TransformLookAt(Matrix4& matrix, const Vector3 pos_target, const Vector3 up)
+{
+    const Vector3 pos(matrix.getTranslation());
+
+    Vector3 z_axis = pos_target - pos;
+    z_axis.normalize();
+    Vector3 x_axis = up.cross(z_axis);
+    x_axis.normalize();
+    Vector3 y_axis = z_axis.cross(x_axis);
+
+    matrix = { x_axis.x, x_axis.y, x_axis.z, 0.0f,
+               y_axis.x, y_axis.y, y_axis.z, 0.0f,
+               z_axis.x, z_axis.y, z_axis.z, 0.0f,
+               pos.x,    pos.y,    pos.z,    1.0f };
+}
+
 vr::TrackedDeviceIndex_t GetFirstVRTracker()
 {
     //Get the first generic tracker

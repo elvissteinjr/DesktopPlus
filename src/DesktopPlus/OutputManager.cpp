@@ -56,6 +56,10 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MouseIgnoreMoveEventMissCount(0),
     m_ComInitDone(false),
     m_DragModeDeviceID(-1),
+    m_DragGestureActive(false),
+    m_DragGestureScaleDistanceStart(0.0f),
+    m_DragGestureScaleWidthStart(0.0f),
+    m_DragGestureScaleDistanceLast(0.0f),
     m_DashboardHMD_Y(-100.0f),
     m_MultiGPUTargetDevice(nullptr),
     m_MultiGPUTargetDeviceContext(nullptr),
@@ -1921,6 +1925,13 @@ bool OutputManager::HandleOpenVREvents()
                             DragStart();
                         }
                     }
+                    else if (vr_event.data.mouse.button == vr::VRMouseButton_Right)
+                    {
+                        if (!m_DragGestureActive)
+                        {
+                            DragGestureStart();
+                        }
+                    }
                     break;
                 }
 
@@ -1953,15 +1964,9 @@ bool OutputManager::HandleOpenVREvents()
                     {
                         DragFinish();
                     }
-                    else if (vr_event.data.mouse.button == vr::VRMouseButton_Right)
+                    else if ( (vr_event.data.mouse.button == vr::VRMouseButton_Right) && (m_DragGestureActive) )
                     {
-                        //Disable dragging (on mouse up prevents closing the dashboard when hovering othewise empty space)
-                        vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleMain, vr::VROverlayInputMethod_None);
-
-                        if (m_DragModeDeviceID != -1)
-                        {
-                            DragFinish(); //We won't get a left mouse up from after this, so finish here
-                        }
+                        DragGestureFinish();
                     }
                     
                     break;
@@ -2008,6 +2013,27 @@ bool OutputManager::HandleOpenVREvents()
             }
             case vr::VREvent_ButtonPress:
             {
+                if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+                {
+                    if (vr_event.data.controller.button == Button_Dashboard_GoHome)
+                    {
+                        //Disable dragging
+                        vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleMain, vr::VROverlayInputMethod_None);
+
+                        //We won't get a mouse up after this, so finish here
+                        if (m_DragModeDeviceID != -1)
+                        {
+                            DragFinish();
+                        }
+                        else if (m_DragGestureActive)
+                        {
+                            DragGestureFinish();
+                        }
+                    }
+
+                    break;
+                }
+
                 if (vr_event.data.controller.button == Button_Dashboard_GoHome)
                 {
                     DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id));
@@ -2103,12 +2129,19 @@ bool OutputManager::HandleOpenVREvents()
     //Update postion if necessary
     if (m_OvrlActive)
     {
-        if ((ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (m_DragModeDeviceID != -1))
+        if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
         {
-            DragUpdate();
+            if (m_DragModeDeviceID != -1)
+            {
+                DragUpdate();
+            }
+            else if (m_DragGestureActive)
+            {
+                DragGestureUpdate();
+            }
         }
 
-        if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (m_DragModeDeviceID == -1) &&
+        if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (m_DragModeDeviceID == -1) && (!m_DragGestureActive) &&
              (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_hmd_floor) )
         {
             DetachedTransformUpdateHMDFloor();
@@ -2588,8 +2621,10 @@ void OutputManager::ApplySettingKeyboardScale(float last_used_scale)
     }
 }
 
-void OutputManager::DragStart()
+void OutputManager::DragStart(bool is_gesture_drag)
 {
+    //This is also used by DragGestureStart() (with is_gesture_drag = true), but only to convert between overlay origins.
+    //Doesn't need calls to the other DragUpdate() or DragFinish() functions in that case
     vr::TrackedDeviceIndex_t device_index = vr::VROverlay()->GetPrimaryDashboardDevice();
 
     vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
@@ -2597,8 +2632,12 @@ void OutputManager::DragStart()
 
     if (poses[device_index].bPoseIsValid)
     {
-        m_DragModeDeviceID = device_index;
-        m_DragModeMatrixSourceStart = poses[m_DragModeDeviceID].mDeviceToAbsoluteTracking;
+        if (!is_gesture_drag)
+        {
+            m_DragModeDeviceID = device_index;
+        }
+
+        m_DragModeMatrixSourceStart = poses[device_index].mDeviceToAbsoluteTracking;
 
         switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin))
         {
@@ -2637,8 +2676,11 @@ void OutputManager::DragStart()
         vr::VROverlay()->GetOverlayTransformAbsolute(m_OvrlHandleMain, &origin, &transform_target);
         m_DragModeMatrixTargetStart = transform_target;
 
-        vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SendVRDiscreteScrollEvents, false);
-        vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
+        if (!is_gesture_drag)
+        {
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SendVRDiscreteScrollEvents, false);
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
+        }
     }
 }
 
@@ -2801,6 +2843,95 @@ void OutputManager::DragFinish()
     {
         vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
     }
+}
+
+void OutputManager::DragGestureStart()
+{
+    DragStart(true); //Call the other drag start function to convert the overlay transform to absolute. This doesn't actually start the normal drag
+
+    DragGestureUpdate();
+
+    m_DragGestureScaleDistanceStart = m_DragGestureScaleDistanceLast;
+    m_DragGestureScaleWidthStart = ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
+    m_DragGestureActive = true;
+}
+
+void OutputManager::DragGestureUpdate()
+{
+    vr::TrackedDeviceIndex_t index_right = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand);
+    vr::TrackedDeviceIndex_t index_left  = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand);
+
+    if ( (index_right != vr::k_unTrackedDeviceIndexInvalid) && (index_left != vr::k_unTrackedDeviceIndexInvalid) )
+    {
+        vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
+        vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+
+        if ( (poses[index_right].bPoseIsValid) && (poses[index_left].bPoseIsValid) )
+        {
+            Matrix4 mat_right = poses[index_right].mDeviceToAbsoluteTracking;
+            Matrix4 mat_left  = poses[index_left].mDeviceToAbsoluteTracking;
+
+            //Gesture Scale
+            m_DragGestureScaleDistanceLast = mat_right.getTranslation().distance(mat_left.getTranslation());
+
+            if (m_DragGestureActive)
+            {
+                //Scale is just the start scale multiplied by the factor of changed controller distance
+                float width = m_DragGestureScaleWidthStart * (m_DragGestureScaleDistanceLast / m_DragGestureScaleDistanceStart);
+                vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleMain, width);
+                ConfigManager::Get().SetConfigFloat(configid_float_overlay_width, width);
+            
+                //Send adjusted width to the UI app
+                ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_width), *(LPARAM*)&width);
+            }
+
+            //Gesture Rotate
+            Matrix4 matrix_rotate_current = mat_left;
+            //Use up-vector multiplied by rotation matrix to avoid locking at near-up transforms
+            Vector3 up = m_DragGestureRotateMatLast * Vector3(0.0f, 1.0f, 0.0f);
+            up.normalize();
+            //Rotation motion is taken from the differences between left controller lookat(right controller) results
+            TransformLookAt(matrix_rotate_current, mat_right.getTranslation(), up);
+
+            if (m_DragGestureActive)
+            {
+                //Get difference of last drag frame
+                Matrix4 matrix_rotate_last_inverse = m_DragGestureRotateMatLast;
+                matrix_rotate_last_inverse.setTranslation({0.0f, 0.0f, 0.0f});
+                matrix_rotate_last_inverse.invert();
+
+                Matrix4 matrix_rotate_current_at_origin = matrix_rotate_current;
+                matrix_rotate_current_at_origin.setTranslation({0.0f, 0.0f, 0.0f});
+
+                Matrix4 matrix_rotate_diff = matrix_rotate_current_at_origin * matrix_rotate_last_inverse;
+
+                //Apply difference
+                Matrix4& mat_overlay = m_DragModeMatrixTargetStart;
+                Vector3 pos = mat_overlay.getTranslation();
+                mat_overlay.setTranslation({0.0f, 0.0f, 0.0f});
+                mat_overlay = matrix_rotate_diff * mat_overlay;
+                mat_overlay.setTranslation(pos);
+
+                vr::HmdMatrix34_t vrmat = mat_overlay.toOpenVR34();
+                vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, vr::TrackingUniverseStanding, &vrmat);
+            }
+
+            m_DragGestureRotateMatLast = matrix_rotate_current;
+        }
+    }
+}
+
+void OutputManager::DragGestureFinish()
+{
+    Matrix4 matrix_target_base = DragGetBaseOffsetMatrix();
+    matrix_target_base.invert();
+
+    ConfigManager::Get().GetOverlayDetachedTransform() = matrix_target_base * m_DragModeMatrixTargetStart;
+    ApplySettingTransform();
+
+    m_DragGestureActive = false;
 }
 
 void OutputManager::DetachedTransformReset()

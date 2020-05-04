@@ -17,6 +17,7 @@ std::wstring WStringConvertFromLocalEncoding(const char* str);
 //VR helpers
 void OffsetTransformFromSelf(vr::HmdMatrix34_t& matrix, float offset_right, float offset_up, float offset_forward);
 void OffsetTransformFromSelf(Matrix4& matrix, float offset_right, float offset_up, float offset_forward);
+void TransformLookAt(Matrix4& matrix, const Vector3 pos_target, const Vector3 up = {0.0f, 1.0f, 0.0f});
 vr::TrackedDeviceIndex_t GetFirstVRTracker();
 void SetConfigForWMR(int& wmr_ignore_vscreens_selection, int& wmr_ignore_vscreens_combined_desktop);
 

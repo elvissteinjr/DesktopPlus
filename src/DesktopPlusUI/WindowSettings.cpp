@@ -2274,21 +2274,21 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
             dragging_enabled = (method != vr::VROverlayInputMethod_None);
 
             //Allow restoring drag mode with right click anywhere on the UI overlay
-            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+            if ( (!dragging_enabled) && (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) )
             {
-                vr::VROverlay()->SetOverlayInputMethod(ovrl_handle_dplus, (method == vr::VROverlayInputMethod_None) ? vr::VROverlayInputMethod_Mouse : vr::VROverlayInputMethod_None);
+                vr::VROverlay()->SetOverlayInputMethod(ovrl_handle_dplus, vr::VROverlayInputMethod_Mouse);
             }
         }
 
         if (dragging_enabled)
         {
             ImGui::Text("Drag the overlay around to change its position.");
-            ImGui::Text("Use right click to disable dragging.");
+            ImGui::Text("Hold right-click for two-handed gesture transform.");
         }
         else
         {
-            ImGui::TextDisabled("Drag the overlay around to change its position.");
-            ImGui::Text("Right click here to re-enable dragging.");
+            ImGui::Text("Dragging has been disabled.");
+            ImGui::Text("Right-click here to re-enable it.");
         }
 
         ImGui::Separator();

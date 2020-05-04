@@ -72,11 +72,15 @@ class OutputManager
         void ApplySettingMouseInput();
         void ApplySettingKeyboardScale(float last_used_scale);
 
-        void DragStart();
+        void DragStart(bool is_gesture_drag = false);
         void DragUpdate();
         void DragAddDistance(float distance);
         Matrix4 DragGetBaseOffsetMatrix();
         void DragFinish();
+
+        void DragGestureStart();
+        void DragGestureUpdate();
+        void DragGestureFinish();
         
         void DetachedTransformReset();
         void DetachedTransformAdjust(unsigned int packed_value);
@@ -146,6 +150,12 @@ class OutputManager
         int m_DragModeDeviceID;                 //-1 if not dragging
         Matrix4 m_DragModeMatrixTargetStart;
         Matrix4 m_DragModeMatrixSourceStart;
+        bool  m_DragGestureActive;
+        float m_DragGestureScaleDistanceStart;
+        float m_DragGestureScaleWidthStart;
+        float m_DragGestureScaleDistanceLast;
+        Matrix4 m_DragGestureRotateMatLast;
+
         Matrix4 m_DashboardTransformLast;       //This is only used to check if the dashboard has moved from events we can't detect otherwise
         float m_DashboardHMD_Y;                 //The HMDs y-position when the dashboard was activated. Used for dashboard-relative positioning
 
