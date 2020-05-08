@@ -38,8 +38,8 @@
 
 		"/actions/shortcuts" : "Global Shortcuts",
 
-		"/actions/shortcuts/in/SetOverlayDetached" : "Set Overlay Detached State",
-		"/actions/shortcuts/in/SetDetachedInteractive" : "Enable Detached Overlay Interaction",
+		"/actions/shortcuts/in/SetOverlayDetached" : "Set Overlay Floating State",
+		"/actions/shortcuts/in/SetDetachedInteractive" : "Enable Floating Overlay Interaction",
 		"/actions/shortcuts/in/GlobalShortcut01" : "Do Global Shortcut 1",
 		"/actions/shortcuts/in/GlobalShortcut02" : "Do Global Shortcut 2",
 		"/actions/shortcuts/in/GlobalShortcut03" : "Do Global Shortcut 3"

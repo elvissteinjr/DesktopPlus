@@ -12,7 +12,7 @@ Advanced desktop access for OpenVR.
 - Customizable overlay settings (width, position, curvature, opacity)
 - Overlay cropping
 - 3D support (SBS & HSBS)
-- Detached overlay mode: Display a desktop during gameplay or attach it to a different origin (play space, dashboard, HMD, controllers, tracker)
+- Floating overlay mode: Display a desktop during gameplay or attach it to a different origin (play space, dashboard, HMD, controllers, tracker)
 - Actions: User-definable functions (input simulation, running applications) which can be bound to controller or UI buttons
 - Keyboard Extension, enabling use of modifier, arrow and function keys
 - Elevated access toggle, making it possible to deal with UAC prompts and other UIP-restricted UI in VR without using full admin-access at all times
@@ -36,8 +36,8 @@ After building, add the contents of the [assets](assets) directory to the execut
 
 A few short videos showcasing some of Desktop+' features:
 - [Custom Actions](http://www.elvissteinjr.net/dplus/demo_custom_action.mp4)
-- [Detached Overlay](http://www.elvissteinjr.net/dplus/demo_detached.mp4)
-- [Cropping & Detached Overlay Origins](http://www.elvissteinjr.net/dplus/demo_detached_cropping.mp4)
+- [Floating Overlay](http://www.elvissteinjr.net/dplus/demo_detached.mp4)
+- [Cropping & Floating Overlay Origins](http://www.elvissteinjr.net/dplus/demo_detached_cropping.mp4)
 - [Elevated Mode](http://www.elvissteinjr.net/dplus/demo_elevated_mode.mp4)
 
 ## Notes

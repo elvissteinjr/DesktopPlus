@@ -42,9 +42,10 @@ Desktop+ offers built-in and user-definable actions which can be bound to contro
 the list.
 Custom icons can be added by putting PNG files in the "images/icons" folder. Recommended size is 96x96 pixels.
 
-About language support for action names:
+About language support for action and profile names:
 To save memory, only common Latin characters are loaded by default. Most symbols and eastern characters can be used, but will
-appear as the placeholder "?" character at first. Additional characters will be loaded and display once the action is saved.
+appear as the placeholder "?" character at first. Additional characters will be loaded and display once the action or profile is
+saved.
 
 
 Global Shortcuts & Input Features
@@ -53,9 +54,9 @@ Actions can be bound to 3 different global shortcuts which can be activated by t
 Desktop+ does not come with default SteamVR Input bindings. These can be set up by going to the Desktop+ controller bindings.
 SteamVR currently only lists overlay applications in the old input binding interface, so that one has to be used instead.
 
-Apart from the 3 global shortcuts, functions for detached overlay interaction can also be bound.
-"Set Overlay Detached State": Can be used to change visibility of detached overlay.
-"Enable Detached Overlay Interaction": Can be used to enable the laser pointer outside of the dashboard.
+Apart from the 3 global shortcuts, functions for floating overlay interaction can also be bound.
+"Set Overlay Floating State": Can be used to change visibility of floating overlay.
+"Enable Floating Overlay Interaction": Can be used to enable the laser pointer outside of the dashboard.
 
 
 Elevated Mode

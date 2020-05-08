@@ -306,6 +306,7 @@ void WindowSettings::UpdateCatOverlay()
 
             ImGui::SameLine();
 
+            //Detached overlays are called "floating" in user-facing parts of the application as that probably makes more sense to most, especially with multiple overlays later
             if (ImGui::RadioButton("Floating Overlay", detached))
             {
                 detached = true;
@@ -1218,7 +1219,7 @@ void WindowSettings::UpdateCatInput()
         ImGui::NextColumn();
 
         ImGui::AlignTextToFramePadding();
-        ImGui::Text("Detached Size");
+        ImGui::Text("Floating Size");
         ImGui::NextColumn();
 
         //This maps the float limit as int percentage, see the cropping stuff for the rest
