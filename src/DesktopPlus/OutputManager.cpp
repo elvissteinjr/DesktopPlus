@@ -2151,6 +2151,8 @@ bool OutputManager::HandleOpenVREvents()
             UpdateDashboardHMD_Y();
             ApplySettingTransform(); 
         }
+
+        DetachedInteractionAutoToggle();
     }
 
     return false;
@@ -3082,6 +3084,73 @@ void OutputManager::DetachedTransformUpdateHMDFloor()
 
     vr::HmdMatrix34_t matrix_ovr = matrix.toOpenVR34();
     vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, vr::TrackingUniverseStanding, &matrix_ovr);
+}
+
+void OutputManager::DetachedInteractionAutoToggle()
+{
+    float max_distance = ConfigManager::Get().GetConfigFloat(configid_float_input_detached_interaction_max_distance);
+
+    if ((ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (m_OvrlActive) && (max_distance != 0.0f) && (!vr::VROverlay()->IsDashboardVisible()))
+    {
+        bool do_set_interactive = false;
+
+        vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+
+        //Check left and right hand controller
+        vr::ETrackedControllerRole controller_role = vr::TrackedControllerRole_LeftHand;
+        for (;;)
+        {
+            vr::TrackedDeviceIndex_t device_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(controller_role);
+
+            if ((device_index < vr::k_unMaxTrackedDeviceCount) && (poses[device_index].bPoseIsValid))
+            {
+                //Get matrix with tip offset
+                Matrix4 mat_controller = poses[device_index].mDeviceToAbsoluteTracking;
+                mat_controller = mat_controller * GetControllerTipMatrix( (controller_role == vr::TrackedControllerRole_RightHand) );
+
+                //Set up intersection test
+                Vector3 v_pos = mat_controller.getTranslation();
+                Vector3 forward = {mat_controller[8], mat_controller[9], mat_controller[10]};
+                forward *= -1.0f;
+
+                vr::VROverlayIntersectionParams_t params;
+                params.eOrigin = vr::TrackingUniverseStanding;
+                params.vSource = {v_pos.x, v_pos.y, v_pos.z};
+                params.vDirection = {forward.x, forward.y, forward.z};
+
+                vr::VROverlayIntersectionResults_t results;
+
+                if ( (vr::VROverlay()->ComputeOverlayIntersection(m_OvrlHandleMain, &params, &results)) && (results.fDistance <= max_distance) )
+                {
+                    do_set_interactive = true;
+                }
+            }
+
+            if (controller_role == vr::TrackedControllerRole_LeftHand)
+            {
+                controller_role = vr::TrackedControllerRole_RightHand;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (do_set_interactive)
+        {
+            if (!m_OvrlDetachedInteractive)  //Avoid spamming flag changes
+            {
+                m_OvrlDetachedInteractive = true;
+                vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, true);
+            }
+        }
+        else if (m_OvrlDetachedInteractive)
+        {
+            m_OvrlDetachedInteractive = false;
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, false);
+        }
+    }
 }
 
 void OutputManager::UpdateDashboardHMD_Y()

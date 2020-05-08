@@ -121,6 +121,35 @@ vr::TrackedDeviceIndex_t GetFirstVRTracker()
     return vr::k_unTrackedDeviceIndexInvalid;
 }
 
+Matrix4 GetControllerTipMatrix(bool right_hand)
+{
+    char buffer[vr::k_unMaxPropertyStringSize];
+    vr::VRInputValueHandle_t input_value = vr::k_ulInvalidInputValueHandle;
+
+    if (right_hand)
+    {
+        vr::VRSystem()->GetStringTrackedDeviceProperty(vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand), 
+                                                       vr::Prop_RenderModelName_String, buffer, vr::k_unMaxPropertyStringSize);
+        vr::VRInput()->GetInputSourceHandle("/user/hand/right", &input_value);
+    }
+    else
+    {
+        vr::VRSystem()->GetStringTrackedDeviceProperty(vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand), 
+                                                       vr::Prop_RenderModelName_String, buffer, vr::k_unMaxPropertyStringSize);
+        vr::VRInput()->GetInputSourceHandle("/user/hand/left", &input_value);
+    }
+
+    vr::RenderModel_ControllerMode_State_t controller_state = {0};
+    vr::RenderModel_ComponentState_t component_state = {0};
+
+    if (vr::VRRenderModels()->GetComponentStateForDevicePath(buffer, vr::k_pch_Controller_Component_Tip, input_value, &controller_state, &component_state))
+    {
+        return component_state.mTrackingToComponentLocal;
+    }
+
+    return Matrix4();
+}
+
 void SetConfigForWMR(int& wmr_ignore_vscreens_selection, int& wmr_ignore_vscreens_combined_desktop)
 {
     //Check if system is WMR and set WMR-specific default values if needed

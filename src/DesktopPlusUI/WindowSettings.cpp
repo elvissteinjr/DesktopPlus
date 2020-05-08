@@ -1248,6 +1248,33 @@ void WindowSettings::UpdateCatInput()
         ImGui::Columns(1);
     }
 
+    //Floating Overlay
+    {
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Floating Overlay");
+        ImGui::Columns(2, "ColumnDetachedOverlay", false);
+        ImGui::SetColumnWidth(0, column_width_0);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Interaction Auto-Toggle Max Distance");
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("Maximum allowed distance between overlay and pointing controller to automatically toggle interaction while the dashboard is closed.\nSet this to \"Off\" when using the global controller binding toggle.");
+
+        ImGui::NextColumn();
+
+        float& distance = ConfigManager::Get().GetConfigFloatRef(configid_float_input_detached_interaction_max_distance);
+        if (ImGui::SliderWithButtonsFloat("LaserPointerMaxDistance", distance, 0.05f, 0.0f, 3.0f, (distance < 0.01f) ? "Off" : "%.2f m"))
+        {
+            if (distance < 0.01f)
+                distance = 0.0f;
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_input_detached_interaction_max_distance), *(LPARAM*)&distance);
+        }
+
+        ImGui::NextColumn();
+
+        ImGui::Columns(1);
+    }
+
     ImGui::EndChild();
 }
 

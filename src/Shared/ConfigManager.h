@@ -78,6 +78,7 @@ enum ConfigID_Float
     configid_float_overlay_offset_up,
     configid_float_overlay_offset_forward,
     configid_float_input_keyboard_detached_size,
+    configid_float_input_detached_interaction_max_distance,
     configid_float_interface_last_vr_ui_scale,
     configid_float_performance_early_update_limit_multiplier,
 	configid_float_MAX

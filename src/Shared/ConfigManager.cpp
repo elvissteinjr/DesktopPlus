@@ -181,12 +181,13 @@ bool ConfigManager::LoadConfigFromFile()
         action_order.push_back({ (ActionID)id, visible });
     }
 
-	m_ConfigBool[configid_bool_input_enabled]                         = config.ReadBool("Input", "EnableInput", true);
-	m_ConfigInt[configid_int_input_go_home_action_id]                 = config.ReadInt("Input",  "GoHomeButtonActionID", 0);
-	m_ConfigInt[configid_int_input_go_back_action_id]                 = config.ReadInt("Input",  "GoBackButtonActionID", 0);
-	m_ConfigInt[configid_int_input_shortcut01_action_id]              = config.ReadInt("Input",  "GlobalShortcut01ActionID", 0);
-	m_ConfigInt[configid_int_input_shortcut02_action_id]              = config.ReadInt("Input",  "GlobalShortcut02ActionID", 0);
-	m_ConfigInt[configid_int_input_shortcut03_action_id]              = config.ReadInt("Input",  "GlobalShortcut03ActionID", 0);
+	m_ConfigBool[configid_bool_input_enabled]                               = config.ReadBool("Input", "EnableInput", true);
+	m_ConfigInt[configid_int_input_go_home_action_id]                       = config.ReadInt("Input",  "GoHomeButtonActionID", 0);
+	m_ConfigInt[configid_int_input_go_back_action_id]                       = config.ReadInt("Input",  "GoBackButtonActionID", 0);
+	m_ConfigInt[configid_int_input_shortcut01_action_id]                    = config.ReadInt("Input",  "GlobalShortcut01ActionID", 0);
+	m_ConfigInt[configid_int_input_shortcut02_action_id]                    = config.ReadInt("Input",  "GlobalShortcut02ActionID", 0);
+	m_ConfigInt[configid_int_input_shortcut03_action_id]                    = config.ReadInt("Input",  "GlobalShortcut03ActionID", 0);
+    m_ConfigFloat[configid_float_input_detached_interaction_max_distance]   = config.ReadInt("Input",  "DetachedInteractionMaxDistance", 0) / 100.0f;
 
     m_ConfigBool[configid_bool_input_mouse_render_cursor]              = config.ReadBool("Mouse", "RenderCursor", true);
     m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]   = config.ReadBool("Mouse", "RenderIntersectionBlob", false);
@@ -318,12 +319,13 @@ void ConfigManager::SaveConfigToFile()
     config.WriteString("Interface", "ActionOrder", ss.str().c_str());
 
     m_ConfigBool[configid_bool_input_enabled] = config.ReadBool("Input", "EnableInput", true);
-    config.WriteBool("Input",  "EnableInput",              m_ConfigBool[configid_bool_input_enabled]);
-    config.WriteInt( "Input",  "GoHomeButtonActionID",     m_ConfigInt[configid_int_input_go_home_action_id]);
-    config.WriteInt( "Input",  "GoBackButtonActionID",     m_ConfigInt[configid_int_input_go_back_action_id]);
-    config.WriteInt( "Input",  "GlobalShortcut01ActionID", m_ConfigInt[configid_int_input_shortcut01_action_id]);
-    config.WriteInt( "Input",  "GlobalShortcut02ActionID", m_ConfigInt[configid_int_input_shortcut02_action_id]);
-    config.WriteInt( "Input",  "GlobalShortcut03ActionID", m_ConfigInt[configid_int_input_shortcut03_action_id]);
+    config.WriteBool("Input",  "EnableInput",                        m_ConfigBool[configid_bool_input_enabled]);
+    config.WriteInt( "Input",  "GoHomeButtonActionID",               m_ConfigInt[configid_int_input_go_home_action_id]);
+    config.WriteInt( "Input",  "GoBackButtonActionID",               m_ConfigInt[configid_int_input_go_back_action_id]);
+    config.WriteInt( "Input",  "GlobalShortcut01ActionID",           m_ConfigInt[configid_int_input_shortcut01_action_id]);
+    config.WriteInt( "Input",  "GlobalShortcut02ActionID",           m_ConfigInt[configid_int_input_shortcut02_action_id]);
+    config.WriteInt( "Input",  "GlobalShortcut03ActionID",           m_ConfigInt[configid_int_input_shortcut03_action_id]);
+    config.WriteInt( "Input",  "DetachedInteractionMaxDistance", int(m_ConfigFloat[configid_float_input_detached_interaction_max_distance] * 100.0f));
 
     config.WriteBool("Mouse", "RenderCursor",              m_ConfigBool[configid_bool_input_mouse_render_cursor]);
     config.WriteBool("Mouse", "RenderIntersectionBlob",    m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]);

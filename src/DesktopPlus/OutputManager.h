@@ -85,8 +85,10 @@ class OutputManager
         void DetachedTransformReset();
         void DetachedTransformAdjust(unsigned int packed_value);
         void DetachedTransformUpdateHMDFloor();
-        void UpdateDashboardHMD_Y();
 
+        void DetachedInteractionAutoToggle();
+
+        void UpdateDashboardHMD_Y();
         bool HasDashboardMoved();
 
     // ClassVars
