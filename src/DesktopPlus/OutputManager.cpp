@@ -2632,7 +2632,7 @@ void OutputManager::DragStart(bool is_gesture_drag)
     vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
     vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
-    if (poses[device_index].bPoseIsValid)
+    if ( (device_index < vr::k_unMaxTrackedDeviceCount) && (poses[device_index].bPoseIsValid) )
     {
         if (!is_gesture_drag)
         {
@@ -2668,6 +2668,16 @@ void OutputManager::DragStart(bool is_gesture_drag)
                 if ( (index_left_hand != vr::k_unTrackedDeviceIndexInvalid) && (poses[index_left_hand].bPoseIsValid) )
                 {
                     vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, vr::TrackingUniverseStanding, &poses[index_left_hand].mDeviceToAbsoluteTracking);
+                }
+                break;
+            }
+            case ovrl_origin_aux:
+            {
+                vr::TrackedDeviceIndex_t index_tracker = GetFirstVRTracker();
+
+                if ( (index_tracker != vr::k_unTrackedDeviceIndexInvalid) && (poses[index_tracker].bPoseIsValid) )
+                {
+                    vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, vr::TrackingUniverseStanding, &poses[index_tracker].mDeviceToAbsoluteTracking);
                 }
                 break;
             }
