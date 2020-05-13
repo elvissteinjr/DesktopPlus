@@ -22,6 +22,7 @@ enum ConfigID_Bool
 {
     configid_bool_overlay_detached,
     configid_bool_overlay_3D_swapped,
+    configid_bool_overlay_gazefade_enabled,
     configid_bool_interface_no_ui,
     configid_bool_interface_mainbar_desktop_include_all,
     configid_bool_interface_warning_compositor_res_hidden,
@@ -77,6 +78,8 @@ enum ConfigID_Float
     configid_float_overlay_offset_right,
     configid_float_overlay_offset_up,
     configid_float_overlay_offset_forward,
+    configid_float_overlay_gazefade_distance,
+    configid_float_overlay_gazefade_rate,
     configid_float_input_keyboard_detached_size,
     configid_float_input_detached_interaction_max_distance,
     configid_float_interface_last_vr_ui_scale,

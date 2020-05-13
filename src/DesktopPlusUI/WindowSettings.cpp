@@ -398,9 +398,6 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::Columns(2, "ColumnPosition", false);
             ImGui::SetColumnWidth(0, column_width_0);
 
-            if (detached)
-                ImGui::PushItemDisabled();
-
             ImGui::AlignTextToFramePadding();
             ImGui::Text("Up/Down Offset");
             ImGui::NextColumn();
@@ -437,9 +434,6 @@ void WindowSettings::UpdateCatOverlay()
             }
 
             ImGui::Columns(1);
-
-            if (detached)
-                ImGui::PopItemDisabled();
         }
         else //Position (Detached)
         {
@@ -721,6 +715,61 @@ void WindowSettings::UpdateCatOverlay()
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_3D_swapped), swapped_3D);
             }
+
+            ImGui::Columns(1);
+        }        
+        
+        //Gaze Fade
+        if (detached) //Gaze Fade only works with detached overlays (not like anyone needs it on dashboard ones)
+        {
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Gaze Fade");
+            ImGui::Columns(2, "ColumnGazeFade", false);
+            ImGui::SetColumnWidth(0, column_width_0);
+
+            bool& gazefade_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_gazefade_enabled);
+            if (ImGui::Checkbox("Gaze Fade Active", &gazefade_enabled))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_gazefade_enabled), gazefade_enabled);
+            }
+
+            ImGui::NextColumn();
+            ImGui::NextColumn();
+
+            if (!gazefade_enabled)
+                ImGui::PushItemDisabled();
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Gaze Distance");
+            ImGui::NextColumn();
+
+            float& distance = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_distance);
+
+            if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeDistance", distance, 0.05f, 0.25f, 1.0f, "%.2f m"))
+            {
+                if (distance < 0.0f)
+                    distance = 0.0f;
+
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_gazefade_distance), *(LPARAM*)&distance);
+            }
+            ImGui::NextColumn();
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Fade Rate");
+            ImGui::NextColumn();
+
+            float& rate = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_rate);
+
+            if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeRate", rate, 0.1f, 0.4f, 3.0f, "%.2fx"))
+            {
+                if (rate < 0.0f)
+                    rate = 0.0f;
+
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_gazefade_rate), *(LPARAM*)&rate);
+            }
+            ImGui::NextColumn();
+
+            if (!gazefade_enabled)
+                ImGui::PopItemDisabled();
 
             ImGui::Columns(1);
         }

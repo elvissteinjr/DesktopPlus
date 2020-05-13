@@ -276,14 +276,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     bool FirstTime = true;
 
     DYNAMIC_WAIT DynamicWait;
-    int PollingDelayActive = 16;
 
     LARGE_INTEGER EarlyUpdateLimit;
     EarlyUpdateLimit.QuadPart = 0;
     float EarlyUpdateLimitBase = 0.0f;
     LARGE_INTEGER EarlyUpdateStartingTime, EarlyUpdateEndingTime, EarlyUpdateElapsedMicroseconds;
     LARGE_INTEGER EarlyUpdateFrequency;
-    DWORD WaitDelay = 300;
 
     bool IsNewFrame = false;
     bool DoUpdate = true;
@@ -375,12 +373,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
                 if (FirstTime)
                 {
-                    if (vr_init_error == vr::VRInitError_None)
-                    {
-                        //Set minimum polling rate when overlay is active based on HMD frame rate
-                        PollingDelayActive = 1000.0f / OutMgr.GetHMDFrameRate();
-                    }
-
                     // First time through the loop
                     FirstTime = false;
                 }
@@ -403,24 +395,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
         else //Present frame or handle events as fast as needed
         {
-            if (OutMgr.GetOverlayActive())
-            {
-                //Actually causes extreme load while not really being necessary (looks nice tho)
-                if ( (ConfigManager::Get().GetConfigBool(configid_bool_performance_rapid_laser_pointer_updates)) && (OutMgr.GetOverlayInputActive()) )
-                {
-                    WaitDelay = 0;
-                }
-                else
-                {
-                    WaitDelay = PollingDelayActive;
-                }
-            }
-            else
-            {
-                WaitDelay = 300;
-            }
-
-            if (WaitForSingleObjectEx(NewFrameProcessedEvent, WaitDelay, FALSE) == WAIT_OBJECT_0)   //New frame
+            if (WaitForSingleObjectEx(NewFrameProcessedEvent, OutMgr.GetMaxRefreshDelay(), FALSE) == WAIT_OBJECT_0)   //New frame
             {
                 ResetEvent(NewFrameProcessedEvent);
                 IsNewFrame = true;

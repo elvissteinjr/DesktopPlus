@@ -35,11 +35,16 @@ class OutputManager
         void ResetOverlay();
         bool GetOverlayActive();
         bool GetOverlayInputActive();
+        DWORD GetMaxRefreshDelay();
         float GetHMDFrameRate();
         float GetTimeNowToPhotons();
 
         void ShowMainOverlay();
         void HideMainOverlay();
+
+        void SetMainOverlayOpacity(float opacity);
+        float GetMainOverlayOpacity();
+        bool GetMainOverlayShouldBeVisible();
 
         void SetOutputInvalid(); //Handles state when there's no valid output
 
@@ -87,6 +92,7 @@ class OutputManager
         void DetachedTransformUpdateHMDFloor();
 
         void DetachedInteractionAutoToggle();
+        void DetachedOverlayGazeFade();
 
         void UpdateDashboardHMD_Y();
         bool HasDashboardMoved();
@@ -119,7 +125,7 @@ class OutputManager
         int m_DesktopY;
         int m_DesktopWidth;
         int m_DesktopHeight;
-        DWORD m_MaxRefreshDelay;
+        DWORD m_MaxActiveRefreshDelay;
         bool m_OutputInvalid;
 
         vr::VROverlayHandle_t m_OvrlHandleDashboard;
@@ -133,6 +139,7 @@ class OutputManager
         bool m_OvrlDashboardActive;
         bool m_OvrlInputActive;
         bool m_OvrlDetachedInteractive;
+        float m_OvrlOpacity;                    //This is the opacity the overlay is currently set at, which may differ from what the config value is
 
         ID3D11Texture2D* m_MouseTex;
         ID3D11ShaderResourceView* m_MouseShaderRes;

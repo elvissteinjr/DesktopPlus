@@ -70,15 +70,17 @@ void ConfigManager::LoadOverlayProfile(Ini& config)
     m_ConfigFloat[configid_float_overlay_offset_right]      = config.ReadInt("Overlay", "OffsetRight", 0) / 100.0f;
     m_ConfigFloat[configid_float_overlay_offset_up]         = config.ReadInt("Overlay", "OffsetUp", 0) / 100.0f;
     m_ConfigFloat[configid_float_overlay_offset_forward]    = config.ReadInt("Overlay", "OffsetForward", 0) / 100.0f;
+    m_ConfigInt[configid_int_overlay_detached_display_mode] = config.ReadInt("Overlay", "DetachedDisplayMode", ovrl_dispmode_always);
+    m_ConfigInt[configid_int_overlay_detached_origin]       = config.ReadInt("Overlay", "DetachedOrigin", ovrl_origin_room);
     m_ConfigInt[configid_int_overlay_crop_x]                = config.ReadInt("Overlay", "CroppingX", 0);
     m_ConfigInt[configid_int_overlay_crop_y]                = config.ReadInt("Overlay", "CroppingY", 0);
     m_ConfigInt[configid_int_overlay_crop_width]            = config.ReadInt("Overlay", "CroppingWidth", -1);
     m_ConfigInt[configid_int_overlay_crop_height]           = config.ReadInt("Overlay", "CroppingHeight", -1);
     m_ConfigInt[configid_int_overlay_3D_mode]               = config.ReadInt("Overlay", "3DMode", ovrl_3Dmode_none);
     m_ConfigBool[configid_bool_overlay_3D_swapped]          = config.ReadBool("Overlay", "3DSwapped", false);
-    m_ConfigBool[configid_bool_overlay_detached]            = config.ReadBool("Overlay", "Detached", false);
-    m_ConfigInt[configid_int_overlay_detached_display_mode] = config.ReadInt("Overlay", "DetachedDisplayMode", ovrl_dispmode_always);
-    m_ConfigInt[configid_int_overlay_detached_origin]       = config.ReadInt("Overlay", "DetachedOrigin", ovrl_origin_room);
+    m_ConfigBool[configid_bool_overlay_gazefade_enabled]    = config.ReadBool("Overlay", "GazeFade", false);
+    m_ConfigFloat[configid_float_overlay_gazefade_distance] = config.ReadInt("Overlay", "GazeFadeDistance", 40) / 100.0f;
+    m_ConfigFloat[configid_float_overlay_gazefade_rate]     = config.ReadInt("Overlay", "GazeFadeRate", 100) / 100.0f;
 
     //Default the transform matrices to zero
     float matrix_zero[16] = { 0.0f };
@@ -124,15 +126,17 @@ void ConfigManager::SaveOverlayProfile(Ini& config)
     config.WriteInt( "Overlay", "OffsetRight",         int(m_ConfigFloat[configid_float_overlay_offset_right]    * 100.0f));
     config.WriteInt( "Overlay", "OffsetUp",            int(m_ConfigFloat[configid_float_overlay_offset_up]       * 100.0f));
     config.WriteInt( "Overlay", "OffsetForward",       int(m_ConfigFloat[configid_float_overlay_offset_forward]  * 100.0f));
+    config.WriteInt( "Overlay", "DetachedDisplayMode", m_ConfigInt[configid_int_overlay_detached_display_mode]);
+    config.WriteInt( "Overlay", "DetachedOrigin",      m_ConfigInt[configid_int_overlay_detached_origin]);
     config.WriteInt( "Overlay", "CroppingX",           m_ConfigInt[configid_int_overlay_crop_x]);
     config.WriteInt( "Overlay", "CroppingY",           m_ConfigInt[configid_int_overlay_crop_y]);
     config.WriteInt( "Overlay", "CroppingWidth",       m_ConfigInt[configid_int_overlay_crop_width]);
     config.WriteInt( "Overlay", "CroppingHeight",      m_ConfigInt[configid_int_overlay_crop_height]);
     config.WriteInt( "Overlay", "3DMode",              m_ConfigInt[configid_int_overlay_3D_mode]);
     config.WriteBool("Overlay", "3DSwapped",           m_ConfigBool[configid_bool_overlay_3D_swapped]);
-    config.WriteBool("Overlay", "Detached",            m_ConfigBool[configid_bool_overlay_detached]);
-    config.WriteInt( "Overlay", "DetachedDisplayMode", m_ConfigInt[configid_int_overlay_detached_display_mode]);
-    config.WriteInt( "Overlay", "DetachedOrigin",      m_ConfigInt[configid_int_overlay_detached_origin]);
+    config.WriteBool("Overlay", "GazeFade",            m_ConfigBool[configid_bool_overlay_gazefade_enabled]);
+    config.WriteInt( "Overlay", "GazeFadeDistance",    int(m_ConfigFloat[configid_float_overlay_gazefade_distance]  * 100.0f));
+    config.WriteInt( "Overlay", "GazeFadeRate",        int(m_ConfigFloat[configid_float_overlay_gazefade_rate]  * 100.0f));
 
     config.WriteString("Overlay", "DetachedTransformPlaySpace", m_ConfigOverlayDetachedTransform[ovrl_origin_room].toString().c_str());
     config.WriteString("Overlay", "DetachedTransformHMDFloor",  m_ConfigOverlayDetachedTransform[ovrl_origin_hmd_floor].toString().c_str());

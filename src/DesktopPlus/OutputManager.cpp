@@ -30,7 +30,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_DesktopY(0),
     m_DesktopWidth(-1),
     m_DesktopHeight(-1),
-    m_MaxRefreshDelay(16),
+    m_MaxActiveRefreshDelay(16),
     m_OutputInvalid(false),
     m_OvrlHandleMain(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleIcon(vr::k_ulOverlayHandleInvalid),
@@ -43,6 +43,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlDashboardActive(false),
     m_OvrlInputActive(false),
     m_OvrlDetachedInteractive(false),
+    m_OvrlOpacity(0.0f),
     m_MouseTex(nullptr),
     m_MouseShaderRes(nullptr),
     m_MouseLastClickTick(0),
@@ -91,6 +92,30 @@ bool OutputManager::GetOverlayActive()
 bool OutputManager::GetOverlayInputActive()
 {
     return m_OvrlInputActive;
+}
+
+DWORD OutputManager::GetMaxRefreshDelay()
+{
+    if (m_OvrlActive)
+    {
+        //Actually causes extreme load while not really being necessary (looks nice tho)
+        if ( (m_OvrlInputActive) && (ConfigManager::Get().GetConfigBool(configid_bool_performance_rapid_laser_pointer_updates)) )
+        {
+            return 0;
+        }
+        else
+        {
+            return m_MaxActiveRefreshDelay;
+        }
+    }
+    else if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) )
+    {
+        return m_MaxActiveRefreshDelay * 2;
+    }
+    else
+    {
+        return 300;
+    }
 }
 
 float OutputManager::GetHMDFrameRate()
@@ -160,6 +185,76 @@ void OutputManager::HideMainOverlay()
 
         m_OvrlActive = false;
     }
+}
+
+void OutputManager::SetMainOverlayOpacity(float opacity)
+{
+    if (opacity == m_OvrlOpacity)
+        return;
+
+    vr::VROverlay()->SetOverlayAlpha(m_OvrlHandleMain, opacity);
+
+    if (m_OvrlOpacity == 0.0f) //If it was previously 0%, show if needed
+    {
+        m_OvrlOpacity = opacity; //GetMainOverlayShouldBeVisible() depends on this being correct, so set it here
+
+        if ( (!vr::VROverlay()->IsOverlayVisible(m_OvrlHandleMain)) && (GetMainOverlayShouldBeVisible()) )
+        {
+            ShowMainOverlay();
+        }
+    }
+    else if ( (opacity == 0.0f) && (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleMain)) ) //If it's 0% now, hide if currently visible
+    {
+        m_OvrlOpacity = opacity;
+
+        HideMainOverlay();
+    }
+}
+
+float OutputManager::GetMainOverlayOpacity()
+{
+    return m_OvrlOpacity;
+}
+
+bool OutputManager::GetMainOverlayShouldBeVisible()
+{
+    if (m_OvrlOpacity == 0.0f)
+        return false;
+
+    bool should_be_visible = false;
+
+    if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
+    {
+        switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_display_mode))
+        {
+            case ovrl_dispmode_always:
+            {
+                should_be_visible = true;
+                break;
+            }
+            case ovrl_dispmode_dashboard:
+            {
+                should_be_visible = vr::VROverlay()->IsDashboardVisible();
+                break;
+            }
+            case ovrl_dispmode_scene:
+            {
+                should_be_visible = !vr::VROverlay()->IsDashboardVisible();
+                break;
+            }
+            case ovrl_dispmode_dplustab:
+            {
+                should_be_visible = m_OvrlDashboardActive;
+                break;
+            }
+        }
+    }
+    else
+    {
+        should_be_visible = m_OvrlDashboardActive;
+    }
+
+    return should_be_visible;
 }
 
 void OutputManager::SetOutputInvalid()
@@ -569,7 +664,7 @@ vr::EVRInitError OutputManager::InitOverlay()
         }
     }
 
-    m_MaxRefreshDelay = 1000.0f / GetHMDFrameRate();
+    m_MaxActiveRefreshDelay = 1000.0f / GetHMDFrameRate();
 
     bool input_res = m_vrinput.Init();
 
@@ -851,7 +946,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo, bool NewFrame)
     }
 
     // Try and acquire sync on common display buffer (needed to safely access the PointerInfo)
-    HRESULT hr = m_KeyMutex->AcquireSync(1, m_MaxRefreshDelay);
+    HRESULT hr = m_KeyMutex->AcquireSync(1, m_MaxActiveRefreshDelay);
     if (hr == static_cast<HRESULT>(WAIT_TIMEOUT))
     {
         // Another thread has the keyed mutex so try again later
@@ -1087,6 +1182,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                             vr::VROverlay()->HideKeyboard();
                         }
 
+                        break;
+                    }
+                    case configid_bool_overlay_gazefade_enabled:
+                    {
+                        ApplySettingTransform();
                         break;
                     }
                     case configid_bool_state_overlay_dragmode:
@@ -2155,6 +2255,8 @@ bool OutputManager::HandleOpenVREvents()
         DetachedInteractionAutoToggle();
     }
 
+    DetachedOverlayGazeFade();
+
     return false;
 }
 
@@ -2282,47 +2384,19 @@ void OutputManager::ApplySettingTransform()
 {
     //Fixup overlay visibility if needed
     //This has to be done first since there seem to be issues with moving invisible overlays
-    bool should_be_visible = false;
+    bool is_detached = (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached));
 
-    if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
+    if ( (!is_detached) || (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
     {
-        switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_display_mode))
-        {
-            case ovrl_dispmode_always:
-            {
-                should_be_visible = true;
-                break;
-            }
-            case ovrl_dispmode_dashboard:
-            {
-                should_be_visible = vr::VROverlay()->IsDashboardVisible();
-                break;
-            }
-            case ovrl_dispmode_scene:
-            {
-                should_be_visible = !vr::VROverlay()->IsDashboardVisible();
-                break;
-            }
-            case ovrl_dispmode_dplustab:
-            {
-                should_be_visible = m_OvrlDashboardActive;
-                break;
-            }
-        }
+        SetMainOverlayOpacity(ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity));
     }
-    else
-    {
-        should_be_visible = m_OvrlDashboardActive;
-    }
+
+    bool should_be_visible = GetMainOverlayShouldBeVisible();
 
     if ( (!should_be_visible) && (m_OvrlDashboardActive) && (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
     {
         should_be_visible = true;
-        vr::VROverlay()->SetOverlayAlpha(m_OvrlHandleMain, 0.25f);
-    }
-    else
-    {
-        vr::VROverlay()->SetOverlayAlpha(m_OvrlHandleMain, ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity));
+        SetMainOverlayOpacity(0.25f);
     }
 
     if ( (should_be_visible) && (!vr::VROverlay()->IsOverlayVisible(m_OvrlHandleMain)) )
@@ -2339,7 +2413,7 @@ void OutputManager::ApplySettingTransform()
     float width_dashboard;
     OverlayOrigin overlay_origin;
 
-    if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
+    if (is_detached)
     {
         overlay_origin = (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin);
     }
@@ -2418,17 +2492,7 @@ void OutputManager::ApplySettingTransform()
 
             if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
             {
-                Matrix4 matrix_base = DragGetBaseOffsetMatrix();
-
-                if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
-                {
-                    matrix_base = matrix_base * ConfigManager::Get().GetOverlayDetachedTransform();
-                }
-                else
-                {
-                    matrix_base = matrix_base;
-                }
-
+                Matrix4 matrix_base = DragGetBaseOffsetMatrix() * ConfigManager::Get().GetOverlayDetachedTransform();
                 matrix = matrix_base.toOpenVR34();
             }
             else //Attach to dashboard dummy to pretend we have normal dashboard overlay
@@ -2497,7 +2561,7 @@ void OutputManager::ApplySettingTransform()
     }
 
     //Dashboard dummy still needs correct width/height set for the top dashboard bar above it to be visible
-    if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
+    if (is_detached)
         vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboard, 1.525f); //Fixed height to fit open settings UI
     else
         vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboard, height + 0.20f);
@@ -3159,6 +3223,40 @@ void OutputManager::DetachedInteractionAutoToggle()
         {
             m_OvrlDetachedInteractive = false;
             vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, false);
+        }
+    }
+}
+
+void OutputManager::DetachedOverlayGazeFade()
+{
+    if (  (ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) && (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && 
+         (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
+    {
+        vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
+        vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+        if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+        {
+            //Distance the gaze point is offset from HMD (useful range 0.25 - 1.0)
+            float gaze_distance = ConfigManager::Get().GetConfigFloat(configid_float_overlay_gazefade_distance);
+            //Rate the fading gets applied when looking off the gaze point (useful range 4.0 - 30, depends on overlay size) 
+            float fade_rate = ConfigManager::Get().GetConfigFloat(configid_float_overlay_gazefade_rate) * 10.0f; 
+
+            Matrix4 mat_pose = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+            OffsetTransformFromSelf(mat_pose, 0.0f, 0.0f, -gaze_distance);
+
+            Vector3 pos_gaze = mat_pose.getTranslation();
+
+            Matrix4 matrix_overlay = DragGetBaseOffsetMatrix();
+            matrix_overlay *= ConfigManager::Get().GetOverlayDetachedTransform();
+
+            float distance = matrix_overlay.getTranslation().distance(pos_gaze);
+
+            float alpha = clamp((distance * -fade_rate) + ((gaze_distance - 0.1f) * 10.0f), 0.0f, 1.0f); //There's nothing smart behind this, just trial and error
+            alpha *= ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity);
+            
+            SetMainOverlayOpacity(alpha);
         }
     }
 }
