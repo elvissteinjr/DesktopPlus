@@ -26,7 +26,7 @@ class OutputManager
         ~OutputManager();
         DUPL_RETURN InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
         vr::EVRInitError InitOverlay();
-        DUPL_RETURN_UPD Update(_In_ PTR_INFO* PointerInfo, bool NewFrame);
+        DUPL_RETURN_UPD Update(_In_ PTR_INFO* PointerInfo, bool NewFrame, bool SkipFrame);
         bool HandleIPCMessage(const MSG& msg); //Returns true if message caused a duplication reset (i.e. desktop switch)
         void CleanRefs();
         HWND GetWindowHandle();
@@ -53,6 +53,7 @@ class OutputManager
         void DoStopAction(ActionID action_id);
 
         void UpdatePerformanceStates();
+        const LARGE_INTEGER& GetUpdateLimiterDelay();
 
     private:
     // Methods
@@ -76,6 +77,7 @@ class OutputManager
         void ApplySettingDragMode();
         void ApplySettingMouseInput();
         void ApplySettingKeyboardScale(float last_used_scale);
+        void ApplySettingUpdateLimiter();
 
         void DragStart(bool is_gesture_drag = false);
         void DragUpdate();
@@ -127,6 +129,7 @@ class OutputManager
         int m_DesktopHeight;
         DWORD m_MaxActiveRefreshDelay;
         bool m_OutputInvalid;
+        bool m_OutputPendingSkippedFrame;
 
         vr::VROverlayHandle_t m_OvrlHandleDashboard;
         vr::VROverlayHandle_t m_OvrlHandleMain;
@@ -135,7 +138,6 @@ class OutputManager
         ID3D11RenderTargetView* m_OvrlRTV;
         ID3D11ShaderResourceView* m_OvrlShaderResView;
         bool m_OvrlActive;
-        bool m_OvrlActiveLastUpdate;
         bool m_OvrlDashboardActive;
         bool m_OvrlInputActive;
         bool m_OvrlDetachedInteractive;
@@ -148,6 +150,7 @@ class OutputManager
         bool m_MouseIgnoreMoveEvent;
         bool m_MouseLastVisible;
         DXGI_OUTDUPL_POINTER_SHAPE_TYPE m_MouseLastCursorType;
+        bool m_MouseCursorNeedsUpdate;
         int m_MouseLastLaserPointerX;
         int m_MouseLastLaserPointerY;
         int m_MouseDefaultHotspotX;
@@ -176,6 +179,7 @@ class OutputManager
 
         int m_PerformanceFrameCount;
         ULONGLONG m_PerformanceFrameCountStartTick;
+        LARGE_INTEGER m_PerformanceUpdateLimiterDelay;
 };
 
 #endif

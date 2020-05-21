@@ -277,17 +277,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     DYNAMIC_WAIT DynamicWait;
 
-    LARGE_INTEGER EarlyUpdateLimit;
-    EarlyUpdateLimit.QuadPart = 0;
-    float EarlyUpdateLimitBase = 0.0f;
-    LARGE_INTEGER EarlyUpdateStartingTime, EarlyUpdateEndingTime, EarlyUpdateElapsedMicroseconds;
-    LARGE_INTEGER EarlyUpdateFrequency;
+    LARGE_INTEGER UpdateLimiterStartingTime, UpdateLimiterEndingTime, UpdateLimiterElapsedMicroseconds;
+    LARGE_INTEGER UpdateLimiterFrequency;
 
     bool IsNewFrame = false;
-    bool DoUpdate = true;
+    bool SkipFrame = false;
 
-    ::QueryPerformanceFrequency(&EarlyUpdateFrequency);
-    ::QueryPerformanceCounter(&EarlyUpdateStartingTime);
+    ::QueryPerformanceFrequency(&UpdateLimiterFrequency);
+    ::QueryPerformanceCounter(&UpdateLimiterStartingTime);
 
     while (WM_QUIT != msg.message)
     {
@@ -405,45 +402,35 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 IsNewFrame = (RetUpdate == DUPL_RETURN_UPD_RETRY); //Retry is treated as if it's new frame, otherwise false
             }
 
-            if (ConfigManager::Get().GetConfigBool(configid_bool_performance_ignore_early_updates))
+            //Update limiter/skipper
+            if (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) != 0)
             {
-                //Somewhat redundant way to update the limit when it changes as OutputManager can't notify the main loop... oh well
-                if (EarlyUpdateLimitBase != ConfigManager::Get().GetConfigFloat(configid_float_performance_early_update_limit_multiplier))
-                {
-                    //Set early update limit based on desktop refresh rate
-                    EarlyUpdateLimitBase = ConfigManager::Get().GetConfigFloat(configid_float_performance_early_update_limit_multiplier);
-                    EarlyUpdateLimit.QuadPart = (1.0 / GetMonitorRefreshRate(SingleOutput)) * 1000000 * EarlyUpdateLimitBase;
-                }
+                QueryPerformanceCounter(&UpdateLimiterEndingTime);
+                UpdateLimiterElapsedMicroseconds.QuadPart = UpdateLimiterEndingTime.QuadPart - UpdateLimiterStartingTime.QuadPart;
 
-                QueryPerformanceCounter(&EarlyUpdateEndingTime);
-                EarlyUpdateElapsedMicroseconds.QuadPart = EarlyUpdateEndingTime.QuadPart - EarlyUpdateStartingTime.QuadPart;
+                UpdateLimiterElapsedMicroseconds.QuadPart *= 1000000;
+                UpdateLimiterElapsedMicroseconds.QuadPart /= UpdateLimiterFrequency.QuadPart;
 
-                EarlyUpdateElapsedMicroseconds.QuadPart *= 1000000;
-                EarlyUpdateElapsedMicroseconds.QuadPart /= EarlyUpdateFrequency.QuadPart;
-
-                DoUpdate = (EarlyUpdateElapsedMicroseconds.QuadPart >= EarlyUpdateLimit.QuadPart);
+                SkipFrame = (UpdateLimiterElapsedMicroseconds.QuadPart < OutMgr.GetUpdateLimiterDelay().QuadPart);
             }
             else
             {
-                DoUpdate = true;
+                SkipFrame = false;
             }
 
-            if ( (!OutMgr.GetOverlayActive()) || (DoUpdate) )
+            RetUpdate = OutMgr.Update(ThreadMgr.GetPointerInfo(), IsNewFrame, SkipFrame);
+
+            //Map return value to DUPL_RETRUN Ret
+            switch (RetUpdate)
             {
-                RetUpdate = OutMgr.Update(ThreadMgr.GetPointerInfo(), IsNewFrame);
+                case DUPL_RETURN_UPD_QUIT:  Ret = DUPL_RETURN_ERROR_UNEXPECTED; break;
+                case DUPL_RETURN_UPD_RETRY: Ret = DUPL_RETURN_SUCCESS; break;
+                default:                    Ret = (DUPL_RETURN)RetUpdate;
+            }
 
-                //Map return value to DUPL_RETRUN Ret
-                switch (RetUpdate)
-                {
-                    case DUPL_RETURN_UPD_QUIT:  Ret = DUPL_RETURN_ERROR_UNEXPECTED; break;
-                    case DUPL_RETURN_UPD_RETRY: Ret = DUPL_RETURN_SUCCESS; break;
-                    default:                    Ret = (DUPL_RETURN)RetUpdate;
-                }
-
-                if (ConfigManager::Get().GetConfigBool(configid_bool_performance_ignore_early_updates))
-                {
-                    QueryPerformanceCounter(&EarlyUpdateStartingTime);
-                }
+            if ( (!SkipFrame) && (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) != 0) )
+            {
+                QueryPerformanceCounter(&UpdateLimiterStartingTime);
             }
 
             OutMgr.UpdatePerformanceStates();

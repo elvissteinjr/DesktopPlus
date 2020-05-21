@@ -118,25 +118,25 @@ void ConfigManager::LoadOverlayProfile(Ini& config)
 
 void ConfigManager::SaveOverlayProfile(Ini& config)
 {
-    config.WriteInt( "Overlay", "DesktopID",           m_ConfigInt[configid_int_overlay_desktop_id]);
-    config.WriteBool("Overlay", "Detached",            m_ConfigBool[configid_bool_overlay_detached]);
-    config.WriteInt( "Overlay", "Width",               int(m_ConfigFloat[configid_float_overlay_width]           * 100.0f));
-    config.WriteInt( "Overlay", "Curvature",           int(m_ConfigFloat[configid_float_overlay_curvature]       * 100.0f));
-    config.WriteInt( "Overlay", "Opacity",             int(m_ConfigFloat[configid_float_overlay_opacity]         * 100.0f));
-    config.WriteInt( "Overlay", "OffsetRight",         int(m_ConfigFloat[configid_float_overlay_offset_right]    * 100.0f));
-    config.WriteInt( "Overlay", "OffsetUp",            int(m_ConfigFloat[configid_float_overlay_offset_up]       * 100.0f));
-    config.WriteInt( "Overlay", "OffsetForward",       int(m_ConfigFloat[configid_float_overlay_offset_forward]  * 100.0f));
-    config.WriteInt( "Overlay", "DetachedDisplayMode", m_ConfigInt[configid_int_overlay_detached_display_mode]);
-    config.WriteInt( "Overlay", "DetachedOrigin",      m_ConfigInt[configid_int_overlay_detached_origin]);
-    config.WriteInt( "Overlay", "CroppingX",           m_ConfigInt[configid_int_overlay_crop_x]);
-    config.WriteInt( "Overlay", "CroppingY",           m_ConfigInt[configid_int_overlay_crop_y]);
-    config.WriteInt( "Overlay", "CroppingWidth",       m_ConfigInt[configid_int_overlay_crop_width]);
-    config.WriteInt( "Overlay", "CroppingHeight",      m_ConfigInt[configid_int_overlay_crop_height]);
-    config.WriteInt( "Overlay", "3DMode",              m_ConfigInt[configid_int_overlay_3D_mode]);
-    config.WriteBool("Overlay", "3DSwapped",           m_ConfigBool[configid_bool_overlay_3D_swapped]);
-    config.WriteBool("Overlay", "GazeFade",            m_ConfigBool[configid_bool_overlay_gazefade_enabled]);
-    config.WriteInt( "Overlay", "GazeFadeDistance",    int(m_ConfigFloat[configid_float_overlay_gazefade_distance]  * 100.0f));
-    config.WriteInt( "Overlay", "GazeFadeRate",        int(m_ConfigFloat[configid_float_overlay_gazefade_rate]  * 100.0f));
+    config.WriteInt( "Overlay", "DesktopID",            m_ConfigInt[configid_int_overlay_desktop_id]);
+    config.WriteBool("Overlay", "Detached",             m_ConfigBool[configid_bool_overlay_detached]);
+    config.WriteInt( "Overlay", "Width",            int(m_ConfigFloat[configid_float_overlay_width]           * 100.0f));
+    config.WriteInt( "Overlay", "Curvature",        int(m_ConfigFloat[configid_float_overlay_curvature]       * 100.0f));
+    config.WriteInt( "Overlay", "Opacity",          int(m_ConfigFloat[configid_float_overlay_opacity]         * 100.0f));
+    config.WriteInt( "Overlay", "OffsetRight",      int(m_ConfigFloat[configid_float_overlay_offset_right]    * 100.0f));
+    config.WriteInt( "Overlay", "OffsetUp",         int(m_ConfigFloat[configid_float_overlay_offset_up]       * 100.0f));
+    config.WriteInt( "Overlay", "OffsetForward",    int(m_ConfigFloat[configid_float_overlay_offset_forward]  * 100.0f));
+    config.WriteInt( "Overlay", "DetachedDisplayMode",  m_ConfigInt[configid_int_overlay_detached_display_mode]);
+    config.WriteInt( "Overlay", "DetachedOrigin",       m_ConfigInt[configid_int_overlay_detached_origin]);
+    config.WriteInt( "Overlay", "CroppingX",            m_ConfigInt[configid_int_overlay_crop_x]);
+    config.WriteInt( "Overlay", "CroppingY",            m_ConfigInt[configid_int_overlay_crop_y]);
+    config.WriteInt( "Overlay", "CroppingWidth",        m_ConfigInt[configid_int_overlay_crop_width]);
+    config.WriteInt( "Overlay", "CroppingHeight",       m_ConfigInt[configid_int_overlay_crop_height]);
+    config.WriteInt( "Overlay", "3DMode",               m_ConfigInt[configid_int_overlay_3D_mode]);
+    config.WriteBool("Overlay", "3DSwapped",            m_ConfigBool[configid_bool_overlay_3D_swapped]);
+    config.WriteBool("Overlay", "GazeFade",             m_ConfigBool[configid_bool_overlay_gazefade_enabled]);
+    config.WriteInt( "Overlay", "GazeFadeDistance", int(m_ConfigFloat[configid_float_overlay_gazefade_distance]  * 100.0f));
+    config.WriteInt( "Overlay", "GazeFadeRate",     int(m_ConfigFloat[configid_float_overlay_gazefade_rate]  * 100.0f));
 
     config.WriteString("Overlay", "DetachedTransformPlaySpace", m_ConfigOverlayDetachedTransform[ovrl_origin_room].toString().c_str());
     config.WriteString("Overlay", "DetachedTransformHMDFloor",  m_ConfigOverlayDetachedTransform[ovrl_origin_hmd_floor].toString().c_str());
@@ -201,9 +201,10 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_input_keyboard_helper_enabled]          = config.ReadBool("Keyboard", "EnableKeyboardHelper", true);
     m_ConfigFloat[configid_float_input_keyboard_detached_size]         = config.ReadInt("Keyboard", "KeyboardDetachedSize", 100) / 100.0f;
 
-    m_ConfigBool[configid_bool_performance_ignore_early_updates]            = config.ReadBool("Performance", "IgnoreEarlyUpdates", false);
-    m_ConfigFloat[configid_float_performance_early_update_limit_multiplier] = config.ReadInt("Performance", "EarlyUpdateLimit", 10) / 100.0f;
-    m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]     = config.ReadBool("Performance", "RapidLaserPointerUpdates", false);
+    m_ConfigInt[configid_int_performance_update_limit_mode]             = config.ReadInt("Performance", "UpdateLimitMode", update_limit_mode_off);
+    m_ConfigFloat[configid_float_performance_update_limit_ms]           = config.ReadInt("Performance", "UpdateLimitMS", 0) / 100.0f;
+    m_ConfigInt[configid_int_performance_update_limit_fps]              = config.ReadInt("Performance", "UpdateLimitFPS", update_limit_fps_30);
+    m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates] = config.ReadBool("Performance", "RapidLaserPointerUpdates", false);
 
     //Load custom actions (this is where using ini feels dumb, but it still kinda works)
     auto& custom_actions = m_ActionManager.GetCustomActions();
@@ -339,8 +340,9 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Keyboard", "EnableKeyboardHelper",        m_ConfigBool[configid_bool_input_keyboard_helper_enabled]);
     config.WriteInt( "Keyboard", "KeyboardDetachedSize",    int(m_ConfigFloat[configid_float_input_keyboard_detached_size] * 100.0f));
     
-    config.WriteBool("Performance", "IgnoreEarlyUpdates",       m_ConfigBool[configid_bool_performance_ignore_early_updates]);
-    config.WriteInt( "Performance", "EarlyUpdateLimit",     int(m_ConfigFloat[configid_float_performance_early_update_limit_multiplier] * 100.0f));
+    config.WriteInt( "Performance", "UpdateLimitMode",          m_ConfigInt[configid_int_performance_update_limit_mode]);
+    config.WriteInt( "Performance", "UpdateLimitMS",        int(m_ConfigFloat[configid_float_performance_update_limit_ms] * 100.0f));
+    config.WriteInt( "Performance", "UpdateLimitFPS",           m_ConfigInt[configid_int_performance_update_limit_fps]);
     config.WriteBool("Performance", "RapidLaserPointerUpdates", m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]);
 
     //Save custom actions

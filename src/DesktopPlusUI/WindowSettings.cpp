@@ -1343,44 +1343,66 @@ void WindowSettings::UpdateCatPerformance()
 
     //Early Updates
     {
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Early Updates");
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Update Limiter");
 
-        ImGui::Columns(2, "ColumnEarlyUpdates", false);
+        ImGui::Columns(2, "ColumnUpdateLimiter", false);
         ImGui::SetColumnWidth(0, column_width_0);
 
-        bool& ignore_early_updates = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_ignore_early_updates);
-        if (ImGui::Checkbox("Ignore Early Updates", &ignore_early_updates))
-        {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_performance_ignore_early_updates), ignore_early_updates);
-        }
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-        ImGui::FixedHelpMarker("Ignore duplication updates coming faster than the desktop refreshes (i.e. from cursor movement).\nReduces GPU load, but adds latency.");
-
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Limiter Mode");
         ImGui::NextColumn();
+
+        ImGui::SetNextItemWidth(-1);
+        const char* items[] = { "Off", "Frame Time", "Frame Rate" };
+        int& mode_limit = ConfigManager::Get().GetConfigIntRef(configid_int_performance_update_limit_mode);
+        if (ImGui::Combo("##ComboLimitMode", &mode_limit, items, IM_ARRAYSIZE(items)))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_performance_update_limit_mode), mode_limit);
+        }
+
         ImGui::NextColumn();
 
         ImGui::AlignTextToFramePadding();
-        ImGui::Text("Update Limit");
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-        ImGui::FixedHelpMarker("Percentage of frame time considered to be too early when early duplication updates are ignored.\nHigh values can be used to limit the frame rate.");
-        ImGui::NextColumn();
+        ImGui::Text("Limit");
 
-        if (!ignore_early_updates)
-            ImGui::PushItemDisabled();
-
-        //This maps the float limit as int percentage, see the cropping stuff for the rest
-        float& update_limit = ConfigManager::Get().GetConfigFloatRef(configid_float_performance_early_update_limit_multiplier);
-
-        if (ImGui::SliderWithButtonsFloatPercentage("EarlyUpdateLimit", update_limit, 5, 0, 100, "%d%%"))
+        if (mode_limit == update_limit_mode_fps)
         {
-            if (update_limit < 0.0f)
-                update_limit = 0.0f;
+            ImGui::NextColumn();
 
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_performance_early_update_limit_multiplier), *(LPARAM*)&update_limit);
+            const char* fps_enum_names[] = { "1 fps", "2 fps", "5 fps", "10 fps", "15 fps", "20 fps", "25 fps", "30 fps", "40 fps", "50 fps" };
+
+            int& update_limit_fps = ConfigManager::Get().GetConfigIntRef(configid_int_performance_update_limit_fps);
+            const char* update_limit_fps_display = (update_limit_fps >= 0 && update_limit_fps < IM_ARRAYSIZE(fps_enum_names)) ? fps_enum_names[update_limit_fps] : "?";
+
+            if (ImGui::SliderWithButtonsEnum("UpdateLimitFPS", update_limit_fps, 0, IM_ARRAYSIZE(fps_enum_names) - 1, update_limit_fps_display))
+            {
+                update_limit_fps = clamp(update_limit_fps, 0, IM_ARRAYSIZE(fps_enum_names) - 1);
+
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_performance_update_limit_fps), update_limit_fps);
+            }
         }
+        else //This still shows when off, but as disabled
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::FixedHelpMarker("Minimum time between desktop duplication updates");
+            ImGui::NextColumn();
 
-        if (!ignore_early_updates)
-            ImGui::PopItemDisabled();
+            if (mode_limit == update_limit_mode_off)
+                ImGui::PushItemDisabled();
+
+            float& update_limit_ms = ConfigManager::Get().GetConfigFloatRef(configid_float_performance_update_limit_ms);
+
+            if (ImGui::SliderWithButtonsFloat("UpdateLimitMS", update_limit_ms, 0.5f, 0.0f, 100.0f, "%.2f ms"))
+            {
+                if (update_limit_ms < 0.0f)
+                    update_limit_ms = 0.0f;
+
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_performance_update_limit_ms), *(LPARAM*)&update_limit_ms);
+            }
+
+            if (mode_limit == update_limit_mode_off)
+                ImGui::PopItemDisabled();
+        }
 
         ImGui::Columns(1);
     }

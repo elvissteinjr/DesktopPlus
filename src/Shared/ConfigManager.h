@@ -28,7 +28,6 @@ enum ConfigID_Bool
     configid_bool_interface_warning_compositor_res_hidden,
     configid_bool_interface_warning_compositor_quality_hidden,
     configid_bool_interface_warning_process_elevation_hidden,
-    configid_bool_performance_ignore_early_updates,
     configid_bool_performance_rapid_laser_pointer_updates,
     configid_bool_input_enabled,
     configid_bool_input_mouse_render_cursor,
@@ -62,6 +61,8 @@ enum ConfigID_Int
     configid_int_input_shortcut02_action_id,
     configid_int_input_shortcut03_action_id,
     configid_int_input_mouse_dbl_click_assist_duration_ms,
+    configid_int_performance_update_limit_mode,
+    configid_int_performance_update_limit_fps,              //This is the enum ID, not the actual number. See ApplySettingUpdateLimiter() code for more info
     configid_int_state_action_current,                      //Action changes are synced through a series of individually sent state settings. This one sets the target custom action (ID start 0)
     configid_int_state_action_current_sub,                  //Target variable. 0 = Name, 1 = Function Type. Remaining values depend on the function. Not the cleanest way but easier
     configid_int_state_action_value_int,                    //to set up with existing IPC stuff
@@ -83,7 +84,7 @@ enum ConfigID_Float
     configid_float_input_keyboard_detached_size,
     configid_float_input_detached_interaction_max_distance,
     configid_float_interface_last_vr_ui_scale,
-    configid_float_performance_early_update_limit_multiplier,
+    configid_float_performance_update_limit_ms,
 	configid_float_MAX
 };
 
@@ -130,6 +131,27 @@ enum MainbarDesktopListing
     mainbar_desktop_listing_none,
     mainbar_desktop_listing_individual,
     mainbar_desktop_listing_cycle
+};
+
+enum UpdateLimitMode
+{
+    update_limit_mode_off,
+    update_limit_mode_ms,
+    update_limit_mode_fps
+};
+
+enum UpdateLimitFPS
+{
+    update_limit_fps_1,
+    update_limit_fps_2,
+    update_limit_fps_5,
+    update_limit_fps_10,
+    update_limit_fps_15,
+    update_limit_fps_20,
+    update_limit_fps_25,
+    update_limit_fps_30,
+    update_limit_fps_40,
+    update_limit_fps_50
 };
 
 class ConfigManager

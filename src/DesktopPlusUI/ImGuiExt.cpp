@@ -157,6 +157,59 @@ namespace ImGui
         return false;
     }
 
+    bool SliderWithButtonsEnum(const char* str_id, int& value, int min, int max, const char* format, bool* used_button)
+    {
+        //Hacky solution to block ctrl + left click entering edit mode on the slider
+        ImGuiIO& io = ImGui::GetIO();
+        const bool key_ctrl_old = io.KeyCtrl;
+
+        io.KeyCtrl = false;
+
+
+        ImGuiStyle& style = ImGui::GetStyle();
+
+        const int value_old = value;
+        const ImVec2 button_size(ImGui::GetFrameHeight(), ImGui::GetFrameHeight());
+
+        ImGui::PushID(str_id);
+        ImGui::PushButtonRepeat(true);
+        ImGui::PushAllowKeyboardFocus(false);
+
+        //Calulate slider width (GetContentRegionAvail() returns 1 more than when using -1 width to fill)
+        ImGui::SetNextItemWidth((ImGui::GetContentRegionAvail().x - (ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x) * 2) - 1.0f);
+        ImGui::SliderInt("##Slider", &value, min, max, format);
+
+        ImGui::PopAllowKeyboardFocus();
+
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+
+        if (ImGui::Button("-", button_size))
+        {
+            value--;
+
+            if (used_button)
+                *used_button = true;
+        }
+
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+
+        if (ImGui::Button("+", button_size))
+        {
+            value++;
+
+            if (used_button)
+                *used_button = true;
+        }
+
+        ImGui::PopButtonRepeat();
+        ImGui::PopID();
+
+        //Restore hack
+        io.KeyCtrl = key_ctrl_old;
+
+        return (value != value_old);
+    }
+
 
     //Like imgui_demo's HelpMarker, but with a fixed position tooltip
     void FixedHelpMarker(const char* desc)

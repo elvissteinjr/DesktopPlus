@@ -39,17 +39,18 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlRTV(nullptr),
     m_OvrlShaderResView(nullptr),
     m_OvrlActive(false),
-    m_OvrlActiveLastUpdate(false),
     m_OvrlDashboardActive(false),
     m_OvrlInputActive(false),
     m_OvrlDetachedInteractive(false),
     m_OvrlOpacity(0.0f),
+    m_OutputPendingSkippedFrame(false),
     m_MouseTex(nullptr),
     m_MouseShaderRes(nullptr),
     m_MouseLastClickTick(0),
     m_MouseIgnoreMoveEvent(false),
     m_MouseLastVisible(false),
     m_MouseLastCursorType(DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR),
+    m_MouseCursorNeedsUpdate(false),
     m_MouseLastLaserPointerX(-1),
     m_MouseLastLaserPointerY(-1),
     m_MouseDefaultHotspotX(0),
@@ -67,7 +68,8 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MultiGPUTexStaging(nullptr),
     m_MultiGPUTexTarget(nullptr),
     m_PerformanceFrameCount(0),
-    m_PerformanceFrameCountStartTick(0)
+    m_PerformanceFrameCountStartTick(0),
+    m_PerformanceUpdateLimiterDelay{0}
 {
     //Initialize ConfigManager
     ConfigManager::Get().LoadConfigFromFile();
@@ -915,27 +917,31 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
 //
 // Update Overlay and handle events
 //
-DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo, bool NewFrame)
+DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo, bool NewFrame, bool SkipFrame)
 {
     if (HandleOpenVREvents())   //If quit event received, quit.
     {
         return DUPL_RETURN_UPD_QUIT;
     }
 
-    //This is a very dirty workaround for the overlay not updating when there are no screen updates following and the cursor is not a normal color type one
-    //CopySubresourceRegion() stalls or breaks something in that, not really sure why
-    //The impact of this workaround is actually not that high
-    if (m_MouseLastCursorType != DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR) //Using cached value so we don't need the sync yet
+    UINT64 sync_key = 1; //Key used by duplication threads to lock for this function (duplication threads lock with 1, Update() with 0 and unlock vice versa)
+
+    //If we previously skipped a frame, we want to actually process a new one at the next valid opportunity
+    if ( (m_OutputPendingSkippedFrame) && (!SkipFrame) )
     {
-        NewFrame = true;
+        //If there isn't new frame yet, we have to unlock the keyed mutex with the one we locked it with ourselves before
+        if (!NewFrame)
+        {
+            sync_key = 0;
+        }
+
+        NewFrame = true; //Treat this as a new frame now
     }
 
-    m_OvrlActiveLastUpdate = !m_OvrlActive;
-
-    //If Overlay not visible or no new frame, do nothing
-    if ( ((!m_OvrlActive) || (!NewFrame)) && (m_OvrlActiveLastUpdate == m_OvrlActive))
+    //If frame skipped and no new frame, do nothing (if there's a new frame, we have to at least re-lock the keyed mutex so the duplication threads can access it again)
+    if ( (SkipFrame) && (!NewFrame) )
     {
-        m_OvrlActiveLastUpdate = m_OvrlActive;
+        m_OutputPendingSkippedFrame = true; //Process the frame next time we can
         return DUPL_RETURN_UPD_SUCCESS;
     }
 
@@ -946,11 +952,10 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo, bool NewFrame)
     }
 
     // Try and acquire sync on common display buffer (needed to safely access the PointerInfo)
-    HRESULT hr = m_KeyMutex->AcquireSync(1, m_MaxActiveRefreshDelay);
+    HRESULT hr = m_KeyMutex->AcquireSync(sync_key, m_MaxActiveRefreshDelay);
     if (hr == static_cast<HRESULT>(WAIT_TIMEOUT))
     {
         // Another thread has the keyed mutex so try again later
-        //We don't update the last overlay active state so we still retry if we only wanted to retry because the state previously changed
         return DUPL_RETURN_UPD_RETRY;
     }
     else if (FAILED(hr))
@@ -962,16 +967,24 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo, bool NewFrame)
 
     //Got mutex, so we can access pointer info and shared surface
 
+    //If frame is skipped, skip all GPU work
+    if (SkipFrame)
+    {
+        //Remember if the cursor changed so it's updated the next time we actually render it
+        if (PointerInfo->CursorShapeChanged)
+        {
+            m_MouseCursorNeedsUpdate = true;
+        }
+
+        m_OutputPendingSkippedFrame = true;
+        hr = m_KeyMutex->ReleaseSync(0);
+
+        return DUPL_RETURN_UPD_SUCCESS;
+    }
+
     //Set cached mouse values
     m_MouseLastVisible = PointerInfo->Visible;
     m_MouseLastCursorType = (DXGI_OUTDUPL_POINTER_SHAPE_TYPE)PointerInfo->ShapeInfo.Type;
-
-    //If overlay is not active, skip all GPU work
-    if (!m_OvrlActive)
-    {
-        hr = m_KeyMutex->ReleaseSync(0);
-        return DUPL_RETURN_UPD_SUCCESS;
-    }
 
     //Draw shared surface to overlay texture to avoid trouble with transparency on some systems
     DrawFrameToOverlayTex();
@@ -1035,12 +1048,12 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo, bool NewFrame)
         return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
     }
 
-    m_OvrlActiveLastUpdate = m_OvrlActive;
-
     if (ConfigManager::Get().GetConfigBool(configid_bool_state_performance_stats_active)) //Count frames if performance stats are active
     {
         m_PerformanceFrameCount++;
     }
+
+    m_OutputPendingSkippedFrame = false;
 
     return Ret;
 }
@@ -1268,6 +1281,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         ApplySettingMouseInput();
                         break;
                     }
+                    case configid_int_performance_update_limit_mode:
+                    case configid_int_performance_update_limit_fps:
+                    {
+                        ApplySettingUpdateLimiter();
+                        break;
+                    }
                     default: break;
                 }
             }
@@ -1293,6 +1312,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_float_input_keyboard_detached_size:
                     {
                         ApplySettingKeyboardScale(previous_value);
+                        break;
+                    }
+                    case configid_float_performance_update_limit_ms:
+                    {
+                        ApplySettingUpdateLimiter();
                         break;
                     }
                     default: break;
@@ -1363,6 +1387,7 @@ void OutputManager::ResetOverlay()
     ApplySettingTransform();
     ApplySettingMouseInput();
     ApplySetting3DMode();
+    ApplySettingUpdateLimiter();
 
     //Post resolution update to UI app
     IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_resolution_update);
@@ -1657,6 +1682,11 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
             break;
     }
 
+    if (m_MouseCursorNeedsUpdate)
+    {
+        PtrInfo->CursorShapeChanged = true;
+    }
+
     // VERTEX creation
     Vertices[0].Pos.x = (PtrLeft - CenterX) / (FLOAT)CenterX;
     Vertices[0].Pos.y = -1 * ((PtrTop + PtrHeight) - CenterY) / (FLOAT)CenterY;
@@ -1778,6 +1808,8 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
         VertexBuffer->Release();
         VertexBuffer = nullptr;
     }
+
+    m_MouseCursorNeedsUpdate = false;
 
     return DUPL_RETURN_SUCCESS;
 }
@@ -1975,12 +2007,9 @@ bool OutputManager::HandleOpenVREvents()
 
                             int max_miss_count = 10; //Arbitrary number, but appears to work reliably
 
-                            if (ConfigManager::Get().GetConfigBool(configid_bool_performance_ignore_early_updates)) //When early updates are ignored, try adapting for the lower update rate
+                            if (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) != 0) //When updates are limited, try adapting for the lower update rate
                             {
-                                const float& early_update_multiplier = ConfigManager::Get().GetConfigFloatRef(configid_float_performance_early_update_limit_multiplier);
-
-                                if (early_update_multiplier > 1.0f)
-                                    max_miss_count /= early_update_multiplier;
+                                max_miss_count = std::max(1, max_miss_count - int((m_PerformanceUpdateLimiterDelay.QuadPart / 1000) / 20) );
                             }
 
                             if (m_MouseIgnoreMoveEventMissCount > max_miss_count)
@@ -2687,6 +2716,39 @@ void OutputManager::ApplySettingKeyboardScale(float last_used_scale)
     }
 }
 
+void OutputManager::ApplySettingUpdateLimiter()
+{
+    float limit_ms = 0.0f;
+    
+    if (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) == update_limit_mode_ms)
+    {
+        limit_ms = ConfigManager::Get().GetConfigFloat(configid_float_performance_update_limit_ms);
+    }
+    else
+    {
+        //Here's the deal with the fps-based limiter: It just barely works
+        //A simple fps cut-off doesn't work since mouse updates add up to them
+        //Using the right frame time value seems to work in most cases
+        //A full-range, user-chosen fps value doesn't really work though, as the frame time values required don't seem to predictably change ("1000/fps" is close, but the needed adjustment varies)
+        //The frame time method also doesn't work reliably above 50 fps. It limits, but the resulting fps isn't constant.
+        //This is why the fps limiter is somewhat restricted in what settings it offers. It does cover the most common cases, however.
+        //The frame time limiter is still there to offer more fine-tuning after all
+
+        //Map tested frame time values to the fps enum IDs
+        //FPS:                                 1       2       5     10      15      20      25      30      40      50
+        const float fps_enum_values_ms[] = { 985.0f, 485.0f, 195.0f, 96.50f, 63.77f, 47.76f, 33.77f, 31.73f, 23.72f, 15.81f };
+
+        int enum_id = ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_fps);
+
+        if (enum_id <= update_limit_fps_50)
+        {
+            limit_ms = fps_enum_values_ms[enum_id];
+        }
+    }
+    
+    m_PerformanceUpdateLimiterDelay.QuadPart = 1000.0f * limit_ms;
+}
+
 void OutputManager::DragStart(bool is_gesture_drag)
 {
     //This is also used by DragGestureStart() (with is_gesture_drag = true), but only to convert between overlay origins.
@@ -3305,6 +3367,11 @@ void OutputManager::UpdatePerformanceStates()
         m_PerformanceFrameCountStartTick = ::GetTickCount64();
         m_PerformanceFrameCount = 0;
     }
+}
+
+const LARGE_INTEGER& OutputManager::GetUpdateLimiterDelay()
+{
+    return m_PerformanceUpdateLimiterDelay;
 }
 
 void OutputManager::DoAction(ActionID action_id)
