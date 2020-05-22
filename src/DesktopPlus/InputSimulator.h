@@ -1,6 +1,8 @@
 #ifndef _INPUTSIMULATOR_H_
 #define _INPUTSIMULATOR_H_
 
+#define NOMINMAX
+
 #include <vector>
 #include <windows.h>
 

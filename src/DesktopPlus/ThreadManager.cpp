@@ -124,6 +124,7 @@ DUPL_RETURN THREADMANAGER::Initialize(INT SingleOutput, UINT OutputCount, HANDLE
         m_ThreadData[i].OffsetX = DesktopDim->left;
         m_ThreadData[i].OffsetY = DesktopDim->top;
         m_ThreadData[i].PtrInfo = &m_PtrInfo;
+        m_ThreadData[i].DirtyRegionTotal = &m_DirtyRegionTotal;
 
         RtlZeroMemory(&m_ThreadData[i].DxRes, sizeof(DX_RESOURCES));
         Ret = InitializeDx(&m_ThreadData[i].DxRes, DXGIAdapter);
@@ -251,6 +252,11 @@ DUPL_RETURN THREADMANAGER::InitializeDx(_Out_ DX_RESOURCES* Data, IDXGIAdapter* 
 PTR_INFO* THREADMANAGER::GetPointerInfo()
 {
     return &m_PtrInfo;
+}
+
+DPRect& THREADMANAGER::GetDirtyRegionTotal()
+{
+    return m_DirtyRegionTotal;
 }
 
 //

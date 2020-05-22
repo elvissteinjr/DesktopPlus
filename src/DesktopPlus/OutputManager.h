@@ -26,7 +26,7 @@ class OutputManager
         ~OutputManager();
         DUPL_RETURN InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
         vr::EVRInitError InitOverlay();
-        DUPL_RETURN_UPD Update(_In_ PTR_INFO* PointerInfo, bool NewFrame, bool SkipFrame);
+        DUPL_RETURN_UPD Update(_In_ PTR_INFO* PointerInfo, _In_ DPRect& DirtyRegionTotal, bool NewFrame, bool SkipFrame);
         bool HandleIPCMessage(const MSG& msg); //Returns true if message caused a duplication reset (i.e. desktop switch)
         void CleanRefs();
         HWND GetWindowHandle();
@@ -63,6 +63,8 @@ class OutputManager
         DUPL_RETURN CreateTextures(INT SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
         DUPL_RETURN DrawFrameToOverlayTex();
         DUPL_RETURN DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo);
+        DUPL_RETURN_UPD RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy = false); //Refreshes the overlay texture of the VR runtime with content of the m_OvrlTex backing texture
+                                                                                                           //Returns true if something was updated (i.e. dirty rect not cropped out entirely)
 
         bool HandleOpenVREvents();  //Returns true if quit event happened
         void HandleKeyboardHelperMessage(LPARAM lparam);
@@ -130,6 +132,7 @@ class OutputManager
         DWORD m_MaxActiveRefreshDelay;
         bool m_OutputInvalid;
         bool m_OutputPendingSkippedFrame;
+        DPRect m_OutputPendingDirtyRect;
 
         vr::VROverlayHandle_t m_OvrlHandleDashboard;
         vr::VROverlayHandle_t m_OvrlHandleMain;
@@ -148,9 +151,10 @@ class OutputManager
 
         ULONGLONG m_MouseLastClickTick;
         bool m_MouseIgnoreMoveEvent;
-        bool m_MouseLastVisible;
-        DXGI_OUTDUPL_POINTER_SHAPE_TYPE m_MouseLastCursorType;
         bool m_MouseCursorNeedsUpdate;
+        PTR_INFO m_MouseLastInfo;
+        Vector2Int m_MouseLastCursorSize;
+        bool m_MouseLaserPointerUsedLastUpdate;
         int m_MouseLastLaserPointerX;
         int m_MouseLastLaserPointerY;
         int m_MouseDefaultHotspotX;

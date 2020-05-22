@@ -193,6 +193,7 @@
   <ItemGroup>
     <ClInclude Include="..\Shared\Actions.h" />
     <ClInclude Include="..\Shared\ConfigManager.h" />
+    <ClInclude Include="..\Shared\DPRect.h" />
     <ClInclude Include="..\Shared\Ini.h" />
     <ClInclude Include="..\Shared\InterprocessMessaging.h" />
     <ClInclude Include="..\Shared\Matrices.h" />

@@ -1,6 +1,8 @@
 #include "DisplayManager.h"
 using namespace DirectX;
 
+#include "DPRect.h"
+
 //
 // Constructor NULLs out vars
 //
@@ -54,9 +56,11 @@ void DISPLAYMANAGER::InitD3D(DX_RESOURCES* Data)
 //
 // Process a given frame and its metadata
 //
-DUPL_RETURN DISPLAYMANAGER::ProcessFrame(_In_ FRAME_DATA* Data, _Inout_ ID3D11Texture2D* SharedSurf, INT OffsetX, INT OffsetY, _In_ DXGI_OUTPUT_DESC* DeskDesc)
+DUPL_RETURN DISPLAYMANAGER::ProcessFrame(_In_ FRAME_DATA* Data, _Inout_ ID3D11Texture2D* SharedSurf, INT OffsetX, INT OffsetY, _In_ DXGI_OUTPUT_DESC* DeskDesc, _Out_ DPRect& DirtyRectTotal)
 {
     DUPL_RETURN Ret = DUPL_RETURN_SUCCESS;
+
+    DirtyRectTotal = DPRect(-1, -1, -1, -1);
 
     // Process dirties and moves
     if (Data->FrameInfo.TotalMetadataBufferSize)
@@ -66,7 +70,7 @@ DUPL_RETURN DISPLAYMANAGER::ProcessFrame(_In_ FRAME_DATA* Data, _Inout_ ID3D11Te
 
         if (Data->MoveCount)
         {
-            Ret = CopyMove(SharedSurf, reinterpret_cast<DXGI_OUTDUPL_MOVE_RECT*>(Data->MetaData), Data->MoveCount, OffsetX, OffsetY, DeskDesc, Desc.Width, Desc.Height);
+            Ret = CopyMove(SharedSurf, reinterpret_cast<DXGI_OUTDUPL_MOVE_RECT*>(Data->MetaData), Data->MoveCount, OffsetX, OffsetY, DeskDesc, Desc.Width, Desc.Height, DirtyRectTotal);
             if (Ret != DUPL_RETURN_SUCCESS)
             {
                 return Ret;
@@ -75,7 +79,8 @@ DUPL_RETURN DISPLAYMANAGER::ProcessFrame(_In_ FRAME_DATA* Data, _Inout_ ID3D11Te
 
         if (Data->DirtyCount)
         {
-            Ret = CopyDirty(Data->Frame, SharedSurf, reinterpret_cast<RECT*>(Data->MetaData + (Data->MoveCount * sizeof(DXGI_OUTDUPL_MOVE_RECT))), Data->DirtyCount, OffsetX, OffsetY, DeskDesc);
+            Ret = CopyDirty(Data->Frame, SharedSurf, reinterpret_cast<RECT*>(Data->MetaData + (Data->MoveCount * sizeof(DXGI_OUTDUPL_MOVE_RECT))), Data->DirtyCount, OffsetX, OffsetY, DeskDesc, 
+                            DirtyRectTotal);
         }
     }
 
@@ -159,7 +164,8 @@ void DISPLAYMANAGER::SetMoveRect(_Out_ RECT* SrcRect, _Out_ RECT* DestRect, _In_
 //
 // Copy move rectangles
 //
-DUPL_RETURN DISPLAYMANAGER::CopyMove(_Inout_ ID3D11Texture2D* SharedSurf, _In_reads_(MoveCount) DXGI_OUTDUPL_MOVE_RECT* MoveBuffer, UINT MoveCount, INT OffsetX, INT OffsetY, _In_ DXGI_OUTPUT_DESC* DeskDesc, INT TexWidth, INT TexHeight)
+DUPL_RETURN DISPLAYMANAGER::CopyMove(_Inout_ ID3D11Texture2D* SharedSurf, _In_reads_(MoveCount) DXGI_OUTDUPL_MOVE_RECT* MoveBuffer, UINT MoveCount, INT OffsetX, INT OffsetY, _In_ DXGI_OUTPUT_DESC* DeskDesc,
+                                     INT TexWidth, INT TexHeight, _Inout_ DPRect& DirtyRectTotal)
 {
     D3D11_TEXTURE2D_DESC FullDesc;
     SharedSurf->GetDesc(&FullDesc);
@@ -204,7 +210,17 @@ DUPL_RETURN DISPLAYMANAGER::CopyMove(_Inout_ ID3D11Texture2D* SharedSurf, _In_re
         Box.right = SrcRect.right;
         Box.bottom = SrcRect.bottom;
         Box.back = 1;
-        m_DeviceContext->CopySubresourceRegion(SharedSurf, 0, DestRect.left + DeskDesc->DesktopCoordinates.left - OffsetX, DestRect.top + DeskDesc->DesktopCoordinates.top - OffsetY, 0, m_MoveSurf, 0, &Box);
+
+        //Adjust by desktop and destination offsets
+        DestRect.left += DeskDesc->DesktopCoordinates.left - OffsetX;
+        DestRect.top  += DeskDesc->DesktopCoordinates.top  - OffsetY;
+
+        m_DeviceContext->CopySubresourceRegion(SharedSurf, 0, DestRect.left, DestRect.top, 0, m_MoveSurf, 0, &Box);
+    
+        //Add rect to total dirty region rect
+        DPRect drect(DestRect.left, DestRect.top, (int)Box.right, (int)Box.bottom);
+        (DirtyRectTotal.GetTL().x == -1) ? DirtyRectTotal = drect : DirtyRectTotal.Add(drect);
+        
     }
 
     return DUPL_RETURN_SUCCESS;
@@ -216,7 +232,8 @@ DUPL_RETURN DISPLAYMANAGER::CopyMove(_Inout_ ID3D11Texture2D* SharedSurf, _In_re
 #pragma warning(push)
 #pragma warning(disable:__WARNING_USING_UNINIT_VAR) // false positives in SetDirtyVert due to tool bug
 
-void DISPLAYMANAGER::SetDirtyVert(_Out_writes_(NUMVERTICES) VERTEX* Vertices, _In_ RECT* Dirty, INT OffsetX, INT OffsetY, _In_ DXGI_OUTPUT_DESC* DeskDesc, _In_ D3D11_TEXTURE2D_DESC* FullDesc, _In_ D3D11_TEXTURE2D_DESC* ThisDesc)
+void DISPLAYMANAGER::SetDirtyVert(_Out_writes_(NUMVERTICES) VERTEX* Vertices, _In_ RECT* Dirty, INT OffsetX, INT OffsetY, _In_ DXGI_OUTPUT_DESC* DeskDesc, _In_ D3D11_TEXTURE2D_DESC* FullDesc,
+                                  _In_ D3D11_TEXTURE2D_DESC* ThisDesc, _Inout_ DPRect& DirtyRectTotal)
 {
     INT CenterX = FullDesc->Width / 2;
     INT CenterY = FullDesc->Height / 2;
@@ -300,6 +317,10 @@ void DISPLAYMANAGER::SetDirtyVert(_Out_writes_(NUMVERTICES) VERTEX* Vertices, _I
 
     Vertices[3].TexCoord = Vertices[2].TexCoord;
     Vertices[4].TexCoord = Vertices[1].TexCoord;
+
+    //Add rect to total dirty region rect
+    DPRect drect(DestDirty.left, DestDirty.top, DestDirty.right, DestDirty.bottom);
+    (DirtyRectTotal.GetTL().x == -1) ? DirtyRectTotal = drect : DirtyRectTotal.Add(drect);
 }
 
 #pragma warning(pop) // re-enable __WARNING_USING_UNINIT_VAR
@@ -307,7 +328,8 @@ void DISPLAYMANAGER::SetDirtyVert(_Out_writes_(NUMVERTICES) VERTEX* Vertices, _I
 //
 // Copies dirty rectangles
 //
-DUPL_RETURN DISPLAYMANAGER::CopyDirty(_In_ ID3D11Texture2D* SrcSurface, _Inout_ ID3D11Texture2D* SharedSurf, _In_reads_(DirtyCount) RECT* DirtyBuffer, UINT DirtyCount, INT OffsetX, INT OffsetY, _In_ DXGI_OUTPUT_DESC* DeskDesc)
+DUPL_RETURN DISPLAYMANAGER::CopyDirty(_In_ ID3D11Texture2D* SrcSurface, _Inout_ ID3D11Texture2D* SharedSurf, _In_reads_(DirtyCount) RECT* DirtyBuffer, UINT DirtyCount, INT OffsetX, INT OffsetY, 
+                                      _In_ DXGI_OUTPUT_DESC* DeskDesc, _Inout_ DPRect& DirtyRectTotal)
 {
     HRESULT hr;
 
@@ -372,7 +394,7 @@ DUPL_RETURN DISPLAYMANAGER::CopyDirty(_In_ ID3D11Texture2D* SrcSurface, _Inout_ 
     VERTEX* DirtyVertex = reinterpret_cast<VERTEX*>(m_DirtyVertexBufferAlloc);
     for (UINT i = 0; i < DirtyCount; ++i, DirtyVertex += NUMVERTICES)
     {
-        SetDirtyVert(DirtyVertex, &(DirtyBuffer[i]), OffsetX, OffsetY, DeskDesc, &FullDesc, &ThisDesc);
+        SetDirtyVert(DirtyVertex, &(DirtyBuffer[i]), OffsetX, OffsetY, DeskDesc, &FullDesc, &ThisDesc, DirtyRectTotal);
     }
 
     // Create vertex buffer

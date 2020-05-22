@@ -11,6 +11,8 @@
 #include <DirectXMath.h>
 #include <string>
 
+#include "DPRect.h"
+
 #include "PixelShader.h"
 #include "PixelShaderCursor.h"
 #include "VertexShader.h"
@@ -102,6 +104,7 @@ typedef struct _THREAD_DATA
     INT OffsetY;
     PTR_INFO* PtrInfo;
     DX_RESOURCES DxRes;
+    DPRect* DirtyRegionTotal;
 } THREAD_DATA;
 
 //

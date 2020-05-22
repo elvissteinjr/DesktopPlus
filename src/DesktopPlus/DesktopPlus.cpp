@@ -418,7 +418,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 SkipFrame = false;
             }
 
-            RetUpdate = OutMgr.Update(ThreadMgr.GetPointerInfo(), IsNewFrame, SkipFrame);
+            RetUpdate = OutMgr.Update(ThreadMgr.GetPointerInfo(), ThreadMgr.GetDirtyRegionTotal(), IsNewFrame, SkipFrame);
 
             //Map return value to DUPL_RETRUN Ret
             switch (RetUpdate)
@@ -667,12 +667,12 @@ DWORD WINAPI DDProc(_In_ void* Param)
         }
 
         // Process new frame
-        Ret = DispMgr.ProcessFrame(&CurrentData, SharedSurf, TData->OffsetX, TData->OffsetY, &DesktopDesc);
+        Ret = DispMgr.ProcessFrame(&CurrentData, SharedSurf, TData->OffsetX, TData->OffsetY, &DesktopDesc, *TData->DirtyRegionTotal);
         if (Ret != DUPL_RETURN_SUCCESS)
         {
             DuplMgr.DoneWithFrame();
             KeyMutex->ReleaseSync(1);
-            SetEvent(TData->NewFrameProcessedEvent); //?
+            SetEvent(TData->NewFrameProcessedEvent);
             break;
         }
 

@@ -112,6 +112,9 @@
     </ClInclude>
     <ClInclude Include="WindowKeyboardHelper.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="..\Shared\DPRect.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="imgui_win32_dx11_openvr\PixelShaderImGui.hlsl">

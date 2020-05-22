@@ -31,7 +31,9 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_DesktopWidth(-1),
     m_DesktopHeight(-1),
     m_MaxActiveRefreshDelay(16),
+    m_OutputPendingSkippedFrame(false),
     m_OutputInvalid(false),
+    m_OutputPendingDirtyRect{-1, -1, -1, -1},
     m_OvrlHandleMain(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleIcon(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleDashboard(vr::k_ulOverlayHandleInvalid),
@@ -43,14 +45,12 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlInputActive(false),
     m_OvrlDetachedInteractive(false),
     m_OvrlOpacity(0.0f),
-    m_OutputPendingSkippedFrame(false),
     m_MouseTex(nullptr),
     m_MouseShaderRes(nullptr),
     m_MouseLastClickTick(0),
     m_MouseIgnoreMoveEvent(false),
-    m_MouseLastVisible(false),
-    m_MouseLastCursorType(DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR),
     m_MouseCursorNeedsUpdate(false),
+    m_MouseLaserPointerUsedLastUpdate(false),
     m_MouseLastLaserPointerX(-1),
     m_MouseLastLaserPointerY(-1),
     m_MouseDefaultHotspotX(0),
@@ -71,6 +71,9 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_PerformanceFrameCountStartTick(0),
     m_PerformanceUpdateLimiterDelay{0}
 {
+    m_MouseLastInfo = {0};
+    m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
+
     //Initialize ConfigManager
     ConfigManager::Get().LoadConfigFromFile();
 
@@ -917,7 +920,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
 //
 // Update Overlay and handle events
 //
-DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo, bool NewFrame, bool SkipFrame)
+DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& DirtyRectTotal, bool NewFrame, bool SkipFrame)
 {
     if (HandleOpenVREvents())   //If quit event received, quit.
     {
@@ -930,12 +933,15 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo, bool NewFrame,
     if ( (m_OutputPendingSkippedFrame) && (!SkipFrame) )
     {
         //If there isn't new frame yet, we have to unlock the keyed mutex with the one we locked it with ourselves before
-        if (!NewFrame)
+        //However, if the laser pointer was used since the last update, we simply use the key for new frame data to wait for the new mouse position or frame
+        //Not waiting for it reduces latency usually, but laser pointer mouse movements are weirdly not picked up without doing this or enabling the rapid laser pointer update setting
+        if ( (!NewFrame) && (!m_MouseLaserPointerUsedLastUpdate) )
         {
             sync_key = 0;
         }
 
         NewFrame = true; //Treat this as a new frame now
+        m_MouseLaserPointerUsedLastUpdate = false;
     }
 
     //If frame skipped and no new frame, do nothing (if there's a new frame, we have to at least re-lock the keyed mutex so the duplication threads can access it again)
@@ -963,13 +969,43 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo, bool NewFrame,
         return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to acquire keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
     }
 
-    DUPL_RETURN_UPD Ret = DUPL_RETURN_UPD_SUCCESS;
+    DUPL_RETURN_UPD ret = DUPL_RETURN_UPD_SUCCESS;
 
     //Got mutex, so we can access pointer info and shared surface
+
+    //If mouse state got updated, expand dirty rect to include old and new cursor regions
+    if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_cursor)) && (m_MouseLastInfo.LastTimeStamp.QuadPart < PointerInfo->LastTimeStamp.QuadPart) )
+    {
+        //Only invalidate if position or shape changed, otherwise it would be a visually identical result
+        if ( (m_MouseLastInfo.Position.x != PointerInfo->Position.x) || (m_MouseLastInfo.Position.y != PointerInfo->Position.y) ||
+             (PointerInfo->CursorShapeChanged) || (m_MouseCursorNeedsUpdate) || (m_MouseLastInfo.Visible != PointerInfo->Visible) )
+        {
+
+            if ( (PointerInfo->Visible) )
+            {
+                DPRect mouse_rect = {PointerInfo->Position.x, PointerInfo->Position.y, int(PointerInfo->Position.x + PointerInfo->ShapeInfo.Width),
+                                     int(PointerInfo->Position.y + PointerInfo->ShapeInfo.Height)};
+
+                (DirtyRectTotal.GetTL().x == -1) ? DirtyRectTotal = mouse_rect : DirtyRectTotal.Add(mouse_rect);
+            }
+
+            if (m_MouseLastInfo.Visible)
+            {
+                DPRect mouse_rect_last(m_MouseLastInfo.Position.x, m_MouseLastInfo.Position.y, int(m_MouseLastInfo.Position.x + m_MouseLastInfo.ShapeInfo.Width),
+                                       int(m_MouseLastInfo.Position.y + m_MouseLastInfo.ShapeInfo.Height));
+
+                (DirtyRectTotal.GetTL().x == -1) ? DirtyRectTotal = mouse_rect_last : DirtyRectTotal.Add(mouse_rect_last);
+            }
+        }
+    }
+
 
     //If frame is skipped, skip all GPU work
     if (SkipFrame)
     {
+        //Collect dirty rects for the next time we render
+        (m_OutputPendingDirtyRect.GetTL().x == -1) m_OutputPendingDirtyRect = DirtyRectTotal : m_OutputPendingDirtyRect.Add(DirtyRectTotal);
+
         //Remember if the cursor changed so it's updated the next time we actually render it
         if (PointerInfo->CursorShapeChanged)
         {
@@ -981,65 +1017,41 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo, bool NewFrame,
 
         return DUPL_RETURN_UPD_SUCCESS;
     }
+    else if (m_OutputPendingDirtyRect.GetTL().x != -1) //Add previously collected dirty rects if there are any
+    {
+        DirtyRectTotal.Add(m_OutputPendingDirtyRect);
+    }
+
+    bool has_updated_overlay = false;
+
+    int crop_x, crop_y, crop_width, crop_height;
+    GetValidatedCropValues(crop_x, crop_y, crop_width, crop_height);
+
+    DPRect cropping_region(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
+
+    if (DirtyRectTotal.Overlaps(cropping_region))
+    {
+        DirtyRectTotal.ClipWithFull(cropping_region);
+
+        //Draw shared surface to overlay texture to avoid trouble with transparency on some systems
+        DrawFrameToOverlayTex();
+
+        if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_cursor)) && (PointerInfo->Visible))
+        {
+            //Draw mouse into texture if needed
+            ret = (DUPL_RETURN_UPD)DrawMouseToOverlayTex(PointerInfo);
+        }
+
+        //Set Overlay texture
+        ret = RefreshOpenVROverlayTexture(DirtyRectTotal);
+
+        has_updated_overlay = (ret == DUPL_RETURN_UPD_SUCCESS);
+    }
 
     //Set cached mouse values
-    m_MouseLastVisible = PointerInfo->Visible;
-    m_MouseLastCursorType = (DXGI_OUTDUPL_POINTER_SHAPE_TYPE)PointerInfo->ShapeInfo.Type;
-
-    //Draw shared surface to overlay texture to avoid trouble with transparency on some systems
-    DrawFrameToOverlayTex();
-
-    if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_cursor)) && (PointerInfo->Visible))
-    {
-        //Draw mouse into texture if needed
-        Ret = (DUPL_RETURN_UPD)DrawMouseToOverlayTex(PointerInfo);
-    }
-
-    //Set Overlay texture
-    if ((m_OvrlHandleMain != vr::k_ulOverlayHandleInvalid) && (m_OvrlTex))
-    {
-        vr::Texture_t vrtex;
-        vrtex.eType = vr::TextureType_DirectX;
-        vrtex.eColorSpace = vr::ColorSpace_Gamma;
-
-        //Copy texture over to GPU connected to VR HMD if needed
-        if (m_MultiGPUTargetDevice != nullptr)
-        {
-            //This isn't very fast but the only way to my knowledge. Happy to receive improvements on this though
-            m_DeviceContext->CopyResource(m_MultiGPUTexStaging, m_OvrlTex);
-
-            D3D11_MAPPED_SUBRESOURCE mapped_resource_staging;
-            RtlZeroMemory(&mapped_resource_staging, sizeof(D3D11_MAPPED_SUBRESOURCE));
-            hr = m_DeviceContext->Map(m_MultiGPUTexStaging, 0, D3D11_MAP_READ, 0, &mapped_resource_staging);
-            
-            if (FAILED(hr))
-            {
-                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to map staging texture", L"Error", hr, SystemTransitionsExpectedErrors);
-            }
-
-            D3D11_MAPPED_SUBRESOURCE mapped_resource_target;
-            RtlZeroMemory(&mapped_resource_target, sizeof(D3D11_MAPPED_SUBRESOURCE));
-            hr = m_MultiGPUTargetDeviceContext->Map(m_MultiGPUTexTarget, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource_target);
-
-            if (FAILED(hr))
-            {
-                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to map copy-target texture", L"Error", hr, SystemTransitionsExpectedErrors);
-            }
-
-            memcpy(mapped_resource_target.pData, mapped_resource_staging.pData, m_DesktopHeight * mapped_resource_staging.RowPitch);
-
-            m_DeviceContext->Unmap(m_MultiGPUTexStaging, 0);
-            m_MultiGPUTargetDeviceContext->Unmap(m_MultiGPUTexTarget, 0);
-
-            vrtex.handle = m_MultiGPUTexTarget;
-        }
-        else //We can be efficient, nice.
-        {
-            vrtex.handle = m_OvrlTex;
-        }
-
-        vr::VROverlay()->SetOverlayTexture(m_OvrlHandleMain, &vrtex);
-    }
+    m_MouseLastInfo = *PointerInfo;
+    m_MouseLastInfo.PtrShapeBuffer = nullptr; //Not used or copied properly so remove info to avoid confusion
+    m_MouseLastInfo.BufferSize = 0;
 
     // Release keyed mutex
     hr = m_KeyMutex->ReleaseSync(0);
@@ -1048,14 +1060,16 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo, bool NewFrame,
         return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
     }
 
-    if (ConfigManager::Get().GetConfigBool(configid_bool_state_performance_stats_active)) //Count frames if performance stats are active
+    //Count frames if performance stats are active
+    if ( (has_updated_overlay) && (ConfigManager::Get().GetConfigBool(configid_bool_state_performance_stats_active)) )
     {
         m_PerformanceFrameCount++;
     }
 
     m_OutputPendingSkippedFrame = false;
+    m_OutputPendingDirtyRect = {-1, -1, -1, -1};
 
-    return Ret;
+    return ret;
 }
 
 bool OutputManager::HandleIPCMessage(const MSG& msg)
@@ -1244,7 +1258,8 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_int_overlay_crop_width:
                     case configid_int_overlay_crop_height:
                     {
-                        ResetOverlay();
+                        ApplySettingCrop();
+                        ApplySettingTransform();
                         break;
                     }
                     case configid_int_overlay_3D_mode:
@@ -1814,6 +1829,98 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     return DUPL_RETURN_SUCCESS;
 }
 
+DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy)
+{
+    if ((m_OvrlHandleMain != vr::k_ulOverlayHandleInvalid) && (m_OvrlTex))
+    {
+        vr::Texture_t vrtex;
+        vrtex.eType = vr::TextureType_DirectX;
+        vrtex.eColorSpace = vr::ColorSpace_Gamma;
+        vrtex.handle = m_OvrlTex;
+
+        //Copy texture over to GPU connected to VR HMD if needed
+        if (m_MultiGPUTargetDevice != nullptr)
+        {
+            //This isn't very fast but the only way to my knowledge. Happy to receive improvements on this though
+            m_DeviceContext->CopyResource(m_MultiGPUTexStaging, m_OvrlTex);
+
+            D3D11_MAPPED_SUBRESOURCE mapped_resource_staging;
+            RtlZeroMemory(&mapped_resource_staging, sizeof(D3D11_MAPPED_SUBRESOURCE));
+            HRESULT hr = m_DeviceContext->Map(m_MultiGPUTexStaging, 0, D3D11_MAP_READ, 0, &mapped_resource_staging);
+
+            if (FAILED(hr))
+            {
+                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to map staging texture", L"Error", hr, SystemTransitionsExpectedErrors);
+            }
+
+            D3D11_MAPPED_SUBRESOURCE mapped_resource_target;
+            RtlZeroMemory(&mapped_resource_target, sizeof(D3D11_MAPPED_SUBRESOURCE));
+            hr = m_MultiGPUTargetDeviceContext->Map(m_MultiGPUTexTarget, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource_target);
+
+            if (FAILED(hr))
+            {
+                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to map copy-target texture", L"Error", hr, SystemTransitionsExpectedErrors);
+            }
+
+            memcpy(mapped_resource_target.pData, mapped_resource_staging.pData, m_DesktopHeight * mapped_resource_staging.RowPitch);
+
+            m_DeviceContext->Unmap(m_MultiGPUTexStaging, 0);
+            m_MultiGPUTargetDeviceContext->Unmap(m_MultiGPUTexTarget, 0);
+
+            vrtex.handle = m_MultiGPUTexTarget;
+        }
+
+        //Do a simple full copy if the rect covers the whole texture (this isn't slower than a full rect copy and works with size changes)
+        if ( (force_full_copy) || (DirtyRectTotal.Contains({0, 0, m_DesktopWidth, m_DesktopHeight})) )
+        {
+            vr::VROverlay()->SetOverlayTexture(m_OvrlHandleMain, &vrtex);
+        }
+        else //Otherwise do a partial copy
+        {
+            //Get overlay texture from OpenVR and copy dirty rect directly into it
+            ID3D11ShaderResourceView* ovrl_shader_res;
+            uint32_t ovrl_width;
+            uint32_t ovrl_height;
+            uint32_t ovrl_native_format;
+            vr::ETextureType ovrl_api_type;
+            vr::EColorSpace ovrl_color_space;
+            vr::VRTextureBounds_t ovrl_tex_bounds;
+
+            vr::VROverlayError ovrl_error = vr::VROverlay()->GetOverlayTexture(m_OvrlHandleMain, (void**)&ovrl_shader_res, vrtex.handle, &ovrl_width, &ovrl_height, &ovrl_native_format, &ovrl_api_type,
+                                                                               &ovrl_color_space, &ovrl_tex_bounds);
+
+            if (ovrl_error == vr::VROverlayError_None)
+            {
+                ID3D11Resource* ovrl_tex;
+                ovrl_shader_res->GetResource(&ovrl_tex);
+
+                D3D11_BOX box;
+                box.left = DirtyRectTotal.GetTL().x;
+                box.top = DirtyRectTotal.GetTL().y;
+                box.front = 0;
+                box.right = DirtyRectTotal.GetBR().x;
+                box.bottom = DirtyRectTotal.GetBR().y;
+                box.back = 1;
+
+                m_DeviceContext->CopySubresourceRegion(ovrl_tex, 0, box.left, box.top, 0, (ID3D11Texture2D*)vrtex.handle, 0, &box);
+
+                ovrl_tex->Release();
+                ovrl_tex = nullptr;
+
+                // Release shader resource
+                vr::VROverlay()->ReleaseNativeOverlayHandle(m_OvrlHandleMain, (void*)ovrl_shader_res);
+                ovrl_shader_res = nullptr;
+            }
+            else //Usually shouldn't fail, but fall back to full copy then
+            {
+                vr::VROverlay()->SetOverlayTexture(m_OvrlHandleMain, &vrtex);
+            }               
+        }
+    }
+
+    return DUPL_RETURN_UPD_SUCCESS;
+}
+
 //
 // Initialize shaders for drawing
 //
@@ -2029,7 +2136,7 @@ bool OutputManager::HandleOpenVREvents()
                     int hotspot_x = 0;
                     int hotspot_y = 0;
 
-                    if (m_MouseLastVisible) //We're using a cached value here so we don't have to lock the shared surface for this function
+                    if (m_MouseLastInfo.Visible) //We're using a cached value here so we don't have to lock the shared surface for this function
                     {
                         hotspot_x = m_MouseDefaultHotspotX;
                         hotspot_y = m_MouseDefaultHotspotY;
@@ -2039,6 +2146,9 @@ bool OutputManager::HandleOpenVREvents()
                     m_MouseLastLaserPointerX = (   round(vr_event.data.mouse.x)                    - hotspot_x) + m_DesktopX;
                     m_MouseLastLaserPointerY = ( (-round(vr_event.data.mouse.y) + m_DesktopHeight) - hotspot_y) + m_DesktopY;
                     m_inputsim.MouseMove(m_MouseLastLaserPointerX, m_MouseLastLaserPointerY);
+
+                    //This is only relevant when limiting updates. See Update() for details.
+                    m_MouseLaserPointerUsedLastUpdate = true;
                 }
 
                 break;
@@ -2623,6 +2733,7 @@ void OutputManager::ApplySettingCrop()
 
 
     vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleMain, &tex_bounds);
+    RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
 }
 
 void OutputManager::ApplySettingDragMode()
@@ -3604,8 +3715,8 @@ void OutputManager::CleanRefs()
     //Reset mouse state variables too
     m_MouseLastClickTick = 0;
     m_MouseIgnoreMoveEvent = false;
-    m_MouseLastVisible = false;
-    m_MouseLastCursorType = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
+    m_MouseLastInfo = {0};
+    m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
     m_MouseLastLaserPointerX = -1;
     m_MouseLastLaserPointerY = -1;
     m_MouseDefaultHotspotX = 0;

@@ -1,6 +1,7 @@
 #include "VRInput.h"
 #include "VRInput.h"
 
+#define NOMINMAX
 #include <string>
 #include <windows.h>
 

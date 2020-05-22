@@ -1,3 +1,5 @@
+// Desktop+: Extended with Vector2Int
+
 ///////////////////////////////////////////////////////////////////////////////
 // Vectors.h
 // =========
@@ -526,5 +528,173 @@ inline std::ostream& operator<<(std::ostream& os, const Vector4& vec) {
     return os;
 }
 // END OF VECTOR4 /////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
+// 2D vector int
+///////////////////////////////////////////////////////////////////////////////
+struct Vector2Int
+{
+    int x;
+    int y;
+
+    // ctors
+    Vector2Int() : x(0), y(0) {};
+    Vector2Int(int x, int y) : x(x), y(y) {};
+
+    // utils functions
+    void              set(int x, int y);
+    float             length() const;                          //
+    float             distance(const Vector2Int& vec) const;   // distance between two vectors
+    static Vector2Int vec_min(const Vector2Int& lhs, const Vector2Int& rhs);
+    static Vector2Int vec_max(const Vector2Int& lhs, const Vector2Int& rhs);
+    static Vector2Int vec_clamp(const Vector2Int& vec, const Vector2Int& vec_min, Vector2Int vec_max);
+
+
+                                                            // operators
+    Vector2Int     operator-() const;                       // unary operator (negate)
+    Vector2Int     operator+(const Vector2Int& rhs) const;  // add rhs
+    Vector2Int     operator-(const Vector2Int& rhs) const;  // subtract rhs
+    Vector2Int&    operator+=(const Vector2Int& rhs);       // add rhs and update this object
+    Vector2Int&    operator-=(const Vector2Int& rhs);       // subtract rhs and update this object
+    Vector2Int     operator*(const int scale) const;        // scale
+    Vector2Int     operator*(const float scale) const;      // scale
+    Vector2Int     operator*(const Vector2Int& rhs) const;  // multiply each element
+    Vector2Int&    operator*=(const int scale);             // scale and update this object
+    Vector2Int&    operator*=(const float scale);           // scale and update this object
+    Vector2Int&    operator*=(const Vector2Int& rhs);       // multiply each element and update this object
+    Vector2Int     operator/(const int scale) const;        // inverse scale
+    Vector2Int     operator/(const float scale) const;      // inverse scale
+    Vector2Int&    operator/=(const int scale);             // scale and update this object
+    Vector2Int&    operator/=(const float scale);           // scale and update this object
+    bool           operator==(const Vector2Int& rhs) const; // exact compare, no epsilon
+    bool           operator!=(const Vector2Int& rhs) const; // exact compare, no epsilon
+    bool           operator<(const Vector2Int& rhs) const;  // comparison for sort
+    int            operator[](int index) const;             // subscript operator v[0], v[1]
+    int&           operator[](int index);                   // subscript operator v[0], v[1]
+
+    friend Vector2Int operator*(const int a, const Vector2Int vec);
+    friend std::ostream& operator<<(std::ostream& os, const Vector2Int& vec);
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// inline functions for Vector2Int
+///////////////////////////////////////////////////////////////////////////////
+inline Vector2Int Vector2Int::operator-() const {
+    return Vector2Int(-x, -y);
+}
+
+inline Vector2Int Vector2Int::operator+(const Vector2Int& rhs) const {
+    return Vector2Int(x+rhs.x, y+rhs.y);
+}
+
+inline Vector2Int Vector2Int::operator-(const Vector2Int& rhs) const {
+    return Vector2Int(x-rhs.x, y-rhs.y);
+}
+
+inline Vector2Int& Vector2Int::operator+=(const Vector2Int& rhs) {
+    x += rhs.x; y += rhs.y; return *this;
+}
+
+inline Vector2Int& Vector2Int::operator-=(const Vector2Int& rhs) {
+    x -= rhs.x; y -= rhs.y; return *this;
+}
+
+inline Vector2Int Vector2Int::operator*(const int a) const {
+    return Vector2Int(x*a, y*a);
+}
+
+inline Vector2Int Vector2Int::operator*(const float a) const {
+    return Vector2Int(int(x*a), int(y*a));
+}
+
+inline Vector2Int Vector2Int::operator*(const Vector2Int& rhs) const {
+    return Vector2Int(x*rhs.x, y*rhs.y);
+}
+
+inline Vector2Int& Vector2Int::operator*=(const int a) {
+    x *= a; y *= a; return *this;
+}
+
+inline Vector2Int& Vector2Int::operator*=(const float a) {
+    x = int(x*a); y = int(y*a); return *this;
+}
+
+inline Vector2Int& Vector2Int::operator*=(const Vector2Int& rhs) {
+    x *= rhs.x; y *= rhs.y; return *this;
+}
+
+inline Vector2Int Vector2Int::operator/(const int a) const {
+    return Vector2Int(x/a, y/a);
+}
+
+inline Vector2Int Vector2Int::operator/(const float a) const {
+    return Vector2Int(int(x/a), int(y/a));
+}
+
+inline Vector2Int& Vector2Int::operator/=(const int a) {
+    x /= a; y /= a; return *this;
+}
+
+inline Vector2Int& Vector2Int::operator/=(const float a) {
+    x = int(x/a); y = int(y/a); return *this;
+}
+
+inline bool Vector2Int::operator==(const Vector2Int& rhs) const {
+    return (x == rhs.x) && (y == rhs.y);
+}
+
+inline bool Vector2Int::operator!=(const Vector2Int& rhs) const {
+    return (x != rhs.x) || (y != rhs.y);
+}
+
+inline bool Vector2Int::operator<(const Vector2Int& rhs) const {
+    if(x < rhs.x) return true;
+    if(x > rhs.x) return false;
+    if(y < rhs.y) return true;
+    if(y > rhs.y) return false;
+    return false;
+}
+
+inline int Vector2Int::operator[](int index) const {
+    return (&x)[index];
+}
+
+inline int& Vector2Int::operator[](int index) {
+    return (&x)[index];
+}
+
+inline void Vector2Int::set(int x_, int y_) {
+    this->x = x_; this->y = y_;
+}
+
+inline float Vector2Int::length() const {
+    return sqrtf( float(x*x + y*y) );
+}
+
+inline float Vector2Int::distance(const Vector2Int& vec) const {
+    return sqrtf( float((vec.x-x)*(vec.x-x) + (vec.y-y)*(vec.y-y)) );
+}
+
+inline Vector2Int Vector2Int::vec_min(const Vector2Int& lhs, const Vector2Int& rhs) {
+    return Vector2Int(lhs.x < rhs.x ? lhs.x : rhs.x, lhs.y < rhs.y ? lhs.y : rhs.y);
+}
+
+inline Vector2Int Vector2Int::vec_max(const Vector2Int& lhs, const Vector2Int& rhs) {
+    return Vector2Int(lhs.x >= rhs.x ? lhs.x : rhs.x, lhs.y >= rhs.y ? lhs.y : rhs.y);
+}
+
+inline Vector2Int Vector2Int::vec_clamp(const Vector2Int& vec, const Vector2Int& vec_min, Vector2Int vec_max) {
+    return Vector2Int((vec.x < vec_min.x) ? vec_min.x : (vec.x > vec_max.x) ? vec_max.x : vec.x, (vec.y < vec_min.y) ? vec_min.y : (vec.y > vec_max.y) ? vec_max.y : vec.y);
+}
+
+inline Vector2Int operator*(const int a, const Vector2Int vec) {
+    return Vector2Int(a*vec.x, a*vec.y);
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Vector2Int& vec) {
+    os << "(" << vec.x << ", " << vec.y << ")";
+    return os;
+}
+// END OF VECTOR2INT /////////////////////////////////////////////////////////////
 
 #endif
