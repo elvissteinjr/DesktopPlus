@@ -15,6 +15,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_DeviceContext(nullptr),
     m_Sampler(nullptr),
     m_BlendState(nullptr),
+    m_RasterizerState(nullptr),
     m_VertexShader(nullptr),
     m_PixelShader(nullptr),
     m_PixelShaderCursor(nullptr),
@@ -536,6 +537,20 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
         return ProcessFailure(m_Device, L"Failed to create blend state", L"Error", hr, SystemTransitionsExpectedErrors);
     }
 
+    //Create the rasterizer state
+    D3D11_RASTERIZER_DESC RasterizerDesc;
+    RtlZeroMemory(&RasterizerDesc, sizeof(RasterizerDesc));
+    RasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    RasterizerDesc.CullMode = D3D11_CULL_BACK;
+    RasterizerDesc.ScissorEnable = true;
+
+    hr = m_Device->CreateRasterizerState(&RasterizerDesc, &m_RasterizerState);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to create rasterizer state", L"Error", hr, SystemTransitionsExpectedErrors);
+    }
+    m_DeviceContext->RSSetState(m_RasterizerState);
+
     //Create vertex buffer for drawing whole texture
     VERTEX Vertices[NUMVERTICES] =
     {
@@ -563,6 +578,10 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     {
         return ProcessFailure(m_Device, L"Failed to create vertex buffer", L"Error", hr, SystemTransitionsExpectedErrors);
     }
+
+    //Set scissor rect to full
+    const D3D11_RECT rect_scissor_full = { 0, 0, m_DesktopWidth, m_DesktopHeight };
+    m_DeviceContext->RSSetScissorRects(1, &rect_scissor_full);
 
     // Initialize shaders
     Return = InitShaders();
@@ -1004,7 +1023,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     if (SkipFrame)
     {
         //Collect dirty rects for the next time we render
-        (m_OutputPendingDirtyRect.GetTL().x == -1) m_OutputPendingDirtyRect = DirtyRectTotal : m_OutputPendingDirtyRect.Add(DirtyRectTotal);
+        (m_OutputPendingDirtyRect.GetTL().x == -1) ? m_OutputPendingDirtyRect = DirtyRectTotal : m_OutputPendingDirtyRect.Add(DirtyRectTotal);
 
         //Remember if the cursor changed so it's updated the next time we actually render it
         if (PointerInfo->CursorShapeChanged)
@@ -1027,11 +1046,15 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     int crop_x, crop_y, crop_width, crop_height;
     GetValidatedCropValues(crop_x, crop_y, crop_width, crop_height);
 
-    DPRect cropping_region(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
+    const DPRect cropping_region(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
 
     if (DirtyRectTotal.Overlaps(cropping_region))
     {
         DirtyRectTotal.ClipWithFull(cropping_region);
+
+        //Set scissor rect for overlay drawing function
+        const D3D11_RECT rect_scissor = { DirtyRectTotal.GetTL().x, DirtyRectTotal.GetTL().y, DirtyRectTotal.GetBR().x, DirtyRectTotal.GetBR().y };
+        m_DeviceContext->RSSetScissorRects(1, &rect_scissor);
 
         //Draw shared surface to overlay texture to avoid trouble with transparency on some systems
         DrawFrameToOverlayTex();
@@ -1045,6 +1068,10 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         //Set Overlay texture
         ret = RefreshOpenVROverlayTexture(DirtyRectTotal);
 
+        //Reset scissor rect
+        const D3D11_RECT rect_scissor_full = { 0, 0, m_DesktopWidth, m_DesktopHeight };
+        m_DeviceContext->RSSetScissorRects(1, &rect_scissor_full);
+
         has_updated_overlay = (ret == DUPL_RETURN_UPD_SUCCESS);
     }
 
@@ -1052,6 +1079,9 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     m_MouseLastInfo = *PointerInfo;
     m_MouseLastInfo.PtrShapeBuffer = nullptr; //Not used or copied properly so remove info to avoid confusion
     m_MouseLastInfo.BufferSize = 0;
+
+    //Reset dirty rect
+    DirtyRectTotal = DPRect(-1, -1, -1, -1);
 
     // Release keyed mutex
     hr = m_KeyMutex->ReleaseSync(0);
@@ -1411,6 +1441,9 @@ void OutputManager::ResetOverlay()
     bool elevated = IsProcessElevated();
     ConfigManager::Get().SetConfigBool(configid_bool_state_misc_process_elevated, elevated);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_elevated), elevated);
+
+    //Make sure that the entire overlay texture gets at least one full update for regions that will never be dirty (i.e. blank space not occupied by any desktop)
+    m_OutputPendingDirtyRect = {0, 0, m_DesktopWidth, m_DesktopHeight};
 }
 
 DUPL_RETURN OutputManager::DrawFrameToOverlayTex()
@@ -1731,10 +1764,18 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     HRESULT hr = m_Device->CreateBuffer(&BDesc, &InitData, &VertexBuffer);
     if (FAILED(hr))
     {
-        m_MouseShaderRes->Release();
-        m_MouseShaderRes = nullptr;
-        m_MouseTex->Release();
-        m_MouseTex = nullptr;
+        if (m_MouseShaderRes)
+        {
+            m_MouseShaderRes->Release();
+            m_MouseShaderRes = nullptr;
+        }
+
+        if (m_MouseTex)
+        {
+            m_MouseTex->Release();
+            m_MouseTex = nullptr;
+        }
+
         return ProcessFailure(m_Device, L"Failed to create mouse pointer vertex buffer in OutputManager", L"Error", hr, SystemTransitionsExpectedErrors);
     }
 
@@ -2725,12 +2766,17 @@ void OutputManager::ApplySettingCrop()
     int crop_x, crop_y, crop_width, crop_height;
     GetValidatedCropValues(crop_x, crop_y, crop_width, crop_height);
 
-    //Set UV bounds
-    tex_bounds.uMin = crop_x / (float)m_DesktopWidth;
-    tex_bounds.vMin = crop_y / (float)m_DesktopHeight;
-    tex_bounds.uMax = tex_bounds.uMin + (crop_width  / (float)m_DesktopWidth);
-    tex_bounds.vMax = tex_bounds.vMin + (crop_height / (float)m_DesktopHeight);
+    //Set UV bounds (slightly offset to not have irrelevant partial pixels appear, lookup "diamond exit rule" for that) 
+    tex_bounds.uMin = (crop_x + 0.5f) / m_DesktopWidth;
+    tex_bounds.vMin = (crop_y + 0.5f) / m_DesktopHeight;
+    tex_bounds.uMax = tex_bounds.uMin + ((crop_width  - 1.0f) / m_DesktopWidth);
+    tex_bounds.vMax = tex_bounds.vMin + ((crop_height - 1.0f) / m_DesktopHeight);
 
+    //Offset is nice for actual cropped content, but let's not go out of the 0.0 - 1.0 range
+    tex_bounds.uMin = std::max(0.0f, tex_bounds.uMin);
+    tex_bounds.vMin = std::max(0.0f, tex_bounds.vMin);
+    tex_bounds.uMax = std::min(1.0f, tex_bounds.uMax);
+    tex_bounds.vMax = std::min(1.0f, tex_bounds.vMax);
 
     vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleMain, &tex_bounds);
     RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
@@ -3645,6 +3691,12 @@ void OutputManager::CleanRefs()
     {
         m_BlendState->Release();
         m_BlendState = nullptr;
+    }
+
+    if (m_RasterizerState)
+    {
+        m_RasterizerState->Release();
+        m_RasterizerState = nullptr;
     }
 
     if (m_DeviceContext)

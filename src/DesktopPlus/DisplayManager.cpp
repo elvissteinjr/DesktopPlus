@@ -56,11 +56,9 @@ void DISPLAYMANAGER::InitD3D(DX_RESOURCES* Data)
 //
 // Process a given frame and its metadata
 //
-DUPL_RETURN DISPLAYMANAGER::ProcessFrame(_In_ FRAME_DATA* Data, _Inout_ ID3D11Texture2D* SharedSurf, INT OffsetX, INT OffsetY, _In_ DXGI_OUTPUT_DESC* DeskDesc, _Out_ DPRect& DirtyRectTotal)
+DUPL_RETURN DISPLAYMANAGER::ProcessFrame(_In_ FRAME_DATA* Data, _Inout_ ID3D11Texture2D* SharedSurf, INT OffsetX, INT OffsetY, _In_ DXGI_OUTPUT_DESC* DeskDesc, _Inout_ DPRect& DirtyRectTotal)
 {
     DUPL_RETURN Ret = DUPL_RETURN_SUCCESS;
-
-    DirtyRectTotal = DPRect(-1, -1, -1, -1);
 
     // Process dirties and moves
     if (Data->FrameInfo.TotalMetadataBufferSize)
@@ -320,6 +318,7 @@ void DISPLAYMANAGER::SetDirtyVert(_Out_writes_(NUMVERTICES) VERTEX* Vertices, _I
 
     //Add rect to total dirty region rect
     DPRect drect(DestDirty.left, DestDirty.top, DestDirty.right, DestDirty.bottom);
+    drect.Translate({DeskDesc->DesktopCoordinates.left - OffsetX, DeskDesc->DesktopCoordinates.top - OffsetY});
     (DirtyRectTotal.GetTL().x == -1) ? DirtyRectTotal = drect : DirtyRectTotal.Add(drect);
 }
 

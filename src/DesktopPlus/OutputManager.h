@@ -112,6 +112,7 @@ class OutputManager
         ID3D11DeviceContext* m_DeviceContext;
         ID3D11SamplerState* m_Sampler;
         ID3D11BlendState* m_BlendState;
+        ID3D11RasterizerState* m_RasterizerState;
         ID3D11VertexShader* m_VertexShader;
         ID3D11PixelShader* m_PixelShader;
         ID3D11PixelShader* m_PixelShaderCursor;

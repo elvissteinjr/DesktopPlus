@@ -13,7 +13,7 @@ class DISPLAYMANAGER
         ~DISPLAYMANAGER();
         void InitD3D(DX_RESOURCES* Data);
         ID3D11Device* GetDevice();
-        DUPL_RETURN ProcessFrame(_In_ FRAME_DATA* Data, _Inout_ ID3D11Texture2D* SharedSurf, INT OffsetX, INT OffsetY, _In_ DXGI_OUTPUT_DESC* DeskDesc, _Out_ DPRect& DirtyRectTotal);
+        DUPL_RETURN ProcessFrame(_In_ FRAME_DATA* Data, _Inout_ ID3D11Texture2D* SharedSurf, INT OffsetX, INT OffsetY, _In_ DXGI_OUTPUT_DESC* DeskDesc, _Inout_ DPRect& DirtyRectTotal);
         void CleanRefs();
 
     private:
