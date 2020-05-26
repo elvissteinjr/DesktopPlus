@@ -601,9 +601,9 @@ void WindowSettings::UpdateCatOverlay()
             int ovrl_width, ovrl_height;
             UIManager::Get()->GetOverlayPixelSize(ovrl_width, ovrl_height);
 
-            int& crop_x = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
-            int& crop_y = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
-            int& crop_width = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
+            int& crop_x      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
+            int& crop_y      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
+            int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
             int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
 
             ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Cropping");
@@ -684,6 +684,30 @@ void WindowSettings::UpdateCatOverlay()
                 if (crop_height_ui > crop_height_max)
                     crop_height = -1;
 
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+            }
+
+            ImGui::NextColumn();
+            ImGui::NextColumn();
+
+            if (ImGui::Button("Crop to Active Window"))
+            {
+                //Have the dashboard app figure out how to do this as the UI doesn't have all data needed at hand
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_crop_to_active_window);
+            }
+
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+            if (ImGui::Button("Reset"))
+            {
+                crop_x      =  0;
+                crop_y      =  0;
+                crop_width  = -1;
+                crop_height = -1;
+
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_x),      crop_x);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y),      crop_y);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width),  crop_width);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
             }
 

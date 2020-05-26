@@ -1214,6 +1214,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         return true; //Reset mirroring
 
                     ResetOverlay(); //This does everything relevant
+                    break;
+                }
+                case ipcact_crop_to_active_window:
+                {
+                    CropToActiveWindow();
+                    break;
                 }
             }
             break;
@@ -2555,6 +2561,48 @@ void OutputManager::GetValidatedCropValues(int& x, int& y, int& width, int& heig
         height = std::min(height, height_max);
 }
 
+void OutputManager::CropToActiveWindow()
+{
+    HWND window_handle = ::GetForegroundWindow();
+
+    if (window_handle != nullptr)
+    {
+        RECT window_rect = {0};
+
+        //Just using GetWindowRect() can include shadows and such, which we don't want
+        if (::DwmGetWindowAttribute(window_handle, DWMWA_EXTENDED_FRAME_BOUNDS, &window_rect, sizeof(window_rect)) == S_OK)
+        {
+            DPRect crop_rect(window_rect.left, window_rect.top, window_rect.right, window_rect.bottom);
+
+            crop_rect.Translate({-m_DesktopX, -m_DesktopY});                    //Translate crop rect by desktop offset to get desktop-local coordinates
+            crop_rect.ClipWithFull({0, 0, m_DesktopWidth, m_DesktopHeight});    //Clip to available desktop space
+
+            if ((crop_rect.GetWidth() > 0) && (crop_rect.GetHeight() > 0))
+            {
+                //Set new crop values
+                int& crop_x = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
+                int& crop_y = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
+                int& crop_width = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
+                int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
+
+                crop_x = crop_rect.GetTL().x;
+                crop_y = crop_rect.GetTL().y;
+                crop_width = crop_rect.GetWidth();
+                crop_height = crop_rect.GetHeight();
+
+                //Send them over to UI
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_x), crop_x);
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_y), crop_y);
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_width), crop_width);
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+
+                ApplySettingCrop();
+                ApplySettingTransform();
+            }
+        }
+    }
+}
+
 void OutputManager::ApplySetting3DMode()
 {
     switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode))
@@ -3652,6 +3700,45 @@ void OutputManager::DoAction(ActionID action_id)
                         //Tell UI that the keyboard helper can be displayed
                         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_keyboard_visible_for_dashboard), true);
                     }
+                }
+                break;
+            }
+            case action_crop_active_window_toggle:
+            {
+                //If the action is used with one of the controller buttons, the events will fire another time if the new cropping values happen to have the laser pointer leave and
+                //re-enter the overlay for a split second while the button is still down during the dimension change. 
+                //This would immediately undo the action, which we want to prevent, so a 100 ms pause between toggles is enforced 
+                static ULONGLONG last_toggle_tick = 0;
+
+                if (::GetTickCount64() <= last_toggle_tick + 100)
+                    break;
+
+                last_toggle_tick = ::GetTickCount64();
+
+                int& crop_x      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
+                int& crop_y      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
+                int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
+                int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
+
+                if ((crop_x == 0) && (crop_y == 0) && (crop_width == -1) && (crop_height == -1)) //If uncropped, crop to active window
+                {
+                    CropToActiveWindow();
+                }
+                else //If cropped in some way, active window or not, reset it
+                {
+                    crop_x      =  0;
+                    crop_y      =  0;
+                    crop_width  = -1;
+                    crop_height = -1;
+
+                    //Send changes over to UI
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_x), crop_x);
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_y), crop_y);
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_width), crop_width);
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+
+                    ApplySettingCrop();
+                    ApplySettingTransform();
                 }
                 break;
             }

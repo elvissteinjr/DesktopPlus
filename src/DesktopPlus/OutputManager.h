@@ -71,6 +71,7 @@ class OutputManager
         void LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8);
         void ResetMouseLastLaserPointerPos();
         void GetValidatedCropValues(int& x, int& y, int& width, int& height);
+        void CropToActiveWindow();
 
         void ApplySetting3DMode();
         void ApplySettingTransform();

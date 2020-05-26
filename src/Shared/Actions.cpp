@@ -7,6 +7,7 @@ const char* g_ActionNames[] =
 {
     "[None]",
     "Show Keyboard",
+    "Crop to Active Window",
     //Custom
 };
 

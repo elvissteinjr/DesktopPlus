@@ -36,6 +36,7 @@ enum IPCActionID
     ipcact_keyboard_helper,         //Sent by UI application in response to a keyboard helper button press. lParam is win32 key code
     ipcact_vrkeyboard_closed,       //Sent by dashboard application when VREvent_Closed occured and the keyboard is open for the UI application. No data in lParam
     ipcact_overlay_profile_load,    //Sent by UI application when loading a profile. No data in lParam, but profile name is stored in configid_str_state_profile_name_load beforehand
+    ipcact_crop_to_active_window,    //Sent by UI application to adjust crop values to the active window. No data in lParam
     ipcact_MAX
 };
 

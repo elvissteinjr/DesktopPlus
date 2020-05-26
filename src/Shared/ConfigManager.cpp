@@ -259,13 +259,41 @@ bool ConfigManager::LoadConfigFromFile()
             action_order.push_back({(ActionID)i, false});
         }
     }
-    else //Validate order list in case some manual editing was made
+    else
     {
+        //Validate order list in case some manual editing was made
         action_order.erase(std::remove_if(action_order.begin(),
                                           action_order.end(),
                                           [](const ActionMainBarOrderData& data) { return !ActionManager::Get().IsActionIDValid(data.action_id); }),
                                           action_order.end());
 
+        //Automatically add actions if they're missing
+        bool is_action_present;
+
+        for (int i = action_show_keyboard; i < action_custom + custom_actions.size(); ++i)
+        {
+            is_action_present = false;
+
+            for (const auto order_data : action_order)
+            {
+                if (order_data.action_id == i)
+                {
+                    is_action_present = true;
+                    break;
+                }
+            }
+
+            if (!is_action_present)
+            {
+                action_order.push_back({(ActionID)i, false});
+            }
+
+            //After built-in actions are checked, jump to custom range
+            if (i == action_built_in_MAX - 1)
+            {
+                i = action_custom - 1;
+            }
+        }
     }
 
     //Validate action IDs for controller bindings too

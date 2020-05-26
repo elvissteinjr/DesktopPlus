@@ -14,6 +14,7 @@ enum ActionID: int
 {
     action_none,
     action_show_keyboard,
+    action_crop_active_window_toggle,
     action_built_in_MAX,
     //Leaving some room here, as we don't want to mess with user order later
     action_custom = 1000          //+ Custom Action ID
