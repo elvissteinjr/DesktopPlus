@@ -61,10 +61,9 @@ class OutputManager
         DUPL_RETURN MakeRTV();
         DUPL_RETURN InitShaders();
         DUPL_RETURN CreateTextures(INT SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
-        DUPL_RETURN DrawFrameToOverlayTex();
+        void DrawFrameToOverlayTex();
         DUPL_RETURN DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo);
         DUPL_RETURN_UPD RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy = false); //Refreshes the overlay texture of the VR runtime with content of the m_OvrlTex backing texture
-                                                                                                           //Returns true if something was updated (i.e. dirty rect not cropped out entirely)
 
         bool HandleOpenVREvents();  //Returns true if quit event happened
         void HandleKeyboardHelperMessage(LPARAM lparam);

@@ -991,6 +991,8 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     DUPL_RETURN_UPD ret = DUPL_RETURN_UPD_SUCCESS;
 
     //Got mutex, so we can access pointer info and shared surface
+    DPRect mouse_rect = {PointerInfo->Position.x, PointerInfo->Position.y, int(PointerInfo->Position.x + PointerInfo->ShapeInfo.Width),
+                         int(PointerInfo->Position.y + PointerInfo->ShapeInfo.Height)};
 
     //If mouse state got updated, expand dirty rect to include old and new cursor regions
     if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_cursor)) && (m_MouseLastInfo.LastTimeStamp.QuadPart < PointerInfo->LastTimeStamp.QuadPart) )
@@ -999,12 +1001,8 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         if ( (m_MouseLastInfo.Position.x != PointerInfo->Position.x) || (m_MouseLastInfo.Position.y != PointerInfo->Position.y) ||
              (PointerInfo->CursorShapeChanged) || (m_MouseCursorNeedsUpdate) || (m_MouseLastInfo.Visible != PointerInfo->Visible) )
         {
-
             if ( (PointerInfo->Visible) )
             {
-                DPRect mouse_rect = {PointerInfo->Position.x, PointerInfo->Position.y, int(PointerInfo->Position.x + PointerInfo->ShapeInfo.Width),
-                                     int(PointerInfo->Position.y + PointerInfo->ShapeInfo.Height)};
-
                 (DirtyRectTotal.GetTL().x == -1) ? DirtyRectTotal = mouse_rect : DirtyRectTotal.Add(mouse_rect);
             }
 
@@ -1059,10 +1057,14 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         //Draw shared surface to overlay texture to avoid trouble with transparency on some systems
         DrawFrameToOverlayTex();
 
-        if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_cursor)) && (PointerInfo->Visible))
+        //Only handle cursor if it's in cropping region
+        if (mouse_rect.Overlaps(cropping_region))
         {
-            //Draw mouse into texture if needed
             ret = (DUPL_RETURN_UPD)DrawMouseToOverlayTex(PointerInfo);
+        }
+        else if (PointerInfo->CursorShapeChanged) //But remember if the cursor changed for next time
+        {
+            m_MouseCursorNeedsUpdate = true;
         }
 
         //Set Overlay texture
@@ -1446,10 +1448,8 @@ void OutputManager::ResetOverlay()
     m_OutputPendingDirtyRect = {0, 0, m_DesktopWidth, m_DesktopHeight};
 }
 
-DUPL_RETURN OutputManager::DrawFrameToOverlayTex()
+void OutputManager::DrawFrameToOverlayTex()
 {
-    HRESULT hr;
-
     // Set resources
     UINT Stride = sizeof(VERTEX);
     UINT Offset = 0;
@@ -1465,11 +1465,9 @@ DUPL_RETURN OutputManager::DrawFrameToOverlayTex()
     m_DeviceContext->IASetVertexBuffers(0, 1, &m_VertexBuffer, &Stride, &Offset);
 
     // Draw textured quad onto render target
-    const float bgColor[4] = { 1.0f, 0.0f, 1.0f, 1.0f };
+    const float bgColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
     m_DeviceContext->ClearRenderTargetView(m_OvrlRTV, bgColor);
     m_DeviceContext->Draw(NUMVERTICES, 0);
-
-    return DUPL_RETURN_SUCCESS;
 }
 
 //
@@ -1662,6 +1660,12 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInf
 //
 DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
 {
+    //Just return if we don't need to render it
+    if ((!ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_cursor)) || (!PtrInfo->Visible))
+    {
+        return DUPL_RETURN_SUCCESS;
+    }
+
     ID3D11Buffer* VertexBuffer = nullptr;
 
     // Vars to be used
@@ -1914,6 +1918,43 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
         //Do a simple full copy if the rect covers the whole texture (this isn't slower than a full rect copy and works with size changes)
         if ( (force_full_copy) || (DirtyRectTotal.Contains({0, 0, m_DesktopWidth, m_DesktopHeight})) )
         {
+            //The intermediate texture can be assumed to be not complete when a full copy is forced, so redraw that
+            if (force_full_copy)
+            {
+                //Try to acquire sync for shared surface needed by DrawFrameToOverlayTex()
+                HRESULT hr = m_KeyMutex->AcquireSync(0, m_MaxActiveRefreshDelay);
+                if (hr == static_cast<HRESULT>(WAIT_TIMEOUT))
+                {
+                    //Another thread has the keyed mutex so there will be a new frame ready after this.
+                    //Bail out and just set the pending dirty region to full so everything gets drawn over on the next update
+                    m_OutputPendingDirtyRect = {0, 0, m_DesktopWidth, m_DesktopHeight};
+                    return DUPL_RETURN_UPD_RETRY;
+                }
+                else if (FAILED(hr))
+                {
+                    return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to acquire keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
+                }
+
+                DrawFrameToOverlayTex();
+
+                //Release keyed mutex
+                hr = m_KeyMutex->ReleaseSync(0);
+                if (FAILED(hr))
+                {
+                    return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
+                }
+
+                //We don't draw the cursor here as this can lead to tons of issues for little gain. We might not even know what the cursor looks like if it was cropped out previously, etc.
+                //We do mark where the cursor has last been seen as pending dirty region, however, so it gets updated at the next best moment even if it didn't move
+
+                if (m_MouseLastInfo.Visible)
+                {
+                    m_OutputPendingDirtyRect = {m_MouseLastInfo.Position.x, m_MouseLastInfo.Position.y, int(m_MouseLastInfo.Position.x + m_MouseLastInfo.ShapeInfo.Width),
+                                                int(m_MouseLastInfo.Position.y + m_MouseLastInfo.ShapeInfo.Height)};
+                }
+
+            }
+
             vr::VROverlay()->SetOverlayTexture(m_OvrlHandleMain, &vrtex);
         }
         else //Otherwise do a partial copy
@@ -2751,6 +2792,7 @@ void OutputManager::ApplySettingCrop()
 {
     //Set up overlay cropping
     vr::VRTextureBounds_t tex_bounds;
+    vr::VRTextureBounds_t tex_bounds_prev;
 
     if (m_OutputInvalid)
     {
@@ -2766,11 +2808,13 @@ void OutputManager::ApplySettingCrop()
     int crop_x, crop_y, crop_width, crop_height;
     GetValidatedCropValues(crop_x, crop_y, crop_width, crop_height);
 
+    float offset_x = (crop_width == 1) ? 0.0f : 0.5f, offset_y = (crop_height == 1) ? 0.0f : 0.5f; //Yes, we do handle the case of 1 pixel crops
+
     //Set UV bounds (slightly offset to not have irrelevant partial pixels appear, lookup "diamond exit rule" for that) 
-    tex_bounds.uMin = (crop_x + 0.5f) / m_DesktopWidth;
-    tex_bounds.vMin = (crop_y + 0.5f) / m_DesktopHeight;
-    tex_bounds.uMax = tex_bounds.uMin + ((crop_width  - 1.0f) / m_DesktopWidth);
-    tex_bounds.vMax = tex_bounds.vMin + ((crop_height - 1.0f) / m_DesktopHeight);
+    tex_bounds.uMin = (crop_x == 0) ? 0.0f : (crop_x + offset_x) / m_DesktopWidth;
+    tex_bounds.vMin = (crop_y == 0) ? 0.0f : (crop_y + offset_y) / m_DesktopHeight;
+    tex_bounds.uMax = (crop_width  == m_DesktopWidth)  ? 1.0f : ( ((crop_x + crop_width)  - offset_x) / m_DesktopWidth);
+    tex_bounds.vMax = (crop_height == m_DesktopHeight) ? 1.0f : ( ((crop_y + crop_height) - offset_y) / m_DesktopHeight);
 
     //Offset is nice for actual cropped content, but let's not go out of the 0.0 - 1.0 range
     tex_bounds.uMin = std::max(0.0f, tex_bounds.uMin);
@@ -2778,8 +2822,15 @@ void OutputManager::ApplySettingCrop()
     tex_bounds.uMax = std::min(1.0f, tex_bounds.uMax);
     tex_bounds.vMax = std::min(1.0f, tex_bounds.vMax);
 
+    //Compare old to new bounds to see if a full refresh is required
+    vr::VROverlay()->GetOverlayTextureBounds(m_OvrlHandleMain, &tex_bounds_prev);
+
+    if ((tex_bounds.uMin < tex_bounds_prev.uMin) || (tex_bounds.vMin < tex_bounds_prev.vMin) || (tex_bounds.uMax > tex_bounds_prev.uMax) || (tex_bounds.vMax > tex_bounds_prev.vMax))
+    {
+        RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
+    }
+
     vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleMain, &tex_bounds);
-    RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
 }
 
 void OutputManager::ApplySettingDragMode()
