@@ -1889,6 +1889,42 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
         vrtex.eColorSpace = vr::ColorSpace_Gamma;
         vrtex.handle = m_OvrlTex;
 
+        //The intermediate texture can be assumed to be not complete when a full copy is forced, so redraw that
+        if (force_full_copy)
+        {
+            //Try to acquire sync for shared surface needed by DrawFrameToOverlayTex()
+            HRESULT hr = m_KeyMutex->AcquireSync(0, m_MaxActiveRefreshDelay);
+            if (hr == static_cast<HRESULT>(WAIT_TIMEOUT))
+            {
+                //Another thread has the keyed mutex so there will be a new frame ready after this.
+                //Bail out and just set the pending dirty region to full so everything gets drawn over on the next update
+                m_OutputPendingDirtyRect = {0, 0, m_DesktopWidth, m_DesktopHeight};
+                return DUPL_RETURN_UPD_RETRY;
+            }
+            else if (FAILED(hr))
+            {
+                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to acquire keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
+            }
+
+            DrawFrameToOverlayTex();
+
+            //Release keyed mutex
+            hr = m_KeyMutex->ReleaseSync(0);
+            if (FAILED(hr))
+            {
+                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
+            }
+
+            //We don't draw the cursor here as this can lead to tons of issues for little gain. We might not even know what the cursor looks like if it was cropped out previously, etc.
+            //We do mark where the cursor has last been seen as pending dirty region, however, so it gets updated at the next best moment even if it didn't move
+
+            if (m_MouseLastInfo.Visible)
+            {
+                m_OutputPendingDirtyRect = {m_MouseLastInfo.Position.x, m_MouseLastInfo.Position.y, int(m_MouseLastInfo.Position.x + m_MouseLastInfo.ShapeInfo.Width),
+                    int(m_MouseLastInfo.Position.y + m_MouseLastInfo.ShapeInfo.Height)};
+            }
+        }
+
         //Copy texture over to GPU connected to VR HMD if needed
         if (m_MultiGPUTargetDevice != nullptr)
         {
@@ -1924,43 +1960,6 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
         //Do a simple full copy if the rect covers the whole texture (this isn't slower than a full rect copy and works with size changes)
         if ( (force_full_copy) || (DirtyRectTotal.Contains({0, 0, m_DesktopWidth, m_DesktopHeight})) )
         {
-            //The intermediate texture can be assumed to be not complete when a full copy is forced, so redraw that
-            if (force_full_copy)
-            {
-                //Try to acquire sync for shared surface needed by DrawFrameToOverlayTex()
-                HRESULT hr = m_KeyMutex->AcquireSync(0, m_MaxActiveRefreshDelay);
-                if (hr == static_cast<HRESULT>(WAIT_TIMEOUT))
-                {
-                    //Another thread has the keyed mutex so there will be a new frame ready after this.
-                    //Bail out and just set the pending dirty region to full so everything gets drawn over on the next update
-                    m_OutputPendingDirtyRect = {0, 0, m_DesktopWidth, m_DesktopHeight};
-                    return DUPL_RETURN_UPD_RETRY;
-                }
-                else if (FAILED(hr))
-                {
-                    return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to acquire keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
-                }
-
-                DrawFrameToOverlayTex();
-
-                //Release keyed mutex
-                hr = m_KeyMutex->ReleaseSync(0);
-                if (FAILED(hr))
-                {
-                    return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
-                }
-
-                //We don't draw the cursor here as this can lead to tons of issues for little gain. We might not even know what the cursor looks like if it was cropped out previously, etc.
-                //We do mark where the cursor has last been seen as pending dirty region, however, so it gets updated at the next best moment even if it didn't move
-
-                if (m_MouseLastInfo.Visible)
-                {
-                    m_OutputPendingDirtyRect = {m_MouseLastInfo.Position.x, m_MouseLastInfo.Position.y, int(m_MouseLastInfo.Position.x + m_MouseLastInfo.ShapeInfo.Width),
-                                                int(m_MouseLastInfo.Position.y + m_MouseLastInfo.ShapeInfo.Height)};
-                }
-
-            }
-
             vr::VROverlay()->SetOverlayTexture(m_OvrlHandleMain, &vrtex);
         }
         else //Otherwise do a partial copy
@@ -1979,6 +1978,8 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
 
             if (ovrl_error == vr::VROverlayError_None)
             {
+                ID3D11DeviceContext* device_context = (m_MultiGPUTargetDevice != nullptr) ? m_MultiGPUTargetDeviceContext : m_DeviceContext;
+
                 ID3D11Resource* ovrl_tex;
                 ovrl_shader_res->GetResource(&ovrl_tex);
 
@@ -1990,7 +1991,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
                 box.bottom = DirtyRectTotal.GetBR().y;
                 box.back = 1;
 
-                m_DeviceContext->CopySubresourceRegion(ovrl_tex, 0, box.left, box.top, 0, (ID3D11Texture2D*)vrtex.handle, 0, &box);
+                device_context->CopySubresourceRegion(ovrl_tex, 0, box.left, box.top, 0, (ID3D11Texture2D*)vrtex.handle, 0, &box);
 
                 ovrl_tex->Release();
                 ovrl_tex = nullptr;
