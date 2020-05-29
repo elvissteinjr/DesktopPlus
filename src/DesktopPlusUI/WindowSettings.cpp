@@ -345,7 +345,7 @@ void WindowSettings::UpdateCatOverlay()
                 width_slider_max = (ConfigManager::Get().GetConfigIntRef(configid_int_overlay_detached_origin) >= ovrl_origin_right_hand) ? 1.5f : 10.0f;
             }
 
-            if (ImGui::SliderWithButtonsFloat("OverlayWidth", width, 0.1f, 0.05f, width_slider_max, "%.2f m"))
+            if (ImGui::SliderWithButtonsFloat("OverlayWidth", width, 0.1f, 0.05f, width_slider_max, "%.2f m", 2.0f))
             {
                 if (width < 0.05f)
                     width = 0.05f;
@@ -404,7 +404,7 @@ void WindowSettings::UpdateCatOverlay()
 
             float& up = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_up);
                 
-            if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, -5.0f, 5.0f, "%.2f m"))
+            if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, -5.0f, 5.0f, "%.2f m", 2.0f))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_up), *(LPARAM*)&up);
             }
@@ -416,7 +416,7 @@ void WindowSettings::UpdateCatOverlay()
 
             float& right = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_right);
                 
-            if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, -5.0f, 5.0f, "%.2f m"))
+            if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, -5.0f, 5.0f, "%.2f m", 2.0f))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_right), *(LPARAM*)&right);
             }
@@ -428,7 +428,7 @@ void WindowSettings::UpdateCatOverlay()
 
             float& forward = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_forward);
                 
-            if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, -5.0f, 5.0f, "%.2f m"))
+            if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, -5.0f, 5.0f, "%.2f m", 2.0f))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_forward), *(LPARAM*)&forward);
             }
@@ -768,7 +768,7 @@ void WindowSettings::UpdateCatOverlay()
 
             float& distance = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_distance);
 
-            if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeDistance", distance, 0.05f, 0.25f, 1.0f, "%.2f m"))
+            if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeDistance", distance, 0.05f, 0.25f, 1.0f, "%.2f m", 2.0f))
             {
                 if (distance < 0.0f)
                     distance = 0.0f;
@@ -783,7 +783,7 @@ void WindowSettings::UpdateCatOverlay()
 
             float& rate = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_rate);
 
-            if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeRate", rate, 0.1f, 0.4f, 3.0f, "%.2fx"))
+            if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeRate", rate, 0.1f, 0.4f, 3.0f, "%.2fx", 2.0f))
             {
                 if (rate < 0.0f)
                     rate = 0.0f;
@@ -1336,7 +1336,7 @@ void WindowSettings::UpdateCatInput()
         ImGui::NextColumn();
 
         float& distance = ConfigManager::Get().GetConfigFloatRef(configid_float_input_detached_interaction_max_distance);
-        if (ImGui::SliderWithButtonsFloat("LaserPointerMaxDistance", distance, 0.05f, 0.0f, 3.0f, (distance < 0.01f) ? "Off" : "%.2f m"))
+        if (ImGui::SliderWithButtonsFloat("LaserPointerMaxDistance", distance, 0.05f, 0.0f, 3.0f, (distance < 0.01f) ? "Off" : "%.2f m", 2.0f))
         {
             if (distance < 0.01f)
                 distance = 0.0f;
@@ -1416,7 +1416,7 @@ void WindowSettings::UpdateCatPerformance()
 
             float& update_limit_ms = ConfigManager::Get().GetConfigFloatRef(configid_float_performance_update_limit_ms);
 
-            if (ImGui::SliderWithButtonsFloat("UpdateLimitMS", update_limit_ms, 0.5f, 0.0f, 100.0f, "%.2f ms"))
+            if (ImGui::SliderWithButtonsFloat("UpdateLimitMS", update_limit_ms, 0.5f, 0.0f, 100.0f, "%.2f ms", 2.0f))
             {
                 if (update_limit_ms < 0.0f)
                     update_limit_ms = 0.0f;

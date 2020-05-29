@@ -11,7 +11,7 @@ ImVec4 Style_ImGuiCol_TextError;
 namespace ImGui
 {
     //Like InputFloat()'s buttons but with a slider instead. Not quite as flexible, though. Always takes as much space as available.
-    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float min, float max, const char* format, bool* used_button)
+    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float min, float max, const char* format, float power, bool* used_button)
     {
         //Hacky solution to make right mouse enable text input on the slider while not touching ImGui code or generalizing it as ctrl press
         ImGuiIO& io = ImGui::GetIO();
@@ -34,7 +34,7 @@ namespace ImGui
 
         //Calulate slider width (GetContentRegionAvail() returns 1 more than when using -1 width to fill)
         ImGui::SetNextItemWidth((ImGui::GetContentRegionAvail().x - (ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x) * 2) - 1.0f);
-        ImGui::SliderFloat("##Slider", &value, min, max, format);
+        ImGui::SliderFloat("##Slider", &value, min, max, format, power);
 
         ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 

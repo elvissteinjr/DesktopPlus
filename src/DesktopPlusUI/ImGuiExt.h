@@ -12,7 +12,7 @@ extern ImVec4 Style_ImGuiCol_TextError;
 namespace ImGui
 {
     //Like InputFloat()'s buttons but with a slider instead. Not quite as flexible, though. Always takes as much space as available.
-    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float min, float max, const char* format, bool* used_button = nullptr);
+    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float min, float max, const char* format, float power = 1.0f, bool* used_button = nullptr);
     bool SliderWithButtonsInt(const char* str_id, int& value, int step, int min, int max, const char* format, bool* used_button = nullptr);
     bool SliderWithButtonsFloatPercentage(const char* str_id, float& value, int step, int min, int max, const char* format, bool* used_button = nullptr); //format is for int
     bool SliderWithButtonsEnum(const char* str_id, int& value, int min, int max, const char* format, bool* used_button = nullptr); //Similar to int variant, but no direct editing
