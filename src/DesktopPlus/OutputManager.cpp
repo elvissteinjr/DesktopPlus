@@ -114,7 +114,8 @@ DWORD OutputManager::GetMaxRefreshDelay()
             return m_MaxActiveRefreshDelay;
         }
     }
-    else if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) )
+    else if ( ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) ) ||
+              (m_vrinput.IsAnyActionBound()) )
     {
         return m_MaxActiveRefreshDelay * 2;
     }
@@ -2414,6 +2415,15 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     ApplySettingTransform();
                 }
+                break;
+            }
+            case vr::VREvent_Input_ActionManifestReloaded:
+            case vr::VREvent_Input_BindingsUpdated:
+            case vr::VREvent_Input_BindingLoadSuccessful:
+            case vr::VREvent_TrackedDeviceActivated:
+            case vr::VREvent_TrackedDeviceDeactivated:
+            {
+                m_vrinput.RefreshAnyActionBound();
                 break;
             }
             case vr::VREvent_Quit:

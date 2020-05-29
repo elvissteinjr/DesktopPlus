@@ -9,21 +9,26 @@ class OutputManager;
 class VRInput
 {
     private:
-        vr::VRActionSetHandle_t m_handle_actionset_shortcuts;
-        vr::VRActionHandle_t m_handle_action_set_overlay_detached;
-        vr::VRActionHandle_t m_handle_action_set_detached_interactive;
-        vr::VRActionHandle_t m_handle_action_do_global_shortcut_01;
-        vr::VRActionHandle_t m_handle_action_do_global_shortcut_02;
-        vr::VRActionHandle_t m_handle_action_do_global_shortcut_03;
+        vr::VRActionSetHandle_t m_HandleActionsetShortcuts;
+        vr::VRActionHandle_t m_HandleActionSetOverlayDetached;
+        vr::VRActionHandle_t m_HandleActionSetDetachedInteractive;
+        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut01;
+        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut02;
+        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut03;
+
+        bool m_IsAnyActionBound;            //"Bound" meaning assigned and the device is actually active
+        bool m_IsAnyActionBoundStateValid;
 
     public:
         VRInput();
         bool Init();
         void Update();
+        void RefreshAnyActionBound();
         void HandleGlobalActionShortcuts(OutputManager& outmgr);
         bool HandleSetOverlayDetachedShortcut(bool is_detached_interactive);    //Returns true when it changed
 
-        bool GetSetDetachedInteractiveDown();
+        bool GetSetDetachedInteractiveDown() const;
+        bool IsAnyActionBound() const;
 };
 
 #endif
