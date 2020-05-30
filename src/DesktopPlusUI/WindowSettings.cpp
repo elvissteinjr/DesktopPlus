@@ -772,9 +772,11 @@ void WindowSettings::UpdateCatOverlay()
 
             float& distance = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_distance);
 
-            if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeDistance", distance, 0.05f, 0.25f, 1.0f, "%.2f m", 2.0f))
+            //Note about the "##%.2f": ImGui sliders read the precision for rounding out of the format string. This leads to weird behavior when switching to labels without it
+            //Fortunately, ImGui has string ID notations which don't get rendered so we can abuse this here
+            if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeDistance", distance, 0.05f, 0.0f, 1.5f, (distance < 0.01f) ? "Infinite##%.2f" : "%.2f m", 1.25f))
             {
-                if (distance < 0.0f)
+                if (distance < 0.01f)
                     distance = 0.0f;
 
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_gazefade_distance), *(LPARAM*)&distance);
@@ -1340,7 +1342,7 @@ void WindowSettings::UpdateCatInput()
         ImGui::NextColumn();
 
         float& distance = ConfigManager::Get().GetConfigFloatRef(configid_float_input_detached_interaction_max_distance);
-        if (ImGui::SliderWithButtonsFloat("LaserPointerMaxDistance", distance, 0.05f, 0.0f, 3.0f, (distance < 0.01f) ? "Off" : "%.2f m", 2.0f))
+        if (ImGui::SliderWithButtonsFloat("LaserPointerMaxDistance", distance, 0.05f, 0.0f, 3.0f, (distance < 0.01f) ? "Off##%.2f" : "%.2f m", 2.0f))
         {
             if (distance < 0.01f)
                 distance = 0.0f;

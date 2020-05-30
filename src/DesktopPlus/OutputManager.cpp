@@ -3573,14 +3573,26 @@ void OutputManager::DetachedOverlayGazeFade()
             float fade_rate = ConfigManager::Get().GetConfigFloat(configid_float_overlay_gazefade_rate) * 10.0f; 
 
             Matrix4 mat_pose = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+
+            Matrix4 mat_overlay = DragGetBaseOffsetMatrix();
+            mat_overlay *= ConfigManager::Get().GetOverlayDetachedTransform();
+
+            //Infinite/Auto distance mode
+            if (gaze_distance == 0.0f) 
+            {
+                gaze_distance = mat_overlay.getTranslation().distance(mat_pose.getTranslation()); //Match gaze distance to distance between HMD and overlay
+            }
+            else
+            {
+                gaze_distance += 0.20f; //Useful range starts at ~0.20 - 0.25 (lower is in HMD or culled away), so offset the settings value
+            }
+
             OffsetTransformFromSelf(mat_pose, 0.0f, 0.0f, -gaze_distance);
 
             Vector3 pos_gaze = mat_pose.getTranslation();
+            float distance = mat_overlay.getTranslation().distance(pos_gaze);
 
-            Matrix4 matrix_overlay = DragGetBaseOffsetMatrix();
-            matrix_overlay *= ConfigManager::Get().GetOverlayDetachedTransform();
-
-            float distance = matrix_overlay.getTranslation().distance(pos_gaze);
+            gaze_distance = std::min(gaze_distance, 1.0f); //To get useful fading past 1m distance we'll have to limit the value to 1m here for the math below
 
             float alpha = clamp((distance * -fade_rate) + ((gaze_distance - 0.1f) * 10.0f), 0.0f, 1.0f); //There's nothing smart behind this, just trial and error
             alpha *= ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity);
