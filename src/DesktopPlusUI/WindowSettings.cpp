@@ -563,22 +563,26 @@ void WindowSettings::UpdateCatOverlay()
             {
                 ImGui::OpenPopup("OverlayChangePosPopup");
 
-                //Detach overlay if it isn't so it can actually be dragged around
-                if (!detached)
+                //Dragging the overlay the UI is open on is pretty inconvenient to get out of when not sitting in front of a real mouse, so let's prevent this
+                if (!UIManager::Get()->IsInDesktopMode())
                 {
-                    detached = true;
-
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_detached), detached);
-
-                    //Automatically reset the matrix to a saner default if it still has the zero value
-                    if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
+                    //Detach overlay if it isn't so it can actually be dragged around
+                    if (!detached)
                     {
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
-                    }
-                }
+                        detached = true;
 
-                is_changing_position = true;
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_changing_position);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_detached), detached);
+
+                        //Automatically reset the matrix to a saner default if it still has the zero value
+                        if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
+                        {
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
+                        }
+                    }
+
+                    is_changing_position = true;
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_changing_position);
+                }
             }
 
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
@@ -2386,34 +2390,42 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
     ImGui::SetNextWindowSizeConstraints(ImVec2(popup_width, -1),  ImVec2(popup_width, -1));
     if (ImGui::BeginPopupModal("OverlayChangePosPopup", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
-        bool dragging_enabled = true;
-        //Adding another shared setting state would more efficient, but this should be alright as it's just this popup
-        vr::VROverlayHandle_t ovrl_handle_dplus;    
-        vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlus", &ovrl_handle_dplus);
-
-        if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
+        if (!UIManager::Get()->IsInDesktopMode())
         {
-            vr::VROverlayInputMethod method = vr::VROverlayInputMethod_None;
-            vr::VROverlay()->GetOverlayInputMethod(ovrl_handle_dplus, &method);
+            bool dragging_enabled = true;
+            //Adding another shared setting state would more efficient, but this should be alright as it's just this popup
+            vr::VROverlayHandle_t ovrl_handle_dplus;    
+            vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlus", &ovrl_handle_dplus);
 
-            dragging_enabled = (method != vr::VROverlayInputMethod_None);
-
-            //Allow restoring drag mode with right click anywhere on the UI overlay
-            if ( (!dragging_enabled) && (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) )
+            if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
             {
-                vr::VROverlay()->SetOverlayInputMethod(ovrl_handle_dplus, vr::VROverlayInputMethod_Mouse);
-            }
-        }
+                vr::VROverlayInputMethod method = vr::VROverlayInputMethod_None;
+                vr::VROverlay()->GetOverlayInputMethod(ovrl_handle_dplus, &method);
 
-        if (dragging_enabled)
-        {
-            ImGui::Text("Drag the overlay around to change its position.");
-            ImGui::Text("Hold right-click for two-handed gesture transform.");
+                dragging_enabled = (method != vr::VROverlayInputMethod_None);
+
+                //Allow restoring drag mode with right click anywhere on the UI overlay
+                if ( (!dragging_enabled) && (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) )
+                {
+                    vr::VROverlay()->SetOverlayInputMethod(ovrl_handle_dplus, vr::VROverlayInputMethod_Mouse);
+                }
+            }
+
+        
+            if (dragging_enabled)
+            {
+                ImGui::Text("Drag the overlay around to change its position.");
+                ImGui::Text("Hold right-click for two-handed gesture transform.");
+            }
+            else
+            {
+                ImGui::Text("Dragging has been disabled.");
+                ImGui::Text("Right-click here to re-enable it.");
+            }
         }
         else
         {
-            ImGui::Text("Dragging has been disabled.");
-            ImGui::Text("Right-click here to re-enable it.");
+            ImGui::Text("Dragging is not available in desktop mode.");
         }
 
         ImGui::Separator();
