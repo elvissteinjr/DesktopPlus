@@ -48,6 +48,7 @@ UIManager::UIManager(bool desktop_mode) : m_WindowHandle(nullptr),
                                           m_RepeatFrame(false),
                                           m_DesktopMode(desktop_mode),
                                           m_OpenVRLoaded(false),
+                                          m_NoRestartOnExit(false),
                                           m_UIScale(1.0f),
                                           m_LowCompositorRes(false),
                                           m_LowCompositorQuality(false),
@@ -277,7 +278,7 @@ void UIManager::OnExit()
 {
     //Re-launch in VR when we were in desktop mode and probably got switched from VR mode before
     //This is likely more intuitive than just removing the UI entirely when clicking X
-    if ( (m_DesktopMode) && (IPCManager::Get().IsDashboardAppRunning()) && (!ConfigManager::Get().GetConfigBool(configid_bool_interface_no_ui)) )
+    if ( (m_DesktopMode) && (IPCManager::Get().IsDashboardAppRunning()) && (!ConfigManager::Get().GetConfigBool(configid_bool_interface_no_ui)) && (!m_NoRestartOnExit) )
     {
         STARTUPINFO si = {0};
         PROCESS_INFORMATION pi = {0};
@@ -335,6 +336,11 @@ bool UIManager::IsInDesktopMode() const
 bool UIManager::IsOpenVRLoaded() const
 {
     return m_OpenVRLoaded;
+}
+
+void UIManager::DisableRestartOnExit()
+{
+    m_NoRestartOnExit = true;
 }
 
 void UIManager::SetUIScale(float scale)

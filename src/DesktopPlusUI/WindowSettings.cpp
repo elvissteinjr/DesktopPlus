@@ -1608,6 +1608,7 @@ void WindowSettings::UpdateCatMisc()
         if (ImGui::Button("Restart##UI"))
         {
             ConfigManager::Get().SaveConfigToFile();
+            UIManager::Get()->DisableRestartOnExit();
 
             STARTUPINFO si = {0};
             PROCESS_INFORMATION pi = {0};
@@ -1625,6 +1626,7 @@ void WindowSettings::UpdateCatMisc()
         if (ImGui::Button("Restart in Desktop Mode"))
         {
             ConfigManager::Get().SaveConfigToFile();
+            UIManager::Get()->DisableRestartOnExit();
 
             STARTUPINFO si = {0};
             PROCESS_INFORMATION pi = {0};

@@ -27,6 +27,7 @@ class UIManager
 
         bool m_DesktopMode;
         bool m_OpenVRLoaded;         //Desktop mode can run with or without OpenVR and we want to avoid needlessly starting up SteamVR
+        bool m_NoRestartOnExit;      //Prevent auto-restart when closing from desktop mode while dashboard app is running (i.e. when using troubleshooting buttons)
 
         float m_UIScale;
         bool m_LowCompositorRes;     //Set when compositor's resolution is set below 100% during init. The user is warned about this as it affects overlay rendering
@@ -68,6 +69,7 @@ class UIManager
 
         bool IsInDesktopMode() const;
         bool IsOpenVRLoaded() const;
+        void DisableRestartOnExit();
 
         void SetUIScale(float scale);
         float GetUIScale() const;
