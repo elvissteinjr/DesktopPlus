@@ -702,7 +702,7 @@ void WindowSettings::UpdateCatOverlay()
 
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
-            if (ImGui::Button("Reset"))
+            if (ImGui::Button("Reset##Crop"))
             {
                 crop_x      =  0;
                 crop_y      =  0;
