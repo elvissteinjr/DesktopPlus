@@ -3373,6 +3373,7 @@ void OutputManager::DetachedTransformReset()
             OffsetTransformFromSelf(transform, 0.0f, -0.20f, -0.05f);
 
             ConfigManager::Get().SetConfigBool(configid_bool_overlay_detached, detached_old);
+            break;
         }
         case ovrl_origin_dashboard:
         {
