@@ -13,18 +13,18 @@
 class InputSimulator
 {
     private:
-        float m_space_multiplier_x;
-        float m_space_multiplier_y;
-        int m_space_offset_x;
-        int m_space_offset_y;
+        float m_SpaceMultiplierX;
+        float m_SpaceMultiplierY;
+        int m_SpaceOffsetX;
+        int m_SpaceOffsetY;
 
-        std::vector<INPUT> m_keyboard_text_queue;
+        std::vector<INPUT> m_KeyboardTextQueue;
 
         void SetEventForMouseKeyCode(INPUT& input_event, unsigned char keycode, bool down) const;
 
     public:
         InputSimulator();
-        void Init();
+        void RefreshScreenOffsets();
         void MouseMove(int x, int y);
         void MouseSetLeftDown(bool down);
         void MouseSetRightDown(bool down);

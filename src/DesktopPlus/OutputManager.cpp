@@ -77,9 +77,6 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
 
     //Initialize ConfigManager
     ConfigManager::Get().LoadConfigFromFile();
-
-    //Initialize InputSimulator
-    m_inputsim.Init();
 }
 
 //
@@ -607,6 +604,8 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
             ::DeleteObject(info.hbmMask);
         }
     }
+
+    m_inputsim.RefreshScreenOffsets();
 
     ResetMouseLastLaserPointerPos();
     ResetOverlay();

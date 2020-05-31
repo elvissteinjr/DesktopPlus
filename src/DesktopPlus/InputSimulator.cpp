@@ -38,18 +38,18 @@ void InputSimulator::SetEventForMouseKeyCode(INPUT& input_event, unsigned char k
 
 }
 
-InputSimulator::InputSimulator() : m_space_multiplier_x(1.0f), m_space_multiplier_y(1.0f), m_space_offset_x(0), m_space_offset_y(0)
+InputSimulator::InputSimulator() : m_SpaceMultiplierX(1.0f), m_SpaceMultiplierY(1.0f), m_SpaceOffsetX(0), m_SpaceOffsetY(0)
 {
-    //Nothing
+    RefreshScreenOffsets();
 }
 
-void InputSimulator::Init() //Since this is a member of a global class, we init later to be able to load settings first
+void InputSimulator::RefreshScreenOffsets()
 {
-    m_space_multiplier_x = 65536.0f / GetSystemMetrics(SM_CXVIRTUALSCREEN);
-    m_space_multiplier_y = 65536.0f / GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    m_SpaceMultiplierX = 65536.0f / GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    m_SpaceMultiplierY = 65536.0f / GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
-    m_space_offset_x = GetSystemMetrics(SM_XVIRTUALSCREEN) * -1;
-    m_space_offset_y = GetSystemMetrics(SM_YVIRTUALSCREEN) * -1;
+    m_SpaceOffsetX = GetSystemMetrics(SM_XVIRTUALSCREEN) * -1;
+    m_SpaceOffsetY = GetSystemMetrics(SM_YVIRTUALSCREEN) * -1;
 }
 
 void InputSimulator::MouseMove(int x, int y)
@@ -57,8 +57,8 @@ void InputSimulator::MouseMove(int x, int y)
     INPUT input_event = { 0 };
 
     input_event.type = INPUT_MOUSE;
-    input_event.mi.dx = (x + m_space_offset_x) * m_space_multiplier_x;
-    input_event.mi.dy = (y + m_space_offset_y) * m_space_multiplier_y;
+    input_event.mi.dx = (x + m_SpaceOffsetX) * m_SpaceMultiplierX;
+    input_event.mi.dy = (y + m_SpaceOffsetY) * m_SpaceMultiplierY;
     input_event.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK | MOUSEEVENTF_ABSOLUTE;
     
     ::SendInput(1, &input_event, sizeof(INPUT));
@@ -278,17 +278,17 @@ void InputSimulator::KeyboardText(const char* str_utf8, bool always_use_unicode_
         {
             input_event.ki.dwFlags = 0;
             input_event.ki.wVk = VK_CAPITAL;
-            m_keyboard_text_queue.push_back(input_event);
+            m_KeyboardTextQueue.push_back(input_event);
 
             input_event.ki.dwFlags = KEYEVENTF_KEYUP;
-            m_keyboard_text_queue.push_back(input_event);
+            m_KeyboardTextQueue.push_back(input_event);
         }
 
         if (GetAsyncKeyState(VK_SHIFT) < 0) //Release shift if it's down
         {
             input_event.ki.dwFlags = KEYEVENTF_KEYUP;
             input_event.ki.wVk = VK_SHIFT;
-            m_keyboard_text_queue.push_back(input_event);
+            m_KeyboardTextQueue.push_back(input_event);
         }
 
         for (wchar_t current_char: wstr)
@@ -297,63 +297,63 @@ void InputSimulator::KeyboardText(const char* str_utf8, bool always_use_unicode_
             {
                 input_event.ki.dwFlags = 0;
                 input_event.ki.wVk = VK_BACK;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
 
                 input_event.ki.dwFlags = KEYEVENTF_KEYUP;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
             }
             else if (current_char == '\n')  //Enter, needs special handling
             {
                 input_event.ki.dwFlags = 0;
                 input_event.ki.wVk = VK_RETURN;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
 
                 input_event.ki.dwFlags = KEYEVENTF_KEYUP;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
             }
             else if ( ((current_char >= '0') && (current_char <= '9')) || (current_char == ' ') ) //0 - 9 and space, simulate keydown/up                          
             {
                 input_event.ki.dwFlags = 0;
                 input_event.ki.wVk = current_char;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
 
                 input_event.ki.dwFlags = KEYEVENTF_KEYUP;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
             }
             else if ((current_char >= 'a') && (current_char <= 'z')) //a - z, simulate keydown/up  
             {
                 input_event.ki.dwFlags = 0;
                 input_event.ki.wVk = current_char - ('a' - 'A');
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
 
                 input_event.ki.dwFlags = KEYEVENTF_KEYUP;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
             }
             else if ((current_char >= 'A') && (current_char <= 'Z')) //A - Z, simulate keydown/up  
             {
                 input_event.ki.dwFlags = 0;
                 input_event.ki.wVk = VK_SHIFT;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
 
                 input_event.ki.dwFlags = 0;
                 input_event.ki.wVk = current_char;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
 
                 input_event.ki.dwFlags = KEYEVENTF_KEYUP;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
 
                 input_event.ki.wVk = VK_SHIFT;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
             }
             else
             {
                 input_event.ki.dwFlags = KEYEVENTF_UNICODE;
                 input_event.ki.wVk = 0;
                 input_event.ki.wScan = current_char;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
 
                 input_event.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-                m_keyboard_text_queue.push_back(input_event);
+                m_KeyboardTextQueue.push_back(input_event);
             }
         }
     }
@@ -363,20 +363,20 @@ void InputSimulator::KeyboardText(const char* str_utf8, bool always_use_unicode_
         {
             input_event.ki.dwFlags = KEYEVENTF_UNICODE;
             input_event.ki.wScan = current_char;
-            m_keyboard_text_queue.push_back(input_event);
+            m_KeyboardTextQueue.push_back(input_event);
 
             input_event.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-            m_keyboard_text_queue.push_back(input_event);
+            m_KeyboardTextQueue.push_back(input_event);
         }
     }
 }
 
 void InputSimulator::KeyboardTextFinish()
 {
-    if (!m_keyboard_text_queue.empty())
+    if (!m_KeyboardTextQueue.empty())
     {
-        ::SendInput(m_keyboard_text_queue.size(), m_keyboard_text_queue.data(), sizeof(INPUT));
+        ::SendInput(m_KeyboardTextQueue.size(), m_KeyboardTextQueue.data(), sizeof(INPUT));
 
-        m_keyboard_text_queue.clear();
+        m_KeyboardTextQueue.clear();
     }
 }
