@@ -16,6 +16,7 @@ Advanced desktop access for OpenVR.
 - Actions: User-definable functions (input simulation, running applications) which can be bound to controller or UI buttons
 - Keyboard Extension, enabling use of modifier, arrow and function keys
 - Elevated access toggle, making it possible to deal with UAC prompts and other UIP-restricted UI in VR without using full admin-access at all times
+- Gaze Fade, fade-out overlay when not looking at it
 
 ## Usage
 
@@ -35,6 +36,7 @@ After building, add the contents of the [assets](assets) directory to the execut
 [comment]: # (Honestly kind of lost here. Would've preferred to host the clips on the repo, but people probably want them to play in the browser and not download instead)
 
 A few short videos showcasing some of Desktop+' features:
+- [Version 2.1 Showcase: Gaze Fade, Auto Interaction Toggle, Crop to Active Window, FPS-based Limiter](http://www.elvissteinjr.net/dplus/demo_v2_1_showcase.mp4)
 - [Custom Actions](http://www.elvissteinjr.net/dplus/demo_custom_action.mp4)
 - [Floating Overlay](http://www.elvissteinjr.net/dplus/demo_detached.mp4)
 - [Cropping & Floating Overlay Origins](http://www.elvissteinjr.net/dplus/demo_detached_cropping.mp4)

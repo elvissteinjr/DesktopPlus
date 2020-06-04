@@ -115,10 +115,10 @@ laser pointer.
 
 High GPU load when overlay visible and cursor moving:
 -
-In order to provide the lowest latency possible, all cursor updates are processed instantly, even if their results 
-would end up being replaced by new data before the next vertical blank.
-Enable [Performance|Early Updates|Ignore Early Updates] to ignore too early updates, but note that this will possibly add latency
-or result in missing vertical blanks.
+In order to provide the lowest latency possible, all cursor updates are processed instantly, even if they occur more frequently
+than the screen's vertical blanks.
+Using the Frame Time limiter in [Performance|Update Limiter|Limiter Mode] with a low limit value can reduce the load from cursor
+movement while leaving other screen updates unaffected.
 
 
 Laser pointer not working when dashboard opened via HMD button:
@@ -131,6 +131,12 @@ Input not working in certain applications:
 -
 Input simulated by Desktop+ is subject to User Interface Privilege Isolation (UIPI), see the Elevated Mode section for a
 workaround.
+
+
+Overlay is no longer visible:
+-
+There are several settings controlling overlay visibility and position. Check if they are not set to unexpected values.
+Loading the Default overlay profile also works as a quick way to restore the initial overlay state.
 
 
 License
