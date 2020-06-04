@@ -15,8 +15,8 @@
 namespace vr
 {
 	static const uint32_t k_nSteamVRVersionMajor = 1;
-	static const uint32_t k_nSteamVRVersionMinor = 10;
-	static const uint32_t k_nSteamVRVersionBuild = 30;
+	static const uint32_t k_nSteamVRVersionMinor = 12;
+	static const uint32_t k_nSteamVRVersionBuild = 5;
 } // namespace vr
 
 // vrtypes.h
@@ -634,6 +634,9 @@ enum EVRSubmitFlags
 	// Set to indicate a discontinuity between this and the last frame.
 	// This will prevent motion smoothing from attempting to extrapolate using the pair.
 	Submit_FrameDiscontinuty = 0x20,
+
+	// Set to indicate that pTexture->handle is a contains VRVulkanTextureArrayData_t
+	Submit_VulkanTextureWithArrayData = 0x40,
 };
 
 /** Data required for passing Vulkan textures to IVRCompositor::Submit.
@@ -648,6 +651,15 @@ struct VRVulkanTextureData_t
 	VkQueue_T *m_pQueue;
 	uint32_t m_nQueueFamilyIndex;
 	uint32_t m_nWidth, m_nHeight, m_nFormat, m_nSampleCount;
+};
+
+/** Data required for passing Vulkan texture arrays to IVRCompositor::Submit.
+* Be sure to call OpenVR_Shutdown before destroying these resources. 
+* Please see https://github.com/ValveSoftware/openvr/wiki/Vulkan for Vulkan-specific documentation */
+struct VRVulkanTextureArrayData_t : public VRVulkanTextureData_t
+{
+	uint32_t m_unArrayIndex;
+	uint32_t m_unArraySize;
 };
 
 /** Data required for passing D3D12 textures to IVRCompositor::Submit.
@@ -746,7 +758,7 @@ enum EVREventType
 	//VREvent_DashboardThumbSelected		= 504, // Sent to the overlay manager - data is overlay - No longer sent
 	VREvent_DashboardRequested			= 505, // Sent to the overlay manager - data is overlay
 	VREvent_ResetDashboard				= 506, // Send to the overlay manager
-	VREvent_RenderToast					= 507, // Send to the dashboard to render a toast - data is the notification ID
+	//VREvent_RenderToast					= 507, // Send to the dashboard to render a toast - data is the notification ID -- no longer sent
 	VREvent_ImageLoaded					= 508, // Sent to overlays when a SetOverlayRaw or SetOverlayFromFile call finishes loading
 	VREvent_ShowKeyboard				= 509, // Sent to keyboard renderer in the dashboard to invoke it
 	VREvent_HideKeyboard				= 510, // Sent to keyboard renderer in the dashboard to hide it
@@ -816,6 +828,8 @@ enum EVREventType
 	VREvent_LastKnownSectionSettingChanged			= 867,
 	VREvent_DismissedWarningsSectionSettingChanged	= 868,
 	VREvent_GpuSpeedSectionSettingChanged			= 869,
+	VREvent_WindowsMRSectionSettingChanged			= 870,
+	VREvent_OtherSectionSettingChanged				= 871,
 
 	VREvent_StatusUpdate					= 900,
 
@@ -2698,6 +2712,8 @@ namespace vr
 	static const char * const k_pch_SteamVR_CustomIconForceUpdate_String = "customIconForceUpdate";
 	static const char * const k_pch_SteamVR_AllowGlobalActionSetPriority = "globalActionSetPriority";
 	static const char * const k_pch_SteamVR_OverlayRenderQuality = "overlayRenderQuality_2";
+	static const char * const k_pch_SteamVR_BlockOculusSDKOnOpenVRLaunchOption_Bool = "blockOculusSDKOnOpenVRLaunchOption";
+	static const char * const k_pch_SteamVR_BlockOculusSDKOnAllLaunches_Bool = "blockOculusSDKOnAllLaunches";
 
 	//-----------------------------------------------------------------------------
 	// direct mode keys
@@ -2735,6 +2751,10 @@ namespace vr
 	static const char * const k_pch_Null_RenderHeight_Int32 = "renderHeight";
 	static const char * const k_pch_Null_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
 	static const char * const k_pch_Null_DisplayFrequency_Float = "displayFrequency";
+
+	//-----------------------------------------------------------------------------
+	// Windows MR keys
+	static const char * const k_pch_WindowsMR_Section = "driver_holographic";
 
 	//-----------------------------------------------------------------------------
 	// user interface keys
@@ -2778,6 +2798,7 @@ namespace vr
 	static const char * const k_pch_CollisionBounds_CenterMarkerOn_Bool = "CollisionBoundsCenterMarkerOn";
 	static const char * const k_pch_CollisionBounds_PlaySpaceOn_Bool = "CollisionBoundsPlaySpaceOn";
 	static const char * const k_pch_CollisionBounds_FadeDistance_Float = "CollisionBoundsFadeDistance";
+	static const char * const k_pch_CollisionBounds_WallHeight_Float = "CollisionBoundsWallHeight";
 	static const char * const k_pch_CollisionBounds_ColorGammaR_Int32 = "CollisionBoundsColorGammaR";
 	static const char * const k_pch_CollisionBounds_ColorGammaG_Int32 = "CollisionBoundsColorGammaG";
 	static const char * const k_pch_CollisionBounds_ColorGammaB_Int32 = "CollisionBoundsColorGammaB";
@@ -2813,6 +2834,8 @@ namespace vr
 	static const char * const k_pch_audio_PlaybackMirrorDevice_String = "playbackMirrorDevice";
 	static const char * const k_pch_audio_PlaybackMirrorDeviceName_String = "playbackMirrorDeviceName";
 	static const char * const k_pch_audio_OldPlaybackMirrorDevice_String = "onPlaybackMirrorDevice";
+	static const char * const k_pch_audio_ActiveMirrorDevice_String = "activePlaybackMirrorDevice";
+	static const char * const k_pch_audio_EnablePlaybackMirrorIndependentVolume_Bool = "enablePlaybackMirrorIndependentVolume";
 	static const char * const k_pch_audio_LastHmdPlaybackDeviceId_String = "lastHmdPlaybackDeviceId";
 	static const char * const k_pch_audio_VIVEHDMIGain = "viveHDMIGain";
 
@@ -2831,7 +2854,6 @@ namespace vr
 	static const char * const k_pch_Dashboard_Section = "dashboard";
 	static const char * const k_pch_Dashboard_EnableDashboard_Bool = "enableDashboard";
 	static const char * const k_pch_Dashboard_ArcadeMode_Bool = "arcadeMode";
-	static const char * const k_pch_Dashboard_UseWebSettings = "useWebSettings";
 	static const char * const k_pch_Dashboard_Position = "position";
 	static const char * const k_pch_Dashboard_DesktopScale = "desktopScale";
 	static const char * const k_pch_Dashboard_DashboardScale = "dashboardScale";
@@ -2870,6 +2892,7 @@ namespace vr
 	static const char* const k_pch_App_BindingPreviousURLSuffix_String = "PreviousURL";
 	static const char* const k_pch_App_NeedToUpdateAutosaveSuffix_Bool = "NeedToUpdateAutosave";
 	static const char* const k_pch_App_DominantHand_Int32 = "DominantHand";
+	static const char* const k_pch_App_BlockOculusSDK_Bool = "blockOculusSDK";
 
 	//-----------------------------------------------------------------------------
 	// configuration for trackers
@@ -3033,7 +3056,7 @@ public:
 	/** Sets the Play Area in the working copy. */
 	virtual void SetWorkingPlayAreaSize( float sizeX, float sizeZ ) = 0;
 
-	/** Sets the Collision Bounds in the working copy. */
+	/** Sets the Collision Bounds in the working copy. Note: ceiling height is ignored. */
 	virtual void SetWorkingCollisionBoundsInfo( VR_ARRAY_COUNT(unQuadsCount) HmdQuad_t *pQuadsBuffer, uint32_t unQuadsCount ) = 0;
 
 	/** Sets the Collision Bounds in the working copy. */
@@ -4162,6 +4185,15 @@ enum EVRRenderModelError
 	VRRenderModelError_InvalidTexture = 400,
 };
 
+enum EVRRenderModelTextureFormat
+{
+	VRRenderModelTextureFormat_RGBA8_SRGB = 0, // RGBA with 8 bits per channel per pixel. Data size is width * height * 4ub
+	VRRenderModelTextureFormat_BC2,
+	VRRenderModelTextureFormat_BC4,
+	VRRenderModelTextureFormat_BC7,
+	VRRenderModelTextureFormat_BC7_SRGB
+};
+
 /** A single vertex in a render model */
 struct RenderModel_Vertex_t
 {
@@ -4180,7 +4212,8 @@ struct RenderModel_Vertex_t
 struct RenderModel_TextureMap_t
 {
 	uint16_t unWidth, unHeight; // width and height of the texture map in pixels
-	const uint8_t *rubTextureMapData;	// Map texture data. All textures are RGBA with 8 bits per channel per pixel. Data size is width * height * 4ub
+	const uint8_t *rubTextureMapData;	// Map texture data.
+	EVRRenderModelTextureFormat format; // Refer to EVRRenderModelTextureFormat
 };
 #if defined(__linux__) || defined(__APPLE__) 
 #pragma pack( pop )
