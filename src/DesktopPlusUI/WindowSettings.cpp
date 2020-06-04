@@ -2704,7 +2704,7 @@ WindowSettings::WindowSettings() : m_Visible(false), m_Alpha(0.0f), m_ActionEdit
     if (UIManager::Get()->IsInDesktopMode())    //Act as a "fullscreen" window if in desktop mode
         m_Size.y = ImGui::GetIO().DisplaySize.y;
     else
-        m_Size.y = ImGui::GetIO().DisplaySize.y * 0.83f;
+        m_Size.y = ImGui::GetIO().DisplaySize.y * 0.84f;
     
 }
 
