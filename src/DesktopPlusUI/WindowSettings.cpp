@@ -694,13 +694,16 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::NextColumn();
             ImGui::NextColumn();
 
-            if (ImGui::Button("Crop to Active Window"))
+            if (UIManager::Get()->IsOpenVRLoaded()) //Needs dashboard app to be running
             {
-                //Have the dashboard app figure out how to do this as the UI doesn't have all data needed at hand
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_crop_to_active_window);
-            }
+                if (ImGui::Button("Crop to Active Window"))
+                {
+                    //Have the dashboard app figure out how to do this as the UI doesn't have all data needed at hand
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_crop_to_active_window);
+                }
 
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            }
 
             if (ImGui::Button("Reset##Crop"))
             {
