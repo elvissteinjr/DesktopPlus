@@ -2557,8 +2557,8 @@ void OutputManager::GetValidatedCropValues(int& x, int& y, int& width, int& heig
     y              = std::min(ConfigManager::Get().GetConfigInt(configid_int_overlay_crop_y), m_DesktopHeight);
     width          = ConfigManager::Get().GetConfigInt(configid_int_overlay_crop_width);
     height         = ConfigManager::Get().GetConfigInt(configid_int_overlay_crop_height);
-    int width_max  = m_DesktopWidth  - x;
-    int height_max = m_DesktopHeight - y;
+    int width_max  = std::max(1, m_DesktopWidth  - x);
+    int height_max = std::max(1, m_DesktopHeight - y);
 
     if (width == -1)
         width = width_max;
