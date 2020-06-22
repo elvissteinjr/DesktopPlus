@@ -732,7 +732,7 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::NextColumn();
 
             ImGui::SetNextItemWidth(-1);
-            const char* items[] = { "Off", "Half Side-by-Side", "Side-by-Side" };
+            const char* items[] = { "Off", "Half Side-by-Side", "Side-by-Side", "Half Over-Under", "Over-Under" };
             int& mode_3D = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_3D_mode);
             if (ImGui::Combo("##Combo3DMode", &mode_3D, items, IM_ARRAYSIZE(items)))
             {
@@ -742,7 +742,7 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::NextColumn();
 
             bool& swapped_3D = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_3D_swapped);
-            if (ImGui::Checkbox("Swap Left/Right", &swapped_3D))
+            if (ImGui::Checkbox("Swap Left/Right Eye", &swapped_3D))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_3D_swapped), swapped_3D);
             }

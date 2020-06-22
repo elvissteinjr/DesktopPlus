@@ -1055,7 +1055,8 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         m_DeviceContext->RSSetScissorRects(1, &rect_scissor);
 
         //Draw shared surface to overlay texture to avoid trouble with transparency on some systems
-        DrawFrameToOverlayTex();
+        bool is_full_texture = DirtyRectTotal.Contains({0, 0, m_DesktopWidth, m_DesktopHeight});
+        DrawFrameToOverlayTex(is_full_texture);
 
         //Only handle cursor if it's in cropping region
         if (mouse_rect.Overlaps(cropping_region))
@@ -1454,7 +1455,7 @@ void OutputManager::ResetOverlay()
     m_OutputPendingDirtyRect = {0, 0, m_DesktopWidth, m_DesktopHeight};
 }
 
-void OutputManager::DrawFrameToOverlayTex()
+void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
 {
     // Set resources
     UINT Stride = sizeof(VERTEX);
@@ -1471,8 +1472,12 @@ void OutputManager::DrawFrameToOverlayTex()
     m_DeviceContext->IASetVertexBuffers(0, 1, &m_VertexBuffer, &Stride, &Offset);
 
     // Draw textured quad onto render target
-    const float bgColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    m_DeviceContext->ClearRenderTargetView(m_OvrlRTV, bgColor);
+    if (clear_rtv)
+    {
+        const float bgColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        m_DeviceContext->ClearRenderTargetView(m_OvrlRTV, bgColor);
+    }
+
     m_DeviceContext->Draw(NUMVERTICES, 0);
 }
 
@@ -1906,7 +1911,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
                 return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to acquire keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
             }
 
-            DrawFrameToOverlayTex();
+            DrawFrameToOverlayTex(true);
 
             //Release keyed mutex
             hr = m_KeyMutex->ReleaseSync(0);
@@ -1925,8 +1930,28 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
             }
         }
 
-        //Copy texture over to GPU connected to VR HMD if needed
-        if (m_MultiGPUTargetDevice != nullptr)
+        int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
+
+        //If Over-Under, convert texture to SBS
+        if ((mode_3d == ovrl_3Dmode_hou) || (mode_3d == ovrl_3Dmode_ou))
+        {
+            int crop_x, crop_y, crop_width, crop_height;
+            GetValidatedCropValues(crop_x, crop_y, crop_width, crop_height);
+
+            bool res = m_OUtoSBSConverter.Convert(m_Device, m_DeviceContext, m_PixelShader, m_VertexShader, m_Sampler, m_MultiGPUTargetDevice, m_MultiGPUTargetDeviceContext,
+                                                  m_OvrlTex, m_DesktopWidth, m_DesktopHeight, crop_x, crop_width, crop_height);
+
+            if (!res)
+            {
+                return DUPL_RETURN_UPD_ERROR_UNEXPECTED;
+            }
+
+            vrtex.handle = m_OUtoSBSConverter.GetTexture();
+            force_full_copy = true; //DirtyRect *could* be adapted to the converted texture, but typical 3D content wouldn't benefit from this so we just always do a full copy
+
+            //OUtoSBSConverter takes care of multi-gpu support automatically, so below isn't needed
+        }
+        else if (m_MultiGPUTargetDevice != nullptr)  //Copy texture over to GPU connected to VR HMD if needed
         {
             //This isn't very fast but the only way to my knowledge. Happy to receive improvements on this though
             m_DeviceContext->CopyResource(m_MultiGPUTexStaging, m_OvrlTex);
@@ -2615,48 +2640,52 @@ void OutputManager::CropToActiveWindow()
 
 void OutputManager::ApplySetting3DMode()
 {
-    switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode))
+    int mode = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
+
+    if (mode != ovrl_3Dmode_none)
     {
-        case ovrl_3Dmode_none:
+        if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_swapped))
         {
             vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Parallel, false);
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, false);
-            vr::VROverlay()->SetOverlayTexelAspect(m_OvrlHandleMain, 1.0f);
-            break;
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, true);
         }
+        else
+        {
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Parallel, true);
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, false);
+        }
+    }
+    else
+    {
+        vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Parallel, false);
+        vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, false);
+        vr::VROverlay()->SetOverlayTexelAspect(m_OvrlHandleMain, 1.0f);
+    }
+
+    switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode))
+    {
         case ovrl_3Dmode_hsbs:
         {
-            if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_swapped))
-            {
-                vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Parallel, false);
-                vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, true);
-            }
-            else
-            {
-                vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Parallel, true);
-                vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, false);
-            }
-
             vr::VROverlay()->SetOverlayTexelAspect(m_OvrlHandleMain, 2.0f);
             break;
         }
         case ovrl_3Dmode_sbs:
+        case ovrl_3Dmode_ou:  //Over-Under is converted to SBS
         {
-            if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_swapped))
-            {
-                vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Parallel, false);
-                vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, true);
-            }
-            else
-            {
-                vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Parallel, true);
-                vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, false);
-            }
-
             vr::VROverlay()->SetOverlayTexelAspect(m_OvrlHandleMain, 1.0f);
             break;
         }
+        case ovrl_3Dmode_hou: //Half-Over-Under is converted to SBS with half height
+        {
+            vr::VROverlay()->SetOverlayTexelAspect(m_OvrlHandleMain, 0.5f);
+            break;
+        }
+        default: break;
     }
+
+    ApplySettingCrop();
+
+    RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
 }
 
 void OutputManager::ApplySettingTransform()
@@ -2707,14 +2736,21 @@ void OutputManager::ApplySettingTransform()
     int crop_x, crop_y, crop_width, crop_height;
     GetValidatedCropValues(crop_x, crop_y, crop_width, crop_height);
 
-    if (m_OutputInvalid)
+    int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
+
+    if (m_OutputInvalid) //No cropping on invalid output image
     {
         crop_width  = m_DesktopWidth;
         crop_height = m_DesktopHeight;
     }
+    else if ((mode_3d == ovrl_3Dmode_ou)) //Converted Over-Under changes texture dimensions, so adapt
+    {
+        crop_width  *= 2;
+        crop_height /= 2;
+    }
 
-    //Overlay is twice as tall when SBS3D is active
-    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode) == ovrl_3Dmode_sbs)
+    //Overlay is twice as tall when SBS3D/OU3D is active
+    if ( (mode_3d == ovrl_3Dmode_sbs) || (mode_3d == ovrl_3Dmode_ou) )
         crop_height *= 2;
 
     float height = width * ((float)crop_height / crop_width);
@@ -2867,11 +2903,19 @@ void OutputManager::ApplySettingCrop()
     GetValidatedCropValues(crop_x, crop_y, crop_width, crop_height);
 
     float offset_x = (crop_width == 1) ? 0.0f : 0.5f, offset_y = (crop_height == 1) ? 0.0f : 0.5f; //Yes, we do handle the case of 1 pixel crops
+    int texture_width = m_DesktopWidth;
+
+    int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
+    if ((mode_3d == ovrl_3Dmode_hou) || (mode_3d == ovrl_3Dmode_ou))    //Over-Under converted texture is twice as wide as the actual desktop
+    {
+        texture_width *= 2;
+        crop_width *= 2;
+    }
 
     //Set UV bounds (slightly offset to not have irrelevant partial pixels appear, lookup "diamond exit rule" for that) 
-    tex_bounds.uMin = (crop_x == 0) ? 0.0f : (crop_x + offset_x) / m_DesktopWidth;
+    tex_bounds.uMin = (crop_x == 0) ? 0.0f : (crop_x + offset_x) / texture_width;
     tex_bounds.vMin = (crop_y == 0) ? 0.0f : (crop_y + offset_y) / m_DesktopHeight;
-    tex_bounds.uMax = (crop_width  == m_DesktopWidth)  ? 1.0f : ( ((crop_x + crop_width)  - offset_x) / m_DesktopWidth);
+    tex_bounds.uMax = (crop_width  == texture_width)   ? 1.0f : ( ((crop_x + crop_width)  - offset_x) / texture_width);
     tex_bounds.vMax = (crop_height == m_DesktopHeight) ? 1.0f : ( ((crop_y + crop_height) - offset_y) / m_DesktopHeight);
 
     //Offset is nice for actual cropped content, but let's not go out of the 0.0 - 1.0 range
@@ -3818,6 +3862,8 @@ void OutputManager::DoStopAction(ActionID action_id)
 //
 void OutputManager::CleanRefs()
 {
+    m_OUtoSBSConverter.CleanRefs();
+
     if (m_VertexShader)
     {
         m_VertexShader->Release();

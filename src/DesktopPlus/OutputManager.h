@@ -12,6 +12,7 @@
 #include "ConfigManager.h"
 #include "InputSimulator.h"
 #include "VRInput.h"
+#include "OUtoSBSConverter.h"
 #include "InterprocessMessaging.h"
 
 //
@@ -61,7 +62,7 @@ class OutputManager
         DUPL_RETURN MakeRTV();
         DUPL_RETURN InitShaders();
         DUPL_RETURN CreateTextures(INT SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
-        void DrawFrameToOverlayTex();
+        void DrawFrameToOverlayTex(bool clear_rtv = true);
         DUPL_RETURN DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo);
         DUPL_RETURN_UPD RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy = false); //Refreshes the overlay texture of the VR runtime with content of the m_OvrlTex backing texture
 
@@ -105,6 +106,7 @@ class OutputManager
         InputSimulator m_InputSim;
         VRInput m_VRInput;
         IPCManager m_IPCMan;
+        OUtoSBSConverter m_OUtoSBSConverter;
 
     // Vars
         ID3D11Device* m_Device;

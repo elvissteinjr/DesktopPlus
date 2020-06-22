@@ -31,6 +31,7 @@
     <ClCompile Include="..\Shared\Ini.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="OUtoSBSConverter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -68,6 +69,7 @@
     <ClInclude Include="..\Shared\DPRect.h">
       <Filter>Shared</Filter>
     </ClInclude>
+    <ClInclude Include="OUtoSBSConverter.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DesktopPlus.rc" />

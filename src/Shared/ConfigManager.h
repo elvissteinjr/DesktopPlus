@@ -103,7 +103,9 @@ enum Overlay3DMode
 {
     ovrl_3Dmode_none,
     ovrl_3Dmode_hsbs,
-    ovrl_3Dmode_sbs
+    ovrl_3Dmode_sbs,
+    ovrl_3Dmode_hou,
+    ovrl_3Dmode_ou
 };
 
 enum OverlayDisplayMode

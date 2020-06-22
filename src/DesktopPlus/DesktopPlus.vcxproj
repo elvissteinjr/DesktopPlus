@@ -201,6 +201,7 @@
     <ClCompile Include="DisplayManager.cpp" />
     <ClCompile Include="DuplicationManager.cpp" />
     <ClCompile Include="InputSimulator.cpp" />
+    <ClCompile Include="OUtoSBSConverter.cpp" />
     <ClCompile Include="OutputManager.cpp" />
     <ClCompile Include="ThreadManager.cpp" />
     <ClCompile Include="VRInput.cpp" />
@@ -219,6 +220,7 @@
     <ClInclude Include="DisplayManager.h" />
     <ClInclude Include="DuplicationManager.h" />
     <ClInclude Include="InputSimulator.h" />
+    <ClInclude Include="OUtoSBSConverter.h" />
     <ClInclude Include="OutputManager.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ThreadManager.h" />
