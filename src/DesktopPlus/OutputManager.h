@@ -102,9 +102,9 @@ class OutputManager
         bool HasDashboardMoved();
 
     // ClassVars
-        InputSimulator m_inputsim;
-        VRInput m_vrinput;
-        IPCManager m_ipcman;
+        InputSimulator m_InputSim;
+        VRInput m_VRInput;
+        IPCManager m_IPCMan;
 
     // Vars
         ID3D11Device* m_Device;

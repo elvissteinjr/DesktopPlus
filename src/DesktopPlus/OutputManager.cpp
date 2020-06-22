@@ -112,7 +112,7 @@ DWORD OutputManager::GetMaxRefreshDelay()
         }
     }
     else if ( ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) ) ||
-              (m_vrinput.IsAnyActionBound()) )
+              (m_VRInput.IsAnyActionBound()) )
     {
         return m_MaxActiveRefreshDelay * 2;
     }
@@ -605,7 +605,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
         }
     }
 
-    m_inputsim.RefreshScreenOffsets();
+    m_InputSim.RefreshScreenOffsets();
 
     ResetMouseLastLaserPointerPos();
     ResetOverlay();
@@ -690,7 +690,7 @@ vr::EVRInitError OutputManager::InitOverlay()
 
     m_MaxActiveRefreshDelay = 1000.0f / GetHMDFrameRate();
 
-    bool input_res = m_vrinput.Init();
+    bool input_res = m_VRInput.Init();
 
     //Add application manifest if needed
     if (!vr::VRApplications()->IsApplicationInstalled("elvissteinjr.DesktopPlus"))
@@ -929,7 +929,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
 
         if (FAILED(hr))
         {
-            return ProcessFailure(m_Device, L"Failed to create copy-target texture", L"Error", hr);
+            return ProcessFailure(m_MultiGPUTargetDevice, L"Failed to create copy-target texture", L"Error", hr);
         }
     }
 
@@ -1921,7 +1921,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
             if (m_MouseLastInfo.Visible)
             {
                 m_OutputPendingDirtyRect = {m_MouseLastInfo.Position.x, m_MouseLastInfo.Position.y, int(m_MouseLastInfo.Position.x + m_MouseLastInfo.ShapeInfo.Width),
-                    int(m_MouseLastInfo.Position.y + m_MouseLastInfo.ShapeInfo.Height)};
+                                            int(m_MouseLastInfo.Position.y + m_MouseLastInfo.ShapeInfo.Height)};
             }
         }
 
@@ -1946,7 +1946,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
 
             if (FAILED(hr))
             {
-                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to map copy-target texture", L"Error", hr, SystemTransitionsExpectedErrors);
+                return (DUPL_RETURN_UPD)ProcessFailure(m_MultiGPUTargetDevice, L"Failed to map copy-target texture", L"Error", hr, SystemTransitionsExpectedErrors);
             }
 
             memcpy(mapped_resource_target.pData, mapped_resource_staging.pData, m_DesktopHeight * mapped_resource_staging.RowPitch);
@@ -2154,7 +2154,7 @@ bool OutputManager::HandleOpenVREvents()
             {
                 if (vr_event.data.keyboard.uUserValue == m_OvrlHandleMain)      //Input meant for the main overlay
                 {
-                    m_inputsim.KeyboardText(vr_event.data.keyboard.cNewInput);
+                    m_InputSim.KeyboardText(vr_event.data.keyboard.cNewInput);
                 }
                 else  //We don't have the handle of the UI overlay at hand so just assume everything else is meant for that
                 {
@@ -2234,7 +2234,7 @@ bool OutputManager::HandleOpenVREvents()
                     //GL space (0,0 is bottom left), so we need to flip that around
                     m_MouseLastLaserPointerX = (   round(vr_event.data.mouse.x)                    - hotspot_x) + m_DesktopX;
                     m_MouseLastLaserPointerY = ( (-round(vr_event.data.mouse.y) + m_DesktopHeight) - hotspot_y) + m_DesktopY;
-                    m_inputsim.MouseMove(m_MouseLastLaserPointerX, m_MouseLastLaserPointerY);
+                    m_InputSim.MouseMove(m_MouseLastLaserPointerX, m_MouseLastLaserPointerY);
 
                     //This is only relevant when limiting updates. See Update() for details.
                     m_MouseLaserPointerUsedLastUpdate = true;
@@ -2277,9 +2277,9 @@ bool OutputManager::HandleOpenVREvents()
 
                 switch (vr_event.data.mouse.button)
                 {
-                    case vr::VRMouseButton_Left:    m_inputsim.MouseSetLeftDown(true);   break;
-                    case vr::VRMouseButton_Right:   m_inputsim.MouseSetRightDown(true);  break;
-                    case vr::VRMouseButton_Middle:  m_inputsim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but supported in case it ever starts happening
+                    case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(true);   break;
+                    case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(true);  break;
+                    case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but supported in case it ever starts happening
                 }
 
                 break;
@@ -2302,9 +2302,9 @@ bool OutputManager::HandleOpenVREvents()
 
                 switch (vr_event.data.mouse.button)
                 {
-                    case vr::VRMouseButton_Left:    m_inputsim.MouseSetLeftDown(false);   break;
-                    case vr::VRMouseButton_Right:   m_inputsim.MouseSetRightDown(false);  break;
-                    case vr::VRMouseButton_Middle:  m_inputsim.MouseSetMiddleDown(false); break;
+                    case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(false);   break;
+                    case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(false);  break;
+                    case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(false); break;
                 }
 
                 break;
@@ -2320,12 +2320,12 @@ bool OutputManager::HandleOpenVREvents()
 
                 if (vr_event.data.scroll.xdelta != 0.0f) //This doesn't seem to be ever sent by SteamVR
                 {
-                    m_inputsim.MouseWheelHorizontal(vr_event.data.scroll.xdelta);
+                    m_InputSim.MouseWheelHorizontal(vr_event.data.scroll.xdelta);
                 }
 
                 if (vr_event.data.scroll.ydelta != 0.0f)
                 {
-                    m_inputsim.MouseWheelVertical(vr_event.data.scroll.ydelta);
+                    m_InputSim.MouseWheelVertical(vr_event.data.scroll.ydelta);
                 }
 
                 break;
@@ -2375,7 +2375,7 @@ bool OutputManager::HandleOpenVREvents()
             }
             case vr::VREvent_KeyboardCharInput:
             {
-                m_inputsim.KeyboardText(vr_event.data.keyboard.cNewInput);
+                m_InputSim.KeyboardText(vr_event.data.keyboard.cNewInput);
                 break;
             }
             case vr::VREvent_KeyboardClosed:
@@ -2422,7 +2422,7 @@ bool OutputManager::HandleOpenVREvents()
             case vr::VREvent_TrackedDeviceActivated:
             case vr::VREvent_TrackedDeviceDeactivated:
             {
-                m_vrinput.RefreshAnyActionBound();
+                m_VRInput.RefreshAnyActionBound();
                 break;
             }
             case vr::VREvent_Quit:
@@ -2441,9 +2441,9 @@ bool OutputManager::HandleOpenVREvents()
     }
 
     //Handle stuff coming from SteamVR Input
-    m_vrinput.Update();
+    m_VRInput.Update();
 
-    if (m_vrinput.GetSetDetachedInteractiveDown())
+    if (m_VRInput.GetSetDetachedInteractiveDown())
     {
         if (!m_OvrlDetachedInteractive) //This isn't a direct toggle since the laser pointer blocks the SteamVR Input Action Set
         {
@@ -2452,16 +2452,16 @@ bool OutputManager::HandleOpenVREvents()
         }
     }
 
-    m_vrinput.HandleGlobalActionShortcuts(*this);
+    m_VRInput.HandleGlobalActionShortcuts(*this);
 
     //If dashboard closed (opening dashboard removes toggled or held input) and detached state changed from shortcut
-    if ( (!vr::VROverlay()->IsDashboardVisible()) && (m_vrinput.HandleSetOverlayDetachedShortcut(m_OvrlDetachedInteractive)) )
+    if ( (!vr::VROverlay()->IsDashboardVisible()) && (m_VRInput.HandleSetOverlayDetachedShortcut(m_OvrlDetachedInteractive)) )
     {
         ApplySettingTransform();
     }
 
     //Finish up pending keyboard input collected into the queue
-    m_inputsim.KeyboardTextFinish();
+    m_InputSim.KeyboardTextFinish();
 
     //Update postion if necessary
     if (m_OvrlActive)
@@ -2508,15 +2508,15 @@ void OutputManager::HandleKeyboardHelperMessage(LPARAM lparam)
         case VK_LWIN:
         {
             if (GetAsyncKeyState(lparam) < 0) //Is key already down
-                m_inputsim.KeyboardSetUp(lparam);
+                m_InputSim.KeyboardSetUp(lparam);
             else
-                m_inputsim.KeyboardSetDown(lparam);
+                m_InputSim.KeyboardSetDown(lparam);
             
             break;
         }
         default:
         {
-            m_inputsim.KeyboardPressAndRelease(lparam); //This mimics the rest of the SteamVR keyboards behavior, as in, no holding down of keys
+            m_InputSim.KeyboardPressAndRelease(lparam); //This mimics the rest of the SteamVR keyboards behavior, as in, no holding down of keys
         }
     }
 }
@@ -3667,14 +3667,14 @@ void OutputManager::DoAction(ActionID action_id)
             {
                 case caction_press_keys:
                 {
-                    m_inputsim.KeyboardSetDown(action.KeyCodes);
-                    m_inputsim.KeyboardSetUp(action.KeyCodes);
+                    m_InputSim.KeyboardSetDown(action.KeyCodes);
+                    m_InputSim.KeyboardSetUp(action.KeyCodes);
                     break;
                 }
                 case caction_type_string:
                 {
-                    m_inputsim.KeyboardText(action.StrMain.c_str(), true);
-                    m_inputsim.KeyboardTextFinish();
+                    m_InputSim.KeyboardText(action.StrMain.c_str(), true);
+                    m_InputSim.KeyboardTextFinish();
                     break;
                 }
                 case caction_launch_application:
@@ -3785,7 +3785,7 @@ void OutputManager::DoStartAction(ActionID action_id)
 
             if (action.FunctionType == caction_press_keys)
             {
-                m_inputsim.KeyboardSetDown(action.KeyCodes);
+                m_InputSim.KeyboardSetDown(action.KeyCodes);
             }
             else
             {
@@ -3807,7 +3807,7 @@ void OutputManager::DoStopAction(ActionID action_id)
 
             if (action.FunctionType == caction_press_keys)
             {
-                m_inputsim.KeyboardSetUp(action.KeyCodes);
+                m_InputSim.KeyboardSetUp(action.KeyCodes);
             }
         }
     }
