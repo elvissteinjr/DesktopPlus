@@ -21,8 +21,10 @@
 enum ConfigID_Bool
 {
     configid_bool_overlay_detached,
+    configid_bool_overlay_enabled,
     configid_bool_overlay_3D_swapped,
     configid_bool_overlay_gazefade_enabled,
+    configid_bool_overlay_MAX,
     configid_bool_interface_no_ui,
     configid_bool_interface_mainbar_desktop_include_all,
     configid_bool_interface_warning_compositor_res_hidden,
@@ -52,6 +54,8 @@ enum ConfigID_Int
     configid_int_overlay_3D_mode,
     configid_int_overlay_detached_display_mode,
     configid_int_overlay_detached_origin,
+    configid_int_overlay_MAX,
+    configid_int_interface_overlay_current_id,
     configid_int_interface_mainbar_desktop_listing,
     configid_int_interface_wmr_ignore_vscreens_selection,         //This and the setting below assumes that the WMR virtual screens are the 3 last ones... this can only go well
     configid_int_interface_wmr_ignore_vscreens_combined_desktop,  //For both, -1 means auto/unset which is the value non-WMR users get
@@ -63,6 +67,7 @@ enum ConfigID_Int
     configid_int_input_mouse_dbl_click_assist_duration_ms,
     configid_int_performance_update_limit_mode,
     configid_int_performance_update_limit_fps,              //This is the enum ID, not the actual number. See ApplySettingUpdateLimiter() code for more info
+    configid_int_state_overlay_current_id_override,         //This is used to send config changes to overlays which aren't the current, mainly to avoid the UI switching around (-1 is disabled)
     configid_int_state_action_current,                      //Action changes are synced through a series of individually sent state settings. This one sets the target custom action (ID start 0)
     configid_int_state_action_current_sub,                  //Target variable. 0 = Name, 1 = Function Type. Remaining values depend on the function. Not the cleanest way but easier
     configid_int_state_action_value_int,                    //to set up with existing IPC stuff
@@ -81,6 +86,7 @@ enum ConfigID_Float
     configid_float_overlay_offset_forward,
     configid_float_overlay_gazefade_distance,
     configid_float_overlay_gazefade_rate,
+    configid_float_overlay_MAX,
     configid_float_input_keyboard_detached_size,
     configid_float_input_detached_interaction_max_distance,
     configid_float_interface_last_vr_ui_scale,
@@ -154,6 +160,17 @@ enum UpdateLimitFPS
     update_limit_fps_30,
     update_limit_fps_40,
     update_limit_fps_50
+};
+
+class OverlayConfigData
+{
+    public:
+        bool ConfigBool[configid_bool_overlay_MAX];
+        int ConfigInt[configid_int_overlay_MAX];
+        float ConfigFloat[configid_float_overlay_MAX];
+        Matrix4 ConfigDetachedTransform[ovrl_origin_MAX];
+
+        OverlayConfigData();
 };
 
 class ConfigManager

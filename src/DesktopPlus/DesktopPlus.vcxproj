@@ -87,7 +87,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(OutDir);..\Shared</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OutDir);..\Shared;..\DesktopPlus</AdditionalIncludeDirectories>
       <WarningLevel>
       </WarningLevel>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -110,7 +110,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(OutDir);..\Shared</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OutDir);..\Shared;..\DesktopPlus</AdditionalIncludeDirectories>
       <WarningLevel>
       </WarningLevel>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -132,7 +132,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>None</DebugInformationFormat>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(OutDir);..\Shared</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OutDir);..\Shared;..\DesktopPlus</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -167,7 +167,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>None</DebugInformationFormat>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(OutDir);..\Shared</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OutDir);..\Shared;..\DesktopPlus</AdditionalIncludeDirectories>
       <WarningLevel>
       </WarningLevel>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -191,6 +191,7 @@
     <ClCompile Include="..\Shared\Ini.cpp" />
     <ClCompile Include="..\Shared\InterprocessMessaging.cpp" />
     <ClCompile Include="..\Shared\Matrices.cpp" />
+    <ClCompile Include="..\Shared\OverlayManager.cpp" />
     <ClCompile Include="..\Shared\Util.cpp" />
     <ClCompile Include="DesktopPlus.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -203,6 +204,7 @@
     <ClCompile Include="InputSimulator.cpp" />
     <ClCompile Include="OUtoSBSConverter.cpp" />
     <ClCompile Include="OutputManager.cpp" />
+    <ClCompile Include="Overlays.cpp" />
     <ClCompile Include="ThreadManager.cpp" />
     <ClCompile Include="VRInput.cpp" />
   </ItemGroup>
@@ -214,6 +216,7 @@
     <ClInclude Include="..\Shared\InterprocessMessaging.h" />
     <ClInclude Include="..\Shared\Matrices.h" />
     <ClInclude Include="..\Shared\openvr.h" />
+    <ClInclude Include="..\Shared\OverlayManager.h" />
     <ClInclude Include="..\Shared\Util.h" />
     <ClInclude Include="..\Shared\Vectors.h" />
     <ClInclude Include="CommonTypes.h" />
@@ -222,6 +225,7 @@
     <ClInclude Include="InputSimulator.h" />
     <ClInclude Include="OUtoSBSConverter.h" />
     <ClInclude Include="OutputManager.h" />
+    <ClInclude Include="Overlays.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ThreadManager.h" />
     <ClInclude Include="VRInput.h" />

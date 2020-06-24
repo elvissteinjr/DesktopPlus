@@ -7,6 +7,7 @@
 
 #include "InterprocessMessaging.h"
 #include "ConfigManager.h"
+#include "OverlayManager.h"
 #include "Util.h"
 
 #include "WindowKeyboardHelper.h"
@@ -202,6 +203,10 @@ void UIManager::HandleIPCMessage(const MSG& msg)
         //Arbitrary size limit to prevent some malicous applications from sending bad data
         if ( (pcds->dwData < configid_str_MAX) && (pcds->cbData > 0) && (pcds->cbData <= 4096) ) 
         {
+            //Apply overlay id override if needed
+            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+            int overlay_override_id = ConfigManager::Get().GetConfigInt(configid_int_state_overlay_current_id_override);
+
             std::string copystr((char*)pcds->lpData, pcds->cbData); //We rely on the data length. The data is sent without the NUL byte
 
             ConfigID_String str_id = (ConfigID_String)pcds->dwData;
@@ -224,6 +229,12 @@ void UIManager::HandleIPCMessage(const MSG& msg)
                     DisplayDashboardAppError(copystr);
                     break;
                 }
+            }
+
+            //Restore overlay id override
+            if (overlay_override_id != -1)
+            {
+                OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
             }
         }
 
@@ -253,6 +264,15 @@ void UIManager::HandleIPCMessage(const MSG& msg)
         }
         case ipcmsg_set_config:
         {
+            //Apply overlay id override if needed
+            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+            int overlay_override_id = ConfigManager::Get().GetConfigInt(configid_int_state_overlay_current_id_override);
+
+            if (overlay_override_id != -1)
+            {
+                OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
+            }
+
             if (msg.wParam < configid_bool_MAX)
             {
                 ConfigID_Bool bool_id = (ConfigID_Bool)msg.wParam;
@@ -262,11 +282,27 @@ void UIManager::HandleIPCMessage(const MSG& msg)
             {
                 ConfigID_Int int_id = (ConfigID_Int)(msg.wParam - configid_bool_MAX);
                 ConfigManager::Get().SetConfigInt(int_id, (int)msg.lParam);
+
+                switch (int_id)
+                {
+                    case configid_int_interface_overlay_current_id:
+                    {
+                        OverlayManager::Get().SetCurrentOverlayID((unsigned int)msg.lParam);
+                        current_overlay_old = (unsigned int)msg.lParam;
+                    }
+                    default: break;
+                }
             }
             else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX)
             {
                 ConfigID_Float float_id = (ConfigID_Float)(msg.wParam - configid_bool_MAX - configid_int_MAX);
                 ConfigManager::Get().SetConfigFloat(float_id, *(float*)&msg.lParam);    //Interpret lParam as a float variable
+            }
+
+            //Restore overlay id override
+            if (overlay_override_id != -1)
+            {
+                OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
             }
 
             break;
@@ -400,8 +436,7 @@ void UIManager::UpdateOverlayPixelSize()
     //If OpenVR was loaded, get it from the overlay
     if (m_OpenVRLoaded)
     {
-        vr::VROverlayHandle_t ovrl_handle_dplus;
-        vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlus", &ovrl_handle_dplus);
+        vr::VROverlayHandle_t ovrl_handle_dplus = OverlayManager::Get().FindOverlayHandle(k_ulOverlayID_Dashboard);
 
         if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
         {
@@ -444,6 +479,8 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
 
     if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
     {
+        const OverlayConfigData& config_data = OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard);
+
         //Imagine if SetOverlayTransformOverlayRelative() actually worked
         vr::HmdMatrix34_t matrix;
         vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
@@ -451,10 +488,10 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
         vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_dplus, origin, { 0.5f, 0.0f }, &matrix);
 
         //If the desktop overlay is set to be closer than normal and not far behind the user either, move the UI along so it stays usable
-        const float& dplus_forward = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_forward);
+        const float& dplus_forward = config_data.ConfigFloat[configid_float_overlay_offset_forward];
         float distance_forward;
 
-        if ( (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (dplus_forward > 0.0f) && (dplus_forward <= 2.5f) ) 
+        if ( (!config_data.ConfigBool[configid_bool_overlay_detached]) && (dplus_forward > 0.0f) && (dplus_forward <= 2.5f) ) 
             distance_forward = dplus_forward;
         else
             distance_forward = 0.0f;
@@ -464,9 +501,9 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
         OffsetTransformFromSelf(matrix, 0.0f, 0.75f, 0.025f + distance_forward);
 
         //Update Curvature
-        float curve = ConfigManager::Get().GetConfigFloat(configid_float_overlay_curvature);
+        float curve = config_data.ConfigFloat[configid_float_overlay_curvature];
 
-        if ( (curve == -1.0f) || (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) ) //-1 is auto, match the dashboard (also do it when detached)
+        if ( (curve == -1.0f) || (config_data.ConfigBool[configid_bool_overlay_detached]) ) //-1 is auto, match the dashboard (also do it when detached)
         {
             vr::VROverlayHandle_t system_dashboard;
             vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
@@ -483,7 +520,7 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
         else
         {
             //Adjust curve value used for UI by the overlay width difference so it's curved according to its size
-            curve *= (2.75f / ConfigManager::Get().GetConfigFloat(configid_float_overlay_width));
+            curve *= (2.75f / config_data.ConfigFloat[configid_float_overlay_width]);
         }
 
         //Only apply when left mouse is not held down, prevent moving it around while dragging or holding a widget modifying the forward distance value

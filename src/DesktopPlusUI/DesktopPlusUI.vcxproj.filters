@@ -55,6 +55,9 @@
     <ClCompile Include="..\Shared\Ini.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\Shared\OverlayManager.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imstb_truetype.h">
@@ -113,6 +116,9 @@
     <ClInclude Include="WindowKeyboardHelper.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="..\Shared\DPRect.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\OverlayManager.h">
       <Filter>Shared</Filter>
     </ClInclude>
   </ItemGroup>

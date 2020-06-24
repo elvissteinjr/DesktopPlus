@@ -7,9 +7,27 @@ using namespace DirectX;
 #include <limits.h>
 #include <time.h>
 
+#include "OverlayManager.h"
 #include "Util.h"
 
-OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent) : 
+static OutputManager* g_OutputManager; //May not always exist, but there also should never be two, so this is fine
+
+OutputManager* OutputManager::Get()
+{
+    return g_OutputManager;
+}
+
+//
+//Quick note about OutputManager (and Desktop+ in general) handles multi-overlay access:
+//Most functions use the "current" overlay as set by the OverlayManager or by having ConfigManager forward config values from the *_overlay_* configids
+//When needed, the current overlay is temporarily changed to the one to act on. 
+//To have the UI act in such a scenario, the configid_int_state_overlay_current_id_override is typically used, as there may be visible changes to the user for one frame otherwise
+//To change the current overlay while nested in a temporary override, post a configid_int_interface_overlay_current_id message to both applications instead of just the counterpart
+//
+//This may all seem a bit messy, but helped retrofit the single overlay code a lot. Feel like cleaning this up with a way better scheme? Go ahead.
+//
+
+OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent) :
     m_Device(nullptr),
     m_Factory(nullptr),
     m_DeviceContext(nullptr),
@@ -33,19 +51,20 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_DesktopHeight(-1),
     m_MaxActiveRefreshDelay(16),
     m_OutputPendingSkippedFrame(false),
+    m_OutputPendingFullRefresh(false),
     m_OutputInvalid(false),
     m_OutputPendingDirtyRect{-1, -1, -1, -1},
     m_OvrlHandleMain(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleIcon(vr::k_ulOverlayHandleInvalid),
-    m_OvrlHandleDashboard(vr::k_ulOverlayHandleInvalid),
+    m_OvrlHandleDashboardDummy(vr::k_ulOverlayHandleInvalid),
+    m_OvrlHandleDesktopTexture(vr::k_ulOverlayHandleInvalid),
     m_OvrlTex(nullptr),
     m_OvrlRTV(nullptr),
     m_OvrlShaderResView(nullptr),
-    m_OvrlActive(false),
+    m_OvrlActiveCount(0),
     m_OvrlDashboardActive(false),
     m_OvrlInputActive(false),
     m_OvrlDetachedInteractive(false),
-    m_OvrlOpacity(0.0f),
     m_MouseTex(nullptr),
     m_MouseShaderRes(nullptr),
     m_MouseLastClickTick(0),
@@ -59,6 +78,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MouseIgnoreMoveEventMissCount(0),
     m_ComInitDone(false),
     m_DragModeDeviceID(-1),
+    m_DragModeOverlayID(0),
     m_DragGestureActive(false),
     m_DragGestureScaleDistanceStart(0.0f),
     m_DragGestureScaleWidthStart(0.0f),
@@ -77,6 +97,8 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
 
     //Initialize ConfigManager
     ConfigManager::Get().LoadConfigFromFile();
+
+    g_OutputManager = this;
 }
 
 //
@@ -85,21 +107,22 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
 OutputManager::~OutputManager()
 {
     CleanRefs();
+    g_OutputManager = nullptr;
 }
 
-bool OutputManager::GetOverlayActive()
+bool OutputManager::GetOverlayActive() const
 {
-    return m_OvrlActive;
+    return (m_OvrlActiveCount != 0);
 }
 
-bool OutputManager::GetOverlayInputActive()
+bool OutputManager::GetOverlayInputActive() const
 {
     return m_OvrlInputActive;
 }
 
-DWORD OutputManager::GetMaxRefreshDelay()
+DWORD OutputManager::GetMaxRefreshDelay() const
 {
-    if (m_OvrlActive)
+    if (m_OvrlActiveCount != 0)
     {
         //Actually causes extreme load while not really being necessary (looks nice tho)
         if ( (m_OvrlInputActive) && (ConfigManager::Get().GetConfigBool(configid_bool_performance_rapid_laser_pointer_updates)) )
@@ -111,8 +134,7 @@ DWORD OutputManager::GetMaxRefreshDelay()
             return m_MaxActiveRefreshDelay;
         }
     }
-    else if ( ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) ) ||
-              (m_VRInput.IsAnyActionBound()) )
+    else if ( (m_VRInput.IsAnyActionBound()) || IsAnyOverlayUsingGazeFade() )
     {
         return m_MaxActiveRefreshDelay * 2;
     }
@@ -122,12 +144,12 @@ DWORD OutputManager::GetMaxRefreshDelay()
     }
 }
 
-float OutputManager::GetHMDFrameRate()
+float OutputManager::GetHMDFrameRate() const
 {
     return vr::VRSystem()->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DisplayFrequency_Float);
 }
 
-float OutputManager::GetTimeNowToPhotons()
+float OutputManager::GetTimeNowToPhotons() const
 {
     float seconds_since_last_vsync;
     vr::VRSystem()->GetTimeSinceLastVsync(&seconds_since_last_vsync, nullptr);
@@ -137,9 +159,30 @@ float OutputManager::GetTimeNowToPhotons()
     return (1.0f / GetHMDFrameRate()) - seconds_since_last_vsync + vsync_to_photons;
 }
 
-void OutputManager::ShowMainOverlay()
+int OutputManager::GetDesktopWidth() const
 {
-    if (!m_OvrlActive)  //Shouldn't be able to get this multiple times in a row, but would be bad if it happened
+    return m_DesktopWidth;
+}
+
+int OutputManager::GetDesktopHeight() const
+{
+    return m_DesktopHeight;
+}
+
+void OutputManager::ShowOverlay(unsigned int id)
+{
+    Overlay& overlay = OverlayManager::Get().GetOverlay(id);
+
+    if (overlay.IsVisible()) //Already visible? Abort.
+    {
+        return;
+    }
+
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    OverlayManager::Get().SetCurrentOverlayID(id);
+    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+
+    if (m_OvrlActiveCount == 0) //First overlay to become active
     {
         ::timeBeginPeriod(1);   //This is somewhat frowned upon, but we want to hit the polling rate, it's only when active and we're in a high performance situation anyways
 
@@ -147,118 +190,72 @@ void OutputManager::ShowMainOverlay()
         ::ResetEvent(m_PauseDuplicationEvent);
         ::SetEvent(m_ResumeDuplicationEvent);
 
-        m_OvrlActive = true;
+        //Set last pointer values to current to not trip the movement detection up
+        ResetMouseLastLaserPointerPos();
 
-        ApplySettingTransform();
-
-        if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) && (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) )
-        {
-            //Set last pointer values to current to not trip the movement detection up
-            ResetMouseLastLaserPointerPos();
-
-            if (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
-            {
-                vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleMain, vr::VROverlayInputMethod_Mouse);
-            }
-
-            m_MouseIgnoreMoveEvent = false;
-        }
+        m_MouseIgnoreMoveEvent = false;
 
         ForceScreenRefresh();
     }
 
-    vr::VROverlay()->ShowOverlay(m_OvrlHandleMain);
+    if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) && (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
+        (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
+    {
+        vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
+    }
+
+    m_OvrlActiveCount++;
+
+    overlay.SetVisible(true);
+
+    ApplySettingTransform();
+
+    //If the last clipping rect doesn't fully contain the overlay's crop rect, the desktop texture overlay is probably outdated there, so force a full refresh
+    if (!m_OutputLastClippingRect.Contains(overlay.GetValidatedCropRect()))
+    {
+        RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
+    }
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
-void OutputManager::HideMainOverlay()
+void OutputManager::HideOverlay(unsigned int id)
 {
-    vr::VROverlay()->HideOverlay(m_OvrlHandleMain);
+    Overlay& overlay = OverlayManager::Get().GetOverlay(id);
+
+    if (!overlay.IsVisible()) //Already hidden? Abort.
+    {
+        return;
+    }
+
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    OverlayManager::Get().SetCurrentOverlayID(id);
+    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+
+    overlay.SetVisible(false);
 
     if (ConfigManager::Get().GetConfigBool(configid_bool_state_keyboard_visible_for_dashboard)) //Don't leave the keyboard open when hiding
     {
         vr::VROverlay()->HideKeyboard();
     }
 
-    if (m_OvrlActive)
+    m_OvrlActiveCount--;
+
+    if (m_OvrlActiveCount == 0) //Last overlay to become inactive
     {
         ::timeEndPeriod(1);
 
         //Signal duplication threads to pause since we don't need them to do needless work
         ::ResetEvent(m_ResumeDuplicationEvent);
         ::SetEvent(m_PauseDuplicationEvent);
-
-        m_OvrlActive = false;
     }
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
-void OutputManager::SetMainOverlayOpacity(float opacity)
+bool OutputManager::IsDashboardTabActive()
 {
-    if (opacity == m_OvrlOpacity)
-        return;
-
-    vr::VROverlay()->SetOverlayAlpha(m_OvrlHandleMain, opacity);
-
-    if (m_OvrlOpacity == 0.0f) //If it was previously 0%, show if needed
-    {
-        m_OvrlOpacity = opacity; //GetMainOverlayShouldBeVisible() depends on this being correct, so set it here
-
-        if ( (!vr::VROverlay()->IsOverlayVisible(m_OvrlHandleMain)) && (GetMainOverlayShouldBeVisible()) )
-        {
-            ShowMainOverlay();
-        }
-    }
-    else if ( (opacity == 0.0f) && (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleMain)) ) //If it's 0% now, hide if currently visible
-    {
-        m_OvrlOpacity = opacity;
-
-        HideMainOverlay();
-    }
-}
-
-float OutputManager::GetMainOverlayOpacity()
-{
-    return m_OvrlOpacity;
-}
-
-bool OutputManager::GetMainOverlayShouldBeVisible()
-{
-    if (m_OvrlOpacity == 0.0f)
-        return false;
-
-    bool should_be_visible = false;
-
-    if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
-    {
-        switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_display_mode))
-        {
-            case ovrl_dispmode_always:
-            {
-                should_be_visible = true;
-                break;
-            }
-            case ovrl_dispmode_dashboard:
-            {
-                should_be_visible = vr::VROverlay()->IsDashboardVisible();
-                break;
-            }
-            case ovrl_dispmode_scene:
-            {
-                should_be_visible = !vr::VROverlay()->IsDashboardVisible();
-                break;
-            }
-            case ovrl_dispmode_dplustab:
-            {
-                should_be_visible = m_OvrlDashboardActive;
-                break;
-            }
-        }
-    }
-    else
-    {
-        should_be_visible = m_OvrlDashboardActive;
-    }
-
-    return should_be_visible;
+    return m_OvrlDashboardActive;
 }
 
 void OutputManager::SetOutputInvalid()
@@ -285,7 +282,12 @@ void OutputManager::SetOutputInvalid()
     vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, false);
     vr::VROverlay()->SetOverlayTexelAspect(m_OvrlHandleMain, 1.0f);
 
-    ResetOverlay();
+    ResetOverlays();
+}
+
+bool OutputManager::IsOutputInvalid() const
+{
+    return m_OutputInvalid;
 }
 
 //
@@ -477,13 +479,6 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
         return Return;
     }
 
-    vr::Texture_t vrtex;
-    vrtex.eType = vr::TextureType_DirectX;
-    vrtex.eColorSpace = vr::ColorSpace_Gamma;
-    vrtex.handle = m_SharedSurf;
-
-    vr::VROverlay()->SetOverlayTexture(m_OvrlHandleMain, &vrtex);
-
     // Make new render target view
     Return = MakeRTV();
     if (Return != DUPL_RETURN_SUCCESS)
@@ -608,7 +603,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     m_InputSim.RefreshScreenOffsets();
 
     ResetMouseLastLaserPointerPos();
-    ResetOverlay();
+    ResetOverlays();
 
     return Return;
 }
@@ -624,23 +619,24 @@ vr::EVRInitError OutputManager::InitOverlay()
     if (!vr::VROverlay())
         return vr::VRInitError_Init_InvalidInterface;
 
-    m_OvrlHandleDashboard = vr::k_ulOverlayHandleInvalid;
+    m_OvrlHandleDashboardDummy = vr::k_ulOverlayHandleInvalid;
     m_OvrlHandleMain = vr::k_ulOverlayHandleInvalid;
     m_OvrlHandleIcon = vr::k_ulOverlayHandleInvalid;
+    m_OvrlHandleDesktopTexture = vr::k_ulOverlayHandleInvalid;
     vr::VROverlayError ovrl_error = vr::VROverlayError_None;
 
     //We already got rid of another instance of this app if there was any, but this loop takes care of it too if the detection failed or something uses our overlay key
     while (true)
     {
-        ovrl_error = vr::VROverlay()->CreateDashboardOverlay("elvissteinjr.DesktopPlusDashboard", "Desktop+", &m_OvrlHandleDashboard, &m_OvrlHandleIcon);
+        ovrl_error = vr::VROverlay()->CreateDashboardOverlay("elvissteinjr.DesktopPlusDashboard", "Desktop+", &m_OvrlHandleDashboardDummy, &m_OvrlHandleIcon);
 
         if (ovrl_error == vr::VROverlayError_KeyInUse)  //If the key is already in use, kill the owning process (hopefully another instance of this app)
         {
-            ovrl_error = vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &m_OvrlHandleDashboard);
+            ovrl_error = vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &m_OvrlHandleDashboardDummy);
 
-            if ((ovrl_error == vr::VROverlayError_None) && (m_OvrlHandleDashboard != vr::k_ulOverlayHandleInvalid))
+            if ((ovrl_error == vr::VROverlayError_None) && (m_OvrlHandleDashboardDummy != vr::k_ulOverlayHandleInvalid))
             {
-                uint32_t pid = vr::VROverlay()->GetOverlayRenderingPid(m_OvrlHandleDashboard);
+                uint32_t pid = vr::VROverlay()->GetOverlayRenderingPid(m_OvrlHandleDashboardDummy);
 
                 HANDLE phandle = ::OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, TRUE, pid);
 
@@ -668,21 +664,32 @@ vr::EVRInitError OutputManager::InitOverlay()
     }
 
     
-    if (m_OvrlHandleDashboard != vr::k_ulOverlayHandleInvalid)
+    if (m_OvrlHandleDashboardDummy != vr::k_ulOverlayHandleInvalid)
     {
-        //Create main overlay. The Dashboard overlay is only used as a dummy to get a button, transform origin and position the top bar in the dashboard
-        ovrl_error = vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlus", "Desktop+", &m_OvrlHandleMain);
+        ovrl_error = vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusDesktopTexture", "Desktop+", &m_OvrlHandleDesktopTexture);
 
-        if (ovrl_error == vr::VROverlayError_None)
+        //Get main overlay from OverlayManager. The Dashboard overlay is only used as a dummy to get a button, transform origin and position the top bar in the dashboard
+        //k_OverlayID_Dashboard is guaranteed to always exist. The handle itself may not, but there'll be a bunch of other issues if it isn't
+        Overlay& overlay_dashboard = OverlayManager::Get().GetOverlay(k_ulOverlayID_Dashboard);
+
+        //If dashboard overlay doesn't exist yet (fresh startup), try initializing it
+        if (overlay_dashboard.GetHandle() == vr::k_ulOverlayHandleInvalid)
+        {
+            overlay_dashboard.InitOverlay();
+        }
+
+        m_OvrlHandleMain = overlay_dashboard.GetHandle();
+
+        if (m_OvrlHandleDashboardDummy != vr::k_ulOverlayHandleInvalid)
         {
             unsigned char bytes[2 * 2 * 4] = {0}; //2x2 transparent RGBA
 
             //Set dashboard dummy content instead of leaving it totally blank, which is undefined
-            vr::VROverlay()->SetOverlayRaw(m_OvrlHandleDashboard, bytes, 2, 2, 4);
+            vr::VROverlay()->SetOverlayRaw(m_OvrlHandleDashboardDummy, bytes, 2, 2, 4);
 
-            vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleDashboard, vr::VROverlayInputMethod_None);
+            vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleDashboardDummy, vr::VROverlayInputMethod_None);
 
-            //ResetOverlay() is called later
+            //ResetOverlays() is called later
 
             vr::VROverlay()->SetOverlayFromFile(m_OvrlHandleIcon, (ConfigManager::Get().GetApplicationPath() + "images/icon_dashboard.png").c_str());
         }
@@ -1041,14 +1048,45 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
 
     bool has_updated_overlay = false;
 
-    int crop_x, crop_y, crop_width, crop_height;
-    GetValidatedCropValues(crop_x, crop_y, crop_width, crop_height);
+    //Check all overlays for overlap and collect clipping region from matches
+    DPRect clipping_region(-1, -1, -1, -1);
 
-    const DPRect cropping_region(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
-
-    if (DirtyRectTotal.Overlaps(cropping_region))
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
-        DirtyRectTotal.ClipWithFull(cropping_region);
+        const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
+
+        if (overlay.IsVisible())
+        {
+            const DPRect& cropping_region = OverlayManager::Get().GetOverlay(i).GetValidatedCropRect();
+
+            if (DirtyRectTotal.Overlaps(cropping_region))
+            {
+                if (clipping_region.GetTL().x != -1)
+                {
+                    clipping_region.Add(cropping_region);
+                }
+                else
+                {
+                    clipping_region = cropping_region;
+                }
+            }
+        }
+    }
+
+    m_OutputLastClippingRect = clipping_region;
+
+    if (clipping_region.GetTL().x != -1) //Overlapped with at least one overlay
+    {
+        //Clip unless it's a pending full refresh
+        if (m_OutputPendingFullRefresh)
+        {
+            DirtyRectTotal = {0, 0, m_DesktopWidth, m_DesktopHeight};
+            m_OutputPendingFullRefresh = false;
+        }
+        else
+        {
+            DirtyRectTotal.ClipWithFull(clipping_region);
+        }
 
         //Set scissor rect for overlay drawing function
         const D3D11_RECT rect_scissor = { DirtyRectTotal.GetTL().x, DirtyRectTotal.GetTL().y, DirtyRectTotal.GetBR().x, DirtyRectTotal.GetBR().y };
@@ -1059,7 +1097,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         DrawFrameToOverlayTex(is_full_texture);
 
         //Only handle cursor if it's in cropping region
-        if (mouse_rect.Overlaps(cropping_region))
+        if (mouse_rect.Overlaps(DirtyRectTotal))
         {
             ret = (DUPL_RETURN_UPD)DrawMouseToOverlayTex(PointerInfo);
         }
@@ -1214,7 +1252,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     if (ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id) != desktop_id_prev)
                         return true; //Reset mirroring
 
-                    ResetOverlay(); //This does everything relevant
+                    ResetOverlays(); //This does everything relevant
                     break;
                 }
                 case ipcact_crop_to_active_window:
@@ -1222,11 +1260,32 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     CropToActiveWindow();
                     break;
                 }
+                case ipcact_overlay_new:
+                {
+                    AddOverlay((unsigned int)msg.lParam);
+                    break;
+                }
+                case ipcact_overlay_remove:
+                {
+                    OverlayManager::Get().RemoveOverlay((unsigned int)msg.lParam);
+                    //RemoveOverlay() may have changed active ID, keep in sync
+                    ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, OverlayManager::Get().GetCurrentOverlayID());
+                    break;
+                }
             }
             break;
         }
         case ipcmsg_set_config:
         {
+            //Apply overlay id override if needed
+            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+            int overlay_override_id = ConfigManager::Get().GetConfigInt(configid_int_state_overlay_current_id_override);
+
+            if (overlay_override_id != -1)
+            {
+                OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
+            }
+
             if (msg.wParam < configid_bool_MAX)
             {
                 ConfigID_Bool bool_id = (ConfigID_Bool)msg.wParam;
@@ -1250,6 +1309,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                         break;
                     }
+                    case configid_bool_overlay_enabled:
                     case configid_bool_overlay_gazefade_enabled:
                     {
                         ApplySettingTransform();
@@ -1258,7 +1318,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_bool_state_overlay_dragmode:
                     {
                         ApplySettingDragMode();
-                        ApplySettingTransform();
                         break;
                     }
                     case configid_bool_input_enabled:
@@ -1288,6 +1347,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                 switch (int_id)
                 {
+                    case configid_int_interface_overlay_current_id:
+                    {
+                        OverlayManager::Get().SetCurrentOverlayID(msg.lParam);
+                        current_overlay_old = (unsigned int)msg.lParam;
+                        break;
+                    }
                     case configid_int_overlay_desktop_id:
                     {
                         return true; //Reset mirroring
@@ -1378,6 +1443,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 
             }
 
+            //Restore overlay id override
+            if (overlay_override_id != -1)
+            {
+                OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+            }
+
             break;
         }
     }
@@ -1435,12 +1506,22 @@ IDXGIAdapter* OutputManager::GetDXGIAdapter()
     return DxgiAdapter;
 }
 
-void OutputManager::ResetOverlay()
+void OutputManager::ResetOverlays()
 {
-    ApplySettingCrop();
-    ApplySettingTransform();
-    ApplySettingMouseInput();
-    ApplySetting3DMode();
+    //Reset all overlays
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        OverlayManager::Get().SetCurrentOverlayID(i);
+
+        ApplySettingCrop();
+        ApplySettingTransform();
+        ApplySettingMouseInput();
+        ApplySetting3DMode();
+    }
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
     ApplySettingUpdateLimiter();
 
     //Post resolution update to UI app
@@ -1452,7 +1533,31 @@ void OutputManager::ResetOverlay()
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_elevated), elevated);
 
     //Make sure that the entire overlay texture gets at least one full update for regions that will never be dirty (i.e. blank space not occupied by any desktop)
-    m_OutputPendingDirtyRect = {0, 0, m_DesktopWidth, m_DesktopHeight};
+    m_OutputPendingFullRefresh = true;
+}
+
+void OutputManager::ResetCurrentOverlay()
+{
+    //Reset current overlays
+    ApplySettingCrop();
+    ApplySettingTransform();
+    ApplySettingMouseInput();
+    ApplySetting3DMode();
+
+    ApplySettingUpdateLimiter();
+
+    //Make sure that the entire overlay texture gets at least one full update for regions that will never be dirty (i.e. blank space not occupied by any desktop)
+    m_OutputPendingFullRefresh = true;
+}
+
+ID3D11Texture2D* OutputManager::GetOverlayTexture() const
+{
+    return m_OvrlTex;
+}
+
+vr::VROverlayHandle_t OutputManager::GetDesktopTextureOverlay() const
+{
+    return m_OvrlHandleDesktopTexture;
 }
 
 void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
@@ -1887,7 +1992,7 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
 
 DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy)
 {
-    if ((m_OvrlHandleMain != vr::k_ulOverlayHandleInvalid) && (m_OvrlTex))
+    if ((m_OvrlHandleDesktopTexture != vr::k_ulOverlayHandleInvalid) && (m_OvrlTex))
     {
         vr::Texture_t vrtex;
         vrtex.eType = vr::TextureType_DirectX;
@@ -1925,33 +2030,13 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
 
             if (m_MouseLastInfo.Visible)
             {
-                m_OutputPendingDirtyRect = {m_MouseLastInfo.Position.x, m_MouseLastInfo.Position.y, int(m_MouseLastInfo.Position.x + m_MouseLastInfo.ShapeInfo.Width),
-                                            int(m_MouseLastInfo.Position.y + m_MouseLastInfo.ShapeInfo.Height)};
+                m_OutputPendingDirtyRect = {    m_MouseLastInfo.Position.x, m_MouseLastInfo.Position.y, int(m_MouseLastInfo.Position.x + m_MouseLastInfo.ShapeInfo.Width),
+                                            int(m_MouseLastInfo.Position.y + m_MouseLastInfo.ShapeInfo.Height) };
             }
         }
 
-        int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
-
-        //If Over-Under, convert texture to SBS
-        if ((mode_3d == ovrl_3Dmode_hou) || (mode_3d == ovrl_3Dmode_ou))
-        {
-            int crop_x, crop_y, crop_width, crop_height;
-            GetValidatedCropValues(crop_x, crop_y, crop_width, crop_height);
-
-            bool res = m_OUtoSBSConverter.Convert(m_Device, m_DeviceContext, m_PixelShader, m_VertexShader, m_Sampler, m_MultiGPUTargetDevice, m_MultiGPUTargetDeviceContext,
-                                                  m_OvrlTex, m_DesktopWidth, m_DesktopHeight, crop_x, crop_width, crop_height);
-
-            if (!res)
-            {
-                return DUPL_RETURN_UPD_ERROR_UNEXPECTED;
-            }
-
-            vrtex.handle = m_OUtoSBSConverter.GetTexture();
-            force_full_copy = true; //DirtyRect *could* be adapted to the converted texture, but typical 3D content wouldn't benefit from this so we just always do a full copy
-
-            //OUtoSBSConverter takes care of multi-gpu support automatically, so below isn't needed
-        }
-        else if (m_MultiGPUTargetDevice != nullptr)  //Copy texture over to GPU connected to VR HMD if needed
+        //Copy texture over to GPU connected to VR HMD if needed
+        if (m_MultiGPUTargetDevice != nullptr)
         {
             //This isn't very fast but the only way to my knowledge. Happy to receive improvements on this though
             m_DeviceContext->CopyResource(m_MultiGPUTexStaging, m_OvrlTex);
@@ -1982,12 +2067,10 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
             vrtex.handle = m_MultiGPUTexTarget;
         }
 
-        //Do a simple full copy if the rect covers the whole texture (this isn't slower than a full rect copy and works with size changes)
-        if ( (force_full_copy) || (DirtyRectTotal.Contains({0, 0, m_DesktopWidth, m_DesktopHeight})) )
-        {
-            vr::VROverlay()->SetOverlayTexture(m_OvrlHandleMain, &vrtex);
-        }
-        else //Otherwise do a partial copy
+        //Do a simple full copy (done below) if the rect covers the whole texture (this isn't slower than a full rect copy and works with size changes)
+        force_full_copy = ( (force_full_copy) || (DirtyRectTotal.Contains({0, 0, m_DesktopWidth, m_DesktopHeight})) );
+
+        if (!force_full_copy) //Otherwise do a partial copy
         {
             //Get overlay texture from OpenVR and copy dirty rect directly into it
             ID3D11ShaderResourceView* ovrl_shader_res;
@@ -1998,8 +2081,8 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
             vr::EColorSpace ovrl_color_space;
             vr::VRTextureBounds_t ovrl_tex_bounds;
 
-            vr::VROverlayError ovrl_error = vr::VROverlay()->GetOverlayTexture(m_OvrlHandleMain, (void**)&ovrl_shader_res, vrtex.handle, &ovrl_width, &ovrl_height, &ovrl_native_format, &ovrl_api_type,
-                                                                               &ovrl_color_space, &ovrl_tex_bounds);
+            vr::VROverlayError ovrl_error = vr::VROverlay()->GetOverlayTexture(m_OvrlHandleDesktopTexture, (void**)&ovrl_shader_res, vrtex.handle, &ovrl_width, &ovrl_height, &ovrl_native_format, 
+                                                                               &ovrl_api_type, &ovrl_color_space, &ovrl_tex_bounds);
 
             if (ovrl_error == vr::VROverlayError_None)
             {
@@ -2022,13 +2105,24 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
                 ovrl_tex = nullptr;
 
                 // Release shader resource
-                vr::VROverlay()->ReleaseNativeOverlayHandle(m_OvrlHandleMain, (void*)ovrl_shader_res);
+                vr::VROverlay()->ReleaseNativeOverlayHandle(m_OvrlHandleDesktopTexture, (void*)ovrl_shader_res);
                 ovrl_shader_res = nullptr;
             }
             else //Usually shouldn't fail, but fall back to full copy then
             {
-                vr::VROverlay()->SetOverlayTexture(m_OvrlHandleMain, &vrtex);
+                force_full_copy = true;
             }               
+        }
+
+        if (force_full_copy) //This is down here so a failed partial copy is picked up as well
+        {
+            vr::VROverlay()->SetOverlayTexture(m_OvrlHandleDesktopTexture, &vrtex);
+
+            //Apply potential texture change to all overlays
+            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+            {
+                OverlayManager::Get().GetOverlay(i).AssignTexture();
+            }
         }
     }
 
@@ -2107,9 +2201,9 @@ DUPL_RETURN OutputManager::MakeRTV()
 bool OutputManager::HandleOpenVREvents()
 {
     vr::VREvent_t vr_event;
-    
+
     //Handle Dashboard dummy ones first
-    while (vr::VROverlay()->PollNextOverlayEvent(m_OvrlHandleDashboard, &vr_event, sizeof(vr_event)))
+    while (vr::VROverlay()->PollNextOverlayEvent(m_OvrlHandleDashboardDummy, &vr_event, sizeof(vr_event)))
     {
         switch (vr_event.eventType)
         {
@@ -2117,13 +2211,17 @@ bool OutputManager::HandleOpenVREvents()
             {
                 if (!m_OvrlDashboardActive)
                 {
-                    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) ||
-                         (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_display_mode) != ovrl_dispmode_scene) )
-                    {
-                        ShowMainOverlay();
-                    }
-
                     m_OvrlDashboardActive = true;
+
+                    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+                    {
+                        const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+                        if ((!data.ConfigBool[configid_bool_overlay_detached]) || (data.ConfigInt[configid_int_overlay_detached_display_mode] != ovrl_dispmode_scene))
+                        {
+                            ShowOverlay(i);
+                        }
+                    }
                 }
 
                 break;
@@ -2132,45 +2230,55 @@ bool OutputManager::HandleOpenVREvents()
             {
                 if (m_OvrlDashboardActive)
                 {
-                    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) ||
-                         (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_display_mode) == ovrl_dispmode_dplustab))
-                    {
-                        HideMainOverlay();
-                    }
-
                     m_OvrlDashboardActive = false;
+
+                    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+                    {
+                        const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+                        if ((!data.ConfigBool[configid_bool_overlay_detached]) || (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_dplustab))
+                        {
+                            HideOverlay(i);
+                        }
+                    }
                 }
 
                 break;
             }
             case vr::VREvent_DashboardActivated:
             {
-                if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) &&
-                     (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_display_mode) == ovrl_dispmode_dashboard) )
+                for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                 {
-                    //Get current HMD y-position, used for getting the overlay position
-                    UpdateDashboardHMD_Y();
-                    ShowMainOverlay();
-                }
-                else if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) &&
-                          (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_display_mode) == ovrl_dispmode_scene) )
-                {
-                    HideMainOverlay();
+                    OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+                    if ((data.ConfigBool[configid_bool_overlay_detached]) && (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_dashboard))
+                    {
+                        //Get current HMD y-position, used for getting the overlay position
+                        UpdateDashboardHMD_Y();
+                        ShowOverlay(i);
+                    }
+                    else if ((data.ConfigBool[configid_bool_overlay_detached]) && (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_scene))
+                    {
+                        HideOverlay(i);
+                    }
                 }
 
                 break;
             }
             case vr::VREvent_DashboardDeactivated:
             {
-                if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) &&
-                     (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_display_mode) == ovrl_dispmode_scene) )
+                for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                 {
-                    ShowMainOverlay();
-                }
-                else if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) &&
-                          (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_display_mode) == ovrl_dispmode_dashboard) )
-                {
-                    HideMainOverlay();
+                    OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+                    if ((data.ConfigBool[configid_bool_overlay_detached]) && (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_scene))
+                    {
+                        ShowOverlay(i);
+                    }
+                    else if ((data.ConfigBool[configid_bool_overlay_detached]) && (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_dashboard))
+                    {
+                        HideOverlay(i);
+                    }
                 }
 
                 break;
@@ -2195,252 +2303,7 @@ bool OutputManager::HandleOpenVREvents()
                 IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_keyboard_visible_for_dashboard), false);
                 break;
             }
-        }
-    }
 
-    //Now handle events for the main overlay
-    while (vr::VROverlay()->PollNextOverlayEvent(m_OvrlHandleMain, &vr_event, sizeof(vr_event)))
-    {
-        switch (vr_event.eventType)
-        {
-            case vr::VREvent_MouseMove:
-            {
-                if ( (!ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) || (m_MouseIgnoreMoveEvent) ||
-                     (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
-                {
-                    break;
-                }
-
-                if ( (ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms) == 0) || 
-                     (::GetTickCount64() >= m_MouseLastClickTick + ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms)) )
-                {
-                    //Check coordinates if HMDPointerOverride is enabled
-                    if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) && 
-                         (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd) )
-                    {
-                        POINT pt;
-                        ::GetCursorPos(&pt);
-
-                        //If mouse coordinates are not what the last laser pointer was (with tolerance), meaning some other source moved it
-                        if ((abs(pt.x - m_MouseLastLaserPointerX) > 32) || (abs(pt.y - m_MouseLastLaserPointerY) > 32))
-                        {
-                            m_MouseIgnoreMoveEventMissCount++; //GetCursorPos() may lag behind or other jumps may occasionally happen. We count up a few misses first before acting on them
-
-                            int max_miss_count = 10; //Arbitrary number, but appears to work reliably
-
-                            if (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) != 0) //When updates are limited, try adapting for the lower update rate
-                            {
-                                max_miss_count = std::max(1, max_miss_count - int((m_PerformanceUpdateLimiterDelay.QuadPart / 1000) / 20) );
-                            }
-
-                            if (m_MouseIgnoreMoveEventMissCount > max_miss_count)
-                            {
-                                m_MouseIgnoreMoveEvent = true;
-                                vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_HideLaserIntersection, true);
-                            }
-                            break;
-                        }
-                        else
-                        {
-                            m_MouseIgnoreMoveEventMissCount = 0;
-                        }
-                    }
-
-                    //Get hotspot value to use
-                    int hotspot_x = 0;
-                    int hotspot_y = 0;
-
-                    if (m_MouseLastInfo.Visible) //We're using a cached value here so we don't have to lock the shared surface for this function
-                    {
-                        hotspot_x = m_MouseDefaultHotspotX;
-                        hotspot_y = m_MouseDefaultHotspotY;
-                    }
-
-                    //GL space (0,0 is bottom left), so we need to flip that around
-                    m_MouseLastLaserPointerX = (   round(vr_event.data.mouse.x)                    - hotspot_x) + m_DesktopX;
-                    m_MouseLastLaserPointerY = ( (-round(vr_event.data.mouse.y) + m_DesktopHeight) - hotspot_y) + m_DesktopY;
-                    m_InputSim.MouseMove(m_MouseLastLaserPointerX, m_MouseLastLaserPointerY);
-
-                    //This is only relevant when limiting updates. See Update() for details.
-                    m_MouseLaserPointerUsedLastUpdate = true;
-                }
-
-                break;
-            }
-            case vr::VREvent_MouseButtonDown:
-            {
-                if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
-                {
-                    if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
-                    {
-                        if (m_DragModeDeviceID == -1)
-                        {
-                            DragStart();
-                        }
-                    }
-                    else if (vr_event.data.mouse.button == vr::VRMouseButton_Right)
-                    {
-                        if (!m_DragGestureActive)
-                        {
-                            DragGestureStart();
-                        }
-                    }
-                    break;
-                }
-
-                if (m_MouseIgnoreMoveEvent) //This can only be true if IgnoreHMDPointer enabled
-                {
-                    m_MouseIgnoreMoveEvent = false;
-
-                    ResetMouseLastLaserPointerPos();
-                    ApplySettingMouseInput();
-
-                    break;  //Click to restore shouldn't generate a mouse click
-                }
-
-                m_MouseLastClickTick = ::GetTickCount64();
-
-                switch (vr_event.data.mouse.button)
-                {
-                    case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(true);   break;
-                    case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(true);  break;
-                    case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but supported in case it ever starts happening
-                }
-
-                break;
-            }
-            case vr::VREvent_MouseButtonUp:
-            {
-                if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
-                {
-                    if ( (vr_event.data.mouse.button == vr::VRMouseButton_Left) && (m_DragModeDeviceID != -1) )
-                    {
-                        DragFinish();
-                    }
-                    else if ( (vr_event.data.mouse.button == vr::VRMouseButton_Right) && (m_DragGestureActive) )
-                    {
-                        DragGestureFinish();
-                    }
-                    
-                    break;
-                }
-
-                switch (vr_event.data.mouse.button)
-                {
-                    case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(false);   break;
-                    case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(false);  break;
-                    case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(false); break;
-                }
-
-                break;
-            }
-            case vr::VREvent_LockMousePosition: //This seems like an interesting feature to support, but this never triggers and the freeze on the default desktop also doesn't work here somehow
-            {
-                break;
-            }
-            case vr::VREvent_ScrollDiscrete:
-            {
-                if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
-                    break;
-
-                if (vr_event.data.scroll.xdelta != 0.0f) //This doesn't seem to be ever sent by SteamVR
-                {
-                    m_InputSim.MouseWheelHorizontal(vr_event.data.scroll.xdelta);
-                }
-
-                if (vr_event.data.scroll.ydelta != 0.0f)
-                {
-                    m_InputSim.MouseWheelVertical(vr_event.data.scroll.ydelta);
-                }
-
-                break;
-            }
-            case vr::VREvent_ScrollSmooth:
-            {
-                //Smooth scrolls are only used for dragging mode
-                if (m_DragModeDeviceID != -1)
-                {
-                    DragAddDistance(vr_event.data.scroll.ydelta);
-                }
-                break;
-            }
-            case vr::VREvent_ButtonPress:
-            {
-                if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
-                {
-                    if (vr_event.data.controller.button == Button_Dashboard_GoHome)
-                    {
-                        //Disable dragging
-                        vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleMain, vr::VROverlayInputMethod_None);
-
-                        //We won't get a mouse up after this, so finish here
-                        if (m_DragModeDeviceID != -1)
-                        {
-                            DragFinish();
-                        }
-                        else if (m_DragGestureActive)
-                        {
-                            DragGestureFinish();
-                        }
-                    }
-
-                    break;
-                }
-
-                if (vr_event.data.controller.button == Button_Dashboard_GoHome)
-                {
-                    DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id));
-                }
-                else if (vr_event.data.controller.button == Button_Dashboard_GoBack)
-                {
-                    DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id));
-                }
-                
-                break;
-            }
-            case vr::VREvent_KeyboardCharInput:
-            {
-                m_InputSim.KeyboardText(vr_event.data.keyboard.cNewInput);
-                break;
-            }
-            case vr::VREvent_KeyboardClosed:
-            {
-                //Tell UI that the keyboard helper should no longer be displayed
-                ConfigManager::Get().SetConfigBool(configid_bool_state_keyboard_visible_for_dashboard, false);
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_keyboard_visible_for_dashboard), false);
-
-                break;
-            }
-            case vr::VREvent_FocusEnter:
-            {
-                m_OvrlInputActive = true;
-
-                if (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd)
-                    ResetMouseLastLaserPointerPos();
-
-                break;
-            }
-            case vr::VREvent_FocusLeave:
-            {
-                m_OvrlInputActive = false;
-
-                if (m_OvrlDetachedInteractive)
-                {
-                    m_OvrlDetachedInteractive = false;
-                    vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, false);
-                }
-
-                break;
-            }
-            case vr::VREvent_ChaperoneUniverseHasChanged:
-            {
-                //We also get this when tracking is lost, which ends up updating the dashboard position
-                if (m_OvrlActive)
-                {
-                    ApplySettingTransform();
-                }
-                break;
-            }
             case vr::VREvent_Input_ActionManifestReloaded:
             case vr::VREvent_Input_BindingsUpdated:
             case vr::VREvent_Input_BindingLoadSuccessful:
@@ -2454,16 +2317,274 @@ bool OutputManager::HandleOpenVREvents()
             {
                 return true;
             }
-            default:
+        }
+    }
+
+    //Now handle events for the actual overlays
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        OverlayManager::Get().SetCurrentOverlayID(i);
+
+        Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+        vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+
+        while (vr::VROverlay()->PollNextOverlayEvent(ovrl_handle, &vr_event, sizeof(vr_event)))
+        {
+            switch (vr_event.eventType)
             {
-                //Output unhandled events when looking for something useful
-                /*std::wstringstream ss;
-                ss << L"Event: " << (int)vr_event.eventType << L"\n";
-                OutputDebugString(ss.str().c_str());*/
-                break;
+                case vr::VREvent_MouseMove:
+                {
+                    if ((!ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) || (m_MouseIgnoreMoveEvent) ||
+                        (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)))
+                    {
+                        break;
+                    }
+
+                    if ((ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms) == 0) ||
+                        (::GetTickCount64() >= m_MouseLastClickTick + ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms)))
+                    {
+                        //Check coordinates if HMDPointerOverride is enabled
+                        if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
+                            (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd))
+                        {
+                            POINT pt;
+                            ::GetCursorPos(&pt);
+
+                            //If mouse coordinates are not what the last laser pointer was (with tolerance), meaning some other source moved it
+                            if ((abs(pt.x - m_MouseLastLaserPointerX) > 32) || (abs(pt.y - m_MouseLastLaserPointerY) > 32))
+                            {
+                                m_MouseIgnoreMoveEventMissCount++; //GetCursorPos() may lag behind or other jumps may occasionally happen. We count up a few misses first before acting on them
+
+                                int max_miss_count = 10; //Arbitrary number, but appears to work reliably
+
+                                if (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) != 0) //When updates are limited, try adapting for the lower update rate
+                                {
+                                    max_miss_count = std::max(1, max_miss_count - int((m_PerformanceUpdateLimiterDelay.QuadPart / 1000) / 20));
+                                }
+
+                                if (m_MouseIgnoreMoveEventMissCount > max_miss_count)
+                                {
+                                    m_MouseIgnoreMoveEvent = true;
+
+                                    //Set flag for all overlays
+                                    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+                                    {
+                                        vr::VROverlay()->SetOverlayFlag(OverlayManager::Get().GetOverlay(i).GetHandle(), vr::VROverlayFlags_HideLaserIntersection, true);
+                                    }
+                                }
+                                break;
+                            }
+                            else
+                            {
+                                m_MouseIgnoreMoveEventMissCount = 0;
+                            }
+                        }
+
+                        //Get hotspot value to use
+                        int hotspot_x = 0;
+                        int hotspot_y = 0;
+
+                        if (m_MouseLastInfo.Visible) //We're using a cached value here so we don't have to lock the shared surface for this function
+                        {
+                            hotspot_x = m_MouseDefaultHotspotX;
+                            hotspot_y = m_MouseDefaultHotspotY;
+                        }
+
+                        //GL space (0,0 is bottom left), so we need to flip that around
+                        m_MouseLastLaserPointerX = (round(vr_event.data.mouse.x) - hotspot_x) + m_DesktopX;
+                        m_MouseLastLaserPointerY = ((-round(vr_event.data.mouse.y) + m_DesktopHeight) - hotspot_y) + m_DesktopY;
+                        m_InputSim.MouseMove(m_MouseLastLaserPointerX, m_MouseLastLaserPointerY);
+
+                        //This is only relevant when limiting updates. See Update() for details.
+                        m_MouseLaserPointerUsedLastUpdate = true;
+                    }
+
+                    break;
+                }
+                case vr::VREvent_MouseButtonDown:
+                {
+                    if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+                    {
+                        if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
+                        {
+                            if (m_DragModeDeviceID == -1)
+                            {
+                                DragStart();
+                            }
+                        }
+                        else if (vr_event.data.mouse.button == vr::VRMouseButton_Right)
+                        {
+                            if (!m_DragGestureActive)
+                            {
+                                DragGestureStart();
+                            }
+                        }
+                        break;
+                    }
+
+                    if (m_MouseIgnoreMoveEvent) //This can only be true if IgnoreHMDPointer enabled
+                    {
+                        m_MouseIgnoreMoveEvent = false;
+
+                        ResetMouseLastLaserPointerPos();
+                        ApplySettingMouseInput();
+
+                        break;  //Click to restore shouldn't generate a mouse click
+                    }
+
+                    m_MouseLastClickTick = ::GetTickCount64();
+
+                    switch (vr_event.data.mouse.button)
+                    {
+                        case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(true);   break;
+                        case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(true);  break;
+                        case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but supported in case it ever starts happening
+                    }
+
+                    break;
+                }
+                case vr::VREvent_MouseButtonUp:
+                {
+                    if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+                    {
+                        if ((vr_event.data.mouse.button == vr::VRMouseButton_Left) && (m_DragModeDeviceID != -1))
+                        {
+                            DragFinish();
+                        }
+                        else if ((vr_event.data.mouse.button == vr::VRMouseButton_Right) && (m_DragGestureActive))
+                        {
+                            DragGestureFinish();
+                        }
+
+                        break;
+                    }
+
+                    switch (vr_event.data.mouse.button)
+                    {
+                        case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(false);   break;
+                        case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(false);  break;
+                        case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(false); break;
+                    }
+
+                    break;
+                }
+                case vr::VREvent_LockMousePosition: //This seems like an interesting feature to support, but this never triggers and the freeze on the default desktop also doesn't work here somehow
+                {
+                    break;
+                }
+                case vr::VREvent_ScrollDiscrete:
+                {
+                    if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+                        break;
+
+                    if (vr_event.data.scroll.xdelta != 0.0f) //This doesn't seem to be ever sent by SteamVR
+                    {
+                        m_InputSim.MouseWheelHorizontal(vr_event.data.scroll.xdelta);
+                    }
+
+                    if (vr_event.data.scroll.ydelta != 0.0f)
+                    {
+                        m_InputSim.MouseWheelVertical(vr_event.data.scroll.ydelta);
+                    }
+
+                    break;
+                }
+                case vr::VREvent_ScrollSmooth:
+                {
+                    //Smooth scrolls are only used for dragging mode
+                    if (m_DragModeDeviceID != -1)
+                    {
+                        DragAddDistance(vr_event.data.scroll.ydelta);
+                    }
+                    break;
+                }
+                case vr::VREvent_ButtonPress:
+                {
+                    if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+                    {
+                        if (vr_event.data.controller.button == Button_Dashboard_GoHome)
+                        {
+                            //Disable dragging
+                            vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
+
+                            //We won't get a mouse up after this, so finish here
+                            if (m_DragModeDeviceID != -1)
+                            {
+                                DragFinish();
+                            }
+                            else if (m_DragGestureActive)
+                            {
+                                DragGestureFinish();
+                            }
+                        }
+
+                        break;
+                    }
+
+                    if (vr_event.data.controller.button == Button_Dashboard_GoHome)
+                    {
+                        DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id));
+                    }
+                    else if (vr_event.data.controller.button == Button_Dashboard_GoBack)
+                    {
+                        DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id));
+                    }
+
+                    break;
+                }
+                case vr::VREvent_KeyboardCharInput:
+                {
+                    m_InputSim.KeyboardText(vr_event.data.keyboard.cNewInput);
+                    break;
+                }
+                case vr::VREvent_KeyboardClosed:
+                {
+                    //Tell UI that the keyboard helper should no longer be displayed
+                    ConfigManager::Get().SetConfigBool(configid_bool_state_keyboard_visible_for_dashboard, false);
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_keyboard_visible_for_dashboard), false);
+
+                    break;
+                }
+                case vr::VREvent_FocusEnter:
+                {
+                    m_OvrlInputActive = true;
+
+                    if (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd)
+                        ResetMouseLastLaserPointerPos();
+
+                    break;
+                }
+                case vr::VREvent_FocusLeave:
+                {
+                    m_OvrlInputActive = false;
+
+                    overlay.SetGlobalInteractiveFlag(false);
+
+                    break;
+                }
+                case vr::VREvent_ChaperoneUniverseHasChanged:
+                {
+                    //We also get this when tracking is lost, which ends up updating the dashboard position
+                    if (m_OvrlActiveCount != 0)
+                    {
+                        ApplySettingTransform();
+                    }
+                    break;
+                }
+                default:
+                {
+                    //Output unhandled events when looking for something useful
+                    /*std::wstringstream ss;
+                    ss << L"Event: " << (int)vr_event.eventType << L"\n";
+                    OutputDebugString(ss.str().c_str());*/
+                    break;
+                }
             }
         }
     }
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
     //Handle stuff coming from SteamVR Input
     m_VRInput.Update();
@@ -2473,7 +2594,7 @@ bool OutputManager::HandleOpenVREvents()
         if (!m_OvrlDetachedInteractive) //This isn't a direct toggle since the laser pointer blocks the SteamVR Input Action Set
         {
             m_OvrlDetachedInteractive = true;
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, true); 
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, true);
         }
     }
 
@@ -2489,35 +2610,47 @@ bool OutputManager::HandleOpenVREvents()
     m_InputSim.KeyboardTextFinish();
 
     //Update postion if necessary
-    if (m_OvrlActive)
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
-        if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
-        {
-            if (m_DragModeDeviceID != -1)
-            {
-                DragUpdate();
-            }
-            else if (m_DragGestureActive)
-            {
-                DragGestureUpdate();
-            }
-        }
+        OverlayManager::Get().SetCurrentOverlayID(i);
+        Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+        const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
-        if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (m_DragModeDeviceID == -1) && (!m_DragGestureActive) &&
-             (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_hmd_floor) )
+        if (data.ConfigBool[configid_bool_overlay_enabled])
         {
-            DetachedTransformUpdateHMDFloor();
-        }
-        else if (HasDashboardMoved()) //The dashboard can move from events we can't detect, like putting the HMD back on, so we check manually as a workaround
-        {
-            UpdateDashboardHMD_Y();
-            ApplySettingTransform(); 
-        }
+            if (overlay.IsVisible())
+            {
+                if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+                {
+                    if (m_DragModeDeviceID != -1)
+                    {
+                        DragUpdate();
+                    }
+                    else if (m_DragGestureActive)
+                    {
+                        DragGestureUpdate();
+                    }
+                }
 
-        DetachedInteractionAutoToggle();
+                if ((data.ConfigBool[configid_bool_overlay_detached]) && (m_DragModeDeviceID == -1) && (!m_DragGestureActive) &&
+                    (data.ConfigInt[configid_int_overlay_detached_origin] == ovrl_origin_hmd_floor))
+                {
+                    DetachedTransformUpdateHMDFloor();
+                }
+                else if (HasDashboardMoved()) //The dashboard can move from events we can't detect, like putting the HMD back on, so we check manually as a workaround
+                {
+                    UpdateDashboardHMD_Y();
+                    ApplySettingTransform();
+                }
+
+                DetachedInteractionAutoToggle();
+            }
+
+            DetachedOverlayGazeFade();
+        }
     }
 
-    DetachedOverlayGazeFade();
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
     return false;
 }
@@ -2575,27 +2708,6 @@ void OutputManager::ResetMouseLastLaserPointerPos()
     m_MouseLastLaserPointerY = pt.y;
 }
 
-void OutputManager::GetValidatedCropValues(int& x, int& y, int& width, int& height)
-{
-    //Validate settings in case of switching desktops (cropping values per desktop might be more ideal actually)
-    x              = std::min(ConfigManager::Get().GetConfigInt(configid_int_overlay_crop_x), m_DesktopWidth);
-    y              = std::min(ConfigManager::Get().GetConfigInt(configid_int_overlay_crop_y), m_DesktopHeight);
-    width          = ConfigManager::Get().GetConfigInt(configid_int_overlay_crop_width);
-    height         = ConfigManager::Get().GetConfigInt(configid_int_overlay_crop_height);
-    int width_max  = std::max(1, m_DesktopWidth  - x);
-    int height_max = std::max(1, m_DesktopHeight - y);
-
-    if (width == -1)
-        width = width_max;
-    else
-        width = std::min(width, width_max);
-
-    if (height == -1)
-        height = height_max;
-    else
-        height = std::min(height, height_max);
-}
-
 void OutputManager::CropToActiveWindow()
 {
     HWND window_handle = ::GetForegroundWindow();
@@ -2615,9 +2727,9 @@ void OutputManager::CropToActiveWindow()
             if ((crop_rect.GetWidth() > 0) && (crop_rect.GetHeight() > 0))
             {
                 //Set new crop values
-                int& crop_x = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
-                int& crop_y = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
-                int& crop_width = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
+                int& crop_x      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
+                int& crop_y      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
+                int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
                 int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
 
                 crop_x = crop_rect.GetTL().x;
@@ -2638,46 +2750,65 @@ void OutputManager::CropToActiveWindow()
     }
 }
 
+void OutputManager::AddOverlay(unsigned int base_id)
+{
+    //Add overlay based on data of lParam ID overlay and set it active
+    unsigned int new_id = OverlayManager::Get().GetOverlayCount();
+    OverlayManager::Get().AddOverlay(OverlayManager::Get().GetConfigData(base_id));
+    OverlayManager::Get().SetCurrentOverlayID(new_id);
+    ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, (int)new_id);
+
+    //Automatically reset the matrix to a saner default if it still is zero or origins are room/HMD floor, which reset to putting it next to the base overlay
+    int origin = ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin);
+    if ( (ConfigManager::Get().GetOverlayDetachedTransform().isZero()) || (origin == ovrl_origin_room) || (origin == ovrl_origin_hmd_floor) )
+    {
+        DetachedTransformReset(OverlayManager::Get().GetOverlay(base_id).GetHandle());
+    }
+
+    ResetCurrentOverlay();
+}
+
 void OutputManager::ApplySetting3DMode()
 {
+    vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetCurrentOverlay().GetHandle();
     int mode = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
 
     if (mode != ovrl_3Dmode_none)
     {
         if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_swapped))
         {
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Parallel, false);
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, true);
+            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Parallel, false);
+            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Crossed, true);
         }
         else
         {
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Parallel, true);
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, false);
+            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Parallel, true);
+            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Crossed, false);
         }
     }
     else
     {
-        vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Parallel, false);
-        vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, false);
-        vr::VROverlay()->SetOverlayTexelAspect(m_OvrlHandleMain, 1.0f);
+        vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Parallel, false);
+        vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Crossed, false);
+        vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 1.0f);
     }
 
-    switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode))
+    switch (mode)
     {
         case ovrl_3Dmode_hsbs:
         {
-            vr::VROverlay()->SetOverlayTexelAspect(m_OvrlHandleMain, 2.0f);
+            vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 2.0f);
             break;
         }
         case ovrl_3Dmode_sbs:
         case ovrl_3Dmode_ou:  //Over-Under is converted to SBS
         {
-            vr::VROverlay()->SetOverlayTexelAspect(m_OvrlHandleMain, 1.0f);
+            vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 1.0f);
             break;
         }
         case ovrl_3Dmode_hou: //Half-Over-Under is converted to SBS with half height
         {
-            vr::VROverlay()->SetOverlayTexelAspect(m_OvrlHandleMain, 0.5f);
+            vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 0.5f);
             break;
         }
         default: break;
@@ -2690,30 +2821,34 @@ void OutputManager::ApplySetting3DMode()
 
 void OutputManager::ApplySettingTransform()
 {
+    Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+
     //Fixup overlay visibility if needed
     //This has to be done first since there seem to be issues with moving invisible overlays
     bool is_detached = (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached));
 
-    if ( (!is_detached) || (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
-    {
-        SetMainOverlayOpacity(ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity));
-    }
+    bool should_be_visible = overlay.ShouldBeVisible();
 
-    bool should_be_visible = GetMainOverlayShouldBeVisible();
-
-    if ( (!should_be_visible) && (m_OvrlDashboardActive) && (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
+    if ( (!should_be_visible) && (is_detached) && (m_OvrlDashboardActive) && (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
     {
         should_be_visible = true;
-        SetMainOverlayOpacity(0.25f);
+        overlay.SetOpacity(0.25f);
+    }
+    else if (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled))
+    {
+        overlay.SetOpacity(ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity));
     }
 
-    if ( (should_be_visible) && (!vr::VROverlay()->IsOverlayVisible(m_OvrlHandleMain)) )
+    should_be_visible = overlay.ShouldBeVisible();
+
+    if ( (should_be_visible) && (!overlay.IsVisible()) )
     {
-        ShowMainOverlay();
+        ShowOverlay(overlay.GetID());
     }
-    else if ( (!should_be_visible) && (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleMain)) )
+    else if ( (!should_be_visible) && (overlay.IsVisible()) )
     {
-        HideMainOverlay();
+        HideOverlay(overlay.GetID());
     }
 
     //Update width
@@ -2730,11 +2865,11 @@ void OutputManager::ApplySettingTransform()
         overlay_origin = ovrl_origin_dashboard;
     }
 
-    vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleMain, width);
+    vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle, width);
 
     //Calculate height of the main overlay to set dashboard dummy height correctly
-    int crop_x, crop_y, crop_width, crop_height;
-    GetValidatedCropValues(crop_x, crop_y, crop_width, crop_height);
+    const DPRect& crop_rect = overlay.GetValidatedCropRect();
+    int crop_width = crop_rect.GetWidth(), crop_height = crop_rect.GetHeight();
 
     int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
 
@@ -2758,7 +2893,7 @@ void OutputManager::ApplySettingTransform()
     //Setting the dashboard dummy width/height has some kind of race-condition and getting the transform coordinates below may use the old size
     //So we instead calculate the offset the height change would cause and change the dummy height last
     float dashboard_offset = 0.0f;
-    vr::VROverlay()->GetOverlayWidthInMeters(m_OvrlHandleDashboard, &dashboard_offset);
+    vr::VROverlay()->GetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, &dashboard_offset);
     dashboard_offset = ( dashboard_offset - (height + 0.20f) ) / 2.0f;
 
     //Update Curvature
@@ -2779,11 +2914,11 @@ void OutputManager::ApplySettingTransform()
         }
     }
 
-    vr::VROverlay()->SetOverlayCurvature(m_OvrlHandleMain, curve);
+    vr::VROverlay()->SetOverlayCurvature(ovrl_handle, curve);
 
     //Update transform
     vr::VROverlayTransformType transform_type;
-    vr::VROverlay()->GetOverlayTransformType(m_OvrlHandleMain, &transform_type);
+    vr::VROverlay()->GetOverlayTransformType(ovrl_handle, &transform_type);
 
     vr::HmdMatrix34_t matrix = {0};
     vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
@@ -2793,7 +2928,7 @@ void OutputManager::ApplySettingTransform()
         case ovrl_origin_room:
         {
             matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
-            vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, universe_origin, &matrix);
+            vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, universe_origin, &matrix);
             break;
         }
         case ovrl_origin_hmd_floor:
@@ -2803,7 +2938,7 @@ void OutputManager::ApplySettingTransform()
         }
         case ovrl_origin_dashboard:
         {
-            vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboard, universe_origin, {0.5f, -0.5f}, &matrix); //-0.5 is past bottom end of the overlay, might break someday
+            vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, universe_origin, {0.5f, -0.5f}, &matrix); //-0.5 is past bottom end of the overlay, might break someday
 
             if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
             {
@@ -2818,13 +2953,13 @@ void OutputManager::ApplySettingTransform()
                                                 ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_forward));
             }
 
-            vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, universe_origin, &matrix);
+            vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, universe_origin, &matrix);
             break;
         }
         case ovrl_origin_hmd:
         {
             matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
-            vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(m_OvrlHandleMain, vr::k_unTrackedDeviceIndex_Hmd, &matrix);
+            vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, vr::k_unTrackedDeviceIndex_Hmd, &matrix);
             break;
         }
         case ovrl_origin_right_hand:
@@ -2834,11 +2969,11 @@ void OutputManager::ApplySettingTransform()
             if (device_index != vr::k_unTrackedDeviceIndexInvalid)
             {
                 matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
-                vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(m_OvrlHandleMain, device_index, &matrix);
+                vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, device_index, &matrix);
             }
             else //No controller connected, uh put it to 0?
             {
-                vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, universe_origin, &matrix);
+                vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, universe_origin, &matrix);
             }
             break;
         }
@@ -2849,11 +2984,11 @@ void OutputManager::ApplySettingTransform()
             if (device_index != vr::k_unTrackedDeviceIndexInvalid)
             {
                 matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
-                vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(m_OvrlHandleMain, device_index, &matrix);
+                vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, device_index, &matrix);
             }
             else //No controller connected, uh put it to 0?
             {
-                vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, universe_origin, &matrix);
+                vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, universe_origin, &matrix);
             }
             break;
         }
@@ -2864,11 +2999,11 @@ void OutputManager::ApplySettingTransform()
             if (index_tracker != vr::k_unTrackedDeviceIndexInvalid)
             {
                 matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
-                vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(m_OvrlHandleMain, index_tracker, &matrix);
+                vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, index_tracker, &matrix);
             }
             else //Not connected, uh put it to 0?
             {
-                vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, universe_origin, &matrix);
+                vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, universe_origin, &matrix);
             }
 
             break;
@@ -2876,14 +3011,20 @@ void OutputManager::ApplySettingTransform()
     }
 
     //Dashboard dummy still needs correct width/height set for the top dashboard bar above it to be visible
-    if (is_detached)
-        vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboard, 1.525f); //Fixed height to fit open settings UI
-    else
-        vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboard, height + 0.20f);
+    if (overlay.GetID() == k_ulOverlayID_Dashboard)
+    {
+        if (is_detached)
+            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, 1.525f); //Fixed height to fit open settings UI
+        else
+            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, height + 0.20f);
+    }
 }
 
 void OutputManager::ApplySettingCrop()
 {
+    Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+
     //Set up overlay cropping
     vr::VRTextureBounds_t tex_bounds;
     vr::VRTextureBounds_t tex_bounds_prev;
@@ -2895,28 +3036,28 @@ void OutputManager::ApplySettingCrop()
         tex_bounds.uMax = 1.0f;
         tex_bounds.vMax = 1.0f;
 
-        vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleMain, &tex_bounds);
+        vr::VROverlay()->SetOverlayTextureBounds(ovrl_handle, &tex_bounds);
         return;
     }
 
-    int crop_x, crop_y, crop_width, crop_height;
-    GetValidatedCropValues(crop_x, crop_y, crop_width, crop_height);
+    overlay.UpdateValidatedCropRect();
+    const DPRect& crop_rect = overlay.GetValidatedCropRect();
 
-    float offset_x = (crop_width == 1) ? 0.0f : 0.5f, offset_y = (crop_height == 1) ? 0.0f : 0.5f; //Yes, we do handle the case of 1 pixel crops
+    float offset_x = (crop_rect.GetWidth() == 1) ? 0.0f : 0.5f, offset_y = (crop_rect.GetHeight() == 1) ? 0.0f : 0.5f; //Yes, we do handle the case of 1 pixel crops
     int texture_width = m_DesktopWidth;
 
     int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
-    if ((mode_3d == ovrl_3Dmode_hou) || (mode_3d == ovrl_3Dmode_ou))    //Over-Under converted texture is twice as wide as the actual desktop
+    /*if ((mode_3d == ovrl_3Dmode_hou) || (mode_3d == ovrl_3Dmode_ou))    //Over-Under converted texture is twice as wide as the actual desktop
     {
         texture_width *= 2;
         crop_width *= 2;
-    }
+    }*/
 
     //Set UV bounds (slightly offset to not have irrelevant partial pixels appear, lookup "diamond exit rule" for that) 
-    tex_bounds.uMin = (crop_x == 0) ? 0.0f : (crop_x + offset_x) / texture_width;
-    tex_bounds.vMin = (crop_y == 0) ? 0.0f : (crop_y + offset_y) / m_DesktopHeight;
-    tex_bounds.uMax = (crop_width  == texture_width)   ? 1.0f : ( ((crop_x + crop_width)  - offset_x) / texture_width);
-    tex_bounds.vMax = (crop_height == m_DesktopHeight) ? 1.0f : ( ((crop_y + crop_height) - offset_y) / m_DesktopHeight);
+    tex_bounds.uMin = (crop_rect.GetTL().x == 0) ? 0.0f : (crop_rect.GetTL().x + offset_x) / texture_width;
+    tex_bounds.vMin = (crop_rect.GetTL().y == 0) ? 0.0f : (crop_rect.GetTL().y + offset_y) / m_DesktopHeight;
+    tex_bounds.uMax = (crop_rect.GetWidth()  == texture_width)   ? 1.0f : ( ((crop_rect.GetBR().x) - offset_x) / texture_width);
+    tex_bounds.vMax = (crop_rect.GetHeight() == m_DesktopHeight) ? 1.0f : ( ((crop_rect.GetBR().y) - offset_y) / m_DesktopHeight);
 
     //Offset is nice for actual cropped content, but let's not go out of the 0.0 - 1.0 range
     tex_bounds.uMin = std::max(0.0f, tex_bounds.uMin);
@@ -2925,52 +3066,70 @@ void OutputManager::ApplySettingCrop()
     tex_bounds.vMax = std::min(1.0f, tex_bounds.vMax);
 
     //Compare old to new bounds to see if a full refresh is required
-    vr::VROverlay()->GetOverlayTextureBounds(m_OvrlHandleMain, &tex_bounds_prev);
+    vr::VROverlay()->GetOverlayTextureBounds(ovrl_handle, &tex_bounds_prev);
 
     if ((tex_bounds.uMin < tex_bounds_prev.uMin) || (tex_bounds.vMin < tex_bounds_prev.vMin) || (tex_bounds.uMax > tex_bounds_prev.uMax) || (tex_bounds.vMax > tex_bounds_prev.vMax))
     {
         RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
     }
 
-    vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleMain, &tex_bounds);
+    vr::VROverlay()->SetOverlayTextureBounds(ovrl_handle, &tex_bounds);
 }
 
 void OutputManager::ApplySettingDragMode()
 {
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
+    //Always applies to all overlays
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
-        //Don't activate drag mode for HMD origin when the pointer is also the HMD
-        if ( (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd) && (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_hmd) )
+        OverlayManager::Get().SetCurrentOverlayID(i);
+
+        vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetCurrentOverlay().GetHandle();
+
+        if ((ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)))
         {
-            vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleMain, vr::VROverlayInputMethod_None);
+            //Don't activate drag mode for HMD origin when the pointer is also the HMD (or it's the dashboard overlay)
+            if ( ((vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd) && (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_hmd)) || 
+                 (i == k_ulOverlayID_Dashboard) )
+            {
+                vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
+            }
+            else
+            {
+                vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
+                vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, false);
+            }
+
+            m_MouseIgnoreMoveEvent = false;
         }
         else
         {
-            vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleMain, vr::VROverlayInputMethod_Mouse);
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_HideLaserIntersection, false);
+            vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
         }
-        
-        m_MouseIgnoreMoveEvent = false;
-    }
-    else
-    {
-        vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleMain, vr::VROverlayInputMethod_None);
+
+        //Sync matrix and restore mouse settings if it's been turned off
+        if (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+        {
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
+            IPCManager::Get().SendStringToUIApp(configid_str_state_detached_transform_current, ConfigManager::Get().GetOverlayDetachedTransform().toString(), m_WindowHandle);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+            ApplySettingMouseInput();
+        }
+
+        ApplySettingTransform();
     }
 
-    //Sync matrix and restore mouse settings if it's been turned off
-    if (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) 
-    {
-        IPCManager::Get().SendStringToUIApp(configid_str_state_detached_transform_current, ConfigManager::Get().GetOverlayDetachedTransform().toString(), m_WindowHandle);
-        ApplySettingMouseInput();
-    }
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
 void OutputManager::ApplySettingMouseInput()
 {
+    vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetCurrentOverlay().GetHandle();
+
     if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) && (!m_OutputInvalid) )
     {
-        vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
-        vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleMain, vr::VROverlayInputMethod_Mouse);
+        vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
+        vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
 
         //Set double-click assist duration from user config value
         if (ConfigManager::Get().GetConfigInt(configid_int_input_mouse_dbl_click_assist_duration_ms) == -1)
@@ -2979,22 +3138,21 @@ void OutputManager::ApplySettingMouseInput()
         }
         else
         {
-            ConfigManager::Get().SetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms, 
-                                              ConfigManager::Get().GetConfigInt(configid_int_input_mouse_dbl_click_assist_duration_ms));
+            ConfigManager::Get().SetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms, ConfigManager::Get().GetConfigInt(configid_int_input_mouse_dbl_click_assist_duration_ms));
         }
     }
     else
     {
-        vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleMain, vr::VROverlayInputMethod_None);
+        vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
     }
 
-    vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_HideLaserIntersection, !ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_intersection_blob));
+    vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, !ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_intersection_blob));
 
     vr::HmdVector2_t mouse_scale;
     mouse_scale.v[0] = m_DesktopWidth;
     mouse_scale.v[1] = m_DesktopHeight;
 
-    vr::VROverlay()->SetOverlayMouseScale(m_OvrlHandleMain, &mouse_scale);
+    vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
 }
 
 void OutputManager::ApplySettingKeyboardScale(float last_used_scale)
@@ -3075,6 +3233,10 @@ void OutputManager::DragStart(bool is_gesture_drag)
             m_DragModeDeviceID = device_index;
         }
 
+        Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+        vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+        m_DragModeOverlayID = overlay.GetID();
+
         m_DragModeMatrixSourceStart = poses[device_index].mDeviceToAbsoluteTracking;
 
         switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin))
@@ -3083,7 +3245,7 @@ void OutputManager::DragStart(bool is_gesture_drag)
             {
                 if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
                 {
-                    vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, vr::TrackingUniverseStanding, &poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
+                    vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, vr::TrackingUniverseStanding, &poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
                 }
                 break;
             }
@@ -3093,7 +3255,7 @@ void OutputManager::DragStart(bool is_gesture_drag)
 
                 if ( (index_right_hand != vr::k_unTrackedDeviceIndexInvalid) && (poses[index_right_hand].bPoseIsValid) )
                 {
-                    vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, vr::TrackingUniverseStanding, &poses[index_right_hand].mDeviceToAbsoluteTracking);
+                    vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, vr::TrackingUniverseStanding, &poses[index_right_hand].mDeviceToAbsoluteTracking);
                 }
                 break;
             }
@@ -3103,7 +3265,7 @@ void OutputManager::DragStart(bool is_gesture_drag)
 
                 if ( (index_left_hand != vr::k_unTrackedDeviceIndexInvalid) && (poses[index_left_hand].bPoseIsValid) )
                 {
-                    vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, vr::TrackingUniverseStanding, &poses[index_left_hand].mDeviceToAbsoluteTracking);
+                    vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, vr::TrackingUniverseStanding, &poses[index_left_hand].mDeviceToAbsoluteTracking);
                 }
                 break;
             }
@@ -3113,7 +3275,7 @@ void OutputManager::DragStart(bool is_gesture_drag)
 
                 if ( (index_tracker != vr::k_unTrackedDeviceIndexInvalid) && (poses[index_tracker].bPoseIsValid) )
                 {
-                    vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, vr::TrackingUniverseStanding, &poses[index_tracker].mDeviceToAbsoluteTracking);
+                    vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, vr::TrackingUniverseStanding, &poses[index_tracker].mDeviceToAbsoluteTracking);
                 }
                 break;
             }
@@ -3121,13 +3283,13 @@ void OutputManager::DragStart(bool is_gesture_drag)
 
         vr::HmdMatrix34_t transform_target;
         vr::TrackingUniverseOrigin origin;
-        vr::VROverlay()->GetOverlayTransformAbsolute(m_OvrlHandleMain, &origin, &transform_target);
+        vr::VROverlay()->GetOverlayTransformAbsolute(ovrl_handle, &origin, &transform_target);
         m_DragModeMatrixTargetStart = transform_target;
 
         if (!is_gesture_drag)
         {
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SendVRDiscreteScrollEvents, false);
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
+            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, false);
+            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
         }
     }
 }
@@ -3152,7 +3314,7 @@ void OutputManager::DragUpdate()
         matrix_source_current = matrix_target_new;
 
         vr::HmdMatrix34_t vrmat = matrix_source_current.toOpenVR34();
-        vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, vr::TrackingUniverseStanding, &vrmat);
+        vr::VROverlay()->SetOverlayTransformAbsolute(OverlayManager::Get().GetOverlay(m_DragModeOverlayID).GetHandle(), vr::TrackingUniverseStanding, &vrmat);
     }
 }
 
@@ -3178,7 +3340,7 @@ Matrix4 OutputManager::DragGetBaseOffsetMatrix()
     }
 
     vr::VROverlayTransformType transform_type;
-    vr::VROverlay()->GetOverlayTransformType(m_OvrlHandleMain, &transform_type);
+    vr::VROverlay()->GetOverlayTransformType(OverlayManager::Get().GetCurrentOverlay().GetHandle(), &transform_type);
 
     vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
 
@@ -3270,10 +3432,16 @@ void OutputManager::DragFinish()
 {
     DragUpdate();
 
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID(); //DragGetBaseOffsetMatrix() needs the right overlay as current
+    OverlayManager::Get().SetCurrentOverlayID(m_DragModeOverlayID);
+
+    Overlay& overlay = OverlayManager::Get().GetOverlay(m_DragModeOverlayID);
+    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+
     vr::HmdMatrix34_t transform_target;
     vr::TrackingUniverseOrigin origin;
 
-    vr::VROverlay()->GetOverlayTransformAbsolute(m_OvrlHandleMain, &origin, &transform_target);
+    vr::VROverlay()->GetOverlayTransformAbsolute(ovrl_handle, &origin, &transform_target);
     Matrix4 matrix_target_finish = transform_target;
 
     Matrix4 matrix_target_base = DragGetBaseOffsetMatrix();
@@ -3284,12 +3452,14 @@ void OutputManager::DragFinish()
 
     //Restore normal mode
     m_DragModeDeviceID = -1;
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
     
-    vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SendVRSmoothScrollEvents, false);
+    vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRSmoothScrollEvents, false);
 
     if (ConfigManager::Get().GetConfigBool(configid_bool_input_enabled))
     {
-        vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
+        vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
     }
 }
 
@@ -3311,6 +3481,10 @@ void OutputManager::DragGestureUpdate()
 
     if ( (index_right != vr::k_unTrackedDeviceIndexInvalid) && (index_left != vr::k_unTrackedDeviceIndexInvalid) )
     {
+        Overlay& overlay = OverlayManager::Get().GetOverlay(m_DragModeOverlayID);
+        OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(m_DragModeOverlayID);
+        vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+
         vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
         vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
         vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
@@ -3327,12 +3501,13 @@ void OutputManager::DragGestureUpdate()
             {
                 //Scale is just the start scale multiplied by the factor of changed controller distance
                 float width = m_DragGestureScaleWidthStart * (m_DragGestureScaleDistanceLast / m_DragGestureScaleDistanceStart);
-                vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleMain, width);
-                ConfigManager::Get().SetConfigFloat(configid_float_overlay_width, width);
+                vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle, width);
+                overlay_data.ConfigFloat[configid_float_overlay_width] = width;
             
                 //Send adjusted width to the UI app
-                ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)m_DragModeOverlayID);
                 IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_width), *(LPARAM*)&width);
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
             }
 
             //Gesture Rotate
@@ -3363,7 +3538,7 @@ void OutputManager::DragGestureUpdate()
                 mat_overlay.setTranslation(pos);
 
                 vr::HmdMatrix34_t vrmat = mat_overlay.toOpenVR34();
-                vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, vr::TrackingUniverseStanding, &vrmat);
+                vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, vr::TrackingUniverseStanding, &vrmat);
             }
 
             m_DragGestureRotateMatLast = matrix_rotate_current;
@@ -3373,6 +3548,9 @@ void OutputManager::DragGestureUpdate()
 
 void OutputManager::DragGestureFinish()
 {
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID(); //DragGetBaseOffsetMatrix() needs the right overlay as current
+    OverlayManager::Get().SetCurrentOverlayID(m_DragModeOverlayID);
+
     Matrix4 matrix_target_base = DragGetBaseOffsetMatrix();
     matrix_target_base.invert();
 
@@ -3380,9 +3558,10 @@ void OutputManager::DragGestureFinish()
     ApplySettingTransform();
 
     m_DragGestureActive = false;
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
-void OutputManager::DetachedTransformReset()
+void OutputManager::DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref)
 {
     vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
     Matrix4& transform = ConfigManager::Get().GetOverlayDetachedTransform();
@@ -3392,31 +3571,62 @@ void OutputManager::DetachedTransformReset()
     switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin))
     {
         case ovrl_origin_room:
-        {
-            vr::HmdMatrix34_t overlay_transform;
-            vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboard, universe_origin, {0.5f, 1.0f}, &overlay_transform);
-            transform = overlay_transform;
-
-            OffsetTransformFromSelf(transform, 0.0f, -0.20f, -0.05f); //Avoid Z-fighting with the settings window since layers are the same when detached
-            break;
-        }
         case ovrl_origin_hmd_floor:
         {
             vr::HmdMatrix34_t overlay_transform;
-            vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboard, universe_origin, {0.5f, 1.0f}, &overlay_transform);
+            vr::HmdVector2_t mouse_scale;
+
+            bool ref_overlay_changed = false;
+            float ref_overlay_alpha_orig = 0.0f;
+
+            if (ovrl_handle_ref == vr::k_ulOverlayHandleInvalid)
+            {
+                ovrl_handle_ref = m_OvrlHandleMain;
+            }
+
+            //GetTransformForOverlayCoordinates() won't work if the reference overlay is not visible, so make it "visible" by showing it with 0% alpha
+            if (!vr::VROverlay()->IsOverlayVisible(ovrl_handle_ref))
+            {
+                vr::VROverlay()->GetOverlayAlpha(ovrl_handle_ref, &ref_overlay_alpha_orig);
+                vr::VROverlay()->SetOverlayAlpha(ovrl_handle_ref, 0.0f);
+                vr::VROverlay()->ShowOverlay(ovrl_handle_ref);
+
+                //Showing overlays and getting coordinates from them has a race condition if it's the first time the overlay is shown
+                //Doesn't seem like it can be truly detected when it's ready, so as cheap as it is, this Sleep() seems to get around the issue
+                ::Sleep(50);
+
+                ref_overlay_changed = true;
+            }
+
+            //Get mouse scale for overlay coordinate offset
+            vr::VROverlay()->GetOverlayMouseScale(ovrl_handle_ref, &mouse_scale);
+
+            //Put it next to the refernce overlay so it can actually be seen
+            vr::HmdVector2_t coordinate_offset = {mouse_scale.v[0] * 1.5f, mouse_scale.v[1] / 2.0f};
+            vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_ref, universe_origin, coordinate_offset, &overlay_transform);
             transform = overlay_transform;
-            
-            //DragGetBaseOffsetMatrix() needs detached to be true or else it will return offset for dashboard
-            bool detached_old = ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached); 
-            ConfigManager::Get().SetConfigBool(configid_bool_overlay_detached, true);
 
-            Matrix4 transform_base = DragGetBaseOffsetMatrix();
-            transform_base.invert();
-            transform = transform_base * transform;
+            //Restore reference overlay state if it was changed
+            if (ref_overlay_changed)
+            {
+                vr::VROverlay()->HideOverlay(ovrl_handle_ref);
+                vr::VROverlay()->SetOverlayAlpha(ovrl_handle_ref, ref_overlay_alpha_orig);
+            }
 
-            OffsetTransformFromSelf(transform, 0.0f, -0.20f, -0.05f);
+            //Additional offset for ovrl_origin_hmd_floor
+            if (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_hmd_floor)
+            {
+                //DragGetBaseOffsetMatrix() needs detached to be true or else it will return offset for dashboard
+                bool detached_old = ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached); 
+                ConfigManager::Get().SetConfigBool(configid_bool_overlay_detached, true);
 
-            ConfigManager::Get().SetConfigBool(configid_bool_overlay_detached, detached_old);
+                Matrix4 transform_base = DragGetBaseOffsetMatrix();
+                transform_base.invert();
+                transform = transform_base * transform;
+
+                ConfigManager::Get().SetConfigBool(configid_bool_overlay_detached, detached_old);
+            }
+
             break;
         }
         case ovrl_origin_dashboard:
@@ -3530,14 +3740,17 @@ void OutputManager::DetachedTransformUpdateHMDFloor()
     matrix *= ConfigManager::Get().GetOverlayDetachedTransform();
 
     vr::HmdMatrix34_t matrix_ovr = matrix.toOpenVR34();
-    vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleMain, vr::TrackingUniverseStanding, &matrix_ovr);
+    vr::VROverlay()->SetOverlayTransformAbsolute(OverlayManager::Get().GetCurrentOverlay().GetHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
 }
 
 void OutputManager::DetachedInteractionAutoToggle()
 {
+    Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+
     float max_distance = ConfigManager::Get().GetConfigFloat(configid_float_input_detached_interaction_max_distance);
 
-    if ((ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (m_OvrlActive) && (max_distance != 0.0f) && (!vr::VROverlay()->IsDashboardVisible()))
+    if ((ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (overlay.IsVisible()) && (max_distance != 0.0f) && (!vr::VROverlay()->IsDashboardVisible()))
     {
         bool do_set_interactive = false;
 
@@ -3568,7 +3781,7 @@ void OutputManager::DetachedInteractionAutoToggle()
 
                 vr::VROverlayIntersectionResults_t results;
 
-                if ( (vr::VROverlay()->ComputeOverlayIntersection(m_OvrlHandleMain, &params, &results)) && (results.fDistance <= max_distance) )
+                if ( (vr::VROverlay()->ComputeOverlayIntersection(ovrl_handle, &params, &results)) && (results.fDistance <= max_distance) )
                 {
                     do_set_interactive = true;
                 }
@@ -3584,26 +3797,13 @@ void OutputManager::DetachedInteractionAutoToggle()
             }
         }
 
-        if (do_set_interactive)
-        {
-            if (!m_OvrlDetachedInteractive)  //Avoid spamming flag changes
-            {
-                m_OvrlDetachedInteractive = true;
-                vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, true);
-            }
-        }
-        else if (m_OvrlDetachedInteractive)
-        {
-            m_OvrlDetachedInteractive = false;
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, false);
-        }
+        overlay.SetGlobalInteractiveFlag(do_set_interactive);
     }
 }
 
 void OutputManager::DetachedOverlayGazeFade()
 {
-    if (  (ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) && (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && 
-         (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
+    if (  (ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
     {
         vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
         vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
@@ -3641,7 +3841,7 @@ void OutputManager::DetachedOverlayGazeFade()
             float alpha = clamp((distance * -fade_rate) + ((gaze_distance - 0.1f) * 10.0f), 0.0f, 1.0f); //There's nothing smart behind this, just trial and error
             alpha *= ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity);
             
-            SetMainOverlayOpacity(alpha);
+            OverlayManager::Get().GetCurrentOverlay().SetOpacity(alpha);
         }
     }
 }
@@ -3664,7 +3864,7 @@ bool OutputManager::HasDashboardMoved()
     vr::HmdMatrix34_t hmd_matrix = {0};
     vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
 
-    vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboard, universe_origin, {0.0f, 0.0f}, &hmd_matrix);
+    vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, universe_origin, {0.0f, 0.0f}, &hmd_matrix);
 
     Matrix4 matrix_new = hmd_matrix;
 
@@ -3673,6 +3873,23 @@ bool OutputManager::HasDashboardMoved()
         m_DashboardTransformLast = hmd_matrix;
 
         return true;
+    }
+
+    return false;
+}
+
+bool OutputManager::IsAnyOverlayUsingGazeFade() const
+{
+    //This is the straight forward, simple version. The smart one, efficiently keeping track properly, could come some other time*
+    //*we know it probably won't happen any time soon
+    for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        const OverlayConfigData data = OverlayManager::Get().GetConfigData(i);
+
+        if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (data.ConfigBool[configid_bool_overlay_gazefade_enabled]) )
+        {
+            return true;
+        }
     }
 
     return false;
@@ -3746,7 +3963,7 @@ void OutputManager::DoAction(ActionID action_id)
                 else
                 {
                     //If not detached, show it for the dummy so it gets treated like a dashboard keyboard
-                    vr::VROverlayHandle_t ovrl_keyboard_target = (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) ? m_OvrlHandleMain : m_OvrlHandleDashboard;
+                    vr::VROverlayHandle_t ovrl_keyboard_target = (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) ? m_OvrlHandleMain : m_OvrlHandleDashboardDummy;
 
                     vr::EVROverlayError keyboard_error = vr::VROverlay()->ShowKeyboardForOverlay(ovrl_keyboard_target, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
                                                                                                  vr::KeyboardFlag_Minimal, "Desktop+", 1024, "", m_OvrlHandleMain);
@@ -3938,11 +4155,6 @@ void OutputManager::CleanRefs()
 
     if (m_OvrlTex)
     {
-        if (m_OvrlHandleMain != vr::k_ulOverlayHandleInvalid)
-        {
-            vr::VROverlay()->ClearOverlayTexture(m_OvrlHandleMain);
-        }
-
         m_OvrlTex->Release();
         m_OvrlTex = nullptr;
     }

@@ -1,0 +1,280 @@
+#include "Overlays.h"
+
+#include <sstream>
+
+#include "CommonTypes.h"
+#include "OverlayManager.h"
+#include "OutputManager.h"
+
+Overlay::Overlay(unsigned int id) : m_ID(id),
+                                    m_OvrlHandle(vr::k_ulOverlayHandleInvalid),
+                                    m_Visible(false),
+                                    m_Opacity(1.0f),
+                                    m_GlobalInteractive(false)
+{
+    if (m_ID != k_ulOverlayID_Dashboard) //For the dashboard overlay, InitOverlay() is called by OutputManager during InitOutput() when necessary
+    {
+        InitOverlay();
+    }
+}
+
+Overlay::Overlay(Overlay&& b)
+{
+    *this = std::move(b);
+}
+
+Overlay& Overlay::operator=(Overlay&& b)
+{
+    if (this != &b)
+    {
+        if (m_OvrlHandle != vr::k_ulOverlayHandleInvalid)
+        {
+            vr::VROverlay()->DestroyOverlay(m_OvrlHandle);
+        }
+
+        m_ID = b.m_ID;
+        m_OvrlHandle = b.m_OvrlHandle;
+        m_Visible = b.m_Visible;
+        m_Opacity = b.m_Opacity;
+        m_ValidatedCropRect = b.m_ValidatedCropRect;
+
+        b.m_OvrlHandle = vr::k_ulOverlayHandleInvalid;
+    }
+
+    return *this;
+}
+
+Overlay::~Overlay()
+{
+    if (m_OvrlHandle != vr::k_ulOverlayHandleInvalid)
+    {
+        vr::VROverlay()->DestroyOverlay(m_OvrlHandle);
+    }
+}
+
+
+void Overlay::InitOverlay()
+{
+    std::stringstream ss;
+    ss << "elvissteinjr.DesktopPlus" << m_ID;
+
+    vr::VROverlayError ovrl_error = vr::VROverlayError_None;
+    ovrl_error = vr::VROverlay()->CreateOverlay(ss.str().c_str(), "Desktop+", &m_OvrlHandle);
+
+    if (ovrl_error == vr::VROverlayError_None)
+    {
+        vr::VROverlay()->SetOverlayAlpha(m_OvrlHandle, m_Opacity);
+    }
+}
+
+void Overlay::AssignTexture()
+{
+    OutputManager* outmgr = OutputManager::Get();
+    if (outmgr == nullptr)
+        return;
+
+    if (m_OvrlHandle != vr::k_ulOverlayHandleInvalid)
+    {
+        //Get overlay texture handle for the desktop texture overlay from OpenVR and set it as handle for this overlay
+        vr::VROverlayHandle_t ovrl_handle_desktop_tex = outmgr->GetDesktopTextureOverlay();
+        ID3D11ShaderResourceView* ovrl_shader_res;
+        uint32_t ovrl_width;
+        uint32_t ovrl_height;
+        uint32_t ovrl_native_format;
+        vr::ETextureType ovrl_api_type;
+        vr::EColorSpace ovrl_color_space;
+        vr::VRTextureBounds_t ovrl_tex_bounds;
+
+        vr::Texture_t vrtex;
+        vrtex.eType = vr::TextureType_DirectX;
+        vrtex.eColorSpace = vr::ColorSpace_Gamma;
+        vrtex.handle = OutputManager::Get()->GetOverlayTexture();
+
+        vr::VROverlayError ovrl_error = vr::VROverlayError_None;
+        ovrl_error = vr::VROverlay()->GetOverlayTexture(ovrl_handle_desktop_tex, (void**)&ovrl_shader_res, vrtex.handle, &ovrl_width, &ovrl_height, &ovrl_native_format,
+                                                        &ovrl_api_type, &ovrl_color_space, &ovrl_tex_bounds);
+
+        if (ovrl_error == vr::VROverlayError_None)
+        {
+            ID3D11Resource* ovrl_tex;
+            ovrl_shader_res->GetResource(&ovrl_tex);
+
+            HANDLE ovrl_tex_handle = nullptr;
+            IDXGIResource* ovrl_dxgi_resource;
+            HRESULT hr = ovrl_tex->QueryInterface(__uuidof(IDXGIResource), (void**)&ovrl_dxgi_resource);
+
+            ovrl_dxgi_resource->GetSharedHandle(&ovrl_tex_handle);
+
+            vr::Texture_t vrtex_target;
+            vrtex_target.eType       = vr::TextureType_DXGISharedHandle;
+            vrtex_target.eColorSpace = vr::ColorSpace_Gamma;
+            vrtex_target.handle      = ovrl_tex_handle;
+
+            vr::VROverlay()->SetOverlayTexture(m_OvrlHandle, &vrtex_target);
+
+            ovrl_dxgi_resource->Release();
+            ovrl_dxgi_resource = nullptr;
+
+            ovrl_tex->Release();
+            ovrl_tex = nullptr;
+
+            vr::VROverlay()->ReleaseNativeOverlayHandle(ovrl_handle_desktop_tex, (void*)ovrl_shader_res);
+            ovrl_shader_res = nullptr;
+        }
+    }
+}
+
+unsigned int Overlay::GetID() const
+{
+    return m_ID;
+}
+
+void Overlay::SetID(unsigned int id)
+{
+    m_ID = id;
+}
+
+vr::VROverlayHandle_t Overlay::GetHandle() const
+{
+    return m_OvrlHandle;
+}
+
+void Overlay::SetOpacity(float opacity)
+{
+    if (opacity == m_Opacity)
+        return;
+
+    OutputManager* outmgr = OutputManager::Get();
+    if (outmgr == nullptr)
+        return;
+
+    vr::VROverlay()->SetOverlayAlpha(m_OvrlHandle, opacity);
+
+    if (m_Opacity == 0.0f) //If it was previously 0%, show if needed
+    {
+        m_Opacity = opacity; //ShouldBeVisible() depends on this being correct, so set it here
+
+        if ( (!m_Visible) && (ShouldBeVisible()) )
+        {
+            outmgr->ShowOverlay(m_ID);
+        }
+    }
+    else if ( (opacity == 0.0f) && (m_Visible) ) //If it's 0% now, hide if currently visible
+    {
+        outmgr->HideOverlay(m_ID);
+    }
+
+    m_Opacity = opacity;
+}
+
+float Overlay::GetOpacity() const
+{
+    return m_Opacity;
+}
+
+void Overlay::SetVisible(bool visible)
+{
+    m_Visible = visible; vr::VROverlay()->ShowOverlay(m_OvrlHandle);
+    (visible) ? vr::VROverlay()->ShowOverlay(m_OvrlHandle) : vr::VROverlay()->HideOverlay(m_OvrlHandle);
+}
+
+bool Overlay::IsVisible() const
+{
+    return m_Visible;
+}
+
+bool Overlay::ShouldBeVisible() const
+{
+    if (m_Opacity == 0.0f)
+        return false;
+
+    bool should_be_visible = false;
+
+    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_ID);
+
+    if (!data.ConfigBool[configid_bool_overlay_enabled])
+        return false;
+
+    if (data.ConfigBool[configid_bool_overlay_detached])
+    {
+        switch (data.ConfigInt[configid_int_overlay_detached_display_mode])
+        {
+            case ovrl_dispmode_always:
+            {
+                should_be_visible = true;
+                break;
+            }
+            case ovrl_dispmode_dashboard:
+            {
+                should_be_visible = vr::VROverlay()->IsDashboardVisible();
+                break;
+            }
+            case ovrl_dispmode_scene:
+            {
+                should_be_visible = !vr::VROverlay()->IsDashboardVisible();
+                break;
+            }
+            case ovrl_dispmode_dplustab:
+            {
+                should_be_visible = ((OutputManager::Get() != nullptr) && (OutputManager::Get()->IsDashboardTabActive()));
+                break;
+            }
+        }
+    }
+    else
+    {
+        should_be_visible = ((OutputManager::Get() != nullptr) && (OutputManager::Get()->IsDashboardTabActive()));
+    }
+
+    return should_be_visible;
+}
+
+void Overlay::SetGlobalInteractiveFlag(bool interactive)
+{
+    if (m_GlobalInteractive != interactive) //Avoid spamming flag changes
+    {
+        vr::VROverlay()->SetOverlayFlag(m_OvrlHandle, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, interactive);
+        m_GlobalInteractive = interactive;
+    }
+}
+
+bool Overlay::GetGlobalInteractiveFlag()
+{
+    return m_GlobalInteractive;
+}
+
+void Overlay::UpdateValidatedCropRect()
+{
+    OutputManager* outmgr = OutputManager::Get();
+    if (outmgr == nullptr)
+        return;
+
+    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_ID);
+
+    int x, y, width, height;
+    int desktop_width = outmgr->GetDesktopWidth(), desktop_height = outmgr->GetDesktopHeight();
+
+    x              = std::min(data.ConfigInt[configid_int_overlay_crop_x], desktop_width);
+    y              = std::min(data.ConfigInt[configid_int_overlay_crop_y], desktop_height);
+    width          = data.ConfigInt[configid_int_overlay_crop_width];
+    height         = data.ConfigInt[configid_int_overlay_crop_height];
+    int width_max  = desktop_width  - x;
+    int height_max = desktop_height - y;
+
+    if (width == -1)
+        width = width_max;
+    else
+        width = std::min(width, width_max);
+
+    if (height == -1)
+        height = height_max;
+    else
+        height = std::min(height, height_max);
+
+    m_ValidatedCropRect = DPRect(x, y, x + width, y + height);
+}
+
+const DPRect& Overlay::GetValidatedCropRect() const
+{
+    return m_ValidatedCropRect;
+}

@@ -11,6 +11,7 @@
 #include "Ini.h"
 #include "Util.h"
 #include "ConfigManager.h"
+#include "OverlayManager.h"
 #include "TextureManager.h"
 #include "InterprocessMessaging.h"
 #include "ImGuiExt.h"
@@ -131,7 +132,92 @@ void WindowSettings::UpdateCatOverlay()
 
         const float column_width_0 = ImGui::GetFontSize() * 10.0f;
 
-        bool& detached = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_detached);
+        //Temporary overlay selector
+        {
+            ImGui::Columns(2, "ColumnCurrentOverlay", false);
+            ImGui::SetColumnWidth(0, column_width_0);
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Current Overlay");
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::FixedHelpMarker("This is obviously not the final selector");
+            ImGui::NextColumn();
+
+            ImGui::SetNextItemWidth(-1);
+
+            int& current_overlay = ConfigManager::Get().GetConfigIntRef(configid_int_interface_overlay_current_id);
+            if (ImGui::InputInt("##InputCurrentOverlay", &current_overlay))
+            {
+                current_overlay = clamp(current_overlay, 0, (int)OverlayManager::Get().GetOverlayCount() - 1);
+
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
+                OverlayManager::Get().SetCurrentOverlayID(current_overlay);
+            }
+
+            //Indicate the current overlay by tinting it when hovering the overlay selector
+            if (UIManager::Get()->IsOpenVRLoaded())
+            {
+                static int colored_id = -1;
+
+                bool is_hovered = ImGui::IsItemHovered();
+
+                if ( (is_hovered) && (colored_id == -1) )
+                {
+                    vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle((unsigned int)current_overlay);
+
+                    if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
+                    {
+                        ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+                        vr::VROverlay()->SetOverlayColor(ovrl_handle, col.x, col.y, col.z);
+
+                        colored_id = current_overlay;
+                    }
+                }
+                else if ( ( (!is_hovered) && (colored_id != -1) ) || ( (colored_id != current_overlay) && (colored_id != -1) ) )
+                {
+                    vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle((unsigned int)colored_id);
+
+                    if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
+                    {
+                        vr::VROverlay()->SetOverlayColor(ovrl_handle, 1.0f, 1.0f, 1.0f);
+                        colored_id = -1;
+                    }
+                }
+            }
+
+            if (ImGui::Button("Add Overlay"))
+            {
+                OverlayManager::Get().AddOverlay(OverlayManager::Get().GetCurrentConfigData());
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, current_overlay);
+
+                current_overlay = (int)OverlayManager::Get().GetOverlayCount() - 1;
+                OverlayManager::Get().SetCurrentOverlayID(current_overlay);
+            }
+            
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+            bool current_overlay_is_dashboard = (current_overlay == k_ulOverlayID_Dashboard);
+
+            if (current_overlay_is_dashboard)
+                ImGui::PushItemDisabled();
+            
+            if (ImGui::Button("Remove Overlay"))
+            {
+                OverlayManager::Get().RemoveOverlay(current_overlay);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_remove, current_overlay);
+
+                current_overlay = (int)OverlayManager::Get().GetCurrentOverlayID(); //RemoveOverlay() will change the current ID
+            }
+
+            if (current_overlay_is_dashboard)
+                ImGui::PopItemDisabled();
+
+            ImGui::NextColumn();
+
+            ImGui::Columns(1);
+        }
+
+        bool detached = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_detached);
 
         //Profiles
         {
@@ -193,12 +279,6 @@ void WindowSettings::UpdateCatOverlay()
                 else
                 {
                     ConfigManager::Get().LoadOverlayProfileFromFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
-                }
-
-                //Adjust sort order in case it was changed by the profile
-                if (!UIManager::Get()->IsInDesktopMode())
-                {
-                    vr::VROverlay()->SetOverlaySortOrder(UIManager::Get()->GetOverlayHandle(), (detached) ? 0 : 1);
                 }
 
                 //Tell dashboard app to load the profile as well
@@ -292,45 +372,14 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::Columns(2, "ColumnGeneral", false);
             ImGui::SetColumnWidth(0, column_width_0);
 
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Type");
+            bool& is_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_enabled);
+
+            if (ImGui::Checkbox("Enabled", &is_enabled))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_enabled), is_enabled);
+            }
+
             ImGui::NextColumn();
-
-            bool detached_radio_changed = false;
-
-            if (ImGui::RadioButton("Dashboard Overlay", !detached))
-            {
-                detached = false;
-                detached_radio_changed = true;
-            }
-
-            ImGui::SameLine();
-
-            //Detached overlays are called "floating" in user-facing parts of the application as that probably makes more sense to most, especially with multiple overlays later
-            if (ImGui::RadioButton("Floating Overlay", detached))
-            {
-                detached = true;
-                detached_radio_changed = true;
-            }
-
-            if (detached_radio_changed)
-            {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_detached), detached);
-
-                //Automatically reset the matrix to a saner default if it still has the zero value
-                if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
-                {
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
-                }
-
-                if (!UIManager::Get()->IsInDesktopMode())
-                {
-                    vr::VROverlay()->SetOverlaySortOrder(UIManager::Get()->GetOverlayHandle(), (detached) ? 0 : 1);
-                }
-
-                UIManager::Get()->RepeatFrame();
-            }
-
             ImGui::NextColumn();
 
             ImGui::AlignTextToFramePadding();
@@ -358,7 +407,7 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::Text("Curvature");
             ImGui::NextColumn();
 
-            //This maps the float curve as int percentage, so the cropping stuff for the rest
+            //This maps the float curve as int percentage, see the cropping stuff for the rest
             float& curve = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_curvature);
             int curve_ui = (curve == -1.0f) ? 101 : int(curve * 100.0f);
 
@@ -566,18 +615,12 @@ void WindowSettings::UpdateCatOverlay()
                 //Dragging the overlay the UI is open on is pretty inconvenient to get out of when not sitting in front of a real mouse, so let's prevent this
                 if (!UIManager::Get()->IsInDesktopMode())
                 {
-                    //Detach overlay if it isn't so it can actually be dragged around
-                    if (!detached)
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_detached), detached);
+
+                    //Automatically reset the matrix to a saner default if it still has the zero value
+                    if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
                     {
-                        detached = true;
-
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_detached), detached);
-
-                        //Automatically reset the matrix to a saner default if it still has the zero value
-                        if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
-                        {
-                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
-                        }
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
                     }
 
                     is_changing_position = true;
@@ -1527,7 +1570,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.1");
+        ImGui::Text("Desktop+ Version 2.1.1-Mutli-Overlay-WiP");
 
         ImGui::Columns(1);
     }
@@ -2716,7 +2759,7 @@ void WindowSettings::Show()
 
     //Adjust sort order when settings window is visible. This will still result in weird visuals with other overlays when active, but at least not constantly.
     //It's a compromise, really. The other reliable method would be about 1m distance between the two overlays, which is not happening
-    if ( (!UIManager::Get()->IsInDesktopMode()) && (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) )
+    if ( (!UIManager::Get()->IsInDesktopMode()) )
     {
         vr::VROverlay()->SetOverlaySortOrder(UIManager::Get()->GetOverlayHandle(), 1);
     }

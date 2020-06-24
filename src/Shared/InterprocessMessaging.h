@@ -37,6 +37,8 @@ enum IPCActionID
     ipcact_vrkeyboard_closed,       //Sent by dashboard application when VREvent_Closed occured and the keyboard is open for the UI application. No data in lParam
     ipcact_overlay_profile_load,    //Sent by UI application when loading a profile. No data in lParam, but profile name is stored in configid_str_state_profile_name_load beforehand
     ipcact_crop_to_active_window,   //Sent by UI application to adjust crop values to the active window. No data in lParam
+    ipcact_overlay_new,             //Sent by UI application to add a new overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
+    ipcact_overlay_remove,          //Sent by UI application to remove a overlay. lParam is ID of overlay to remove (typically the active ID)
     ipcact_MAX
 };
 
