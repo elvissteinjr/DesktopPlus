@@ -72,6 +72,10 @@ namespace ImGui
         ImGui::PopButtonRepeat();
         ImGui::PopID();
 
+        //We generally don't want -0.0 to be a thing, so prevent it
+        if (value == -0.0f)
+            value = 0.0f;
+
         //Restore hack
         io.MouseClicked[0] = mouse_left_clicked_old;
         io.KeyCtrl = key_ctrl_old;
