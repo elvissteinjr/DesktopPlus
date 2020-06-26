@@ -277,7 +277,8 @@ namespace ImGui
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + style.FramePadding.y);
         
         //Prevent child window moving line pos
-        float cursor_pos_prev_line_y = window->DC.CursorPosPrevLine.y;
+        float cursor_max_pos_prev_y = window->DC.CursorMaxPos.y;
+
         ImGui::BeginChild("ButtonLabel", ImVec2(size.x + style.FramePadding.x, size.y), false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoInputs);
 
         ImVec2 text_size = ImGui::CalcTextSize(label, nullptr, false, size.x);
@@ -289,9 +290,11 @@ namespace ImGui
         ImGui::PopTextWrapPos();
 
         ImGui::EndChild();
+
+        window->DC.CursorMaxPos.y = cursor_max_pos_prev_y;
+
         ImGui::EndGroup();
         ImGui::PopID();
-        window->DC.CursorPosPrevLine.y = cursor_pos_prev_line_y;
 
         return ret;
     }
