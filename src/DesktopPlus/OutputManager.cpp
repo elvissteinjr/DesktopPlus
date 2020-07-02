@@ -3158,7 +3158,26 @@ void OutputManager::DragUpdate()
 
 void OutputManager::DragAddDistance(float distance)
 {
-    OffsetTransformFromSelf(m_DragModeMatrixTargetStart, 0.0f, 0.0f, distance * -0.5f);
+    vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+
+    if (poses[m_DragModeDeviceID].bPoseIsValid)
+    {
+        Matrix4 mat_drag_device = m_DragModeMatrixSourceStart;
+
+        //Apply tip offset if possible (usually the case)
+        vr::TrackedDeviceIndex_t index_right = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand);
+        vr::TrackedDeviceIndex_t index_left  = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand);
+        if ( (m_DragModeDeviceID == index_left) || (m_DragModeDeviceID == index_right) ) 
+        {
+            mat_drag_device = mat_drag_device * GetControllerTipMatrix( (m_DragModeDeviceID == index_right) );
+        }
+
+        //Take the drag device start orientation and the overlay's start translation and offset forward from there
+        mat_drag_device.setTranslation(m_DragModeMatrixTargetStart.getTranslation());
+        OffsetTransformFromSelf(mat_drag_device, 0.0f, 0.0f, distance * -0.5f);
+        m_DragModeMatrixTargetStart.setTranslation(mat_drag_device.getTranslation());
+    }
 }
 
 Matrix4 OutputManager::DragGetBaseOffsetMatrix()
