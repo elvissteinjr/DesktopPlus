@@ -1755,13 +1755,6 @@ bool WindowSettings::ButtonKeybind(unsigned char* key_code)
         ImGui::Text("Press any key or mouse button...");
 
         ImGuiIO& io = ImGui::GetIO();
-        static bool close_later = false;
-
-        if (close_later) //Workaround for ImGui bug, see https://github.com/ocornut/imgui/issues/2880
-        {
-            ImGui::CloseCurrentPopup();
-            close_later = false;
-        }
 
         for (int i = 0; i < 5; ++i)
         {
@@ -1775,8 +1768,7 @@ bool WindowSettings::ButtonKeybind(unsigned char* key_code)
                     case 3: *key_code = VK_XBUTTON1; break;
                     case 4: *key_code = VK_XBUTTON2; break;
                 }
-                //ImGui::CloseCurrentPopup();
-                close_later = true;
+                ImGui::CloseCurrentPopup();
                 break;
             }
         }

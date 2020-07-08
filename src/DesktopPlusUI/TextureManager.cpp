@@ -160,7 +160,7 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         if (bmp->GetLastStatus() == Gdiplus::Ok)
         {
             //ID has to be above 0x110000 as below is reserved by ImGui
-            m_ImGuiRectIDs[icon_id] = io.Fonts->AddCustomRectRegular(0x110000 + icon_id, bmp->GetWidth(), bmp->GetHeight());
+            m_ImGuiRectIDs[icon_id] = io.Fonts->AddCustomRectRegular(bmp->GetWidth(), bmp->GetHeight());
 
             if (io.Fonts->TexDesiredWidth <= (int)bmp->GetWidth())
             {
@@ -186,7 +186,7 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
             if (bmp->GetLastStatus() == Gdiplus::Ok)
             {
                 //ID has to be above 0x11000 as below is reserved by ImGui
-                action.IconImGuiRectID = io.Fonts->AddCustomRectRegular(0x110000 + icon_id, bmp->GetWidth(), bmp->GetHeight());
+                action.IconImGuiRectID = io.Fonts->AddCustomRectRegular(bmp->GetWidth(), bmp->GetHeight());
 
                 if (io.Fonts->TexDesiredWidth <= (int)bmp->GetWidth())
                 {
