@@ -55,6 +55,7 @@ UIManager::UIManager(bool desktop_mode) : m_WindowHandle(nullptr),
                                           m_LowCompositorQuality(false),
                                           m_ElevatedTaskSetUp(false),
                                           m_OvrlHandle(vr::k_ulOverlayHandleInvalid),
+                                          m_OvrlHandleFloatingUI(vr::k_ulOverlayHandleInvalid),
                                           m_OvrlHandleKeyboardHelper(vr::k_ulOverlayHandleInvalid),
                                           m_OvrlVisible(false),
                                           m_OvrlVisibleKeyboardHelper(false),
@@ -149,31 +150,43 @@ vr::EVRInitError UIManager::InitOverlay()
         {
             vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandle, 2.75f);
 
-            //Init Keyboard Helper overlay
+            //Init Floating UI and Keyboard Helper overlay
+            vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusUIFloating", "Desktop+ Floating UI", &m_OvrlHandleFloatingUI);
             vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusKeyboardHelper", "Desktop+ Keyboard Helper", &m_OvrlHandleKeyboardHelper);
+            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleFloatingUI, 2.75f);
+            vr::VROverlay()->SetOverlayAlpha(m_OvrlHandleFloatingUI, 0.0f);
 
             //Set input parameters
             vr::VROverlay()->SetOverlayFlag(m_OvrlHandle, vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
 
             vr::HmdVector2_t mouse_scale;
-            mouse_scale.v[0] = OVERLAY_WIDTH;
-            mouse_scale.v[1] = OVERLAY_HEIGHT;
+            mouse_scale.v[0] = TEXSPACE_TOTAL_WIDTH;
+            mouse_scale.v[1] = TEXSPACE_TOTAL_HEIGHT;
 
             vr::VROverlay()->SetOverlayMouseScale(m_OvrlHandle, &mouse_scale);
             vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandle, vr::VROverlayInputMethod_Mouse);
+            vr::VROverlay()->SetOverlayMouseScale(m_OvrlHandleFloatingUI, &mouse_scale);
+            vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleFloatingUI, vr::VROverlayInputMethod_Mouse);
+            vr::VROverlay()->SetOverlaySortOrder(m_OvrlHandleFloatingUI, 1);
             vr::VROverlay()->SetOverlayMouseScale(m_OvrlHandleKeyboardHelper, &mouse_scale);
             vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleKeyboardHelper, vr::VROverlayInputMethod_Mouse);
 
-            //Setup texture bounds for both overlays. The keyboard helper is rendered on the same texture as a form of discount multi-viewport rendering
+            //Setup texture bounds for all overlays
+            //The floating UI/keyboard helper is rendered on the same texture as a form of discount multi-viewport rendering
+            float spacing_size = (float)TEXSPACE_VERTICAL_SPACING / TEXSPACE_TOTAL_HEIGHT;
+            float texel_offset = 0.5f / TEXSPACE_TOTAL_HEIGHT;
             vr::VRTextureBounds_t bounds;
             bounds.uMin = 0.0f;
             bounds.vMin = 0.0f;
             bounds.uMax = 1.0f;
-            bounds.vMax = (float)MAIN_SURFACE_HEIGHT / OVERLAY_HEIGHT;
+            bounds.vMax = ((float)TEXSPACE_DASHBOARD_UI_HEIGHT / TEXSPACE_TOTAL_HEIGHT) + texel_offset;
             vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandle, &bounds);
-            bounds.vMin = bounds.vMax;
+            bounds.vMin = bounds.vMax + spacing_size;
+            bounds.vMax = bounds.vMax + spacing_size + ((float)TEXSPACE_FLOATING_UI_HEIGHT / TEXSPACE_TOTAL_HEIGHT);
+            vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleFloatingUI, &bounds);
+            bounds.vMin = bounds.vMax + spacing_size;
             bounds.vMax = 1.0f;
-            bounds.uMax = KEYBOARD_HELPER_SCALE;
+            bounds.uMax = TEXSPACE_KEYBOARD_HELPER_SCALE;
             vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleKeyboardHelper, &bounds);
         }
     }
@@ -328,6 +341,16 @@ void UIManager::OnExit()
     }
 }
 
+DashboardUI& UIManager::GetDashboardUI()
+{
+    return m_DashboardUI;
+}
+
+FloatingUI& UIManager::GetFloatingUI()
+{
+    return m_FloatingUI;
+}
+
 void UIManager::SetWindowHandle(HWND handle)
 {
     m_WindowHandle = handle;
@@ -341,6 +364,11 @@ HWND UIManager::GetWindowHandle() const
 vr::VROverlayHandle_t UIManager::GetOverlayHandle() const
 {
     return m_OvrlHandle;
+}
+
+vr::VROverlayHandle_t UIManager::GetOverlayHandleFloatingUI() const
+{
+    return m_OvrlHandleFloatingUI;
 }
 
 vr::VROverlayHandle_t UIManager::GetOverlayHandleKeyboardHelper() const
@@ -406,6 +434,9 @@ bool UIManager::IsCompositorRenderQualityLow() const
 
 void UIManager::UpdateCompositorRenderQualityLow()
 {
+    if (!m_OpenVRLoaded)
+        return;
+
     int compositor_quality = vr::VRSettings()->GetInt32("steamvr", "overlayRenderQuality_2");
     m_LowCompositorQuality = ((compositor_quality > 0) && (compositor_quality < 3)); //0 is Auto (not sure if the result of that is accessible), 3 is High
 }

@@ -24,6 +24,7 @@ enum ConfigID_Bool
     configid_bool_overlay_enabled,
     configid_bool_overlay_3D_swapped,
     configid_bool_overlay_gazefade_enabled,
+    configid_bool_overlay_actionbar_enabled,
     configid_bool_overlay_MAX,
     configid_bool_interface_no_ui,
     configid_bool_interface_mainbar_desktop_include_all,

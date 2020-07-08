@@ -95,6 +95,7 @@ void ConfigManager::LoadOverlayProfile(Ini& config)
     data.ConfigBool[configid_bool_overlay_gazefade_enabled]    = config.ReadBool("Overlay", "GazeFade", false);
     data.ConfigFloat[configid_float_overlay_gazefade_distance] = config.ReadInt("Overlay", "GazeFadeDistance", 40) / 100.0f;
     data.ConfigFloat[configid_float_overlay_gazefade_rate]     = config.ReadInt("Overlay", "GazeFadeRate", 100) / 100.0f;
+    data.ConfigBool[configid_bool_overlay_actionbar_enabled]   = config.ReadBool("Overlay", "ShowActionBar", false);
 
     //Disable settings which are invalid for the dashboard overlay
     if (OverlayManager::Get().GetCurrentOverlayID() == k_ulOverlayID_Dashboard)
@@ -159,6 +160,7 @@ void ConfigManager::SaveOverlayProfile(Ini& config)
     config.WriteBool("Overlay", "GazeFade",             data.ConfigBool[configid_bool_overlay_gazefade_enabled]);
     config.WriteInt( "Overlay", "GazeFadeDistance", int(data.ConfigFloat[configid_float_overlay_gazefade_distance]  * 100.0f));
     config.WriteInt( "Overlay", "GazeFadeRate",     int(data.ConfigFloat[configid_float_overlay_gazefade_rate]  * 100.0f));
+    config.WriteBool("Overlay", "ShowActionBar",        data.ConfigBool[configid_bool_overlay_actionbar_enabled]);
 
     config.WriteString("Overlay", "DetachedTransformPlaySpace", data.ConfigDetachedTransform[ovrl_origin_room].toString().c_str());
     config.WriteString("Overlay", "DetachedTransformHMDFloor",  data.ConfigDetachedTransform[ovrl_origin_hmd_floor].toString().c_str());

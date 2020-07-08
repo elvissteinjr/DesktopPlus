@@ -7,8 +7,6 @@
 #include "Util.h"
 #include "UIManager.h"
 
-static const ImVec4 Col_ButtonActiveDesktop(0.180f, 0.349f, 0.580f, 0.404f);
-
 void WindowMainBar::DisplayTooltipIfHovered(const char* text)
 {
     if (ImGui::IsItemHovered())
@@ -55,7 +53,7 @@ void WindowMainBar::UpdateDesktopButtons()
     if (ConfigManager::Get().GetConfigBool(configid_bool_interface_mainbar_desktop_include_all))
     {
         if (current_desktop == -1)
-            ImGui::PushStyleColor(ImGuiCol_Button, Col_ButtonActiveDesktop);
+            ImGui::PushStyleColor(ImGuiCol_Button, Style_ImGuiCol_ButtonPassiveToggled);
 
         ImGui::PushID(tmtex_icon_desktop_all);
         TextureManager::Get().GetTextureInfo(tmtex_icon_desktop_all, b_size, b_uv_min, b_uv_max);
@@ -106,7 +104,7 @@ void WindowMainBar::UpdateDesktopButtons()
                 
 
                 if (i == current_desktop)
-                    ImGui::PushStyleColor(ImGuiCol_Button, Col_ButtonActiveDesktop);
+                    ImGui::PushStyleColor(ImGuiCol_Button, Style_ImGuiCol_ButtonPassiveToggled);
 
                 if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
                 {
@@ -167,12 +165,6 @@ void WindowMainBar::UpdateDesktopButtons()
             break;
         }
     }
-
-    /*ImGui::SameLine();
-    ImGui::PushClipRect(ImVec2(0, 0), ImVec2(OVERLAY_WIDTH, OVERLAY_HEIGHT), false);
-    ImGui::GetWindowDrawList()->AddText(ImVec2(ImGui::GetCursorScreenPos().x - 96, ImGui::GetCursorScreenPos().y + (96 - ImGui::GetFont()->FontSize) / 2),
-                                        ImGui::GetColorU32(ImGuiCol_Text), "1");
-    ImGui::PopClipRect();*/
 }
 
 void WindowMainBar::UpdateActionButtons()
@@ -273,55 +265,112 @@ void WindowMainBar::UpdateActionButtons()
     }
 }
 
-WindowMainBar::WindowMainBar(WindowSettings* settings_window) : m_WndSettingsPtr(settings_window)
+WindowMainBar::WindowMainBar(WindowSettings* settings_window) : m_Visible(true),
+                                                                m_Alpha(1.0f), 
+                                                                m_WndSettingsPtr(settings_window)
 {
+    m_Size.x = 32.0f;
+}
 
+void WindowMainBar::Show(bool skip_fade)
+{
+    m_Visible = true;
+
+    if (skip_fade)
+    {
+        m_Alpha = 1.0f;
+    }
+}
+
+void WindowMainBar::Hide(bool skip_fade)
+{
+    m_Visible = false;
+
+    if (skip_fade)
+    {
+        m_Alpha = 0.0f;
+    }
 }
 
 void WindowMainBar::Update()
 {
+    if ( (m_Alpha != 0.0f) || (m_Visible) )
+    {
+        //Alpha fade animation
+        m_Alpha += (m_Visible) ? 0.1f : -0.1f;
+
+        if (m_Alpha > 1.0f)
+            m_Alpha = 1.0f;
+        else if (m_Alpha < 0.0f)
+            m_Alpha = 0.0f;
+    }
+
+    //We need to not skip on alpha 0.0 at least twice to get the real height of the bar. 32.0f is the placeholder width ImGui seems to use until then
+    if ( (m_Alpha == 0.0f) && (m_Size.x != 32.0f) )
+        return;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_Alpha);
+
     ImGuiIO& io = ImGui::GetIO();
 
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y), 0, ImVec2(0.5f, 1.0f));  //Center window at bottom of the overlay
-    ImGui::Begin("WindowMainBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | 
-                                            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
+    ImVec2 b_size, b_uv_min, b_uv_max;
+    bool floating_ui_mode = (m_WndSettingsPtr == nullptr);
+
+    if (floating_ui_mode)
+    {
+        TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
+        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - b_size.y - ImGui::GetStyle().FramePadding.x, io.DisplaySize.y), 0, ImVec2(1.0f, 1.0f));  //Put window at bottom right of the overlay
+
+        ImGui::Begin("WindowActionBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | 
+                                                 ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
+    }
+    else
+    {
+        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y), 0, ImVec2(0.5f, 1.0f));  //Center window at bottom of the overlay
+        
+        ImGui::Begin("WindowMainBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | 
+                                                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
+    }
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 
-    UpdateDesktopButtons();
+    if (!floating_ui_mode)
+    {
+        UpdateDesktopButtons();
+    }
 
     UpdateActionButtons();
 
-
-    ImVec2 b_size, b_uv_min, b_uv_max;
-
-    //Settings Button
-    bool settings_shown = m_WndSettingsPtr->IsShown();
-    if (settings_shown)
-        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-
-    ImGui::PushID(tmtex_icon_settings);
-    TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+    if (!floating_ui_mode)
     {
-        if (!m_WndSettingsPtr->IsShown())
+        //Settings Button
+        bool settings_shown = m_WndSettingsPtr->IsShown();
+        if (settings_shown)
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+
+        ImGui::PushID(tmtex_icon_settings);
+        TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
+        if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
         {
-            m_WndSettingsPtr->Show();
+            if (!m_WndSettingsPtr->IsShown())
+            {
+                m_WndSettingsPtr->Show();
+            }
+            else
+            {
+                m_WndSettingsPtr->Hide();
+            }
         }
-        else
-        {
-            m_WndSettingsPtr->Hide();
-        }
+
+        if (settings_shown)
+            ImGui::PopStyleColor(); //ImGuiCol_Button
+
+        DisplayTooltipIfHovered("Settings");
+
+        ImGui::PopID();
+        //
     }
-
-    if (settings_shown)
-        ImGui::PopStyleColor(); //ImGuiCol_Button
-
-    DisplayTooltipIfHovered("Settings");
-        
-    ImGui::PopID();
-    //
 
     ImGui::PopStyleColor(); //ImGuiCol_Button
     ImGui::PopStyleVar();   //ImGuiStyleVar_FrameRounding
@@ -330,6 +379,7 @@ void WindowMainBar::Update()
     m_Size = ImGui::GetWindowSize();
 
     ImGui::End();
+    ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
 }
 
 const ImVec2 & WindowMainBar::GetPos() const
@@ -340,4 +390,14 @@ const ImVec2 & WindowMainBar::GetPos() const
 const ImVec2 & WindowMainBar::GetSize() const
 {
     return m_Size;
+}
+
+bool WindowMainBar::IsVisible() const
+{
+    return m_Visible;
+}
+
+float WindowMainBar::GetAlpha() const
+{
+    return m_Alpha;
 }

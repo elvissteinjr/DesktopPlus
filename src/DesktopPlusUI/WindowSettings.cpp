@@ -615,8 +615,6 @@ void WindowSettings::UpdateCatOverlay()
                 //Dragging the overlay the UI is open on is pretty inconvenient to get out of when not sitting in front of a real mouse, so let's prevent this
                 if (!UIManager::Get()->IsInDesktopMode())
                 {
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_detached), detached);
-
                     //Automatically reset the matrix to a saner default if it still has the zero value
                     if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
                     {
@@ -2740,26 +2738,30 @@ bool WindowSettings::PopupIconSelect(std::string& filename)
 
 WindowSettings::WindowSettings() : m_Visible(false), m_Alpha(0.0f), m_ActionEditIsNew(false)
 {
-    UIManager::Get()->UpdateOverlayPixelSize();
 
-    m_Size.x = OVERLAY_WIDTH * UIManager::Get()->GetUIScale();
-
-    if (UIManager::Get()->IsInDesktopMode())    //Act as a "fullscreen" window if in desktop mode
-        m_Size.y = ImGui::GetIO().DisplaySize.y;
-    else
-        m_Size.y = ImGui::GetIO().DisplaySize.y * 0.84f;
-    
 }
 
 void WindowSettings::Show()
 {
+    if (m_Size.x == 0.0f)
+    {
+        UIManager::Get()->UpdateOverlayPixelSize();
+
+        m_Size.x = TEXSPACE_TOTAL_WIDTH * UIManager::Get()->GetUIScale();
+
+        if (UIManager::Get()->IsInDesktopMode())    //Act as a "fullscreen" window if in desktop mode
+            m_Size.y = ImGui::GetIO().DisplaySize.y;
+        else
+            m_Size.y = ImGui::GetIO().DisplaySize.y * 0.84f;
+    }
+
     m_Visible = true;
     UIManager::Get()->UpdateOverlayPixelSize(); //Make sure we still have the correct size to work with
     UIManager::Get()->UpdateCompositorRenderQualityLow();
 
     //Adjust sort order when settings window is visible. This will still result in weird visuals with other overlays when active, but at least not constantly.
     //It's a compromise, really. The other reliable method would be about 1m distance between the two overlays, which is not happening
-    if ( (!UIManager::Get()->IsInDesktopMode()) )
+    if (!UIManager::Get()->IsInDesktopMode())
     {
         vr::VROverlay()->SetOverlaySortOrder(UIManager::Get()->GetOverlayHandle(), 1);
     }
@@ -2775,8 +2777,12 @@ void WindowSettings::Update()
 {  
     if (UIManager::Get()->IsInDesktopMode())    //In desktop mode it's the only thing displayed, so no transition
     {
+        if (!m_Visible)
+        {
+            Show();
+        }
+
         m_Alpha = 1.0f;
-        m_Visible = true;
     }
     else if ( (m_Alpha != 0.0f) || (m_Visible) )
     {

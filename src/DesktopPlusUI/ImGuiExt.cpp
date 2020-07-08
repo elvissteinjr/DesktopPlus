@@ -7,6 +7,7 @@
 
 ImVec4 Style_ImGuiCol_TextWarning;
 ImVec4 Style_ImGuiCol_TextError;
+ImVec4 Style_ImGuiCol_ButtonPassiveToggled;
 
 namespace ImGui
 {
