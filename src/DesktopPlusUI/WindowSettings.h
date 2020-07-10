@@ -26,8 +26,9 @@ class WindowSettings
 
         bool ButtonKeybind(unsigned char* key_code);
         bool ButtonAction(ActionID& action_id);
+        void ProfileSelector(bool multi_overlay);
         bool ActionButtonRow(ActionID action_id, int list_pos, int& list_selected_pos);
-        void PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id);
+        void PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id, bool multi_overlay);
         void PopupActionEdit(CustomAction& action, int id);
         void PopupOverlayDetachedPositionChange();
         bool PopupIconSelect(std::string& filename);

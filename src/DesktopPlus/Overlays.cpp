@@ -12,7 +12,8 @@ Overlay::Overlay(unsigned int id) : m_ID(id),
                                     m_Opacity(1.0f),
                                     m_GlobalInteractive(false)
 {
-    if (m_ID != k_ulOverlayID_Dashboard) //For the dashboard overlay, InitOverlay() is called by OutputManager during InitOutput() when necessary
+    //Don't call InitOverlay when OpenVR isn't loaded yet. This happens during startup when loading the config and will be fixed up by OutputManager::InitOverlay() afterwards
+    if (vr::VROverlay() != nullptr)
     {
         InitOverlay();
     }
@@ -20,6 +21,7 @@ Overlay::Overlay(unsigned int id) : m_ID(id),
 
 Overlay::Overlay(Overlay&& b)
 {
+    m_OvrlHandle = vr::k_ulOverlayHandleInvalid; //This needs a valid value first
     *this = std::move(b);
 }
 

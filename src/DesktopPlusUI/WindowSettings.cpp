@@ -145,9 +145,15 @@ void WindowSettings::UpdateCatOverlay()
 
             ImGui::SetNextItemWidth(-1);
 
+            //Format a string with the max overlay ID so it's a bit less painful to use until the proper selector is in place
+            std::stringstream ss;
+            ss << "%.0f/" << OverlayManager::Get().GetOverlayCount() - 1;
+
             int& current_overlay = ConfigManager::Get().GetConfigIntRef(configid_int_interface_overlay_current_id);
-            if (ImGui::InputInt("##InputCurrentOverlay", &current_overlay))
+            float current_overlay_float = (float)current_overlay; //InputInt doesn't accept a format string... cool
+            if (ImGui::InputFloat("##InputCurrentOverlay", &current_overlay_float, 1.0f, 2.0f, ss.str().c_str()))
             {
+                current_overlay = (int)current_overlay_float;
                 current_overlay = clamp(current_overlay, 0, (int)OverlayManager::Get().GetOverlayCount() - 1);
 
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
@@ -221,149 +227,37 @@ void WindowSettings::UpdateCatOverlay()
 
         //Profiles
         {
+            static bool profile_selector_type_multi = false;
+
             ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Profiles");
             ImGui::Columns(2, "ColumnProfiles", false);
             ImGui::SetColumnWidth(0, column_width_0);
 
-            static std::vector<std::string> overlay_profile_list;
-            static int overlay_profile_selected_id = 0;       
-            static bool overwrite_confirm_state = false;
-            static bool delete_confirm_state = false;
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Type");
+            ImGui::NextColumn();
 
-            if (ImGui::IsWindowAppearing())
+            if (ImGui::RadioButton("Single-Overlay", !profile_selector_type_multi))
             {
-                overlay_profile_list = ConfigManager::Get().GetOverlayProfileList();
-                overwrite_confirm_state = false;
-                delete_confirm_state = false;
+                profile_selector_type_multi = false;
             }
+
+            ImGui::SameLine();
+
+            if (ImGui::RadioButton("Multi-Overlay", profile_selector_type_multi))
+            {
+                profile_selector_type_multi = true;
+            }
+
+            ImGui::NextColumn();
 
             ImGui::AlignTextToFramePadding();
-            ImGui::Text("Overlay Profile");
+            ImGui::Text("Profile");
             ImGui::NextColumn();
 
-            ImGui::SetNextItemWidth(-1);
-            int index = 0;
-
-            if (ImGui::BeginCombo("##OverlayProfileCombo", overlay_profile_list[overlay_profile_selected_id].c_str()))
-            {
-                for (const auto& str : overlay_profile_list)
-                {
-                    if (ImGui::Selectable(str.c_str(), (index == overlay_profile_selected_id)))
-                    {
-                        overlay_profile_selected_id = index;
-
-                        overwrite_confirm_state = false;
-                        delete_confirm_state = false;
-                    }
-
-                    index++;
-                }
-                ImGui::EndCombo();
-            }
-
-            ImGui::NextColumn();
-            ImGui::NextColumn();
-
-            const bool is_first = (overlay_profile_selected_id == 0);
-            const bool is_last  = (overlay_profile_selected_id == overlay_profile_list.size() - 1);
-
-            if (is_last)
-                ImGui::PushItemDisabled();
-
-            if (ImGui::Button("Load"))
-            {
-                if (overlay_profile_selected_id == 0)
-                {
-                    ConfigManager::Get().LoadOverlayProfileDefault();
-                }
-                else
-                {
-                    ConfigManager::Get().LoadOverlayProfileFromFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
-                }
-
-                //Tell dashboard app to load the profile as well
-                IPCManager::Get().SendStringToDashboardApp(configid_str_state_profile_name_load, overlay_profile_list[overlay_profile_selected_id], UIManager::Get()->GetWindowHandle());
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_profile_load);
-
-                UIManager::Get()->RepeatFrame();
-
-                overwrite_confirm_state = false;
-                delete_confirm_state = false;
-            }
-
-            if (is_last)
-                ImGui::PopItemDisabled();
-
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-
-            if (is_first)
-                ImGui::PushItemDisabled();
-
-            if (overwrite_confirm_state)
-            {
-                if (ImGui::Button("Overwrite?"))
-                {
-                    ConfigManager::Get().SaveOverlayProfileToFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
-
-                    overwrite_confirm_state = false;
-                    delete_confirm_state = false;
-                }
-            }
-            else
-            {
-                if (ImGui::Button("Save"))
-                {
-                    if (!is_last)
-                    {
-                        overwrite_confirm_state = true;
-                    }
-                    else
-                    {
-                        ImGui::OpenPopup("NewOverlayProfilePopup");
-                    }
-
-                    delete_confirm_state = false;
-                }
-            }
-
-            if (is_first)
-                ImGui::PopItemDisabled();
-
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-
-            if ( (is_first) || (is_last) )
-                ImGui::PushItemDisabled();
-
-            if (delete_confirm_state)
-            {
-                if (ImGui::Button("Really?"))
-                {
-                    if (ConfigManager::Get().DeleteOverlayProfile(overlay_profile_list[overlay_profile_selected_id] + ".ini"))
-                    {
-                        overlay_profile_list = ConfigManager::Get().GetOverlayProfileList();
-                        overlay_profile_selected_id = 0;
-                    }
-
-                    delete_confirm_state = false;
-                }
-            }
-            else
-            {
-                if (ImGui::Button("Delete"))
-                {
-                    delete_confirm_state = true;
-                    overwrite_confirm_state = false;
-                }
-            }
-           
-            ImGui::NextColumn();
-
-            if ( (is_first) || (is_last) )
-                ImGui::PopItemDisabled();
+            ProfileSelector(profile_selector_type_multi);
 
             ImGui::Columns(1);
-
-            PopupNewOverlayProfile(overlay_profile_list, overlay_profile_selected_id);
         }
 
         //General
@@ -1926,6 +1820,219 @@ bool WindowSettings::ButtonAction(ActionID& action_id)
     return result;
 }
 
+void WindowSettings::ProfileSelector(bool multi_overlay)
+{
+    static std::vector<std::string> single_overlay_profile_list;
+    static int single_overlay_profile_selected_id = 0;
+    static bool single_overwrite_confirm_state = false;
+    static bool single_delete_confirm_state = false;
+
+    static std::vector<std::string> multi_overlay_profile_list;
+    static int multi_overlay_profile_selected_id = 0;
+    static bool multi_overwrite_confirm_state = false;
+    static bool multi_delete_confirm_state = false;
+
+    //Reset confirm states when the other selector isn't visible
+    if (multi_overlay)
+    {
+        single_overwrite_confirm_state = false;
+        single_delete_confirm_state = false;
+    }
+    else
+    {
+        multi_overwrite_confirm_state = false;
+        multi_delete_confirm_state = false;
+    }
+
+    //May look a bit convoluted, but set up conditional references for both selector types
+    std::vector<std::string>& overlay_profile_list = (multi_overlay) ? multi_overlay_profile_list : single_overlay_profile_list;
+    int& overlay_profile_selected_id = (multi_overlay) ? multi_overlay_profile_selected_id : single_overlay_profile_selected_id;
+    bool& overwrite_confirm_state = (multi_overlay) ? multi_overwrite_confirm_state : single_overwrite_confirm_state;
+    bool& delete_confirm_state = (multi_overlay) ? multi_delete_confirm_state : single_delete_confirm_state;
+
+    if ( (ImGui::IsWindowAppearing()) || (overlay_profile_list.empty()) )
+    {
+        overlay_profile_list = ConfigManager::Get().GetOverlayProfileList(multi_overlay);
+        overwrite_confirm_state = false;
+        delete_confirm_state = false;
+    }
+
+    ImGui::PushID(multi_overlay);
+    ImGui::SetNextItemWidth(-1);
+    int index = 0;
+
+    if (ImGui::BeginCombo("##OverlayProfileCombo", overlay_profile_list[overlay_profile_selected_id].c_str()))
+    {
+        for (const auto& str : overlay_profile_list)
+        {
+            if (ImGui::Selectable(str.c_str(), (index == overlay_profile_selected_id)))
+            {
+                overlay_profile_selected_id = index;
+
+                overwrite_confirm_state = false;
+                delete_confirm_state = false;
+            }
+
+            index++;
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::NextColumn();
+    ImGui::NextColumn();
+
+    const bool is_first = (overlay_profile_selected_id == 0);
+    const bool is_last  = (overlay_profile_selected_id == overlay_profile_list.size() - 1);
+
+    if (is_last)
+        ImGui::PushItemDisabled();
+
+    if (ImGui::Button("Load"))
+    {
+        if (overlay_profile_selected_id == 0)
+        {
+            ConfigManager::Get().LoadOverlayProfileDefault(multi_overlay);
+        }
+        else
+        {
+            if (multi_overlay)
+            {
+                ConfigManager::Get().LoadMultiOverlayProfileFromFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
+            }
+            else
+            {
+                ConfigManager::Get().LoadOverlayProfileFromFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
+            }
+        }
+
+        //Adjust current overlay ID for UI since this may have made the old selection invalid
+        int& current_overlay = ConfigManager::Get().GetConfigIntRef(configid_int_interface_overlay_current_id);
+        current_overlay = clamp(current_overlay, 0, (int)OverlayManager::Get().GetOverlayCount() - 1);
+
+        //Tell dashboard app to load the profile as well
+        IPCManager::Get().SendStringToDashboardApp(configid_str_state_profile_name_load, overlay_profile_list[overlay_profile_selected_id], UIManager::Get()->GetWindowHandle());
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_profile_load, (multi_overlay) ? ipcactv_ovrl_profile_multi : ipcactv_ovrl_profile_single);
+
+        UIManager::Get()->RepeatFrame();
+
+        overwrite_confirm_state = false;
+        delete_confirm_state = false;
+    }
+
+    if (multi_overlay)
+    {
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+        if (is_first)
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Button("Add"))
+        {
+            if (overlay_profile_selected_id == 0)
+            {
+                ConfigManager::Get().LoadOverlayProfileDefault();
+            }
+            else
+            {
+                ConfigManager::Get().LoadMultiOverlayProfileFromFile(overlay_profile_list[overlay_profile_selected_id] + ".ini", false);
+            }
+
+            //Tell dashboard app to load the profile as well
+            IPCManager::Get().SendStringToDashboardApp(configid_str_state_profile_name_load, overlay_profile_list[overlay_profile_selected_id], UIManager::Get()->GetWindowHandle());
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_profile_load, ipcactv_ovrl_profile_multi_add);
+
+            UIManager::Get()->RepeatFrame();
+
+            overwrite_confirm_state = false;
+            delete_confirm_state = false;
+        }
+
+        if (is_first)
+            ImGui::PopItemDisabled();
+    }
+
+    if (is_last)
+        ImGui::PopItemDisabled();
+
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+    if (is_first)
+        ImGui::PushItemDisabled();
+
+    if (overwrite_confirm_state)
+    {
+        if (ImGui::Button("Overwrite?"))
+        {
+            if (multi_overlay)
+            {
+                ConfigManager::Get().SaveOverlayProfileToFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
+            }
+            else
+            {
+                ConfigManager::Get().SaveMultiOverlayProfileToFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
+            }
+
+            overwrite_confirm_state = false;
+            delete_confirm_state = false;
+        }
+    }
+    else
+    {
+        if (ImGui::Button("Save"))
+        {
+            if (!is_last)
+            {
+                overwrite_confirm_state = true;
+            }
+            else
+            {
+                ImGui::OpenPopup("NewOverlayProfilePopup");
+            }
+
+            delete_confirm_state = false;
+        }
+    }
+
+    if (is_first)
+        ImGui::PopItemDisabled();
+
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+    if ( (is_first) || (is_last) )
+        ImGui::PushItemDisabled();
+
+    if (delete_confirm_state)
+    {
+        if (ImGui::Button("Really?"))
+        {
+            if (ConfigManager::Get().DeleteOverlayProfile(overlay_profile_list[overlay_profile_selected_id] + ".ini"))
+            {
+                overlay_profile_list = ConfigManager::Get().GetOverlayProfileList();
+                overlay_profile_selected_id = 0;
+            }
+
+            delete_confirm_state = false;
+        }
+    }
+    else
+    {
+        if (ImGui::Button("Delete"))
+        {
+            delete_confirm_state = true;
+            overwrite_confirm_state = false;
+        }
+    }
+
+    ImGui::NextColumn();
+
+    if ( (is_first) || (is_last) )
+        ImGui::PopItemDisabled();
+
+    PopupNewOverlayProfile(overlay_profile_list, overlay_profile_selected_id, multi_overlay);
+
+    ImGui::PopID();
+}
+
 bool WindowSettings::ActionButtonRow(ActionID action_id, int list_pos, int& list_selected_pos)
 {
     auto& action_order = ConfigManager::Get().GetActionMainBarOrder();
@@ -1966,7 +2073,7 @@ bool WindowSettings::ActionButtonRow(ActionID action_id, int list_pos, int& list
     return delete_pressed;
 }
 
-void WindowSettings::PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id)
+void WindowSettings::PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id, bool multi_overlay)
 {
     bool ret = false;
 
@@ -2088,10 +2195,18 @@ void WindowSettings::PopupNewOverlayProfile(std::vector<std::string>& overlay_pr
         if (do_save)
         {
             std::string name_str(buf_name);
-            ConfigManager::Get().SaveOverlayProfileToFile(name_str + ".ini"); //Yes, we don't check for success. A lot of other things would go wrong as well if this did so...
+
+            if (multi_overlay)
+            {
+                ConfigManager::Get().SaveMultiOverlayProfileToFile(name_str + ".ini");
+            }
+            else
+            {
+                ConfigManager::Get().SaveOverlayProfileToFile(name_str + ".ini"); //Yes, we don't check for success. A lot of other things would go wrong as well if this did so...
+            }
 
             //Update list
-            overlay_profile_list = ConfigManager::Get().GetOverlayProfileList();
+            overlay_profile_list = ConfigManager::Get().GetOverlayProfileList(multi_overlay);
 
             //Find and select new profile in the list
             auto it = std::find(overlay_profile_list.begin(), overlay_profile_list.end(), name_str);

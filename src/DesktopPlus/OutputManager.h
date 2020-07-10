@@ -74,6 +74,7 @@ class OutputManager
 
         bool HandleOpenVREvents();  //Returns true if quit event happened
         void HandleKeyboardHelperMessage(LPARAM lparam);
+        bool HandleOverlayProfileLoadMessage(LPARAM lparam);
         
         void LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8);
         void ResetMouseLastLaserPointerPos();

@@ -676,6 +676,7 @@ vr::EVRInitError OutputManager::InitOverlay()
         if (overlay_dashboard.GetHandle() == vr::k_ulOverlayHandleInvalid)
         {
             overlay_dashboard.InitOverlay();
+            ConfigManager::Get().LoadConfigFromFile(); //Also load config again to properly initialize overlays that were loaded before OpenVR was available
         }
 
         m_OvrlHandleMain = overlay_dashboard.GetHandle();
@@ -1240,19 +1241,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 }
                 case ipcact_overlay_profile_load:
                 {
-                    int desktop_id_prev = ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id);
-                    const std::string& profile_name = ConfigManager::Get().GetConfigString(configid_str_state_profile_name_load);
+                    bool reset_mirror = HandleOverlayProfileLoadMessage(msg.lParam);
 
-                    if (profile_name == "Default")
-                        ConfigManager::Get().LoadOverlayProfileDefault();
-                    else
-                        ConfigManager::Get().LoadOverlayProfileFromFile(profile_name + ".ini");
+                    if (reset_mirror)
+                        return true;
 
-                    //Reset mirroing entirely if desktop was changed
-                    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id) != desktop_id_prev)
-                        return true; //Reset mirroring
-
-                    ResetOverlays(); //This does everything relevant
                     break;
                 }
                 case ipcact_crop_to_active_window:
@@ -2656,6 +2649,37 @@ void OutputManager::HandleKeyboardHelperMessage(LPARAM lparam)
             m_InputSim.KeyboardPressAndRelease(lparam); //This mimics the rest of the SteamVR keyboards behavior, as in, no holding down of keys
         }
     }
+}
+
+bool OutputManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
+{
+    bool multi_overlay = (lparam != ipcactv_ovrl_profile_single);
+    int desktop_id_prev = ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id);
+    const std::string& profile_name = ConfigManager::Get().GetConfigString(configid_str_state_profile_name_load);
+
+    if (profile_name == "Default")
+    {
+        ConfigManager::Get().LoadOverlayProfileDefault(multi_overlay);
+    }
+    else
+    {
+        if (multi_overlay)
+        {
+            ConfigManager::Get().LoadMultiOverlayProfileFromFile(profile_name + ".ini", (lparam == ipcactv_ovrl_profile_multi));
+        }
+        else
+        {
+            ConfigManager::Get().LoadOverlayProfileFromFile(profile_name + ".ini");
+        }
+    }
+
+    //Reset mirroing entirely if desktop was changed
+    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id) != desktop_id_prev)
+        return true; //Reset mirroring
+
+    ResetOverlays(); //This does everything relevant
+
+    return false;
 }
 
 void OutputManager::LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8)
