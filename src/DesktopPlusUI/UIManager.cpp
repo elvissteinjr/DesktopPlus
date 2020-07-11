@@ -53,6 +53,7 @@ UIManager::UIManager(bool desktop_mode) : m_WindowHandle(nullptr),
                                           m_UIScale(1.0f),
                                           m_LowCompositorRes(false),
                                           m_LowCompositorQuality(false),
+                                          m_OverlayErrorLast(vr::VROverlayError_None),
                                           m_ElevatedTaskSetUp(false),
                                           m_OvrlHandle(vr::k_ulOverlayHandleInvalid),
                                           m_OvrlHandleFloatingUI(vr::k_ulOverlayHandleInvalid),
@@ -272,6 +273,11 @@ void UIManager::HandleIPCMessage(const MSG& msg)
                     ImGui_ImplOpenVR_InputOnVRKeyboardClosed();
                     break;
                 }
+                case ipcact_overlay_creation_error:
+                {
+                    m_OverlayErrorLast = (vr::VROverlayError)msg.lParam;
+                    break;
+                }
             }
             break;
         }
@@ -439,6 +445,16 @@ void UIManager::UpdateCompositorRenderQualityLow()
 
     int compositor_quality = vr::VRSettings()->GetInt32("steamvr", "overlayRenderQuality_2");
     m_LowCompositorQuality = ((compositor_quality > 0) && (compositor_quality < 3)); //0 is Auto (not sure if the result of that is accessible), 3 is High
+}
+
+vr::EVROverlayError UIManager::GetOverlayErrorLast() const
+{
+    return m_OverlayErrorLast;
+}
+
+void UIManager::ResetOverlayErrorLast()
+{
+    m_OverlayErrorLast = vr::VROverlayError_None;
 }
 
 bool UIManager::IsElevatedTaskSetUp() const

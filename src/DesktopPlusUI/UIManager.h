@@ -40,6 +40,7 @@ class UIManager
         float m_UIScale;
         bool m_LowCompositorRes;     //Set when compositor's resolution is set below 100% during init. The user is warned about this as it affects overlay rendering
         bool m_LowCompositorQuality; //Set when the compositor's quality setting to set to something other than High or Auto
+        vr::EVROverlayError m_OverlayErrorLast; //Last encountered error when adding an overlay (usually just overlay limit exceeded)
 
         bool m_ElevatedTaskSetUp;   
 
@@ -90,6 +91,8 @@ class UIManager
         bool IsCompositorResolutionLow() const;
         bool IsCompositorRenderQualityLow() const;
         void UpdateCompositorRenderQualityLow();
+        vr::EVROverlayError GetOverlayErrorLast() const;
+        void ResetOverlayErrorLast();
         bool IsElevatedTaskSetUp() const;
 
         bool IsOverlayVisible() const;

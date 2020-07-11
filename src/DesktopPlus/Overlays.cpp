@@ -66,6 +66,10 @@ void Overlay::InitOverlay()
     if (ovrl_error == vr::VROverlayError_None)
     {
         vr::VROverlay()->SetOverlayAlpha(m_OvrlHandle, m_Opacity);
+    } 
+    else //Creation failed, send error to UI so the user at least knows (typically this only happens when the overlay limit is exceeded)
+    {
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlay_creation_error, ovrl_error);
     }
 }
 

@@ -107,6 +107,43 @@ void WindowSettings::UpdateWarnings()
         }
     }
 
+    //Overlay error warning
+    {
+        vr::EVROverlayError overlay_error = UIManager::Get()->GetOverlayErrorLast();
+
+        if ( (overlay_error != vr::VROverlayError_None) && (UIManager::Get()->IsOpenVRLoaded()) )
+        {
+            //Use selectable stretching over the text area to make it clickable
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f); //Make the selectable invisible though
+            if (ImGui::Selectable("##WarningOverlayError"))
+            {
+                ImGui::OpenPopup("DismissWarning");
+            }
+            ImGui::PopStyleVar();
+            ImGui::SameLine(0.0f, 0.0f);
+
+            if (overlay_error == vr::VROverlayError_OverlayLimitExceeded)
+            {
+                ImGui::TextColored(Style_ImGuiCol_TextWarning, "Warning: An overlay creation failed! (Maximum Overlay limit exceeded)");
+            }
+            else
+            {
+                ImGui::TextColored(Style_ImGuiCol_TextWarning, "Warning: An overlay creation failed! (%s)", vr::VROverlay()->GetOverlayErrorNameFromEnum(overlay_error));
+            }
+
+            if (ImGui::BeginPopup("DismissWarning"))
+            {
+                if (ImGui::Selectable("Dismiss"))
+                {
+                    UIManager::Get()->ResetOverlayErrorLast();
+                }
+                ImGui::EndPopup();
+            }
+
+            warning_displayed = true;
+        }
+    }
+
     //Separate from the main content if a warning was actually displayed
     if (warning_displayed)
     {
