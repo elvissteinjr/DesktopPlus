@@ -88,8 +88,7 @@ void FloatingUI::UpdateUITargetState()
         }
 
         //Attempt to calculate the correct offset to bottom, taking in account all the things GetTransformForOverlayCoordinates() does not
-        float width;
-        vr::VROverlay()->GetOverlayWidthInMeters(m_OvrlHandleCurrentUITarget, &width);
+        float width = data.ConfigFloat[configid_float_overlay_width];
         float uv_width  = bounds.uMax - bounds.uMin;
         float uv_height = bounds.vMax - bounds.vMin;
         float cropped_width  = ovrl_pixel_width  * uv_width;
@@ -100,11 +99,18 @@ void FloatingUI::UpdateUITargetState()
         float offset_to_bottom = -( (aspect_ratio_new * width) - (aspect_ratio_orig * width) ) / 2.0f;
         offset_to_bottom -= height / 2.0f;
 
+        //Try to compensate for curvature (not correct, but good enough)
+        float curvature;
+        vr::VROverlay()->GetOverlayCurvature(m_OvrlHandleCurrentUITarget, &curvature);
+        float offset_forward = std::min(width * 0.4f, width * curvature * 0.75f);
+        float offset_right = -width * curvature * 0.25f;
+
         //Y-coordinate from this function is pretty much unpredictable if not pixel_height / 2
         vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleCurrentUITarget, origin, { (float)ovrl_pixel_width, (float)ovrl_pixel_height/2.0f }, &matrix);
 
         //Move to bottom first, vertically centering the floating UI overlay on the bottom end of the target overlay (previous function already got the X in a predictable spot)
-        OffsetTransformFromSelf(matrix, 0.0f, offset_to_bottom, 0.0f);
+        //Forward and right offsets only compensate for curvature and are 0 when curvature is 0%
+        OffsetTransformFromSelf(matrix, offset_right, offset_to_bottom, offset_forward);
         //Offset further to get the desired postion at the edge of the overlay
         OffsetTransformFromSelf(matrix, -1.235f, 0.1340f, 0.025f);
 

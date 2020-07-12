@@ -36,6 +36,7 @@ bool CreateDeviceD3D(HWND hWnd, bool desktop_mode);
 void CleanupDeviceD3D();
 void CreateRenderTarget(bool desktop_mode);
 void CleanupRenderTarget();
+void InitOverlayTextureSharing();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void InitImGui(HWND hwnd);
 void ProcessCmdline(bool& force_desktop_mode);
@@ -91,6 +92,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         CleanupDeviceD3D();
         ::UnregisterClass(wc.lpszClassName, wc.hInstance);
         return 1;
+    }
+
+    //Initialize overlay texture sharing if needed
+    if (ui_manager.IsOpenVRLoaded())
+    {
+        InitOverlayTextureSharing();
     }
     
     InitImGui(hwnd);
@@ -325,16 +332,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                     vrtex.eColorSpace = vr::ColorSpace_Gamma;
 
                     vr::VROverlay()->SetOverlayTexture(ui_manager.GetOverlayHandle(), &vrtex);
-
-                    if (ui_manager.GetFloatingUI().IsVisible())
-                    {
-                        vr::VROverlay()->SetOverlayTexture(ui_manager.GetOverlayHandleFloatingUI(), &vrtex);
-                    }
-
-                    if (window_kbdhelper.IsVisible())
-                    {
-                        vr::VROverlay()->SetOverlayTexture(ui_manager.GetOverlayHandleKeyboardHelper(), &vrtex);
-                    }
                 }
 
                 //Set overlay intersection mask... there doesn't seem to be much overhead from doing this every frame, even though we only need to update this sometimes
@@ -536,6 +533,62 @@ void CleanupRenderTarget()
     {
         g_vrTex->Release();
         g_vrTex = nullptr;
+    }
+}
+
+void InitOverlayTextureSharing()
+{
+    //Set up advanced texture sharing between the overlays
+
+    //Set texture to g_vrTex for the first time
+    vr::Texture_t vrtex;
+    vrtex.handle = g_vrTex;
+    vrtex.eType = vr::TextureType_DirectX;
+    vrtex.eColorSpace = vr::ColorSpace_Gamma;
+
+    vr::VROverlay()->SetOverlayTexture(UIManager::Get()->GetOverlayHandle(), &vrtex);
+
+    //Get overlay texture handle for the main texture overlay from OpenVR and set it as handle for the other overlays
+    vr::VROverlayHandle_t ovrl_handle_main = UIManager::Get()->GetOverlayHandle();
+    ID3D11ShaderResourceView* ovrl_shader_res;
+    uint32_t ovrl_width;
+    uint32_t ovrl_height;
+    uint32_t ovrl_native_format;
+    vr::ETextureType ovrl_api_type;
+    vr::EColorSpace ovrl_color_space;
+    vr::VRTextureBounds_t ovrl_tex_bounds;
+
+    vr::VROverlayError ovrl_error = vr::VROverlayError_None;
+    ovrl_error = vr::VROverlay()->GetOverlayTexture(ovrl_handle_main, (void**)&ovrl_shader_res, vrtex.handle, &ovrl_width, &ovrl_height, &ovrl_native_format,
+                                                    &ovrl_api_type, &ovrl_color_space, &ovrl_tex_bounds);
+
+    if (ovrl_error == vr::VROverlayError_None)
+    {
+        ID3D11Resource* ovrl_tex;
+        ovrl_shader_res->GetResource(&ovrl_tex);
+
+        HANDLE ovrl_tex_handle = nullptr;
+        IDXGIResource* ovrl_dxgi_resource;
+        HRESULT hr = ovrl_tex->QueryInterface(__uuidof(IDXGIResource), (void**)&ovrl_dxgi_resource);
+
+        ovrl_dxgi_resource->GetSharedHandle(&ovrl_tex_handle);
+
+        vr::Texture_t vrtex_target;
+        vrtex_target.eType       = vr::TextureType_DXGISharedHandle;
+        vrtex_target.eColorSpace = vr::ColorSpace_Gamma;
+        vrtex_target.handle      = ovrl_tex_handle;
+
+        vr::VROverlay()->SetOverlayTexture(UIManager::Get()->GetOverlayHandleFloatingUI(), &vrtex_target);
+        vr::VROverlay()->SetOverlayTexture(UIManager::Get()->GetOverlayHandleKeyboardHelper(), &vrtex_target);
+
+        ovrl_dxgi_resource->Release();
+        ovrl_dxgi_resource = nullptr;
+
+        ovrl_tex->Release();
+        ovrl_tex = nullptr;
+
+        vr::VROverlay()->ReleaseNativeOverlayHandle(ovrl_handle_main, (void*)ovrl_shader_res);
+        ovrl_shader_res = nullptr;
     }
 }
 
