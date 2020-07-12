@@ -779,6 +779,17 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::Columns(1);
         }
 
+        //Interface
+        {
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Interface");
+            ImGui::Columns(2, "ColumnInterface", false);
+            ImGui::SetColumnWidth(0, column_width_0);
+
+            ImGui::Checkbox("Enable Floating UI", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled)); //Pure UI state, no need to sync
+
+            ImGui::Columns(1);
+        }        
+
     ImGui::EndChild();
 }
 

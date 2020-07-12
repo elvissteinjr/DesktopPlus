@@ -3909,7 +3909,7 @@ bool OutputManager::IsAnyOverlayUsingGazeFade() const
     //*we know it probably won't happen any time soon
     for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
-        const OverlayConfigData data = OverlayManager::Get().GetConfigData(i);
+        const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
         if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (data.ConfigBool[configid_bool_overlay_gazefade_enabled]) )
         {

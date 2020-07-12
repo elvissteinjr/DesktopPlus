@@ -15,11 +15,6 @@
 #include "ThreadManager.h"
 #include "InterprocessMessaging.h"
 
-//
-// Globals
-//
-static OutputManager* g_OutMgrPtr = nullptr;   //This just for WndProc as it needs to handle WM_COPYDATA directly
-
 // Below are lists of errors expect from Dxgi API calls when a transition event like mode change, PnpStop, PnpStart
 // desktop switch, TDR or session disconnect/reconnect. In all these cases we want the application to clean up the threads that process
 // the desktop updates and attempt to recreate them.
@@ -251,7 +246,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     THREADMANAGER ThreadMgr;
     OutputManager OutMgr(PauseDuplicationEvent, ResumeDuplicationEvent);
-    g_OutMgrPtr = &OutMgr;
     RECT DeskBounds;
     UINT OutputCount;
 
@@ -465,7 +459,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     CloseHandle(PauseDuplicationEvent);
     CloseHandle(ResumeDuplicationEvent);
     CloseHandle(TerminateThreadsEvent);
-    g_OutMgrPtr = nullptr;
 
     if (msg.message == WM_QUIT)
     {
@@ -486,7 +479,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_COPYDATA:
         {
             //Forward to output manager
-            if (g_OutMgrPtr)
+            if (OutputManager::Get())
             {
                 bool mirror_reset_required = false;
 
@@ -500,7 +493,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         continue;
                     }
 
-                    if (g_OutMgrPtr->HandleIPCMessage(msg))
+                    if (OutputManager::Get()->HandleIPCMessage(msg))
                     {
                         mirror_reset_required = true;
                     }
@@ -512,7 +505,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 msg.wParam = wParam;
                 msg.lParam = lParam;
 
-                if (g_OutMgrPtr->HandleIPCMessage(msg))
+                if (OutputManager::Get()->HandleIPCMessage(msg))
                 {
                     mirror_reset_required = true;
                 }
@@ -806,7 +799,7 @@ void DisplayMsg(_In_ LPCWSTR str, _In_ LPCWSTR title, HRESULT hr)
     WriteMessageToLog(ss.str().c_str());
 
     //Try having the UI app display it if possible
-    HWND window = (g_OutMgrPtr != nullptr) ? g_OutMgrPtr->GetWindowHandle() : nullptr;
+    HWND window = (OutputManager::Get() != nullptr) ? OutputManager::Get()->GetWindowHandle() : nullptr;
     IPCManager::Get().SendStringToUIApp(configid_str_state_dashboard_error_string, StringConvertFromUTF16(ss.str().c_str()), window);
 }
 

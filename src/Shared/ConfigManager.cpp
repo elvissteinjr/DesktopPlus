@@ -109,6 +109,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigBool[configid_bool_overlay_gazefade_enabled]    = config.ReadBool(section.c_str(), "GazeFade", false);
     data.ConfigFloat[configid_float_overlay_gazefade_distance] = config.ReadInt(section.c_str(),  "GazeFadeDistance", 40) / 100.0f;
     data.ConfigFloat[configid_float_overlay_gazefade_rate]     = config.ReadInt(section.c_str(),  "GazeFadeRate", 100) / 100.0f;
+    data.ConfigBool[configid_bool_overlay_floatingui_enabled]  = config.ReadBool(section.c_str(), "ShowFloatingUI", true);
     data.ConfigBool[configid_bool_overlay_actionbar_enabled]   = config.ReadBool(section.c_str(), "ShowActionBar", false);
 
     //Disable settings which are invalid for the dashboard overlay
@@ -188,6 +189,7 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteBool(section.c_str(), "GazeFade",             data.ConfigBool[configid_bool_overlay_gazefade_enabled]);
     config.WriteInt( section.c_str(), "GazeFadeDistance", int(data.ConfigFloat[configid_float_overlay_gazefade_distance]  * 100.0f));
     config.WriteInt( section.c_str(), "GazeFadeRate",     int(data.ConfigFloat[configid_float_overlay_gazefade_rate]  * 100.0f));
+    config.WriteBool(section.c_str(), "ShowFloatingUI",       data.ConfigBool[configid_bool_overlay_floatingui_enabled]);
     config.WriteBool(section.c_str(), "ShowActionBar",        data.ConfigBool[configid_bool_overlay_actionbar_enabled]);
 
     config.WriteString(section.c_str(), "DetachedTransformPlaySpace", data.ConfigDetachedTransform[ovrl_origin_room].toString().c_str());
@@ -459,6 +461,7 @@ void ConfigManager::SaveConfigToFile()
 
     SaveMultiOverlayProfile(config);
 
+    config.WriteInt( "Interface", "OverlayCurrentID",                  m_ConfigInt[configid_int_interface_overlay_current_id]);
     config.WriteInt( "Interface", "DesktopButtonCyclingMode",          m_ConfigInt[configid_int_interface_mainbar_desktop_listing]);
     config.WriteBool("Interface", "DesktopButtonIncludeAll",           m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]);
     config.WriteInt( "Interface", "LastVRUIScale",                 int(m_ConfigFloat[configid_float_interface_last_vr_ui_scale] * 100.0f));

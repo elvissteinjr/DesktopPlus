@@ -22,7 +22,9 @@ void FloatingUI::UpdateUITargetState()
         m_FadeOutDelayCount = 20;
     }
 
-    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) )
+    //Don't show UI if ImGui popup is open (which blocks all input so just hide this)
+    //ImGui::IsPopupOpen() doesn't just check for modals though so it could get in the way at some point
+    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) )
     {
         for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
         {
@@ -30,9 +32,14 @@ void FloatingUI::UpdateUITargetState()
 
             if ( (ovrl_handle != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsHoverTargetOverlay(ovrl_handle)) )
             {
-                ovrl_handle_hover_target = ovrl_handle;
-                ovrl_id_hover_target = i;
-                break;
+                const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+                if (data.ConfigBool[configid_bool_overlay_floatingui_enabled])
+                {
+                    ovrl_handle_hover_target = ovrl_handle;
+                    ovrl_id_hover_target = i;
+                    break;
+                }
             }
         }
     }

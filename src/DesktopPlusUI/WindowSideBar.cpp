@@ -65,7 +65,7 @@ void WindowSideBar::Update(float mainbar_height, unsigned int overlay_id)
     float offset_y = mainbar_height + style.FramePadding.y + style.WindowPadding.y;
 
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x, io.DisplaySize.y - offset_y), 0, ImVec2(1.0f, 1.0f));  //Put window at bottom right of the overlay
-    ImGui::Begin("WindowSideBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | 
+    ImGui::Begin("WindowSideBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
                                             ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
