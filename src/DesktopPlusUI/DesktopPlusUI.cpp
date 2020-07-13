@@ -617,6 +617,13 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             if (UIManager::Get())
             {
+                MSG pmsg;
+                //Process all custom window messages posted before this
+                while (PeekMessage(&pmsg, nullptr, 0xC000, 0xFFFF, PM_REMOVE))
+                {
+                    UIManager::Get()->HandleIPCMessage(pmsg);
+                }
+
                 MSG wmsg;
                 wmsg.hwnd = hWnd;
                 wmsg.message = msg;

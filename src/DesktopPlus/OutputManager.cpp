@@ -1265,6 +1265,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, OverlayManager::Get().GetCurrentOverlayID());
                     break;
                 }
+                case ipcact_overlay_position_sync:
+                {
+                    DetachedTransformSyncAll();
+                    break;
+                }
             }
             break;
         }
@@ -2363,7 +2368,10 @@ bool OutputManager::HandleOpenVREvents()
                                     //Set flag for all overlays
                                     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                                     {
-                                        vr::VROverlay()->SetOverlayFlag(OverlayManager::Get().GetOverlay(i).GetHandle(), vr::VROverlayFlags_HideLaserIntersection, true);
+                                        if ( (i == 0) || (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
+                                        {
+                                            vr::VROverlay()->SetOverlayFlag(OverlayManager::Get().GetOverlay(i).GetHandle(), vr::VROverlayFlags_HideLaserIntersection, true);
+                                        }
                                     }
                                 }
                                 break;
@@ -3584,6 +3592,18 @@ void OutputManager::DragGestureFinish()
 
     m_DragGestureActive = false;
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+}
+
+void OutputManager::DetachedTransformSyncAll()
+{
+    for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        OverlayManager::Get().SetCurrentOverlayID(i);
+
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
+        IPCManager::Get().SendStringToUIApp(configid_str_state_detached_transform_current, ConfigManager::Get().GetOverlayDetachedTransform().toString(), m_WindowHandle);
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+    }
 }
 
 void OutputManager::DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref)

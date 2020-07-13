@@ -380,6 +380,8 @@ bool ConfigManager::LoadConfigFromFile()
 
 void ConfigManager::LoadMultiOverlayProfile(const Ini& config, bool clear_existing_overlays)
 {
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+
     unsigned int overlay_id = 1; //Don't load dashboard overlay unless we're clearing existing overlays
 
     if (clear_existing_overlays)
@@ -390,9 +392,15 @@ void ConfigManager::LoadMultiOverlayProfile(const Ini& config, bool clear_existi
         }
 
         overlay_id = k_ulOverlayID_Dashboard; //Load dashboard overlay
-    }
 
-    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+        //If "Overlay0" doesn't exist (transitioning from old config), load from "Overlay" (or try to, in which case we at least get proper defaults)
+        if (!config.SectionExists("Overlay0"))
+        {
+            OverlayManager::Get().SetCurrentOverlayID(k_ulOverlayID_Dashboard);
+            LoadOverlayProfile(config, UINT_MAX);
+            overlay_id++;
+        }
+    }
 
     std::stringstream ss;
     ss << "Overlay" << overlay_id;
@@ -613,9 +621,9 @@ void ConfigManager::SaveMultiOverlayProfileToFile(const std::string filename)
     config.Save();
 }
 
-bool ConfigManager::DeleteOverlayProfile(const std::string filename)
+bool ConfigManager::DeleteOverlayProfile(const std::string filename, bool multi_overlay)
 {
-    std::string path = m_ApplicationPath + "/profiles/overlays/" + filename;
+    std::string path = m_ApplicationPath + "profiles/" + ((multi_overlay) ? "multi-overlays/" : "overlays/") + filename;
     return (::DeleteFileW(WStringConvertFromUTF8(path.c_str()).c_str()) != 0);
 }
 

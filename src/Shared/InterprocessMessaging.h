@@ -40,6 +40,7 @@ enum IPCActionID
     ipcact_overlay_new,             //Sent by UI application to add a new overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
     ipcact_overlay_remove,          //Sent by UI application to remove a overlay. lParam is ID of overlay to remove (typically the active ID)
     ipcact_overlay_creation_error,  //Sent by dashboard application when an error occured during overlay creation. lParam is EVROverlayError
+    ipcact_overlay_position_sync,   //Sent by the UI application to request a sync of all overlay's transforms. No data in lParam
     ipcact_MAX
 };
 

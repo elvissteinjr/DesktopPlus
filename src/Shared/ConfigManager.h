@@ -206,7 +206,7 @@ class ConfigManager
         void SaveOverlayProfileToFile(const std::string filename);
         bool LoadMultiOverlayProfileFromFile(const std::string filename, bool clear_existing_overlays = true);
         void SaveMultiOverlayProfileToFile(const std::string filename);
-        bool DeleteOverlayProfile(const std::string filename);
+        bool DeleteOverlayProfile(const std::string filename, bool multi_overlay = false);
         std::vector<std::string> GetOverlayProfileList(bool multi_overlay = false);
 
         static WPARAM GetWParamForConfigID(ConfigID_Bool id);

@@ -2,6 +2,7 @@
 
 #include "UIManager.h"
 #include "OverlayManager.h"
+#include "InterprocessMessaging.h"
 #include "Util.h"
 
 void FloatingUI::UpdateUITargetState()
@@ -188,10 +189,16 @@ void FloatingUI::Update()
             m_IsSwitchingTarget = false;
             m_OvrlHandleCurrentUITarget = vr::k_ulOverlayHandleInvalid;
             m_OvrlIDCurrentUITarget = 0;
+
+            //Request sync if drag-mode is still active while the UI is disappearing
+            if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_sync);
+            }
         }
     }
 
-    if ( (m_Alpha != 0.0f) )
+    if (m_Alpha != 0.0f)
     {
         OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
 

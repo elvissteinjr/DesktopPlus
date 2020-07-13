@@ -23,6 +23,9 @@ void UIManager::DisplayDashboardAppError(const std::string& str) //Ideally this 
 
     if (res == vr::VRMessageOverlayResponse_ButtonPress_1)
     {
+        //Reset later unrestored state
+        ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode, false);
+
         ConfigManager::Get().SaveConfigToFile();
 
         STARTUPINFO si = {0};
@@ -220,6 +223,11 @@ void UIManager::HandleIPCMessage(const MSG& msg)
             //Apply overlay id override if needed
             unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
             int overlay_override_id = ConfigManager::Get().GetConfigInt(configid_int_state_overlay_current_id_override);
+
+            if (overlay_override_id != -1)
+            {
+                OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
+            }
 
             std::string copystr((char*)pcds->lpData, pcds->cbData); //We rely on the data length. The data is sent without the NUL byte
 

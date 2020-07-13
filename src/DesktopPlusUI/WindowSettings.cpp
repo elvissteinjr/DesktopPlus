@@ -1557,6 +1557,9 @@ void WindowSettings::UpdateCatMisc()
 
         if (ImGui::Button("Restart"))
         {
+            //Reset later unrestored state
+            ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode, false);
+
             ConfigManager::Get().SaveConfigToFile();
 
             STARTUPINFO si = {0};
@@ -1576,6 +1579,9 @@ void WindowSettings::UpdateCatMisc()
         {
             if (ImGui::Button("Restart Elevated"))
             {
+                //Reset later unrestored state
+                ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode, false);
+
                 ConfigManager::Get().SaveConfigToFile();
 
                 STARTUPINFO si = {0};
@@ -1599,6 +1605,9 @@ void WindowSettings::UpdateCatMisc()
 
         if (ImGui::Button("Restart##UI"))
         {
+            //Reset later unrestored state
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), false);
+
             ConfigManager::Get().SaveConfigToFile();
             UIManager::Get()->DisableRestartOnExit();
 
@@ -1617,6 +1626,9 @@ void WindowSettings::UpdateCatMisc()
 
         if (ImGui::Button("Restart in Desktop Mode"))
         {
+            //Reset later unrestored state
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), false);
+
             ConfigManager::Get().SaveConfigToFile();
             UIManager::Get()->DisableRestartOnExit();
 
@@ -2013,11 +2025,11 @@ void WindowSettings::ProfileSelector(bool multi_overlay)
         {
             if (multi_overlay)
             {
-                ConfigManager::Get().SaveOverlayProfileToFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
+                ConfigManager::Get().SaveMultiOverlayProfileToFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
             }
             else
             {
-                ConfigManager::Get().SaveMultiOverlayProfileToFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
+                ConfigManager::Get().SaveOverlayProfileToFile(overlay_profile_list[overlay_profile_selected_id] + ".ini");
             }
 
             overwrite_confirm_state = false;
@@ -2053,9 +2065,9 @@ void WindowSettings::ProfileSelector(bool multi_overlay)
     {
         if (ImGui::Button("Really?"))
         {
-            if (ConfigManager::Get().DeleteOverlayProfile(overlay_profile_list[overlay_profile_selected_id] + ".ini"))
+            if (ConfigManager::Get().DeleteOverlayProfile(overlay_profile_list[overlay_profile_selected_id] + ".ini", multi_overlay))
             {
-                overlay_profile_list = ConfigManager::Get().GetOverlayProfileList();
+                overlay_profile_list = ConfigManager::Get().GetOverlayProfileList(multi_overlay);
                 overlay_profile_selected_id = 0;
             }
 

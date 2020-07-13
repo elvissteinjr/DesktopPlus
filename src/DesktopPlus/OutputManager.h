@@ -99,6 +99,7 @@ class OutputManager
         void DragGestureUpdate();
         void DragGestureFinish();
         
+        void DetachedTransformSyncAll();
         void DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref = vr::k_ulOverlayHandleInvalid);
         void DetachedTransformAdjust(unsigned int packed_value);
         void DetachedTransformUpdateHMDFloor();
