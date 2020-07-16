@@ -10,7 +10,8 @@ Overlay::Overlay(unsigned int id) : m_ID(id),
                                     m_OvrlHandle(vr::k_ulOverlayHandleInvalid),
                                     m_Visible(false),
                                     m_Opacity(1.0f),
-                                    m_GlobalInteractive(false)
+                                    m_GlobalInteractive(false),
+                                    m_TextureSource(ovrl_tex_source_desktop_duplication)
 {
     //Don't call InitOverlay when OpenVR isn't loaded yet. This happens during startup when loading the config and will be fixed up by OutputManager::InitOverlay() afterwards
     if (vr::VROverlay() != nullptr)
@@ -39,6 +40,8 @@ Overlay& Overlay::operator=(Overlay&& b)
         m_Visible = b.m_Visible;
         m_Opacity = b.m_Opacity;
         m_ValidatedCropRect = b.m_ValidatedCropRect;
+        m_TextureSource = b.m_TextureSource;
+        //m_OUtoSBSConverter should just be left alone, it only holds cached state anyways
 
         b.m_OvrlHandle = vr::k_ulOverlayHandleInvalid;
     }
@@ -75,6 +78,9 @@ void Overlay::InitOverlay()
 
 void Overlay::AssignTexture()
 {
+    if (m_TextureSource != ovrl_tex_source_desktop_duplication)
+        return;
+
     OutputManager* outmgr = OutputManager::Get();
     if (outmgr == nullptr)
         return;
@@ -283,4 +289,33 @@ void Overlay::UpdateValidatedCropRect()
 const DPRect& Overlay::GetValidatedCropRect() const
 {
     return m_ValidatedCropRect;
+}
+
+void Overlay::SetTextureSource(OverlayTextureSource tex_source)
+{
+    //Skip if nothing changed
+    if (m_TextureSource == tex_source)
+        return;
+
+    //Cleanup old sources if needed
+    switch (m_TextureSource)
+    {
+        case ovrl_tex_source_desktop_duplication_3dou_converted: m_OUtoSBSConverter.CleanRefs(); break;
+        default: break;
+    }
+
+    m_TextureSource = tex_source;
+}
+
+OverlayTextureSource Overlay::GetTextureSource() const
+{
+    return m_TextureSource;
+}
+
+void Overlay::OnDesktopDuplicationUpdate()
+{
+    if (m_TextureSource == ovrl_tex_source_desktop_duplication_3dou_converted)
+    {
+        OutputManager::Get()->ConvertOUtoSBS(*this, m_OUtoSBSConverter);
+    }
 }

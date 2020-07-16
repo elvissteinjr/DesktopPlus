@@ -2116,10 +2116,20 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
         {
             vr::VROverlay()->SetOverlayTexture(m_OvrlHandleDesktopTexture, &vrtex);
 
-            //Apply potential texture change to all overlays
+            //Apply potential texture change to all overlays and notify them of duplication update
             for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
             {
-                OverlayManager::Get().GetOverlay(i).AssignTexture();
+                Overlay& overlay = OverlayManager::Get().GetOverlay(i);
+                overlay.AssignTexture();
+                overlay.OnDesktopDuplicationUpdate();
+            }
+        }
+        else
+        {
+            //Notifiy all overlays of duplication update
+            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+            {
+                OverlayManager::Get().GetOverlay(i).OnDesktopDuplicationUpdate();
             }
         }
     }
@@ -2802,6 +2812,15 @@ void OutputManager::ApplySetting3DMode()
         vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Parallel, false);
         vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Crossed, false);
         vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 1.0f);
+    }
+
+    if ( (mode == ovrl_3Dmode_ou) || (mode == ovrl_3Dmode_hou) )
+    {
+        OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_tex_source_desktop_duplication_3dou_converted);
+    }
+    else
+    {
+        OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_tex_source_desktop_duplication);
     }
 
     switch (mode)
@@ -3959,6 +3978,25 @@ const LARGE_INTEGER& OutputManager::GetUpdateLimiterDelay()
     return m_PerformanceUpdateLimiterDelay;
 }
 
+void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter)
+{
+    //Convert()'s arguments are almost all stuff from OutputManager, so we take this roundabout way of calling it
+    const DPRect& crop_rect = overlay.GetValidatedCropRect();
+
+    bool res = converter.Convert(m_Device, m_DeviceContext, m_PixelShader, m_VertexShader, m_Sampler, m_MultiGPUTargetDevice, m_MultiGPUTargetDeviceContext,
+                                 m_OvrlTex, m_DesktopWidth, m_DesktopHeight, crop_rect.GetTL().x, crop_rect.GetWidth(), crop_rect.GetHeight());
+
+    if (res)
+    {
+        vr::Texture_t vrtex;
+        vrtex.eType = vr::TextureType_DirectX;
+        vrtex.eColorSpace = vr::ColorSpace_Gamma;
+        vrtex.handle = converter.GetTexture(); //OUtoSBSConverter takes care of multi-gpu support automatically, so no further processing needed
+
+        vr::VROverlay()->SetOverlayTexture(overlay.GetHandle(), &vrtex);
+    }
+}
+
 void OutputManager::DoAction(ActionID action_id)
 {
     if (action_id >= action_custom)
@@ -4124,8 +4162,6 @@ void OutputManager::DoStopAction(ActionID action_id)
 //
 void OutputManager::CleanRefs()
 {
-    m_OUtoSBSConverter.CleanRefs();
-
     if (m_VertexShader)
     {
         m_VertexShader->Release();

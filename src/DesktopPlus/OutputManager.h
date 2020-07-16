@@ -15,6 +15,7 @@
 #include "OUtoSBSConverter.h"
 #include "InterprocessMessaging.h"
 
+class Overlay;
 //
 // This class evolved into handling almost everything
 // Updates the output texture, sends it to OpenVR, handles OpenVR events, IPC messages...
@@ -61,6 +62,8 @@ class OutputManager
 
         void UpdatePerformanceStates();
         const LARGE_INTEGER& GetUpdateLimiterDelay();
+
+        void ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter);
 
     private:
     // Methods
@@ -115,7 +118,6 @@ class OutputManager
         InputSimulator m_InputSim;
         VRInput m_VRInput;
         IPCManager m_IPCMan;
-        OUtoSBSConverter m_OUtoSBSConverter;
 
     // Vars
         ID3D11Device* m_Device;
