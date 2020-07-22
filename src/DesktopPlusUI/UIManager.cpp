@@ -612,7 +612,7 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
 
     //Position and show keyboard helper if active
     if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_helper_enabled)) &&
-         (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) >= k_ulOverlayID_Dashboard) )
+         (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) >= (int)k_ulOverlayID_Dashboard) )
     {
         vr::VROverlayHandle_t ovrl_handle_keyboard;
         vr::VROverlay()->FindOverlay("system.keyboard", &ovrl_handle_keyboard);
@@ -633,7 +633,7 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
                 vr::VROverlay()->ShowOverlay(m_OvrlHandleKeyboardHelper);
                 m_OvrlVisibleKeyboardHelper = true;
             }
-            else
+            else if (m_OvrlVisibleKeyboardHelper)
             {
                 vr::VROverlay()->HideOverlay(m_OvrlHandleKeyboardHelper);
                 window_kdbhelper.Hide();
@@ -641,7 +641,7 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
             }
         }
     }
-    else if (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleKeyboardHelper)) //Hide when disabled and still visible
+    else if ( (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleKeyboardHelper)) && (m_OvrlVisibleKeyboardHelper) ) //Hide when disabled and still visible
     {
         vr::VROverlay()->HideOverlay(m_OvrlHandleKeyboardHelper);
         window_kdbhelper.Hide();
