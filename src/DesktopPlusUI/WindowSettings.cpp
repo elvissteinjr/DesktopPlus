@@ -1296,18 +1296,6 @@ void WindowSettings::UpdateCatInput()
                 size = 0.10f;
 
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_input_keyboard_detached_size), *(LPARAM*)&size);
-
-            //If the change would be visible, apply it directly
-            if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_keyboard_visible_for_dashboard)) && (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) )
-            {
-                vr::VROverlayHandle_t ovrl_handle_keyboard = vr::k_ulOverlayHandleInvalid;
-                vr::VROverlay()->FindOverlay("system.keyboard", &ovrl_handle_keyboard);
-
-                if (ovrl_handle_keyboard != vr::k_ulOverlayHandleInvalid)
-                {
-                    //vr::VROverlay()->SetOverlaysizeInMeters(ovrl_handle_keyboard, ConfigManager::Get().GetConfigFloat(configid_float_input_keyboard_detached_size));
-                }
-            }
         }
         ImGui::NextColumn();
 

@@ -612,7 +612,7 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
 
     //Position and show keyboard helper if active
     if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_helper_enabled)) &&
-         (ConfigManager::Get().GetConfigBool(configid_bool_state_keyboard_visible_for_dashboard)) )
+         (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) >= k_ulOverlayID_Dashboard) )
     {
         vr::VROverlayHandle_t ovrl_handle_keyboard;
         vr::VROverlay()->FindOverlay("system.keyboard", &ovrl_handle_keyboard);

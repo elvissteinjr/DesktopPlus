@@ -17,14 +17,14 @@ class WindowMainBar
 
         void DisplayTooltipIfHovered(const char* text);
         void UpdateDesktopButtons();
-        void UpdateActionButtons();
+        void UpdateActionButtons(unsigned int overlay_id);
 
     public:
         WindowMainBar(WindowSettings* settings_window = nullptr);
 
         void Show(bool skip_fade = false);
         void Hide(bool skip_fade = false);
-        void Update();
+        void Update(unsigned int overlay_id);
         const ImVec2& GetPos() const;
         const ImVec2& GetSize() const;
         bool IsVisible() const;

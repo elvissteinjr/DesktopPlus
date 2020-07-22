@@ -216,7 +216,7 @@ void FloatingUI::Update()
             m_WindowActionBar.Hide();
         }
 
-        m_WindowActionBar.Update();
+        m_WindowActionBar.Update(m_OvrlIDCurrentUITarget);
         m_WindowSideBar.Update(m_WindowActionBar.GetSize().y, m_OvrlIDCurrentUITarget);
     }
 }

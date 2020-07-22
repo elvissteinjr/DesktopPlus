@@ -234,7 +234,7 @@ void OutputManager::HideOverlay(unsigned int id)
 
     overlay.SetVisible(false);
 
-    if (ConfigManager::Get().GetConfigBool(configid_bool_state_keyboard_visible_for_dashboard)) //Don't leave the keyboard open when hiding
+    if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) == id) //Don't leave the keyboard open when hiding
     {
         vr::VROverlay()->HideKeyboard();
     }
@@ -1187,6 +1187,15 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
     IPCMsgID msgid = IPCManager::Get().GetIPCMessageID(msg.message);
 
+    //Apply overlay id override if needed
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    int overlay_override_id = ConfigManager::Get().GetConfigInt(configid_int_state_overlay_current_id_override);
+
+    if (overlay_override_id != -1)
+    {
+        OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
+    }
+
     switch (msgid)
     {
         case ipcmsg_action:
@@ -1275,15 +1284,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
         }
         case ipcmsg_set_config:
         {
-            //Apply overlay id override if needed
-            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-            int overlay_override_id = ConfigManager::Get().GetConfigInt(configid_int_state_overlay_current_id_override);
-
-            if (overlay_override_id != -1)
-            {
-                OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
-            }
-
             if (msg.wParam < configid_bool_MAX)
             {
                 ConfigID_Bool bool_id = (ConfigID_Bool)msg.wParam;
@@ -1294,17 +1294,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_bool_overlay_3D_swapped:
                     {
                         ApplySetting3DMode();
-                        break;
-                    }
-                    case configid_bool_overlay_detached:
-                    {
-                        ApplySettingTransform();
-
-                        if (ConfigManager::Get().GetConfigBool(configid_bool_state_keyboard_visible_for_dashboard)) //Hide keyboard since the position won't make sense after this
-                        {
-                            vr::VROverlay()->HideKeyboard();
-                        }
-
                         break;
                     }
                     case configid_bool_overlay_enabled:
@@ -1441,14 +1430,14 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 
             }
 
-            //Restore overlay id override
-            if (overlay_override_id != -1)
-            {
-                OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
-            }
-
             break;
         }
+    }
+
+    //Restore overlay id override
+    if (overlay_override_id != -1)
+    {
+        OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
     }
 
     return false;
@@ -2293,7 +2282,7 @@ bool OutputManager::HandleOpenVREvents()
             }
             case vr::VREvent_KeyboardCharInput:
             {
-                if (vr_event.data.keyboard.uUserValue == m_OvrlHandleMain)      //Input meant for the main overlay
+                if (vr_event.data.keyboard.uUserValue == m_OvrlHandleMain)      //Input meant for desktop overlays
                 {
                     m_InputSim.KeyboardText(vr_event.data.keyboard.cNewInput);
                 }
@@ -2307,8 +2296,8 @@ bool OutputManager::HandleOpenVREvents()
             case vr::VREvent_KeyboardClosed:
             {
                 //Tell UI that the keyboard helper should no longer be displayed
-                ConfigManager::Get().SetConfigBool(configid_bool_state_keyboard_visible_for_dashboard, false);
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_keyboard_visible_for_dashboard), false);
+                ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -1);
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -1);
                 break;
             }
 
@@ -2531,8 +2520,8 @@ bool OutputManager::HandleOpenVREvents()
                 case vr::VREvent_KeyboardClosed:
                 {
                     //Tell UI that the keyboard helper should no longer be displayed
-                    ConfigManager::Get().SetConfigBool(configid_bool_state_keyboard_visible_for_dashboard, false);
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_keyboard_visible_for_dashboard), false);
+                    ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -1);
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -1);
 
                     break;
                 }
@@ -3195,7 +3184,7 @@ void OutputManager::ApplySettingKeyboardScale(float last_used_scale)
 
     if (ovrl_handle_keyboard != vr::k_ulOverlayHandleInvalid)
     {
-        if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_keyboard_visible_for_dashboard)) && (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) )
+        if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) > k_ulOverlayID_Dashboard)
         {
             vr::HmdMatrix34_t hmd_mat;
             vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
@@ -4036,9 +4025,11 @@ void OutputManager::DoAction(ActionID action_id)
         {
             case action_show_keyboard:
             {
-                if (ConfigManager::Get().GetConfigBool(configid_bool_state_keyboard_visible_for_dashboard))
+                const Overlay& ovrl_current = OverlayManager::Get().GetCurrentOverlay();
+
+                if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1)
                 {
-                    //If it's already displayed for this overlay, hide it instead
+                    //If it's already displayed for an overlay, hide it instead
                     vr::VROverlay()->HideKeyboard();
 
                     //Config state is set from the event
@@ -4046,7 +4037,7 @@ void OutputManager::DoAction(ActionID action_id)
                 else
                 {
                     //If not detached, show it for the dummy so it gets treated like a dashboard keyboard
-                    vr::VROverlayHandle_t ovrl_keyboard_target = (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) ? m_OvrlHandleMain : m_OvrlHandleDashboardDummy;
+                    vr::VROverlayHandle_t ovrl_keyboard_target = (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) ? ovrl_current.GetHandle() : m_OvrlHandleDashboardDummy;
 
                     vr::EVROverlayError keyboard_error = vr::VROverlay()->ShowKeyboardForOverlay(ovrl_keyboard_target, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
                                                                                                  vr::KeyboardFlag_Minimal, "Desktop+", 1024, "", m_OvrlHandleMain);
@@ -4060,12 +4051,12 @@ void OutputManager::DoAction(ActionID action_id)
 
                         vr::VROverlay()->SetKeyboardPositionForOverlay(ovrl_keyboard_target, keyrect);  //Avoid covering the overlay with the keyboard
 
-                        ConfigManager::Get().SetConfigBool(configid_bool_state_keyboard_visible_for_dashboard, true);
+                        ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, ovrl_current.GetID());
 
                         ApplySettingKeyboardScale(1.0f);    //Apply detached keyboard scale if necessary
 
                         //Tell UI that the keyboard helper can be displayed
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_keyboard_visible_for_dashboard), true);
+                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), ovrl_current.GetID());
                     }
                 }
                 break;

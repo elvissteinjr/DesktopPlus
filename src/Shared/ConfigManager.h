@@ -39,7 +39,6 @@ enum ConfigID_Bool
     configid_bool_input_mouse_hmd_pointer_override,
     configid_bool_input_keyboard_helper_enabled,
     configid_bool_state_overlay_dragmode,
-    configid_bool_state_keyboard_visible_for_dashboard,
     configid_bool_state_performance_stats_active,             //Only count when the stats are visible
     configid_bool_state_performance_gpu_copy_active,
     configid_bool_state_misc_process_elevated,                //True if the dashboard application is running with admin privileges
@@ -74,6 +73,7 @@ enum ConfigID_Int
     configid_int_state_action_current_sub,                  //Target variable. 0 = Name, 1 = Function Type. Remaining values depend on the function. Not the cleanest way but easier
     configid_int_state_action_value_int,                    //to set up with existing IPC stuff
     configid_int_state_mouse_dbl_click_assist_duration_ms,  //Internally used value, which will replace -1 with the current double-click delay automatically
+    configid_int_state_keyboard_visible_for_overlay_id,     //-1 = None
     configid_int_state_performance_duplication_fps,
 	configid_int_MAX
 };

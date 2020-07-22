@@ -167,7 +167,7 @@ void WindowMainBar::UpdateDesktopButtons()
     }
 }
 
-void WindowMainBar::UpdateActionButtons()
+void WindowMainBar::UpdateActionButtons(unsigned int overlay_id)
 {
     ImGuiIO& io = ImGui::GetIO();
     ImVec2 b_size, b_uv_min, b_uv_max;
@@ -200,7 +200,9 @@ void WindowMainBar::UpdateActionButtons()
                 {
                     if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
                     {
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
                     }
                     DisplayTooltipIfHovered(ActionManager::Get().GetActionName(order_data.action_id));
                 }
@@ -208,7 +210,9 @@ void WindowMainBar::UpdateActionButtons()
                 {
                     if (ImGui::ButtonWithWrappedLabel(ActionManager::Get().GetActionName(order_data.action_id), b_size_default))
                     {
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
                     }
                 }
             }
@@ -292,7 +296,7 @@ void WindowMainBar::Hide(bool skip_fade)
     }
 }
 
-void WindowMainBar::Update()
+void WindowMainBar::Update(unsigned int overlay_id)
 {
     if ( (m_Alpha != 0.0f) || (m_Visible) )
     {
@@ -340,7 +344,7 @@ void WindowMainBar::Update()
         UpdateDesktopButtons();
     }
 
-    UpdateActionButtons();
+    UpdateActionButtons(overlay_id);
 
     if (!floating_ui_mode)
     {

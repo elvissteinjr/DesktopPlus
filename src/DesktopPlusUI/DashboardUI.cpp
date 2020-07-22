@@ -1,6 +1,7 @@
 #include "DashboardUI.h"
 
 #include "UIManager.h"
+#include "OverlayManager.h"
 
 DashboardUI::DashboardUI() : m_WindowMainBar(&m_WindowSettings)
 {
@@ -13,7 +14,7 @@ void DashboardUI::Update()
 
     if (!UIManager::Get()->IsInDesktopMode())
     {
-        m_WindowMainBar.Update();
+        m_WindowMainBar.Update(k_ulOverlayID_Dashboard);
     }
 }
 

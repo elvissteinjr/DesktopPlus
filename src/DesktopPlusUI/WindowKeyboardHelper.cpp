@@ -147,8 +147,8 @@ void WindowKeyboardHelper::Update()
 
 bool WindowKeyboardHelper::IsVisible()
 {
-    return ( (ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_helper_enabled)) && 
-             (ConfigManager::Get().GetConfigBool(configid_bool_state_keyboard_visible_for_dashboard)) );
+    return ( (ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_helper_enabled)) &&
+             (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1) );
 }
 
 void WindowKeyboardHelper::Hide()
