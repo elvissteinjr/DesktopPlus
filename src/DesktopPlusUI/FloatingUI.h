@@ -19,10 +19,10 @@ class FloatingUI
         bool m_IsSwitchingTarget;
         int m_FadeOutDelayCount;
 
-        void UpdateUITargetState();
 
     public:
         FloatingUI();
         void Update();
+        void UpdateUITargetState();
         bool IsVisible() const;
 };

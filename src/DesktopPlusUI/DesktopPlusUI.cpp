@@ -223,6 +223,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             }
 
             ui_manager.PositionOverlay(window_kbdhelper);
+            ui_manager.GetFloatingUI().UpdateUITargetState();
 
             do_idle = ( (!ui_manager.IsOverlayVisible()) && (!ui_manager.IsOverlayKeyboardHelperVisible()) && (!ui_manager.GetFloatingUI().IsVisible()) );
 

@@ -5,6 +5,85 @@
 #include "InterprocessMessaging.h"
 #include "Util.h"
 
+FloatingUI::FloatingUI() : m_OvrlHandleCurrentUITarget(vr::k_ulOverlayHandleInvalid),
+                           m_OvrlIDCurrentUITarget(0),
+                           m_Alpha(0.0f),
+                           m_Visible(false),
+                           m_IsSwitchingTarget(false),
+                           m_FadeOutDelayCount(0)
+{
+    m_WindowActionBar.Hide(true); //Visible by default, so hide
+}
+
+void FloatingUI::Update()
+{
+    if ( (m_Alpha != 0.0f) || (m_Visible) )
+    {
+        vr::VROverlayHandle_t ovrl_handle_floating_ui = UIManager::Get()->GetOverlayHandleFloatingUI();
+
+        if (m_Alpha == 0.0f) //Overlay was hidden before
+        {
+            vr::VROverlay()->ShowOverlay(ovrl_handle_floating_ui);
+
+            OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
+
+            //Instantly adjust action bar visibility to overlay state before fading in
+            if (overlay_data.ConfigBool[configid_bool_overlay_actionbar_enabled])
+            {
+                m_WindowActionBar.Show(true);
+            }
+            else
+            {
+                m_WindowActionBar.Hide(true);
+            }
+        }
+
+        //Alpha fade animation
+        m_Alpha += (m_Visible) ? 0.1f : -0.1f;
+
+        if (m_Alpha > 1.0f)
+            m_Alpha = 1.0f;
+        else if (m_Alpha < 0.0f)
+            m_Alpha = 0.0f;
+
+        vr::VROverlay()->SetOverlayAlpha(ovrl_handle_floating_ui, m_Alpha);
+
+        if (m_Alpha == 0.0f) //Overlay was visible before
+        {
+            vr::VROverlay()->HideOverlay(ovrl_handle_floating_ui);
+            m_WindowActionBar.Hide(true);
+            //In case we were switching targets, reset switching state and target overlay
+            m_IsSwitchingTarget = false;
+            m_OvrlHandleCurrentUITarget = vr::k_ulOverlayHandleInvalid;
+            m_OvrlIDCurrentUITarget = 0;
+
+            //Request sync if drag-mode is still active while the UI is disappearing
+            if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_sync);
+            }
+        }
+    }
+
+    if (m_Alpha != 0.0f)
+    {
+        OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
+
+        //If action bar state was changed
+        if (overlay_data.ConfigBool[configid_bool_overlay_actionbar_enabled])
+        {
+            m_WindowActionBar.Show();
+        }
+        else
+        {
+            m_WindowActionBar.Hide();
+        }
+
+        m_WindowActionBar.Update(m_OvrlIDCurrentUITarget);
+        m_WindowSideBar.Update(m_WindowActionBar.GetSize().y, m_OvrlIDCurrentUITarget);
+    }
+}
+
 void FloatingUI::UpdateUITargetState()
 {
     UIManager& ui_manager = *UIManager::Get();
@@ -25,7 +104,8 @@ void FloatingUI::UpdateUITargetState()
 
     //Don't show UI if ImGui popup is open (which blocks all input so just hide this)
     //ImGui::IsPopupOpen() doesn't just check for modals though so it could get in the way at some point
-    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) )
+    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid) &&
+         (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) )
     {
         for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
         {
@@ -121,7 +201,7 @@ void FloatingUI::UpdateUITargetState()
 
         vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_floating_ui, origin, &matrix);
     }
-    
+
     if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) || (m_OvrlHandleCurrentUITarget == vr::k_ulOverlayHandleInvalid) ) //If not even the UI itself is being hovered, fade out
     {
         m_FadeOutDelayCount++;
@@ -137,87 +217,6 @@ void FloatingUI::UpdateUITargetState()
     else
     {
         m_Visible = true;
-    }
-}
-
-FloatingUI::FloatingUI() : m_OvrlHandleCurrentUITarget(vr::k_ulOverlayHandleInvalid),
-                           m_OvrlIDCurrentUITarget(0),
-                           m_Alpha(0.0f),
-                           m_Visible(false),
-                           m_IsSwitchingTarget(false),
-                           m_FadeOutDelayCount(0)
-{
-    m_WindowActionBar.Hide(true); //Visible by default, so hide
-}
-
-void FloatingUI::Update()
-{
-    UpdateUITargetState();
-
-    if ( (m_Alpha != 0.0f) || (m_Visible) )
-    {
-        vr::VROverlayHandle_t ovrl_handle_floating_ui = UIManager::Get()->GetOverlayHandleFloatingUI();
-
-        if (m_Alpha == 0.0f) //Overlay was hidden before
-        {
-            vr::VROverlay()->ShowOverlay(ovrl_handle_floating_ui);
-
-            OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
-
-            //Instantly adjust action bar visibility to overlay state before fading in
-            if (overlay_data.ConfigBool[configid_bool_overlay_actionbar_enabled])
-            {
-                m_WindowActionBar.Show(true);
-            }
-            else
-            {
-                m_WindowActionBar.Hide(true);
-            }
-        }
-
-        //Alpha fade animation
-        m_Alpha += (m_Visible) ? 0.1f : -0.1f;
-
-        if (m_Alpha > 1.0f)
-            m_Alpha = 1.0f;
-        else if (m_Alpha < 0.0f)
-            m_Alpha = 0.0f;
-
-        vr::VROverlay()->SetOverlayAlpha(ovrl_handle_floating_ui, m_Alpha);
-
-        if (m_Alpha == 0.0f) //Overlay was visible before
-        {
-            vr::VROverlay()->HideOverlay(ovrl_handle_floating_ui);
-            m_WindowActionBar.Hide(true);
-            //In case we were switching targets, reset switching state and target overlay
-            m_IsSwitchingTarget = false;
-            m_OvrlHandleCurrentUITarget = vr::k_ulOverlayHandleInvalid;
-            m_OvrlIDCurrentUITarget = 0;
-
-            //Request sync if drag-mode is still active while the UI is disappearing
-            if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
-            {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_sync);
-            }
-        }
-    }
-
-    if (m_Alpha != 0.0f)
-    {
-        OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
-
-        //If action bar state was changed
-        if (overlay_data.ConfigBool[configid_bool_overlay_actionbar_enabled])
-        {
-            m_WindowActionBar.Show();
-        }
-        else
-        {
-            m_WindowActionBar.Hide();
-        }
-
-        m_WindowActionBar.Update(m_OvrlIDCurrentUITarget);
-        m_WindowSideBar.Update(m_WindowActionBar.GetSize().y, m_OvrlIDCurrentUITarget);
     }
 }
 
