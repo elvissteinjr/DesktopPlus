@@ -64,7 +64,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlActiveCount(0),
     m_OvrlDashboardActive(false),
     m_OvrlInputActive(false),
-    m_OvrlDetachedInteractive(false),
+    m_OvrlDetachedInteractiveAll(false),
     m_MouseTex(nullptr),
     m_MouseShaderRes(nullptr),
     m_MouseLastClickTick(0),
@@ -2538,7 +2538,20 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     m_OvrlInputActive = false;
 
-                    overlay.SetGlobalInteractiveFlag(false);
+                    //If input is active from the input binding, reset the flag for every overlay (except dashboard)
+                    if (m_OvrlDetachedInteractiveAll)
+                    {
+                        m_OvrlDetachedInteractiveAll = false;
+
+                        for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
+                        {
+                            OverlayManager::Get().GetOverlay(i).SetGlobalInteractiveFlag(false);
+                        }
+                    }
+                    else
+                    {
+                        overlay.SetGlobalInteractiveFlag(false);
+                    }
 
                     break;
                 }
@@ -2570,20 +2583,19 @@ bool OutputManager::HandleOpenVREvents()
 
     if (m_VRInput.GetSetDetachedInteractiveDown())
     {
-        if (!m_OvrlDetachedInteractive) //This isn't a direct toggle since the laser pointer blocks the SteamVR Input Action Set
+        if (!m_OvrlDetachedInteractiveAll) //This isn't a direct toggle since the laser pointer blocks the SteamVR Input Action Set
         {
-            m_OvrlDetachedInteractive = true;
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, true);
+            m_OvrlDetachedInteractiveAll = true;
+            
+            //Set flag for all overlays, except dashboard
+            for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
+            {
+                OverlayManager::Get().GetOverlay(i).SetGlobalInteractiveFlag(true);
+            }
         }
     }
 
     m_VRInput.HandleGlobalActionShortcuts(*this);
-
-    //If dashboard closed (opening dashboard removes toggled or held input) and detached state changed from shortcut
-    if ( (!vr::VROverlay()->IsDashboardVisible()) && (m_VRInput.HandleSetOverlayDetachedShortcut(m_OvrlDetachedInteractive)) )
-    {
-        ApplySettingTransform();
-    }
 
     //Finish up pending keyboard input collected into the queue
     m_InputSim.KeyboardTextFinish();

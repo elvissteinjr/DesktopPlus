@@ -9,7 +9,6 @@
 #include "OutputManager.h"
 
 VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
-                     m_HandleActionSetOverlayDetached(vr::k_ulInvalidActionHandle),
                      m_HandleActionSetDetachedInteractive(vr::k_ulInvalidActionHandle),
                      m_HandleActionDoGlobalShortcut01(vr::k_ulInvalidActionHandle),
                      m_HandleActionDoGlobalShortcut02(vr::k_ulInvalidActionHandle),
@@ -34,7 +33,6 @@ bool VRInput::Init()
             return false;
 
         //Load actions (we assume that the files are not messed with and skip some error checking)
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/SetOverlayDetached",     &m_HandleActionSetOverlayDetached);
         vr::VRInput()->GetActionHandle("/actions/shortcuts/in/SetDetachedInteractive", &m_HandleActionSetDetachedInteractive);
         vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut01",       &m_HandleActionDoGlobalShortcut01);
         vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut02",       &m_HandleActionDoGlobalShortcut02);
@@ -71,7 +69,6 @@ void VRInput::RefreshAnyActionBound()
     //Doesn't trigger on app start since it's actions are not valid yet
     vr::VRActionHandle_t action_handles[] = 
     {
-        m_HandleActionSetOverlayDetached,
         m_HandleActionSetDetachedInteractive,
         m_HandleActionDoGlobalShortcut01,
         m_HandleActionDoGlobalShortcut02,
@@ -149,27 +146,6 @@ void VRInput::HandleGlobalActionShortcuts(OutputManager& outmgr)
             outmgr.DoStopAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_shortcut03_action_id));
         }
     }
-}
-
-bool VRInput::HandleSetOverlayDetachedShortcut(bool is_detached_interactive)
-{
-    vr::InputDigitalActionData_t data;
-    vr::EVRInputError input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionSetOverlayDetached, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
-
-    if ((input_error == vr::VRInputError_None) && (data.bChanged))
-    {
-        if ((data.bState == false) && (is_detached_interactive))
-        {
-            return false;
-        }
-
-        ConfigManager::Get().SetConfigBool(configid_bool_overlay_detached, data.bState);
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_detached), data.bState);
-
-        return true;
-    }
-
-    return false;
 }
 
 bool VRInput::GetSetDetachedInteractiveDown() const

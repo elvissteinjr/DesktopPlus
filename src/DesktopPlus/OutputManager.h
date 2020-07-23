@@ -160,7 +160,7 @@ class OutputManager
         int m_OvrlActiveCount;
         bool m_OvrlDashboardActive;
         bool m_OvrlInputActive;
-        bool m_OvrlDetachedInteractive;
+        bool m_OvrlDetachedInteractiveAll;
 
         ID3D11Texture2D* m_MouseTex;
         ID3D11ShaderResourceView* m_MouseShaderRes;
