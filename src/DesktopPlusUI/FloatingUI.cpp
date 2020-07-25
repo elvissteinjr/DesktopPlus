@@ -187,8 +187,9 @@ void FloatingUI::UpdateUITargetState()
         //Try to compensate for curvature (not correct, but good enough)
         float curvature;
         vr::VROverlay()->GetOverlayCurvature(m_OvrlHandleCurrentUITarget, &curvature);
+        curvature = std::min(curvature, 0.8f);
         float offset_forward = std::min(width * 0.4f, width * curvature * 0.75f);
-        float offset_right = -width * curvature * 0.25f;
+        float offset_right = (curvature > 0.15f) ? -width * curvature * (curvature / 1.35f) : 0.0f;
 
         //Y-coordinate from this function is pretty much unpredictable if not pixel_height / 2
         vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleCurrentUITarget, origin, { (float)ovrl_pixel_width, (float)ovrl_pixel_height/2.0f }, &matrix);
