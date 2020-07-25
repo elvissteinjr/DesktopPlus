@@ -294,6 +294,11 @@ bool ConfigManager::LoadConfigFromFile()
                 action.StrArg  = config.ReadString("CustomActions", (action_ini_name + "ExecutableArg").c_str());
                 break;
             }
+            case caction_toggle_overlay_enabled_state:
+            {
+                action.IntID = config.ReadInt("CustomActions", (action_ini_name + "OverlayID").c_str(), 0);
+                break;
+            }
         }
         
         #ifdef DPLUS_UI
@@ -548,6 +553,11 @@ void ConfigManager::SaveConfigToFile()
             {
                 config.WriteString("CustomActions", (action_ini_name + "ExecutablePath").c_str(), action.StrMain.c_str());
                 config.WriteString("CustomActions", (action_ini_name + "ExecutableArg").c_str(), action.StrArg.c_str());
+                break;
+            }
+            case caction_toggle_overlay_enabled_state:
+            {
+                config.WriteInt("CustomActions", (action_ini_name + "OverlayID").c_str(), action.IntID);
                 break;
             }
         }

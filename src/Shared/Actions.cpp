@@ -33,6 +33,11 @@ void CustomAction::ApplyIntFromConfig()
                 }
                 break;
             }
+            case caction_toggle_overlay_enabled_state:
+            {
+                IntID = value;
+                break;
+            }
             default: break;
         }
     }
@@ -108,6 +113,11 @@ void CustomAction::SendUpdateToDashboardApp(int id, HWND window_handle) const
             IPCManager::Get().SendStringToDashboardApp(configid_str_state_action_value_string, StrArg, window_handle);
 
             break;
+        }
+        case caction_toggle_overlay_enabled_state:
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 2);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), IntID);
         }
         default: break;
     }
@@ -208,6 +218,8 @@ CustomActionFunctionID ActionManager::ParseCustomActionFunctionString(const std:
         return caction_type_string;
     else if (str == "LaunchApplication")
         return caction_launch_application;
+    else if (str == "ToggleOverlayEnabledState")
+        return caction_toggle_overlay_enabled_state;
 
     return caction_press_keys;
 }
@@ -216,10 +228,11 @@ const char* ActionManager::CustomActionFunctionToString(CustomActionFunctionID f
 {
     switch (function_id)
     {
-        case caction_press_keys:         return "PressKeys";
-        case caction_type_string:        return "TypeString";
-        case caction_launch_application: return "LaunchApplication";
-        default:                         return "UnknownFunction";
+        case caction_press_keys:                   return "PressKeys";
+        case caction_type_string:                  return "TypeString";
+        case caction_launch_application:           return "LaunchApplication";
+        case caction_toggle_overlay_enabled_state: return "ToggleOverlayEnabledState";
+        default:                                   return "UnknownFunction";
     }
 }
 

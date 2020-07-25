@@ -4027,6 +4027,24 @@ void OutputManager::DoAction(ActionID action_id)
                     LaunchApplication(action.StrMain.c_str(), action.StrArg.c_str());
                     break;
                 }
+                case caction_toggle_overlay_enabled_state:
+                {
+                    if (OverlayManager::Get().GetOverlayCount() > (unsigned int)action.IntID)
+                    {
+                        OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)action.IntID);
+                        data.ConfigBool[configid_bool_overlay_enabled] = !data.ConfigBool[configid_bool_overlay_enabled];
+
+                        unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+                        OverlayManager::Get().SetCurrentOverlayID((unsigned int)action.IntID);
+                        ApplySettingTransform();
+                        OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
+                        //Sync change
+                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)action.IntID);
+                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), data.ConfigBool[configid_bool_overlay_enabled]);
+                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                    }
+                }
             }
             return;
         }

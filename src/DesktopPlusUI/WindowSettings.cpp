@@ -2292,6 +2292,7 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
         static bool use_action_icon = true;   //Icon to use for the preview button. Switches to tmtex_icon_temp when the icon was changed
         static int action_function = caction_press_keys;
         static unsigned char keycodes[3] = {0};
+        static int int_id = 0;
         static char buf_type_str[1024] = "";
         static char buf_exe_path[1024] = "";
         static char buf_exe_arg[1024] = "";
@@ -2306,6 +2307,7 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
             keycodes[0] = 0;
             keycodes[1] = 0;
             keycodes[2] = 0;
+            int_id = 0;
             buf_type_str[0] = '\0';
             buf_exe_path[0] = '\0';
             buf_exe_arg[0] = '\0';
@@ -2331,6 +2333,11 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
                     buf_exe_path[copied_length] = '\0';
                     copied_length = action.StrArg.copy(buf_exe_arg, 1023);
                     buf_exe_arg[copied_length] = '\0';
+                    break;
+                }
+                case caction_toggle_overlay_enabled_state:
+                {
+                    int_id = action.IntID;
                     break;
                 }
             }
@@ -2425,7 +2432,7 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
 
         ImGui::SetNextItemWidth(-1.0f);
 
-        const char* f_items[] = {"Press Keys", "Type String", "Launch Application"};
+        const char* f_items[] = {"Press Keys", "Type String", "Launch Application", "Toggle Overlay Enabled State"};
         ImGui::Combo("##ComboFunction", &action_function, f_items, IM_ARRAYSIZE(f_items));
 
         ImGui::Columns(1);
@@ -2507,6 +2514,24 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
 
             ImGui::PopupContextMenuInputText(nullptr, buf_exe_arg, 1024);
         }
+        else if (action_function == caction_toggle_overlay_enabled_state)
+        {
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Overlay ID");
+            ImGui::NextColumn();
+
+            ImGui::SetNextItemWidth(-1.0f);
+
+            if (ImGui::InputInt("##IntID", &int_id, 1, 2))
+            {
+                int_id = clamp(int_id, 0, (int)vr::k_unMaxOverlayCount - 1); //Though it's impossible to max out the overlay limit with desktop overlays either way
+            }
+
+            if ( (ImGui::IsItemDeactivated()) && (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter))) ) //Enter deactivates the item before we can catch it
+            {
+                do_save = true;
+            }
+        }
 
         ImGui::Columns(1);
 
@@ -2544,6 +2569,11 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
                 {
                     action.StrMain = buf_exe_path;
                     action.StrArg = buf_exe_arg;
+                    break;
+                }
+                case caction_toggle_overlay_enabled_state:
+                {
+                    action.IntID = int_id;
                     break;
                 }
             }
