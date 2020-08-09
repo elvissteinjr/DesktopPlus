@@ -25,6 +25,7 @@ void UIManager::DisplayDashboardAppError(const std::string& str) //Ideally this 
     {
         //Reset later unrestored state
         ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode, false);
+        ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, false);
 
         ConfigManager::Get().SaveConfigToFile();
 

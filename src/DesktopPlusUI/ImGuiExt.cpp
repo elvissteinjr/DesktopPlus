@@ -313,7 +313,7 @@ namespace ImGui
         ImGui::PopStyleVar();
     }
 
-    bool PopupContextMenuInputText(const char* str_id, char* str_buffer, size_t buffer_size)
+    bool PopupContextMenuInputText(const char* str_id, char* str_buffer, size_t buffer_size, bool paste_remove_newlines)
     {
         bool ret = false;
 
@@ -327,6 +327,23 @@ namespace ImGui
             if (ImGui::MenuItem("Replace with Clipboard"))
             {
                 std::string str(ImGui::GetClipboardText());
+
+                if (paste_remove_newlines)
+                {
+                    //Remove newlines (all kinds, since you never know what might be in a clipboard)
+                    std::string newlines[] = {"\r\n", "\n", "\r"};
+
+                    for (auto& nline : newlines)
+                    {
+                        size_t start_pos = 0;
+                        while ((start_pos = str.find(nline, start_pos)) != std::string::npos)
+                        {
+                            str.replace(start_pos, nline.length(), " ");
+                        }
+                    }
+                }
+
+                //Copy to buffer
                 size_t copied_length = str.copy(str_buffer, buffer_size - 1);
                 str_buffer[copied_length] = '\0';
 

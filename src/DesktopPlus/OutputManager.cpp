@@ -199,7 +199,7 @@ void OutputManager::ShowOverlay(unsigned int id)
     }
 
     if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) && (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
-         ( (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (id != k_ulOverlayID_Dashboard) ) )
+         (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
     {
         vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
     }
@@ -1279,6 +1279,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     DetachedTransformSyncAll();
                     break;
                 }
+                case ipcact_overlay_swap:
+                {
+                    OverlayManager::Get().SwapOverlays(OverlayManager::Get().GetCurrentOverlayID(), (unsigned int)msg.lParam);
+                    break;
+                }
             }
             break;
         }
@@ -1303,8 +1308,9 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         break;
                     }
                     case configid_bool_state_overlay_dragmode:
+                    case configid_bool_state_overlay_selectmode:
                     {
-                        ApplySettingDragMode();
+                        ApplySettingInputMode();
                         break;
                     }
                     case configid_bool_input_enabled:
@@ -2333,7 +2339,8 @@ bool OutputManager::HandleOpenVREvents()
                 case vr::VREvent_MouseMove:
                 {
                     if ( (!ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) || (m_MouseIgnoreMoveEvent) ||
-                         ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) ) )
+                         ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) ) ||
+                         (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
                     {
                         break;
                     }
@@ -2365,9 +2372,9 @@ bool OutputManager::HandleOpenVREvents()
                                     m_MouseIgnoreMoveEvent = true;
 
                                     //Set flag for all overlays
-                                    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+                                    if ((i == 0) || (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)))
                                     {
-                                        if ( (i == 0) || (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
+                                        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                                         {
                                             vr::VROverlay()->SetOverlayFlag(OverlayManager::Get().GetOverlay(i).GetHandle(), vr::VROverlayFlags_HideLaserIntersection, true);
                                         }
@@ -2404,7 +2411,17 @@ bool OutputManager::HandleOpenVREvents()
                 }
                 case vr::VREvent_MouseButtonDown:
                 {
-                    if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) )
+                    if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
+                    {
+                        if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
+                        {
+                            //Select this as current overlay
+                            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), i);
+                            current_overlay_old = i; //Set a new reset value since we're in the middle of a temporary current overlay loop
+                        }
+                        break;
+                    }
+                    else if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) )
                     {
                         if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
                         {
@@ -2446,7 +2463,11 @@ bool OutputManager::HandleOpenVREvents()
                 }
                 case vr::VREvent_MouseButtonUp:
                 {
-                    if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) )
+                    if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
+                    {
+                        break;
+                    }
+                    else if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) )
                     {
                         if ((vr_event.data.mouse.button == vr::VRMouseButton_Left) && (m_DragModeDeviceID != -1))
                         {
@@ -2475,7 +2496,8 @@ bool OutputManager::HandleOpenVREvents()
                 }
                 case vr::VREvent_ScrollDiscrete:
                 {
-                    if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) )
+                    if ( ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) ) ||
+                         (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
                         break;
 
                     if (vr_event.data.scroll.xdelta != 0.0f) //This doesn't seem to be ever sent by SteamVR
@@ -2861,7 +2883,8 @@ void OutputManager::ApplySettingTransform()
 
     bool should_be_visible = overlay.ShouldBeVisible();
 
-    if ( (!should_be_visible) && (is_detached) && (m_OvrlDashboardActive) && (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
+    if ( (!should_be_visible) && (is_detached) && (m_OvrlDashboardActive) && 
+         ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) ) )
     {
         should_be_visible = true;
         overlay.SetOpacity(0.25f);
@@ -3107,8 +3130,9 @@ void OutputManager::ApplySettingCrop()
     vr::VROverlay()->SetOverlayTextureBounds(ovrl_handle, &tex_bounds);
 }
 
-void OutputManager::ApplySettingDragMode()
+void OutputManager::ApplySettingInputMode()
 {
+    bool drag_or_select_mode_enabled = ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) );
     //Always applies to all overlays
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
@@ -3117,14 +3141,14 @@ void OutputManager::ApplySettingDragMode()
 
         vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetCurrentOverlay().GetHandle();
 
-        if ((ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)))
+        if ((ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) || (drag_or_select_mode_enabled) )
         {
             //Don't activate drag mode for HMD origin when the pointer is also the HMD (or it's the dashboard overlay)
             if ( ((vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd) && (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_hmd)) )
             {
                 vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
             }
-            else if (i != k_ulOverlayID_Dashboard)
+            else if ( (i != k_ulOverlayID_Dashboard) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
             {
                 vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
                 vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, false);
@@ -3138,9 +3162,9 @@ void OutputManager::ApplySettingDragMode()
         }
 
         //Sync matrix and restore mouse settings if it's been turned off
-        if (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+        if (!drag_or_select_mode_enabled)
         {
-            if (i != k_ulOverlayID_Dashboard)
+            if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) )
             {
                 IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
                 IPCManager::Get().SendStringToUIApp(configid_str_state_detached_transform_current, ConfigManager::Get().GetOverlayDetachedTransform().toString(), m_WindowHandle);
@@ -3868,7 +3892,8 @@ void OutputManager::DetachedInteractionAutoToggle()
 
 void OutputManager::DetachedOverlayGazeFade()
 {
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
+    if (  (ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && 
+         (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
     {
         vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
         vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];

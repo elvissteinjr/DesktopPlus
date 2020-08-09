@@ -165,137 +165,77 @@ void WindowSettings::UpdateCatOverlay()
     ImGui::EndChild();
     ImGui::PopStyleColor();
 
-    ImGui::BeginChild("ViewOverlaySettings");
+    const float column_width_0 = ImGui::GetFontSize() * 10.0f;
 
-        const float column_width_0 = ImGui::GetFontSize() * 10.0f;
+    //Overlay selector
+    {
+        static char buffer_overlay_name[1024] = "";
+        static float button_change_width = 0.0f;
 
-        //Temporary overlay selector
+        ImGui::Columns(2, "ColumnCurrentOverlay", false);
+        ImGui::SetColumnWidth(0, column_width_0);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Current Overlay");
+        ImGui::NextColumn();
+
+        ImGui::SetNextItemWidth(-1 - button_change_width);
+
+        if ( (ImGui::InputText("##InputOverlayName", buffer_overlay_name, 1024)) || (ImGui::PopupContextMenuInputText("##InputOverlayName", buffer_overlay_name, 1024)) )
         {
-            ImGui::Columns(2, "ColumnCurrentOverlay", false);
-            ImGui::SetColumnWidth(0, column_width_0);
-
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Current Overlay");
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-            ImGui::FixedHelpMarker("This is obviously not the final selector");
-            ImGui::NextColumn();
-
-            ImGui::SetNextItemWidth(-1);
-
-            //Format a string with the max overlay ID so it's a bit less painful to use until the proper selector is in place
-            std::stringstream ss;
-            ss << "%.0f/" << OverlayManager::Get().GetOverlayCount() - 1;
-
-            int& current_overlay = ConfigManager::Get().GetConfigIntRef(configid_int_interface_overlay_current_id);
-            float current_overlay_float = (float)current_overlay; //InputInt doesn't accept a format string... cool
-            if (ImGui::InputFloat("##InputCurrentOverlay", &current_overlay_float, 1.0f, 2.0f, ss.str().c_str()))
-            {
-                current_overlay = (int)current_overlay_float;
-                current_overlay = clamp(current_overlay, 0, (int)OverlayManager::Get().GetOverlayCount() - 1);
-
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
-                OverlayManager::Get().SetCurrentOverlayID(current_overlay);
-            }
-
-            //Indicate the current overlay by tinting it when hovering the overlay selector
-            if (UIManager::Get()->IsOpenVRLoaded())
-            {
-                static int colored_id = -1;
-
-                bool is_hovered = ImGui::IsItemHovered();
-
-                if ( (is_hovered) && (colored_id == -1) )
-                {
-                    vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle((unsigned int)current_overlay);
-
-                    if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
-                    {
-                        ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
-                        vr::VROverlay()->SetOverlayColor(ovrl_handle, col.x, col.y, col.z);
-
-                        colored_id = current_overlay;
-                    }
-                }
-                else if ( ( (!is_hovered) && (colored_id != -1) ) || ( (colored_id != current_overlay) && (colored_id != -1) ) )
-                {
-                    vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle((unsigned int)colored_id);
-
-                    if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
-                    {
-                        vr::VROverlay()->SetOverlayColor(ovrl_handle, 1.0f, 1.0f, 1.0f);
-                        colored_id = -1;
-                    }
-                }
-            }
-
-            if (ImGui::Button("Add Overlay"))
-            {
-                OverlayManager::Get().AddOverlay(OverlayManager::Get().GetCurrentConfigData());
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, current_overlay);
-
-                current_overlay = (int)OverlayManager::Get().GetOverlayCount() - 1;
-                OverlayManager::Get().SetCurrentOverlayID(current_overlay);
-            }
-            
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-
-            bool current_overlay_is_dashboard = (current_overlay == k_ulOverlayID_Dashboard);
-
-            if (current_overlay_is_dashboard)
-                ImGui::PushItemDisabled();
-            
-            if (ImGui::Button("Remove Overlay"))
-            {
-                OverlayManager::Get().RemoveOverlay(current_overlay);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_remove, current_overlay);
-
-                current_overlay = (int)OverlayManager::Get().GetCurrentOverlayID(); //RemoveOverlay() will change the current ID
-            }
-
-            if (current_overlay_is_dashboard)
-                ImGui::PopItemDisabled();
-
-            ImGui::NextColumn();
-
-            ImGui::Columns(1);
+            OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+            data.ConfigNameStr = buffer_overlay_name;
         }
 
-        bool detached = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_detached);
-
-        //Profiles
+        if (ImGui::IsItemHovered())
         {
-            static bool profile_selector_type_multi = false;
-
-            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Profiles");
-            ImGui::Columns(2, "ColumnProfiles", false);
-            ImGui::SetColumnWidth(0, column_width_0);
-
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Type");
-            ImGui::NextColumn();
-
-            if (ImGui::RadioButton("Single-Overlay", !profile_selector_type_multi))
-            {
-                profile_selector_type_multi = false;
-            }
-
-            ImGui::SameLine();
-
-            if (ImGui::RadioButton("Multi-Overlay", profile_selector_type_multi))
-            {
-                profile_selector_type_multi = true;
-            }
-
-            ImGui::NextColumn();
-
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Profile");
-            ImGui::NextColumn();
-
-            ProfileSelector(profile_selector_type_multi);
-
-            ImGui::Columns(1);
+            HighlightOverlay(ConfigManager::Get().GetConfigInt(configid_int_interface_overlay_current_id));
         }
+        else if (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
+        {
+            HighlightOverlay(-1);
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Change"))
+        {
+            ImGui::OpenPopup("CurrentOverlayChange");
+
+            //Activate selection mode
+            ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, true);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_selectmode), true);
+        }
+
+        button_change_width = ImGui::GetItemRectSize().x + ImGui::GetStyle().ItemSpacing.x;
+
+        if ( (PopupCurrentOverlayChange()) || (ImGui::IsWindowAppearing()) || (m_OverlayNameBufferNeedsUpdate) )
+        {
+            //Update buffer
+            OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+            size_t copied_length = data.ConfigNameStr.copy(buffer_overlay_name, 1023);
+            buffer_overlay_name[copied_length] = '\0';
+
+            //Deactivate selection mode
+            ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, false);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_selectmode), false);
+
+            m_OverlayNameBufferNeedsUpdate = false;
+        }
+
+        ImGui::Columns(1);
+    }
+
+    ImGui::Spacing();
+
+    bool detached = ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached);
+
+    ImGui::BeginTabBar("TabBarOverlay", ImGuiTabBarFlags_NoTooltip);
+
+    if (ImGui::BeginTabItem("General"))
+    {
+        ImGui::BeginChild("ViewOverlayTabGeneral");
 
         //General
         {
@@ -319,7 +259,7 @@ void WindowSettings::UpdateCatOverlay()
 
             float& width = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_width);
             float width_slider_max = 10.0f;
-            
+
             if (detached) //Variable max slider ranges for detached
             {
                 width_slider_max = (ConfigManager::Get().GetConfigIntRef(configid_int_overlay_detached_origin) >= ovrl_origin_right_hand) ? 1.5f : 10.0f;
@@ -383,7 +323,7 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::NextColumn();
 
             float& up = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_up);
-                
+
             if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, -5.0f, 5.0f, "%.2f m", 2.0f))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_up), *(LPARAM*)&up);
@@ -395,7 +335,7 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::NextColumn();
 
             float& right = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_right);
-                
+
             if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, -5.0f, 5.0f, "%.2f m", 2.0f))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_right), *(LPARAM*)&right);
@@ -407,7 +347,7 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::NextColumn();
 
             float& forward = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_forward);
-                
+
             if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, -5.0f, 5.0f, "%.2f m", 2.0f))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_forward), *(LPARAM*)&forward);
@@ -572,7 +512,15 @@ void WindowSettings::UpdateCatOverlay()
             PopupOverlayDetachedPositionChange();
         }
 
-        //Cropping
+        ImGui::EndChild();
+        ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Cropping"))
+    {
+        ImGui::BeginChild("ViewOverlayTabCroppingArea");
+
+        //Cropping Area
         {
             int ovrl_width, ovrl_height;
             UIManager::Get()->GetOverlayPixelSize(ovrl_width, ovrl_height);
@@ -582,12 +530,12 @@ void WindowSettings::UpdateCatOverlay()
             int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
             int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
 
-            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Cropping");
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Cropping Rectangle");
             ImGui::Columns(2, "ColumnCrop", false);
             ImGui::SetColumnWidth(0, column_width_0);
 
             ImGui::AlignTextToFramePadding();
-            ImGui::Text("Crop X");
+            ImGui::Text("X");
             ImGui::NextColumn();
 
             if (ImGui::SliderWithButtonsInt("CropX", crop_x, 1, 0, ovrl_width - 1, "%d px"))
@@ -606,7 +554,7 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::NextColumn();
 
             ImGui::AlignTextToFramePadding();
-            ImGui::Text("Crop Y");
+            ImGui::Text("Y");
             ImGui::NextColumn();
 
             if (ImGui::SliderWithButtonsInt("CropY", crop_y, 1, 0, ovrl_height - 1 /*DesktopHeight*/, "%d px"))
@@ -624,7 +572,7 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::NextColumn();
 
             ImGui::AlignTextToFramePadding();
-            ImGui::Text("Crop Width");
+            ImGui::Text("Width");
             ImGui::NextColumn();
 
             ImGui::SetNextItemWidth(-1);
@@ -645,7 +593,7 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::NextColumn();
 
             ImGui::AlignTextToFramePadding();
-            ImGui::Text("Crop Height");
+            ImGui::Text("Height");
             ImGui::NextColumn();
 
             ImGui::SetNextItemWidth(-1);
@@ -684,14 +632,22 @@ void WindowSettings::UpdateCatOverlay()
                 crop_width  = -1;
                 crop_height = -1;
 
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_x),      crop_x);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y),      crop_y);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width),  crop_width);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_x), crop_x);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y), crop_y);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width), crop_width);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
             }
 
             ImGui::Columns(1);
         }
+
+        ImGui::EndChild();
+        ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Advanced"))
+    {
+        ImGui::BeginChild("ViewOverlayTabAdvanced");
 
         //3D
         {
@@ -720,8 +676,8 @@ void WindowSettings::UpdateCatOverlay()
             }
 
             ImGui::Columns(1);
-        }        
-        
+        }
+
         //Gaze Fade
         if (detached) //Gaze Fade only works with detached overlays (not like anyone needs it on dashboard ones)
         {
@@ -779,18 +735,73 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::Columns(1);
         }
 
+        ImGui::EndChild();
+        ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Interface"))
+    {
+        ImGui::BeginChild("ViewOverlayTabInterface");
+
         //Interface
         {
-            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Interface");
-            ImGui::Columns(2, "ColumnInterface", false);
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Floating UI");
+            ImGui::Columns(2, "ColumnFloatingUI", false);
             ImGui::SetColumnWidth(0, column_width_0);
 
-            ImGui::Checkbox("Enable Floating UI", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled)); //Pure UI state, no need to sync
+            ImGui::Checkbox("Show Floating UI", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled)); //Pure UI state, no need to sync
 
             ImGui::Columns(1);
-        }        
+        }
 
-    ImGui::EndChild();
+        ImGui::EndChild();
+        ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Profiles"))
+    {
+        ImGui::BeginChild("ViewOverlayTabProfiles");
+
+        //Profiles
+        {
+            static bool profile_selector_type_multi = false;
+
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Profiles");
+            ImGui::Columns(2, "ColumnProfiles", false);
+            ImGui::SetColumnWidth(0, column_width_0);
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Type");
+            ImGui::NextColumn();
+
+            if (ImGui::RadioButton("Single-Overlay", !profile_selector_type_multi))
+            {
+                profile_selector_type_multi = false;
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::RadioButton("Multi-Overlay", profile_selector_type_multi))
+            {
+                profile_selector_type_multi = true;
+            }
+
+            ImGui::NextColumn();
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Profile");
+            ImGui::NextColumn();
+
+            ProfileSelector(profile_selector_type_multi);
+
+            ImGui::Columns(1);
+        }
+
+        ImGui::EndChild();
+        ImGui::EndTabItem();
+    }
+    
+    ImGui::EndTabBar();
 }
 
 void WindowSettings::UpdateCatInterface()
@@ -1547,6 +1558,7 @@ void WindowSettings::UpdateCatMisc()
         {
             //Reset later unrestored state
             ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode, false);
+            ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, false);
 
             ConfigManager::Get().SaveConfigToFile();
 
@@ -1569,6 +1581,7 @@ void WindowSettings::UpdateCatMisc()
             {
                 //Reset later unrestored state
                 ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode, false);
+                ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, false);
 
                 ConfigManager::Get().SaveConfigToFile();
 
@@ -1595,6 +1608,7 @@ void WindowSettings::UpdateCatMisc()
         {
             //Reset later unrestored state
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), false);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_selectmode), false);
 
             ConfigManager::Get().SaveConfigToFile();
             UIManager::Get()->DisableRestartOnExit();
@@ -1616,6 +1630,7 @@ void WindowSettings::UpdateCatMisc()
         {
             //Reset later unrestored state
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), false);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_selectmode), false);
 
             ConfigManager::Get().SaveConfigToFile();
             UIManager::Get()->DisableRestartOnExit();
@@ -1965,6 +1980,8 @@ void WindowSettings::ProfileSelector(bool multi_overlay)
 
         overwrite_confirm_state = false;
         delete_confirm_state = false;
+
+        m_OverlayNameBufferNeedsUpdate = true;
     }
 
     if (multi_overlay)
@@ -2119,6 +2136,258 @@ bool WindowSettings::ActionButtonRow(ActionID action_id, int list_pos, int& list
     ImGui::Columns(1);
 
     return delete_pressed;
+}
+
+bool WindowSettings::PopupCurrentOverlayChange()
+{
+    static bool popup_was_open = false;
+
+    //Set popup rounding to the same as a normal window
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, ImGui::GetStyle().WindowRounding);
+    bool is_popup_rounding_pushed = true;
+
+    //Center popup
+    ImGui::SetNextWindowSize(ImVec2(GetSize().x * 0.5f, GetSize().y * 0.75f));
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+
+    if (ImGui::BeginPopup("CurrentOverlayChange", ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    {
+        popup_was_open = true;
+
+        ImGui::PopStyleVar(); //ImGuiStyleVar_PopupRounding
+        is_popup_rounding_pushed = false;
+
+        static std::vector<std::string> list_overlays;
+        //List of unique IDs for overlays so ImGui can identify the same list entries after reordering or list expansion (needed for drag reordering)
+        static std::vector<int> list_unique_ids; 
+        static bool has_list_changed = false;
+
+        //Reset unique IDs when popup was opened
+        if (ImGui::IsWindowAppearing())
+        {
+            list_unique_ids.clear();
+        }
+        //Refresh list if popup was opened or the overlay count/list changed
+        if ( (ImGui::IsWindowAppearing()) || (list_overlays.size() != OverlayManager::Get().GetOverlayCount()) || (has_list_changed) )
+        {
+            list_overlays.clear();
+
+            //Expand unique id lists if overlays were added (also does initialization since it's empty then)
+            while (list_unique_ids.size() < OverlayManager::Get().GetOverlayCount())
+            {
+                list_unique_ids.push_back((int)list_unique_ids.size());
+            }
+
+            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+            {
+                std::stringstream ss;
+                ss << "#" << i << " - " << OverlayManager::Get().GetConfigData(i).ConfigNameStr << "###" << list_unique_ids[i];
+
+                list_overlays.push_back(ss.str());
+            }
+
+            has_list_changed = false;
+        }
+
+        ImGui::Text("Click on an overlay or choose one from the list");
+
+        int& current_overlay = ConfigManager::Get().GetConfigIntRef(configid_int_interface_overlay_current_id);
+
+        float arrows_width       = ImGui::GetFrameHeightWithSpacing();
+        float column_0_width     = ImGui::GetContentRegionAvail().x - arrows_width + ImGui::GetStyle().ItemSpacing.x;
+        float viewbuttons_height = ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing();
+        static float extra_buttons_width = 0.0f;
+
+        ImGui::Columns(2, "ColumnActionButtons", false);
+        ImGui::SetColumnWidth(0, column_0_width);
+        ImGui::SetColumnWidth(1, arrows_width + ImGui::GetStyle().ItemSpacing.x);
+
+        //ActionButton list
+        ImGui::BeginChild("ViewActionButtons", ImVec2(0.0f, viewbuttons_height), true);
+
+        //List overlays
+        int index = 0;
+        int index_hovered = -1;
+        for (const auto& str: list_overlays)
+        {
+            const OverlayConfigData& data = OverlayManager::Get().GetConfigData(index);
+
+            if (!data.ConfigBool[configid_bool_overlay_enabled])
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+
+            if (ImGui::Selectable(str.c_str(), (index == current_overlay)))
+            {
+                current_overlay = index;
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
+                OverlayManager::Get().SetCurrentOverlayID(current_overlay);
+            }
+
+            if (ImGui::IsItemHovered())
+            {
+                index_hovered = index;
+            }
+            else if ( (ImGui::IsItemActive()) && (!ImGui::IsItemHovered()) ) //Drag reordering
+            {
+                int index_swap = index + (ImGui::GetMouseDragDelta(0).y < 0.0f ? -1 : 1);
+                if ( (index > 0) && (index_swap > 0) && (index_swap < list_overlays.size()) )
+                {
+                    OverlayManager::Get().SwapOverlays(index, index_swap);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_swap, index_swap);
+                    current_overlay = index_swap;
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
+                    OverlayManager::Get().SetCurrentOverlayID(current_overlay);
+
+                    std::iter_swap(list_unique_ids.begin() + index, list_unique_ids.begin() + index_swap);
+
+                    ImGui::ResetMouseDragDelta();
+                    has_list_changed = true;
+                }
+            }
+
+            if (!data.ConfigBool[configid_bool_overlay_enabled])
+                ImGui::PopStyleVar();
+
+            index++;
+        }
+
+        ImGui::EndChild();
+
+        //Check if any actual overlay is being hovered
+        if (UIManager::Get()->IsOpenVRLoaded())
+        {
+            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+            {
+                vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(i);
+
+                if ((ovrl_handle != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsHoverTargetOverlay(ovrl_handle)))
+                {
+                    index_hovered = i;
+                    break;
+                }
+            }
+        }
+
+        //Highlight hovered or active entry if nothing is hovered
+        HighlightOverlay((index_hovered != -1) ? index_hovered : index);
+
+        //Remove horizontal spacing so the arrows are closer to the list
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, ImGui::GetStyle().ItemSpacing.y});
+
+        ImGui::NextColumn();
+
+
+        //This is a bit of a mess, but centers the buttons vertically, yeah.
+        ImGui::Dummy(ImVec2(0.0f, (viewbuttons_height / 2.0f) - ( (ImGui::GetFrameHeightWithSpacing() + ImGui::GetFrameHeight()) / 2.0f ) - ImGui::GetStyle().ItemSpacing.y));
+            
+        int current_overlay_prev = current_overlay;
+
+        //Up
+        if (current_overlay_prev <= 1) //Don't allow moving dashboard overlay
+            ImGui::PushItemDisabled();
+
+        if (ImGui::ArrowButton("MoveUp", ImGuiDir_Up))
+        {
+            OverlayManager::Get().SwapOverlays(current_overlay, current_overlay - 1);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_swap, current_overlay - 1);
+            std::iter_swap(list_unique_ids.begin() + current_overlay, list_unique_ids.begin() + current_overlay - 1);
+            current_overlay--;
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
+            OverlayManager::Get().SetCurrentOverlayID(current_overlay);
+
+
+            has_list_changed = true;
+        }
+
+        if (current_overlay_prev <= 1)
+            ImGui::PopItemDisabled();
+
+        //Down
+        if ( (current_overlay_prev < 1) || (current_overlay_prev + 1 == list_overlays.size()) )
+            ImGui::PushItemDisabled();
+
+        if (ImGui::ArrowButton("MoveDown", ImGuiDir_Down))
+        {
+            OverlayManager::Get().SwapOverlays(current_overlay, current_overlay + 1);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_swap, current_overlay + 1);
+            std::iter_swap(list_unique_ids.begin() + current_overlay, list_unique_ids.begin() + current_overlay + 1);
+            current_overlay++;
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
+            OverlayManager::Get().SetCurrentOverlayID(current_overlay);
+
+            has_list_changed = true;
+        }
+
+        if ( (current_overlay_prev < 1) || (current_overlay_prev + 1 == list_overlays.size()) )
+            ImGui::PopItemDisabled();
+
+        ImGui::PopStyleVar();
+
+        ImGui::Columns(1);
+
+        //Bottom buttons
+        if (ImGui::Button("Done")) 
+        {
+            UIManager::Get()->RepeatFrame();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine(column_0_width - ImGui::GetItemRectSize().x - extra_buttons_width + ImGui::GetStyle().ItemSpacing.x + ImGui::GetStyle().ItemSpacing.y);
+        ImGui::SetCursorPosX(column_0_width - extra_buttons_width - ImGui::GetStyle().ItemSpacing.x - ImGui::GetStyle().ItemInnerSpacing.x);
+
+        if (ImGui::Button("Add")) 
+        {
+            //Copy data of current overlay and generate default name
+            OverlayConfigData data = OverlayManager::Get().GetCurrentConfigData();
+            data.ConfigNameStr = "Overlay " + std::to_string(OverlayManager::Get().GetOverlayCount());
+
+            OverlayManager::Get().AddOverlay(data);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, current_overlay);
+
+            current_overlay = (int)OverlayManager::Get().GetOverlayCount() - 1;
+            OverlayManager::Get().SetCurrentOverlayID(current_overlay);
+            //No need to sync current overlay here
+        }
+
+        extra_buttons_width = ImGui::GetItemRectSize().x;
+
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+        bool current_overlay_is_dashboard = (current_overlay == k_ulOverlayID_Dashboard);
+
+        if (current_overlay_is_dashboard)
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Button("Remove")) 
+        {
+            OverlayManager::Get().RemoveOverlay(current_overlay);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_remove, current_overlay);
+
+            current_overlay = (int)OverlayManager::Get().GetCurrentOverlayID(); //RemoveOverlay() will change the current ID
+            //No need to sync current overlay here
+        }
+
+        if (current_overlay_is_dashboard)
+            ImGui::PopItemDisabled();
+
+        extra_buttons_width += ImGui::GetItemRectSize().x;
+
+        ImGui::EndPopup();
+    }
+
+    //This has to be popped early to prevent affecting other popups but we can't forget about it when the popup is closed either
+    if (is_popup_rounding_pushed)
+    {
+        ImGui::PopStyleVar(); //ImGuiStyleVar_PopupRounding
+    }
+
+    //Detect if the popup was closed, which can happen at any time from clicking outside of it
+    if ((popup_was_open) && (!ImGui::IsPopupOpen("CurrentOverlayChange")))
+    {
+        popup_was_open = false;
+        return true;
+    }
+
+    return false;
 }
 
 void WindowSettings::PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id, bool multi_overlay)
@@ -2921,7 +3190,41 @@ bool WindowSettings::PopupIconSelect(std::string& filename)
     return ret;
 }
 
-WindowSettings::WindowSettings() : m_Visible(false), m_Alpha(0.0f), m_ActionEditIsNew(false)
+void WindowSettings::HighlightOverlay(int overlay_id)
+{
+    //Indicate the current overlay by tinting it when hovering the overlay selector
+    if (UIManager::Get()->IsOpenVRLoaded())
+    {
+        static int colored_id = -1;
+
+        //Tint overlay if no other overlay is currently tinted (adds one frame delay on switching but it doesn't really matter)
+        if ( (overlay_id != -1) && (colored_id == -1) )
+        {
+            vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle((unsigned int)overlay_id);
+
+            if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
+            {
+                ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+                vr::VROverlay()->SetOverlayColor(ovrl_handle, col.x, col.y, col.z);
+
+                colored_id = overlay_id;
+            }
+        }
+        else if ( (colored_id != -1) && (colored_id != overlay_id) ) //Remove tint if overlay id is different or -1
+        {
+            vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle((unsigned int)colored_id);
+
+            if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
+            {
+                vr::VROverlay()->SetOverlayColor(ovrl_handle, 1.0f, 1.0f, 1.0f);
+            }
+
+            colored_id = -1;
+        }
+    }
+}
+
+WindowSettings::WindowSettings() : m_Visible(false), m_Alpha(0.0f), m_ActionEditIsNew(false), m_OverlayNameBufferNeedsUpdate(true)
 {
 
 }

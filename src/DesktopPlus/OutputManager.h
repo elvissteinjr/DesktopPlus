@@ -87,7 +87,7 @@ class OutputManager
         void ApplySetting3DMode();
         void ApplySettingTransform();
         void ApplySettingCrop();
-        void ApplySettingDragMode();
+        void ApplySettingInputMode();
         void ApplySettingMouseInput();
         void ApplySettingKeyboardScale(float last_used_scale);
         void ApplySettingUpdateLimiter();

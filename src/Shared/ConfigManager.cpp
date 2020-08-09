@@ -75,6 +75,7 @@ ConfigManager& ConfigManager::Get()
 void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_id)
 {
     OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+    unsigned int current_id = OverlayManager::Get().GetCurrentOverlayID();
 
     std::string section;
 
@@ -89,6 +90,20 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     {
         section = "Overlay";
     }
+
+    //Set default name for when loading profiles before names existed
+    std::string default_name;
+    
+    if (data.ConfigNameStr.empty()) //But only if there wasn't one before
+    {
+        default_name = (current_id == k_ulOverlayID_Dashboard) ? "Dashboard" : "Overlay " + std::to_string(current_id);
+    }
+    else
+    {
+        default_name = data.ConfigNameStr;
+    }
+    
+    data.ConfigNameStr = config.ReadString(section.c_str(), "Name", default_name.c_str());
 
     data.ConfigBool[configid_bool_overlay_enabled]             = config.ReadBool(section.c_str(), "Enabled", true);
     data.ConfigInt[configid_int_overlay_desktop_id]            = config.ReadInt(section.c_str(),  "DesktopID", 0);
@@ -113,7 +128,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigBool[configid_bool_overlay_actionbar_enabled]   = config.ReadBool(section.c_str(), "ShowActionBar", false);
 
     //Disable settings which are invalid for the dashboard overlay
-    if (OverlayManager::Get().GetCurrentOverlayID() == k_ulOverlayID_Dashboard)
+    if (current_id == k_ulOverlayID_Dashboard)
     {
         data.ConfigBool[configid_bool_overlay_gazefade_enabled] = false;
     }
@@ -169,6 +184,8 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     {
         section = "Overlay";
     }
+
+    config.WriteString(section.c_str(), "Name", data.ConfigNameStr.c_str());
 
     config.WriteBool(section.c_str(), "Enabled",              data.ConfigBool[configid_bool_overlay_enabled]);
     config.WriteInt( section.c_str(), "DesktopID",            data.ConfigInt[configid_int_overlay_desktop_id]);
@@ -579,6 +596,8 @@ void ConfigManager::LoadOverlayProfileDefault(bool multi_overlay)
         {
             OverlayManager::Get().RemoveOverlay(OverlayManager::Get().GetOverlayCount() - 1);
         }
+
+        OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigNameStr = ""; //Have the dashboard name reset on LoadOverlayProfile()
     }
 
     Ini config(L"");

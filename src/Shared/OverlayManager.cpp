@@ -90,6 +90,18 @@ unsigned int OverlayManager::GetOverlayCount() const
     return (unsigned int)m_OverlayConfigData.size();
 }
 
+void OverlayManager::SwapOverlays(unsigned int id, unsigned int id2)
+{
+    if ( (id == id2) || (id == k_ulOverlayID_Dashboard) || (id2 == k_ulOverlayID_Dashboard) || (id >= m_OverlayConfigData.size()) || (id2 >= m_OverlayConfigData.size()) )
+        return;
+
+    std::iter_swap(m_OverlayConfigData.begin() + id, m_OverlayConfigData.begin() + id2);
+
+    #ifndef DPLUS_UI
+        std::iter_swap(m_Overlays.begin() + id, m_Overlays.begin() + id2);
+    #endif
+}
+
 void OverlayManager::RemoveOverlay(unsigned int id)
 {
     if (id < m_OverlayConfigData.size())

@@ -39,6 +39,7 @@ enum ConfigID_Bool
     configid_bool_input_mouse_hmd_pointer_override,
     configid_bool_input_keyboard_helper_enabled,
     configid_bool_state_overlay_dragmode,
+    configid_bool_state_overlay_selectmode,
     configid_bool_state_performance_stats_active,             //Only count when the stats are visible
     configid_bool_state_performance_gpu_copy_active,
     configid_bool_state_misc_process_elevated,                //True if the dashboard application is running with admin privileges
@@ -167,6 +168,7 @@ enum UpdateLimitFPS
 class OverlayConfigData
 {
     public:
+        std::string ConfigNameStr;
         bool ConfigBool[configid_bool_overlay_MAX];
         int ConfigInt[configid_int_overlay_MAX];
         float ConfigFloat[configid_float_overlay_MAX];
