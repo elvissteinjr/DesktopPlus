@@ -45,6 +45,7 @@ class Overlay
         unsigned int GetID() const;
         void SetID(unsigned int id);
         vr::VROverlayHandle_t GetHandle() const;
+        void SetHandle(vr::VROverlayHandle_t handle);   //Sets the handle of the overlay without calling DestroyOverlay() on the previous one, used by OverlayManager
 
         void SetOpacity(float opacity);
         float GetOpacity() const;

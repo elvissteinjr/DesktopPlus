@@ -36,4 +36,5 @@ class OverlayManager
         unsigned int GetOverlayCount() const;
         void SwapOverlays(unsigned int id, unsigned int id2);
         void RemoveOverlay(unsigned int id);
+        void RemoveAllOverlays();                                 //Except Dashboard of course (doesn't reset it either)
 };

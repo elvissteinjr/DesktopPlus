@@ -1510,6 +1510,7 @@ void OutputManager::ResetOverlays()
         ApplySettingCrop();
         ApplySettingTransform();
         ApplySettingMouseInput();
+        ApplySettingInputMode();
         ApplySetting3DMode();
     }
 
@@ -1531,10 +1532,11 @@ void OutputManager::ResetOverlays()
 
 void OutputManager::ResetCurrentOverlay()
 {
-    //Reset current overlays
+    //Reset current overlay
     ApplySettingCrop();
     ApplySettingTransform();
     ApplySettingMouseInput();
+    ApplySettingInputMode();
     ApplySetting3DMode();
 
     ApplySettingUpdateLimiter();
@@ -3099,13 +3101,6 @@ void OutputManager::ApplySettingCrop()
 
     float offset_x = (crop_rect.GetWidth() == 1) ? 0.0f : 0.5f, offset_y = (crop_rect.GetHeight() == 1) ? 0.0f : 0.5f; //Yes, we do handle the case of 1 pixel crops
     int texture_width = m_DesktopWidth;
-
-    int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
-    /*if ((mode_3d == ovrl_3Dmode_hou) || (mode_3d == ovrl_3Dmode_ou))    //Over-Under converted texture is twice as wide as the actual desktop
-    {
-        texture_width *= 2;
-        crop_width *= 2;
-    }*/
 
     //Set UV bounds (slightly offset to not have irrelevant partial pixels appear, lookup "diamond exit rule" for that) 
     tex_bounds.uMin = (crop_rect.GetTL().x == 0) ? 0.0f : (crop_rect.GetTL().x + offset_x) / texture_width;

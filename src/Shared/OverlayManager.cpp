@@ -1,5 +1,9 @@
 #include "OverlayManager.h"
 
+#ifndef DPLUS_UI
+    #include "OutputManager.h"
+#endif
+
 #include <sstream>
 
 static OverlayManager g_OverlayManager;
@@ -76,11 +80,9 @@ void OverlayManager::SetCurrentOverlayID(unsigned int id)
 vr::VROverlayHandle_t OverlayManager::FindOverlayHandle(unsigned int id)
 {
     vr::VROverlayHandle_t ret = vr::k_ulOverlayHandleInvalid;
+    std::string key = "elvissteinjr.DesktopPlus" + std::to_string(id);
 
-    std::stringstream ss;
-    ss << "elvissteinjr.DesktopPlus" << id;
-
-    vr::VROverlay()->FindOverlay(ss.str().c_str(), &ret);
+    vr::VROverlay()->FindOverlay(key.c_str(), &ret);
 
     return ret;
 }
@@ -98,7 +100,17 @@ void OverlayManager::SwapOverlays(unsigned int id, unsigned int id2)
     std::iter_swap(m_OverlayConfigData.begin() + id, m_OverlayConfigData.begin() + id2);
 
     #ifndef DPLUS_UI
-        std::iter_swap(m_Overlays.begin() + id, m_Overlays.begin() + id2);
+        //We don't swap the overlays themselves, instead we reset the overlays with the swapped config data
+        //The Overlay class is supposed to hold the state of the OpenVR overlay only, so this may break it's not being kept like that
+        if (OutputManager* outmgr = OutputManager::Get())
+        {
+            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+            OverlayManager::Get().SetCurrentOverlayID(id);
+            outmgr->ResetCurrentOverlay();
+            OverlayManager::Get().SetCurrentOverlayID(id2);
+            outmgr->ResetCurrentOverlay();
+            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+        }
     #endif
 }
 
@@ -109,22 +121,65 @@ void OverlayManager::RemoveOverlay(unsigned int id)
         m_OverlayConfigData.erase(m_OverlayConfigData.begin() + id);
 
         #ifndef DPLUS_UI
-            m_Overlays.erase(m_Overlays.begin() + id);
-
-            //Fixup IDs for overlays past it
-            for (auto& overlay : m_Overlays)
+            //If the overlay isn't the last one we set its handle to invalid so it won't get destroyed and can be reused below
+            if (id + 1 != m_Overlays.size())
             {
-                if (overlay.GetID() > id)
+                m_Overlays[id].SetHandle(vr::k_ulOverlayHandleInvalid);
+
+                m_Overlays.erase(m_Overlays.begin() + id);
+
+                //Fixup IDs for overlays past it
+                for (auto& overlay : m_Overlays)
                 {
-                    overlay.SetID(overlay.GetID() - 1);
+                    if (overlay.GetID() > id)
+                    {
+                        overlay.SetID(overlay.GetID() - 1);
+
+                        //OpenVR overlay keys can't be renamed, yet we want the ID to match the overlay key.
+                        //It's kind of awkward, but we swap around overlay handles here to make it work regardless
+                        vr::VROverlayHandle_t ovrl_handle = FindOverlayHandle(overlay.GetID());
+
+                        if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
+                        {
+                            overlay.SetHandle(ovrl_handle);
+                        }
+                    }
                 }
+
+                //After swapping around overlay handles, the previously highest ID has been abandonned, so get rid of it manually
+                vr::VROverlay()->DestroyOverlay(FindOverlayHandle(m_Overlays.size()));
+
+                //After swapping, the states also need to be applied again to the new handles
+                if (OutputManager* outmgr = OutputManager::Get())
+                {
+                    outmgr->ResetOverlays();
+                }
+            }
+            else //It's the last overlay so it can just be straight up erased and everything will be fine
+            {
+                m_Overlays.erase(m_Overlays.begin() + id);
             }
         #endif
 
-        //Fixup current overlay
-        if (m_CurrentOverlayID >= id)
+        //Fixup current overlay if needed
+        if (m_CurrentOverlayID >= m_OverlayConfigData.size())
         {
             m_CurrentOverlayID--;
         }
     }
+}
+
+void OverlayManager::RemoveAllOverlays()
+{
+    //Remove all overlays except dashboard with minimal overhead and refreshes
+    while (m_OverlayConfigData.size() > 1)
+    {
+        m_OverlayConfigData.erase(m_OverlayConfigData.begin() + m_OverlayConfigData.size() - 1);
+
+        #ifndef DPLUS_UI
+            m_Overlays.erase(m_Overlays.begin() + m_Overlays.size() - 1);
+        #endif
+    }
+
+    m_CurrentOverlayID = 0;
 }

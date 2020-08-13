@@ -408,10 +408,7 @@ void ConfigManager::LoadMultiOverlayProfile(const Ini& config, bool clear_existi
 
     if (clear_existing_overlays)
     {
-        while (OverlayManager::Get().GetOverlayCount() > 1) //We can't remove the dashboard overlay, but it will be overwritten later
-        {
-            OverlayManager::Get().RemoveOverlay(OverlayManager::Get().GetOverlayCount() - 1);
-        }
+        OverlayManager::Get().RemoveAllOverlays(); //This doesn't remove the dashboard overlay, but it will be overwritten later
 
         overlay_id = k_ulOverlayID_Dashboard; //Load dashboard overlay
 
@@ -592,10 +589,7 @@ void ConfigManager::LoadOverlayProfileDefault(bool multi_overlay)
     //Multi-Overlay "default" config is removing all overlays except dashboard and defaulting that
     if (multi_overlay)
     {
-        while (OverlayManager::Get().GetOverlayCount() > 1)
-        {
-            OverlayManager::Get().RemoveOverlay(OverlayManager::Get().GetOverlayCount() - 1);
-        }
+        OverlayManager::Get().RemoveAllOverlays();
 
         OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigNameStr = ""; //Have the dashboard name reset on LoadOverlayProfile()
     }

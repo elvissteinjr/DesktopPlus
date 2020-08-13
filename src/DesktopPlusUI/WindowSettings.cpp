@@ -2211,8 +2211,9 @@ bool WindowSettings::PopupCurrentOverlayChange()
         for (const auto& str: list_overlays)
         {
             const OverlayConfigData& data = OverlayManager::Get().GetConfigData(index);
+            bool current_overlay_enabled = data.ConfigBool[configid_bool_overlay_enabled];
 
-            if (!data.ConfigBool[configid_bool_overlay_enabled])
+            if (!current_overlay_enabled)
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
 
             if (ImGui::Selectable(str.c_str(), (index == current_overlay)))
@@ -2244,7 +2245,7 @@ bool WindowSettings::PopupCurrentOverlayChange()
                 }
             }
 
-            if (!data.ConfigBool[configid_bool_overlay_enabled])
+            if (!current_overlay_enabled)
                 ImGui::PopStyleVar();
 
             index++;

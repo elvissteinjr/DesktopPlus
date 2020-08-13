@@ -40,6 +40,7 @@ Overlay& Overlay::operator=(Overlay&& b)
         m_Visible = b.m_Visible;
         m_Opacity = b.m_Opacity;
         m_ValidatedCropRect = b.m_ValidatedCropRect;
+        m_GlobalInteractive = b.m_GlobalInteractive;
         m_TextureSource = b.m_TextureSource;
         //m_OUtoSBSConverter should just be left alone, it only holds cached state anyways
 
@@ -60,11 +61,10 @@ Overlay::~Overlay()
 
 void Overlay::InitOverlay()
 {
-    std::stringstream ss;
-    ss << "elvissteinjr.DesktopPlus" << m_ID;
+    std::string key = "elvissteinjr.DesktopPlus" + std::to_string(m_ID);
 
     vr::VROverlayError ovrl_error = vr::VROverlayError_None;
-    ovrl_error = vr::VROverlay()->CreateOverlay(ss.str().c_str(), "Desktop+", &m_OvrlHandle);
+    ovrl_error = vr::VROverlay()->CreateOverlay(key.c_str(), "Desktop+", &m_OvrlHandle);
 
     if (ovrl_error == vr::VROverlayError_None)
     {
@@ -149,6 +149,11 @@ void Overlay::SetID(unsigned int id)
 vr::VROverlayHandle_t Overlay::GetHandle() const
 {
     return m_OvrlHandle;
+}
+
+void Overlay::SetHandle(vr::VROverlayHandle_t handle)
+{
+    m_OvrlHandle = handle;
 }
 
 void Overlay::SetOpacity(float opacity)
