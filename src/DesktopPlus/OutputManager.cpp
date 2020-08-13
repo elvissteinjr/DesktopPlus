@@ -1314,11 +1314,15 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         break;
                     }
                     case configid_bool_input_enabled:
-                    case configid_bool_input_mouse_render_cursor:
                     case configid_bool_input_mouse_render_intersection_blob:
                     case configid_bool_input_mouse_hmd_pointer_override:
                     {
                         ApplySettingMouseInput();
+                        break;
+                    }
+                    case configid_bool_input_mouse_render_cursor:
+                    {
+                        m_OutputPendingFullRefresh = true;
                         break;
                     }
                     case configid_bool_state_performance_stats_active:
@@ -1509,13 +1513,14 @@ void OutputManager::ResetOverlays()
 
         ApplySettingCrop();
         ApplySettingTransform();
-        ApplySettingMouseInput();
-        ApplySettingInputMode();
         ApplySetting3DMode();
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
+    //These apply to all overlays within the function itself
+    ApplySettingMouseInput();
+    ApplySettingInputMode();
     ApplySettingUpdateLimiter();
 
     //Post resolution update to UI app
@@ -3148,6 +3153,10 @@ void OutputManager::ApplySettingInputMode()
                 vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
                 vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, false);
             }
+            else
+            {
+                vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, !ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_intersection_blob));
+            }
 
             m_MouseIgnoreMoveEvent = false;
         }
@@ -3156,20 +3165,21 @@ void OutputManager::ApplySettingInputMode()
             vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
         }
 
-        //Sync matrix and restore mouse settings if it's been turned off
-        if (!drag_or_select_mode_enabled)
+        //Sync matrix if it's been turned off
+        if ( (!drag_or_select_mode_enabled) && (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) )
         {
-            if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) )
-            {
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
-                IPCManager::Get().SendStringToUIApp(configid_str_state_detached_transform_current, ConfigManager::Get().GetOverlayDetachedTransform().toString(), m_WindowHandle);
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
-            }
-
-            ApplySettingMouseInput();
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
+            IPCManager::Get().SendStringToUIApp(configid_str_state_detached_transform_current, ConfigManager::Get().GetOverlayDetachedTransform().toString(), m_WindowHandle);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
         }
 
         ApplySettingTransform();
+    }
+
+    //Restore mouse settings it's been turned off
+    if (!drag_or_select_mode_enabled)
+    {
+        ApplySettingMouseInput();
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
@@ -3177,35 +3187,44 @@ void OutputManager::ApplySettingInputMode()
 
 void OutputManager::ApplySettingMouseInput()
 {
-    vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetCurrentOverlay().GetHandle();
-
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) && (!m_OutputInvalid) )
+    //Always applies to all overlays
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
-        vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
-        vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
+        OverlayManager::Get().SetCurrentOverlayID(i);
 
-        //Set double-click assist duration from user config value
-        if (ConfigManager::Get().GetConfigInt(configid_int_input_mouse_dbl_click_assist_duration_ms) == -1)
+        vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetCurrentOverlay().GetHandle();
+
+        if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) && (!m_OutputInvalid) )
         {
-            ConfigManager::Get().SetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms, ::GetDoubleClickTime());
+            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
+            vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
+
+            //Set double-click assist duration from user config value
+            if (ConfigManager::Get().GetConfigInt(configid_int_input_mouse_dbl_click_assist_duration_ms) == -1)
+            {
+                ConfigManager::Get().SetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms, ::GetDoubleClickTime());
+            }
+            else
+            {
+                ConfigManager::Get().SetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms, ConfigManager::Get().GetConfigInt(configid_int_input_mouse_dbl_click_assist_duration_ms));
+            }
         }
         else
         {
-            ConfigManager::Get().SetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms, ConfigManager::Get().GetConfigInt(configid_int_input_mouse_dbl_click_assist_duration_ms));
+            vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
         }
+
+        vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, !ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_intersection_blob));
+
+        vr::HmdVector2_t mouse_scale;
+        mouse_scale.v[0] = m_DesktopWidth;
+        mouse_scale.v[1] = m_DesktopHeight;
+
+        vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
     }
-    else
-    {
-        vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
-    }
 
-    vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, !ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_intersection_blob));
-
-    vr::HmdVector2_t mouse_scale;
-    mouse_scale.v[0] = m_DesktopWidth;
-    mouse_scale.v[1] = m_DesktopHeight;
-
-    vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
 void OutputManager::ApplySettingKeyboardScale(float last_used_scale)
