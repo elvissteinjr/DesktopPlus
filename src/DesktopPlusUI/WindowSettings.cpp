@@ -187,13 +187,16 @@ void WindowSettings::UpdateCatOverlay()
             data.ConfigNameStr = buffer_overlay_name;
         }
 
-        if (ImGui::IsItemHovered())
+        if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup))
         {
-            HighlightOverlay(ConfigManager::Get().GetConfigInt(configid_int_interface_overlay_current_id));
-        }
-        else if (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
-        {
-            HighlightOverlay(-1);
+            if (ImGui::IsItemHovered())
+            {
+                HighlightOverlay(ConfigManager::Get().GetConfigInt(configid_int_interface_overlay_current_id));
+            }
+            else if (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
+            {
+                HighlightOverlay(-1);
+            }
         }
 
         ImGui::SameLine();
@@ -237,10 +240,45 @@ void WindowSettings::UpdateCatOverlay()
     {
         ImGui::BeginChild("ViewOverlayTabGeneral");
 
-        //General
+        //Profiles
         {
-            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "General");
-            ImGui::Columns(2, "ColumnGeneral", false);
+            static bool profile_selector_type_multi = false;
+
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Profiles");
+            ImGui::Columns(2, "ColumnProfiles", false);
+            ImGui::SetColumnWidth(0, column_width_0);
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Type");
+            ImGui::NextColumn();
+
+            if (ImGui::RadioButton("Single-Overlay", !profile_selector_type_multi))
+            {
+                profile_selector_type_multi = false;
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::RadioButton("Multi-Overlay", profile_selector_type_multi))
+            {
+                profile_selector_type_multi = true;
+            }
+
+            ImGui::NextColumn();
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Profile");
+            ImGui::NextColumn();
+
+            ProfileSelector(profile_selector_type_multi);
+
+            ImGui::Columns(1);
+        }
+
+        //Appearance
+        {
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Appearance");
+            ImGui::Columns(2, "ColumnAppearance", false);
             ImGui::SetColumnWidth(0, column_width_0);
 
             bool& is_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_enabled);
@@ -750,49 +788,6 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::SetColumnWidth(0, column_width_0);
 
             ImGui::Checkbox("Show Floating UI", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled)); //Pure UI state, no need to sync
-
-            ImGui::Columns(1);
-        }
-
-        ImGui::EndChild();
-        ImGui::EndTabItem();
-    }
-
-    if (ImGui::BeginTabItem("Profiles"))
-    {
-        ImGui::BeginChild("ViewOverlayTabProfiles");
-
-        //Profiles
-        {
-            static bool profile_selector_type_multi = false;
-
-            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Profiles");
-            ImGui::Columns(2, "ColumnProfiles", false);
-            ImGui::SetColumnWidth(0, column_width_0);
-
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Type");
-            ImGui::NextColumn();
-
-            if (ImGui::RadioButton("Single-Overlay", !profile_selector_type_multi))
-            {
-                profile_selector_type_multi = false;
-            }
-
-            ImGui::SameLine();
-
-            if (ImGui::RadioButton("Multi-Overlay", profile_selector_type_multi))
-            {
-                profile_selector_type_multi = true;
-            }
-
-            ImGui::NextColumn();
-
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Profile");
-            ImGui::NextColumn();
-
-            ProfileSelector(profile_selector_type_multi);
 
             ImGui::Columns(1);
         }
@@ -2269,7 +2264,7 @@ bool WindowSettings::PopupCurrentOverlayChange()
         }
 
         //Highlight hovered or active entry if nothing is hovered
-        HighlightOverlay((index_hovered != -1) ? index_hovered : index);
+        HighlightOverlay((index_hovered != -1) ? index_hovered : current_overlay);
 
         //Remove horizontal spacing so the arrows are closer to the list
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, ImGui::GetStyle().ItemSpacing.y});
@@ -2932,6 +2927,16 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
         ImGui::Separator();
 
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Manual Adjustment");
+
+        if (ImGui::IsItemHovered())
+        {
+            HighlightOverlay(ConfigManager::Get().GetConfigIntRef(configid_int_interface_overlay_current_id));
+        }
+        else
+        {
+            HighlightOverlay(-1);
+        }
+
         ImGui::Columns(4, "ColumnManualAdjust", false);
 
         ImGuiStyle& style = ImGui::GetStyle();
@@ -3089,6 +3094,7 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
         ImGui::PopButtonRepeat();
                         
         ImGui::Columns(1);
+
         ImGui::Separator();
 
         if ( (ImGui::Button("Done")) || 
