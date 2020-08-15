@@ -2883,9 +2883,24 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
     const float column_width_2 = column_width_0 * 0.5f;
     const float popup_width = column_width_0 + (column_width_1 * 2.0f) + column_width_2 + (ImGui::GetStyle().ItemSpacing.x * 2.0f);
 
+    
+    static bool popup_was_open = false;
+
+    //Set popup rounding to the same as a normal window
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, ImGui::GetStyle().WindowRounding);
+    bool is_popup_rounding_pushed = true;
+
+    //Center popup
     ImGui::SetNextWindowSizeConstraints(ImVec2(popup_width, -1),  ImVec2(popup_width, -1));
-    if (ImGui::BeginPopupModal("OverlayChangePosPopup", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+
+    if (ImGui::BeginPopup("OverlayChangePosPopup", ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
+        popup_was_open = true;
+
+        ImGui::PopStyleVar(); //ImGuiStyleVar_PopupRounding
+        is_popup_rounding_pushed = false;
+
         if (!UIManager::Get()->IsInDesktopMode())
         {
             bool dragging_enabled = true;
@@ -3097,18 +3112,29 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
 
         ImGui::Separator();
 
-        if ( (ImGui::Button("Done")) || 
-             ( (!UIManager::Get()->IsInDesktopMode()) && (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandle())) ) ) //Will auto-dismiss when UI overlay not active
+        if (ImGui::Button("Done"))
         {
-            bool& is_changing_position = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_overlay_dragmode);
-
-            is_changing_position = false;
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_changing_position);
-
             ImGui::CloseCurrentPopup();
         }
 
         ImGui::EndPopup();
+    }
+
+    //This has to be popped early to prevent affecting other popups but we can't forget about it when the popup is closed either
+    if (is_popup_rounding_pushed)
+    {
+        ImGui::PopStyleVar(); //ImGuiStyleVar_PopupRounding
+    }
+
+    //Detect if the popup was closed, which can happen at any time from clicking outside of it
+    if ((popup_was_open) && (!ImGui::IsPopupOpen("OverlayChangePosPopup")))
+    {
+        popup_was_open = false;
+
+        bool& is_changing_position = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_overlay_dragmode);
+
+        is_changing_position = false;
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_changing_position);
     }
 }
 
