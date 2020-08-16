@@ -21,7 +21,7 @@ void WindowSideBar::DisplayTooltipIfHovered(const char* text)
 
         //Default tooltips are not suited for this as there's too much trouble with resize flickering and stuff
         ImGui::Begin(text, NULL, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | 
-                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize);
+                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
 
         ImGui::Text(text);
 
