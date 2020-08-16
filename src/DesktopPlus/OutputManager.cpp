@@ -3397,6 +3397,9 @@ void OutputManager::DragAddDistance(float distance)
 
     if (poses[m_DragModeDeviceID].bPoseIsValid)
     {
+        //Clamp distance as there can be inflated scroll values when holding the wheel down before starting a drag for some reason (doesn't limit normally occuring values)
+        distance = clamp(distance, -0.5f, 0.5f);
+
         Matrix4 mat_drag_device = m_DragModeMatrixSourceStart;
 
         //Apply tip offset if possible (usually the case)
