@@ -105,27 +105,33 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     
     data.ConfigNameStr = config.ReadString(section.c_str(), "Name", default_name.c_str());
 
-    data.ConfigBool[configid_bool_overlay_enabled]             = config.ReadBool(section.c_str(), "Enabled", true);
-    data.ConfigInt[configid_int_overlay_desktop_id]            = config.ReadInt(section.c_str(),  "DesktopID", 0);
-    data.ConfigFloat[configid_float_overlay_width]             = config.ReadInt(section.c_str(),  "Width", 350) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_curvature]         = config.ReadInt(section.c_str(),  "Curvature", -100) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_opacity]           = config.ReadInt(section.c_str(),  "Opacity", 100) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_offset_right]      = config.ReadInt(section.c_str(),  "OffsetRight", 0) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_offset_up]         = config.ReadInt(section.c_str(),  "OffsetUp", 0) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_offset_forward]    = config.ReadInt(section.c_str(),  "OffsetForward", 0) / 100.0f;
-    data.ConfigInt[configid_int_overlay_detached_display_mode] = config.ReadInt(section.c_str(),  "DetachedDisplayMode", ovrl_dispmode_always);
-    data.ConfigInt[configid_int_overlay_detached_origin]       = config.ReadInt(section.c_str(),  "DetachedOrigin", ovrl_origin_room);
-    data.ConfigInt[configid_int_overlay_crop_x]                = config.ReadInt(section.c_str(),  "CroppingX", 0);
-    data.ConfigInt[configid_int_overlay_crop_y]                = config.ReadInt(section.c_str(),  "CroppingY", 0);
-    data.ConfigInt[configid_int_overlay_crop_width]            = config.ReadInt(section.c_str(),  "CroppingWidth", -1);
-    data.ConfigInt[configid_int_overlay_crop_height]           = config.ReadInt(section.c_str(),  "CroppingHeight", -1);
-    data.ConfigInt[configid_int_overlay_3D_mode]               = config.ReadInt(section.c_str(),  "3DMode", ovrl_3Dmode_none);
-    data.ConfigBool[configid_bool_overlay_3D_swapped]          = config.ReadBool(section.c_str(), "3DSwapped", false);
-    data.ConfigBool[configid_bool_overlay_gazefade_enabled]    = config.ReadBool(section.c_str(), "GazeFade", false);
-    data.ConfigFloat[configid_float_overlay_gazefade_distance] = config.ReadInt(section.c_str(),  "GazeFadeDistance", 40) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_gazefade_rate]     = config.ReadInt(section.c_str(),  "GazeFadeRate", 100) / 100.0f;
-    data.ConfigBool[configid_bool_overlay_floatingui_enabled]  = config.ReadBool(section.c_str(), "ShowFloatingUI", true);
-    data.ConfigBool[configid_bool_overlay_actionbar_enabled]   = config.ReadBool(section.c_str(), "ShowActionBar", false);
+    data.ConfigBool[configid_bool_overlay_enabled]                    = config.ReadBool(section.c_str(), "Enabled", true);
+    data.ConfigInt[configid_int_overlay_desktop_id]                   = config.ReadInt(section.c_str(),  "DesktopID", 0);
+    data.ConfigFloat[configid_float_overlay_width]                    = config.ReadInt(section.c_str(),  "Width", 350) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_curvature]                = config.ReadInt(section.c_str(),  "Curvature", -100) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_opacity]                  = config.ReadInt(section.c_str(),  "Opacity", 100) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_offset_right]             = config.ReadInt(section.c_str(),  "OffsetRight", 0) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_offset_up]                = config.ReadInt(section.c_str(),  "OffsetUp", 0) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_offset_forward]           = config.ReadInt(section.c_str(),  "OffsetForward", 0) / 100.0f;
+    data.ConfigInt[configid_int_overlay_detached_display_mode]        = config.ReadInt(section.c_str(),  "DetachedDisplayMode", ovrl_dispmode_always);
+    data.ConfigInt[configid_int_overlay_detached_origin]              = config.ReadInt(section.c_str(),  "DetachedOrigin", ovrl_origin_room);
+
+    data.ConfigInt[configid_int_overlay_crop_x]                       = config.ReadInt(section.c_str(),  "CroppingX", 0);
+    data.ConfigInt[configid_int_overlay_crop_y]                       = config.ReadInt(section.c_str(),  "CroppingY", 0);
+    data.ConfigInt[configid_int_overlay_crop_width]                   = config.ReadInt(section.c_str(),  "CroppingWidth", -1);
+    data.ConfigInt[configid_int_overlay_crop_height]                  = config.ReadInt(section.c_str(),  "CroppingHeight", -1);
+
+    data.ConfigInt[configid_int_overlay_3D_mode]                      = config.ReadInt(section.c_str(),  "3DMode", ovrl_3Dmode_none);
+    data.ConfigBool[configid_bool_overlay_3D_swapped]                 = config.ReadBool(section.c_str(), "3DSwapped", false);
+    data.ConfigBool[configid_bool_overlay_gazefade_enabled]           = config.ReadBool(section.c_str(), "GazeFade", false);
+    data.ConfigFloat[configid_float_overlay_gazefade_distance]        = config.ReadInt(section.c_str(),  "GazeFadeDistance", 40) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_gazefade_rate]            = config.ReadInt(section.c_str(),  "GazeFadeRate", 100) / 100.0f;
+    data.ConfigInt[configid_int_overlay_update_limit_override_mode]   = config.ReadInt(section.c_str(),  "UpdateLimitOverrideMode", update_limit_mode_off);
+    data.ConfigFloat[configid_float_overlay_update_limit_override_ms] = config.ReadInt(section.c_str(),  "UpdateLimitMS", 0) / 100.0f;
+    data.ConfigInt[configid_int_overlay_update_limit_override_fps]    = config.ReadInt(section.c_str(),  "UpdateLimitFPS", update_limit_fps_30);
+
+    data.ConfigBool[configid_bool_overlay_floatingui_enabled]         = config.ReadBool(section.c_str(), "ShowFloatingUI", true);
+    data.ConfigBool[configid_bool_overlay_actionbar_enabled]          = config.ReadBool(section.c_str(), "ShowActionBar", false);
 
     //Disable settings which are invalid for the dashboard overlay
     if (current_id == k_ulOverlayID_Dashboard)
@@ -187,27 +193,33 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
 
     config.WriteString(section.c_str(), "Name", data.ConfigNameStr.c_str());
 
-    config.WriteBool(section.c_str(), "Enabled",              data.ConfigBool[configid_bool_overlay_enabled]);
-    config.WriteInt( section.c_str(), "DesktopID",            data.ConfigInt[configid_int_overlay_desktop_id]);
-    config.WriteInt( section.c_str(), "Width",            int(data.ConfigFloat[configid_float_overlay_width]           * 100.0f));
-    config.WriteInt( section.c_str(), "Curvature",        int(data.ConfigFloat[configid_float_overlay_curvature]       * 100.0f));
-    config.WriteInt( section.c_str(), "Opacity",          int(data.ConfigFloat[configid_float_overlay_opacity]         * 100.0f));
-    config.WriteInt( section.c_str(), "OffsetRight",      int(data.ConfigFloat[configid_float_overlay_offset_right]    * 100.0f));
-    config.WriteInt( section.c_str(), "OffsetUp",         int(data.ConfigFloat[configid_float_overlay_offset_up]       * 100.0f));
-    config.WriteInt( section.c_str(), "OffsetForward",    int(data.ConfigFloat[configid_float_overlay_offset_forward]  * 100.0f));
-    config.WriteInt( section.c_str(), "DetachedDisplayMode",  data.ConfigInt[configid_int_overlay_detached_display_mode]);
-    config.WriteInt( section.c_str(), "DetachedOrigin",       data.ConfigInt[configid_int_overlay_detached_origin]);
-    config.WriteInt( section.c_str(), "CroppingX",            data.ConfigInt[configid_int_overlay_crop_x]);
-    config.WriteInt( section.c_str(), "CroppingY",            data.ConfigInt[configid_int_overlay_crop_y]);
-    config.WriteInt( section.c_str(), "CroppingWidth",        data.ConfigInt[configid_int_overlay_crop_width]);
-    config.WriteInt( section.c_str(), "CroppingHeight",       data.ConfigInt[configid_int_overlay_crop_height]);
-    config.WriteInt( section.c_str(), "3DMode",               data.ConfigInt[configid_int_overlay_3D_mode]);
-    config.WriteBool(section.c_str(), "3DSwapped",            data.ConfigBool[configid_bool_overlay_3D_swapped]);
-    config.WriteBool(section.c_str(), "GazeFade",             data.ConfigBool[configid_bool_overlay_gazefade_enabled]);
-    config.WriteInt( section.c_str(), "GazeFadeDistance", int(data.ConfigFloat[configid_float_overlay_gazefade_distance]  * 100.0f));
-    config.WriteInt( section.c_str(), "GazeFadeRate",     int(data.ConfigFloat[configid_float_overlay_gazefade_rate]  * 100.0f));
-    config.WriteBool(section.c_str(), "ShowFloatingUI",       data.ConfigBool[configid_bool_overlay_floatingui_enabled]);
-    config.WriteBool(section.c_str(), "ShowActionBar",        data.ConfigBool[configid_bool_overlay_actionbar_enabled]);
+    config.WriteBool(section.c_str(), "Enabled",                data.ConfigBool[configid_bool_overlay_enabled]);
+    config.WriteInt( section.c_str(), "DesktopID",              data.ConfigInt[configid_int_overlay_desktop_id]);
+    config.WriteInt( section.c_str(), "Width",              int(data.ConfigFloat[configid_float_overlay_width]           * 100.0f));
+    config.WriteInt( section.c_str(), "Curvature",          int(data.ConfigFloat[configid_float_overlay_curvature]       * 100.0f));
+    config.WriteInt( section.c_str(), "Opacity",            int(data.ConfigFloat[configid_float_overlay_opacity]         * 100.0f));
+    config.WriteInt( section.c_str(), "OffsetRight",        int(data.ConfigFloat[configid_float_overlay_offset_right]    * 100.0f));
+    config.WriteInt( section.c_str(), "OffsetUp",           int(data.ConfigFloat[configid_float_overlay_offset_up]       * 100.0f));
+    config.WriteInt( section.c_str(), "OffsetForward",      int(data.ConfigFloat[configid_float_overlay_offset_forward]  * 100.0f));
+    config.WriteInt( section.c_str(), "DetachedDisplayMode",    data.ConfigInt[configid_int_overlay_detached_display_mode]);
+    config.WriteInt( section.c_str(), "DetachedOrigin",         data.ConfigInt[configid_int_overlay_detached_origin]);
+
+    config.WriteInt( section.c_str(), "CroppingX",              data.ConfigInt[configid_int_overlay_crop_x]);
+    config.WriteInt( section.c_str(), "CroppingY",              data.ConfigInt[configid_int_overlay_crop_y]);
+    config.WriteInt( section.c_str(), "CroppingWidth",          data.ConfigInt[configid_int_overlay_crop_width]);
+    config.WriteInt( section.c_str(), "CroppingHeight",         data.ConfigInt[configid_int_overlay_crop_height]);
+
+    config.WriteInt( section.c_str(), "3DMode",                 data.ConfigInt[configid_int_overlay_3D_mode]);
+    config.WriteBool(section.c_str(), "3DSwapped",              data.ConfigBool[configid_bool_overlay_3D_swapped]);
+    config.WriteBool(section.c_str(), "GazeFade",               data.ConfigBool[configid_bool_overlay_gazefade_enabled]);
+    config.WriteInt( section.c_str(), "GazeFadeDistance",   int(data.ConfigFloat[configid_float_overlay_gazefade_distance]  * 100.0f));
+    config.WriteInt( section.c_str(), "GazeFadeRate",       int(data.ConfigFloat[configid_float_overlay_gazefade_rate]  * 100.0f));
+    config.WriteInt( section.c_str(), "UpdateLimitModeOverride",data.ConfigInt[configid_int_overlay_update_limit_override_mode]);
+    config.WriteInt( section.c_str(), "UpdateLimitMS",      int(data.ConfigFloat[configid_float_overlay_update_limit_override_ms] * 100.0f));
+    config.WriteInt( section.c_str(), "UpdateLimitFPS",         data.ConfigInt[configid_int_overlay_update_limit_override_fps]);
+
+    config.WriteBool(section.c_str(), "ShowFloatingUI",         data.ConfigBool[configid_bool_overlay_floatingui_enabled]);
+    config.WriteBool(section.c_str(), "ShowActionBar",          data.ConfigBool[configid_bool_overlay_actionbar_enabled]);
 
     config.WriteString(section.c_str(), "DetachedTransformPlaySpace", data.ConfigDetachedTransform[ovrl_origin_room].toString().c_str());
     config.WriteString(section.c_str(), "DetachedTransformHMDFloor",  data.ConfigDetachedTransform[ovrl_origin_hmd_floor].toString().c_str());

@@ -181,6 +181,7 @@ void OutputManager::ShowOverlay(unsigned int id)
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     OverlayManager::Get().SetCurrentOverlayID(id);
     vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(id);
 
     if (m_OvrlActiveCount == 0) //First overlay to become active
     {
@@ -210,6 +211,12 @@ void OutputManager::ShowOverlay(unsigned int id)
 
     ApplySettingTransform();
 
+    //Overlay could affect update limiter, so apply setting
+    if (data.ConfigInt[configid_int_overlay_update_limit_override_mode] != update_limit_mode_off)
+    {
+        ApplySettingUpdateLimiter();
+    }
+
     //If the last clipping rect doesn't fully contain the overlay's crop rect, the desktop texture overlay is probably outdated there, so force a full refresh
     if (!m_OutputLastClippingRect.Contains(overlay.GetValidatedCropRect()))
     {
@@ -231,12 +238,19 @@ void OutputManager::HideOverlay(unsigned int id)
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     OverlayManager::Get().SetCurrentOverlayID(id);
     vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(id);
 
     overlay.SetVisible(false);
 
     if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) == id) //Don't leave the keyboard open when hiding
     {
         vr::VROverlay()->HideKeyboard();
+    }
+
+    //Overlay could've affected update limiter, so apply setting
+    if (data.ConfigInt[configid_int_overlay_update_limit_override_mode] != update_limit_mode_off)
+    {
+        ApplySettingUpdateLimiter();
     }
 
     m_OvrlActiveCount--;
@@ -1399,6 +1413,8 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
                     case configid_int_performance_update_limit_mode:
                     case configid_int_performance_update_limit_fps:
+                    case configid_int_overlay_update_limit_override_mode:
+                    case configid_int_overlay_update_limit_override_fps:
                     {
                         ApplySettingUpdateLimiter();
                         break;
@@ -1431,6 +1447,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         break;
                     }
                     case configid_float_performance_update_limit_ms:
+                    case configid_float_overlay_update_limit_override_ms:
                     {
                         ApplySettingUpdateLimiter();
                         break;
@@ -2369,7 +2386,7 @@ bool OutputManager::HandleOpenVREvents()
 
                                 int max_miss_count = 10; //Arbitrary number, but appears to work reliably
 
-                                if (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) != 0) //When updates are limited, try adapting for the lower update rate
+                                if (m_PerformanceUpdateLimiterDelay.QuadPart != 0) //When updates are limited, try adapting for the lower update rate
                                 {
                                     max_miss_count = std::max(1, max_miss_count - int((m_PerformanceUpdateLimiterDelay.QuadPart / 1000) / 20));
                                 }
@@ -3258,31 +3275,68 @@ void OutputManager::ApplySettingKeyboardScale(float last_used_scale)
 
 void OutputManager::ApplySettingUpdateLimiter()
 {
+    //Here's the deal with the fps-based limiter: It just barely works
+    //A simple fps cut-off doesn't work since mouse updates add up to them
+    //Using the right frame time value seems to work in most cases
+    //A full-range, user-chosen fps value doesn't really work though, as the frame time values required don't seem to predictably change ("1000/fps" is close, but the needed adjustment varies)
+    //The frame time method also doesn't work reliably above 50 fps. It limits, but the resulting fps isn't constant.
+    //This is why the fps limiter is somewhat restricted in what settings it offers. It does cover the most common cases, however.
+    //The frame time limiter is still there to offer more fine-tuning after all
+
+    //Map tested frame time values to the fps enum IDs
+    //FPS:                                 1       2       5     10      15      20      25      30      40      50
+    const float fps_enum_values_ms[] = { 985.0f, 485.0f, 195.0f, 96.50f, 63.77f, 47.76f, 33.77f, 31.73f, 23.72f, 15.81f };
+
     float limit_ms = 0.0f;
-    
+
+    //Set limiter value from global setting
     if (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) == update_limit_mode_ms)
     {
         limit_ms = ConfigManager::Get().GetConfigFloat(configid_float_performance_update_limit_ms);
     }
-    else
+    else if (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) == update_limit_mode_fps)
     {
-        //Here's the deal with the fps-based limiter: It just barely works
-        //A simple fps cut-off doesn't work since mouse updates add up to them
-        //Using the right frame time value seems to work in most cases
-        //A full-range, user-chosen fps value doesn't really work though, as the frame time values required don't seem to predictably change ("1000/fps" is close, but the needed adjustment varies)
-        //The frame time method also doesn't work reliably above 50 fps. It limits, but the resulting fps isn't constant.
-        //This is why the fps limiter is somewhat restricted in what settings it offers. It does cover the most common cases, however.
-        //The frame time limiter is still there to offer more fine-tuning after all
-
-        //Map tested frame time values to the fps enum IDs
-        //FPS:                                 1       2       5     10      15      20      25      30      40      50
-        const float fps_enum_values_ms[] = { 985.0f, 485.0f, 195.0f, 96.50f, 63.77f, 47.76f, 33.77f, 31.73f, 23.72f, 15.81f };
-
         int enum_id = ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_fps);
 
         if (enum_id <= update_limit_fps_50)
         {
             limit_ms = fps_enum_values_ms[enum_id];
+        }
+    }
+ 
+    //See if there are any overrides from visible overlays
+    //This is the straight forward and least error-prone way, not quite the most efficient one
+    //Calls to this are minimized and there typically aren't many overlays so it's not really that bad (and we do iterate over all of them in many other places too)
+    bool is_first_override = true;
+    for (unsigned int i = k_ulOverlayID_Dashboard; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        const Overlay& overlay        = OverlayManager::Get().GetOverlay(i);
+        const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+        if ( (overlay.IsVisible()) && (data.ConfigInt[configid_int_overlay_update_limit_override_mode] != update_limit_mode_off) )
+        {
+            float override_ms = 0.0f;
+
+            if (data.ConfigInt[configid_int_overlay_update_limit_override_mode] == update_limit_mode_ms)
+            {
+                override_ms = data.ConfigFloat[configid_float_overlay_update_limit_override_ms];
+            }
+            else
+            {
+                int enum_id = data.ConfigInt[configid_int_overlay_update_limit_override_fps];
+
+                if (enum_id <= update_limit_fps_50)
+                {
+                    override_ms = fps_enum_values_ms[enum_id];
+                }
+            }
+
+            //Use override if it results in more updates (except first override, which always has priority over global setting)
+            if ( (is_first_override) || (override_ms < limit_ms) )
+            {
+                limit_ms = override_ms;
+                is_first_override = false;
+            }
         }
     }
     

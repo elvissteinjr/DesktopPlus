@@ -773,6 +773,11 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::Columns(1);
         }
 
+        //Update Limiter Override
+        {
+            UpdateLimiterSetting(column_width_0, true);
+        }
+
         ImGui::EndChild();
         ImGui::EndTabItem();
     }
@@ -1364,70 +1369,9 @@ void WindowSettings::UpdateCatPerformance()
     ImGui::BeginChild("ViewPerformanceSettings");
     const float column_width_0 = ImGui::GetFontSize() * 15.0f;
 
-    //Early Updates
+    //Update Limiter
     {
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Update Limiter");
-
-        ImGui::Columns(2, "ColumnUpdateLimiter", false);
-        ImGui::SetColumnWidth(0, column_width_0);
-
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Limiter Mode");
-        ImGui::NextColumn();
-
-        ImGui::SetNextItemWidth(-1);
-        const char* items[] = { "Off", "Frame Time", "Frame Rate" };
-        int& mode_limit = ConfigManager::Get().GetConfigIntRef(configid_int_performance_update_limit_mode);
-        if (ImGui::Combo("##ComboLimitMode", &mode_limit, items, IM_ARRAYSIZE(items)))
-        {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_performance_update_limit_mode), mode_limit);
-        }
-
-        ImGui::NextColumn();
-
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Limit");
-
-        if (mode_limit == update_limit_mode_fps)
-        {
-            ImGui::NextColumn();
-
-            const char* fps_enum_names[] = { "1 fps", "2 fps", "5 fps", "10 fps", "15 fps", "20 fps", "25 fps", "30 fps", "40 fps", "50 fps" };
-
-            int& update_limit_fps = ConfigManager::Get().GetConfigIntRef(configid_int_performance_update_limit_fps);
-            const char* update_limit_fps_display = (update_limit_fps >= 0 && update_limit_fps < IM_ARRAYSIZE(fps_enum_names)) ? fps_enum_names[update_limit_fps] : "?";
-
-            if (ImGui::SliderWithButtonsEnum("UpdateLimitFPS", update_limit_fps, 0, IM_ARRAYSIZE(fps_enum_names) - 1, update_limit_fps_display))
-            {
-                update_limit_fps = clamp(update_limit_fps, 0, IM_ARRAYSIZE(fps_enum_names) - 1);
-
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_performance_update_limit_fps), update_limit_fps);
-            }
-        }
-        else //This still shows when off, but as disabled
-        {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-            ImGui::FixedHelpMarker("Minimum time between desktop duplication updates");
-            ImGui::NextColumn();
-
-            if (mode_limit == update_limit_mode_off)
-                ImGui::PushItemDisabled();
-
-            float& update_limit_ms = ConfigManager::Get().GetConfigFloatRef(configid_float_performance_update_limit_ms);
-
-            if (ImGui::SliderWithButtonsFloat("UpdateLimitMS", update_limit_ms, 0.5f, 0.0f, 100.0f, "%.2f ms", 2.0f))
-            {
-                if (update_limit_ms < 0.0f)
-                    update_limit_ms = 0.0f;
-
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_performance_update_limit_ms), *(LPARAM*)&update_limit_ms);
-            }
-
-            if (mode_limit == update_limit_mode_off)
-                ImGui::PopItemDisabled();
-        }
-
-        ImGui::Columns(1);
+        UpdateLimiterSetting(column_width_0);
     }
 
     //Misc Performance Stuff... there just isn't much and the category shouldn't be exactly the same as the single item in it
@@ -2104,6 +2048,85 @@ void WindowSettings::ProfileSelector(bool multi_overlay)
     PopupNewOverlayProfile(overlay_profile_list, overlay_profile_selected_id, multi_overlay);
 
     ImGui::PopID();
+}
+
+void WindowSettings::UpdateLimiterSetting(float column_width_0, bool is_override)
+{
+    const ConfigID_Int configid_mode = (is_override) ? configid_int_overlay_update_limit_override_mode : configid_int_performance_update_limit_mode;
+    const ConfigID_Int configid_fps  = (is_override) ? configid_int_overlay_update_limit_override_fps  : configid_int_performance_update_limit_fps;
+    const ConfigID_Float configid_ms = (is_override) ? configid_float_overlay_update_limit_override_ms : configid_float_performance_update_limit_ms;
+
+
+    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), (is_override) ? "Update Limiter Override" : "Update Limiter");
+
+    ImGui::Columns(2, "ColumnUpdateLimiter", false);
+
+    if (is_override)
+    {
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("When multiple overrides are active, the one resulting in the highest update rate is used");
+    }
+
+    ImGui::SetColumnWidth(0, column_width_0);
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("Limiter Mode");
+    ImGui::NextColumn();
+
+    ImGui::SetNextItemWidth(-1);
+    const char* items[] = { "Off", "Frame Time", "Frame Rate" };
+    const char* items_override[] = { "Use Global Setting", "Frame Time", "Frame Rate" };
+    int& mode_limit = ConfigManager::Get().GetConfigIntRef(configid_mode);
+    if (ImGui::Combo("##ComboLimitMode", &mode_limit, (is_override) ? items_override : items, IM_ARRAYSIZE(items)))
+    {
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_mode), mode_limit);
+    }
+
+    ImGui::NextColumn();
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("Limit");
+
+    if (mode_limit == update_limit_mode_fps)
+    {
+        ImGui::NextColumn();
+
+        const char* fps_enum_names[] = { "1 fps", "2 fps", "5 fps", "10 fps", "15 fps", "20 fps", "25 fps", "30 fps", "40 fps", "50 fps" };
+
+        int& update_limit_fps = ConfigManager::Get().GetConfigIntRef(configid_fps);
+        const char* update_limit_fps_display = (update_limit_fps >= 0 && update_limit_fps < IM_ARRAYSIZE(fps_enum_names)) ? fps_enum_names[update_limit_fps] : "?";
+
+        if (ImGui::SliderWithButtonsEnum("UpdateLimitFPS", update_limit_fps, 0, IM_ARRAYSIZE(fps_enum_names) - 1, update_limit_fps_display))
+        {
+            update_limit_fps = clamp(update_limit_fps, 0, IM_ARRAYSIZE(fps_enum_names) - 1);
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_fps), update_limit_fps);
+        }
+    }
+    else //This still shows when off, but as disabled
+    {
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("Minimum time between desktop duplication updates");
+        ImGui::NextColumn();
+
+        if (mode_limit == update_limit_mode_off)
+            ImGui::PushItemDisabled();
+
+        float& update_limit_ms = ConfigManager::Get().GetConfigFloatRef(configid_ms);
+
+        if (ImGui::SliderWithButtonsFloat("UpdateLimitMS", update_limit_ms, 0.5f, 0.0f, 100.0f, "%.2f ms", 2.0f))
+        {
+            if (update_limit_ms < 0.0f)
+                update_limit_ms = 0.0f;
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_ms), *(LPARAM*)&update_limit_ms);
+        }
+
+        if (mode_limit == update_limit_mode_off)
+            ImGui::PopItemDisabled();
+    }
+
+    ImGui::Columns(1);
 }
 
 bool WindowSettings::ActionButtonRow(ActionID action_id, int list_pos, int& list_selected_pos)

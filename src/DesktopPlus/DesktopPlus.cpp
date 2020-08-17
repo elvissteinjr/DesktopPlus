@@ -397,7 +397,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             }
 
             //Update limiter/skipper
-            if (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) != 0)
+            const LARGE_INTEGER& limiter_delay = OutMgr.GetUpdateLimiterDelay();
+            bool update_limiter_active = (limiter_delay.QuadPart != 0);
+            if (update_limiter_active)
             {
                 QueryPerformanceCounter(&UpdateLimiterEndingTime);
                 UpdateLimiterElapsedMicroseconds.QuadPart = UpdateLimiterEndingTime.QuadPart - UpdateLimiterStartingTime.QuadPart;
@@ -405,7 +407,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 UpdateLimiterElapsedMicroseconds.QuadPart *= 1000000;
                 UpdateLimiterElapsedMicroseconds.QuadPart /= UpdateLimiterFrequency.QuadPart;
 
-                SkipFrame = (UpdateLimiterElapsedMicroseconds.QuadPart < OutMgr.GetUpdateLimiterDelay().QuadPart);
+                SkipFrame = (UpdateLimiterElapsedMicroseconds.QuadPart < limiter_delay.QuadPart);
             }
             else
             {
@@ -422,7 +424,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 default:                    Ret = (DUPL_RETURN)RetUpdate;
             }
 
-            if ( (!SkipFrame) && (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) != 0) )
+            if ( (!SkipFrame) && (update_limiter_active) )
             {
                 QueryPerformanceCounter(&UpdateLimiterStartingTime);
             }
