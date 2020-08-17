@@ -866,9 +866,22 @@ void WindowSettings::UpdateCatInterface()
         auto& actions = ConfigManager::Get().GetCustomActions();
         auto& action_order = ConfigManager::Get().GetActionMainBarOrder();
         int list_id = 0;
-        for (auto& order_data : ConfigManager::Get().GetActionMainBarOrder())
+        for (auto& order_data : action_order)
         {
             ActionButtonRow((ActionID)order_data.action_id, list_id, list_selected_pos);
+
+            //Drag reordering
+            if ( (ImGui::IsItemActive()) && (!ImGui::IsItemHovered()) && (fabs(ImGui::GetMouseDragDelta(0).y) > ImGui::GetFrameHeight() / 2.0f) )
+            {
+                int list_id_swap = list_id + ((ImGui::GetMouseDragDelta(0).y < 0.0f) ? -1 : 1);
+                if ( (list_id_swap >= 0) && (list_id_swap < action_order.size()) )
+                {
+                    std::iter_swap(action_order.begin() + list_id, action_order.begin() + list_id_swap);
+                    list_selected_pos = list_id_swap;
+                    ImGui::ResetMouseDragDelta();
+                }
+            }
+
             list_id++;
         }
 
@@ -2224,7 +2237,7 @@ bool WindowSettings::PopupCurrentOverlayChange()
             }
             else if ( (ImGui::IsItemActive()) && (!ImGui::IsItemHovered()) ) //Drag reordering
             {
-                int index_swap = index + (ImGui::GetMouseDragDelta(0).y < 0.0f ? -1 : 1);
+                int index_swap = index + ((ImGui::GetMouseDragDelta(0).y < 0.0f) ? -1 : 1);
                 if ( (index > 0) && (index_swap > 0) && (index_swap < list_overlays.size()) )
                 {
                     OverlayManager::Get().SwapOverlays(index, index_swap);
