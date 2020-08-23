@@ -1,5 +1,7 @@
 #include "Util.h"
 
+#include <d3d11.h>
+
 std::string StringConvertFromUTF16(LPCWSTR str)
 {
 	std::string stdstr;
@@ -183,18 +185,54 @@ DEVMODE GetDevmodeForDisplayID(int display_id)
         display_id = 0;
 
     DEVMODE mode = {0};
-    DISPLAY_DEVICE DispDev = {0};
+    IDXGIFactory1* factory_ptr;
 
-    DispDev.cb = sizeof(DISPLAY_DEVICE);
-
-    if (EnumDisplayDevices(nullptr, display_id, &DispDev, 0))
+    //This needs to go through DXGI as EnumDisplayDevices()'s order can be different
+    HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
+    if (!FAILED(hr))
     {
-        mode.dmSize = sizeof(DEVMODE);
+        IDXGIAdapter* adapter_ptr = nullptr;
+        UINT i = 0;
+        int output_count = 0;
 
-        if (EnumDisplaySettings(DispDev.DeviceName, ENUM_CURRENT_SETTINGS, &mode) == FALSE)
+        while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
         {
-            mode.dmSize = 0;    //Reset dmSize to 0 if the call failed
+            //Enum the available outputs
+            IDXGIOutput* output_ptr;
+            while (adapter_ptr->EnumOutputs(output_count, &output_ptr) != DXGI_ERROR_NOT_FOUND)
+            {
+                //Check if this happens to be the output we're looking for
+                if (display_id == output_count)
+                {
+                    //Get devmode
+                    DXGI_OUTPUT_DESC output_desc;
+                    output_ptr->GetDesc(&output_desc);
+
+                    mode.dmSize = sizeof(DEVMODE);
+
+                    if (EnumDisplaySettings(output_desc.DeviceName, ENUM_CURRENT_SETTINGS, &mode) != FALSE)
+                    {
+                        //Cleanup and get out early
+                        output_ptr->Release();
+                        adapter_ptr->Release();
+                        factory_ptr->Release();
+
+                        return mode;
+                    }
+                    
+                    mode.dmSize = 0;    //Reset dmSize to 0 if the call failed
+                }
+
+                output_ptr->Release();
+                ++output_count;
+            }
+
+            adapter_ptr->Release();
+            ++i;
         }
+
+        factory_ptr->Release();
+        factory_ptr = nullptr;
     }
 
     return mode;
