@@ -21,7 +21,7 @@ class OverlayManager
         static OverlayManager& Get();
 
         OverlayManager();
-        unsigned int AddOverlay(const OverlayConfigData& data);
+        unsigned int AddOverlay(const OverlayConfigData& data, bool is_based_on_dashboard = false);
         #ifndef DPLUS_UI
             Overlay& GetOverlay(unsigned int id);
             Overlay& GetCurrentOverlay();

@@ -558,6 +558,74 @@ void WindowSettings::UpdateCatOverlay()
     {
         ImGui::BeginChild("ViewOverlayTabCroppingArea");
 
+        //Desktop Cropping
+        if (UIManager::Get()->IsOpenVRLoaded())
+        {
+            static int list_selected_desktop = 0;
+
+            if (ImGui::IsWindowAppearing())
+            {
+                //Reset state to current desktop for convenience
+                list_selected_desktop = ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id);
+            }
+
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Desktop Cropping");
+            ImGui::Columns(2, "ColumnCropDesktop", false);
+            ImGui::SetColumnWidth(0, column_width_0);
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Desktop");
+            ImGui::NextColumn();
+
+            ImGui::SetNextItemWidth(-1);
+
+            int monitor_count = ::GetSystemMetrics(SM_CMONITORS);
+
+            if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection) == 1)
+            {
+                monitor_count = std::max(1, monitor_count - 3); //If the 3 screen assumption doesn't hold up, at least have one button
+            }
+
+            char desktop_str[16];
+            snprintf(desktop_str, 16, "Desktop %d", list_selected_desktop + 1);
+
+            if (ImGui::BeginCombo("##ComboDesktopCrop", (list_selected_desktop == -1) ? "Combined Desktop" : desktop_str))
+            {
+                if (ImGui::Selectable("Combined Desktop", (list_selected_desktop == -1)))
+                {
+                    list_selected_desktop = -1;
+                }
+
+                for (int i = 0; i < monitor_count; ++i)
+                {
+                    ImGui::PushID(i);
+
+                    snprintf(desktop_str, 16, "Desktop %d", i + 1);
+
+                    if (ImGui::Selectable(desktop_str, (list_selected_desktop == i)))
+                    {
+                        list_selected_desktop = i;
+                    }
+
+                    ImGui::PopID();
+                }
+
+                ImGui::EndCombo();
+            }
+
+            ImGui::NextColumn();
+            ImGui::NextColumn();
+
+            if (ImGui::Button("Crop to Desktop"))
+            {
+                //This is the same as resetting, except the desktop ID can be changed
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), list_selected_desktop);
+                ConfigManager::Get().SetConfigInt(configid_int_overlay_desktop_id, list_selected_desktop);
+            }
+
+            ImGui::Columns(1);
+        }
+
         //Cropping Area
         {
             int ovrl_width, ovrl_height;
@@ -665,15 +733,24 @@ void WindowSettings::UpdateCatOverlay()
 
             if (ImGui::Button("Reset##Crop"))
             {
-                crop_x      =  0;
-                crop_y      =  0;
-                crop_width  = -1;
-                crop_height = -1;
+                if ( (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) || (!UIManager::Get()->IsOpenVRLoaded()) )
+                {
+                    crop_x      =  0;
+                    crop_y      =  0;
+                    crop_width  = -1;
+                    crop_height = -1;
 
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_x), crop_x);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y), crop_y);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width), crop_width);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_x), crop_x);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y), crop_y);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width), crop_width);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+                }
+                else
+                {
+                    //Have the dashboard figure out the right crop by changing the desktop ID to the current value again
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), 
+                                                                                   ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id));
+                }
             }
 
             ImGui::Columns(1);
@@ -792,7 +869,8 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::Columns(2, "ColumnFloatingUI", false);
             ImGui::SetColumnWidth(0, column_width_0);
 
-            ImGui::Checkbox("Show Floating UI", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled)); //Pure UI state, no need to sync
+            ImGui::Checkbox("Show Floating UI",     &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled)); //Pure UI state, no need to sync
+            ImGui::Checkbox("Show Desktop Buttons", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_desktops_enabled)); //Pure UI state, no need to sync
 
             ImGui::Columns(1);
         }
@@ -1388,6 +1466,14 @@ void WindowSettings::UpdateCatPerformance()
         }
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
         ImGui::FixedHelpMarker("Burn additional CPU cycles to make the laser pointer cursor as accurate as possible.\nOnly affects CPU load when pointing at the overlay.");
+
+        bool& single_desktop = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_single_desktop_mirroring);
+        if (ImGui::Checkbox("Single Desktop Mirroring", &single_desktop))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_performance_single_desktop_mirroring), single_desktop);
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("Mirror individual desktops when switching to them instead of cropping from the combined desktop.\nWhen this is active, all overlays will be showing the same desktop.");
 
         ImGui::Columns(1);
     }
@@ -2372,7 +2458,7 @@ bool WindowSettings::PopupCurrentOverlayChange()
             OverlayConfigData data = OverlayManager::Get().GetCurrentConfigData();
             data.ConfigNameStr = "Overlay " + std::to_string(OverlayManager::Get().GetOverlayCount());
 
-            OverlayManager::Get().AddOverlay(data);
+            OverlayManager::Get().AddOverlay(data, (current_overlay == k_ulOverlayID_Dashboard));
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, current_overlay);
 
             current_overlay = (int)OverlayManager::Get().GetOverlayCount() - 1;

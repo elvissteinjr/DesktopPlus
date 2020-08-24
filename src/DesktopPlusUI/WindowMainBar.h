@@ -16,7 +16,7 @@ class WindowMainBar
         WindowSettings* m_WndSettingsPtr;
 
         void DisplayTooltipIfHovered(const char* text);
-        void UpdateDesktopButtons();
+        void UpdateDesktopButtons(unsigned int overlay_id);
         void UpdateActionButtons(unsigned int overlay_id);
 
     public:

@@ -19,7 +19,7 @@ OverlayManager::OverlayManager() : m_CurrentOverlayID(0)
     AddOverlay(OverlayConfigData());
 }
 
-unsigned int OverlayManager::AddOverlay(const OverlayConfigData& data)
+unsigned int OverlayManager::AddOverlay(const OverlayConfigData& data, bool is_based_on_dashboard)
 {
     unsigned int id = (unsigned int)m_OverlayConfigData.size();
 
@@ -32,6 +32,12 @@ unsigned int OverlayManager::AddOverlay(const OverlayConfigData& data)
     if (id != k_ulOverlayID_Dashboard)
     {
         m_OverlayConfigData.back().ConfigBool[configid_bool_overlay_detached] = true;
+
+        if (is_based_on_dashboard)
+        {
+            //Desktop buttons should not be enabled by default on floating overlays
+            m_OverlayConfigData.back().ConfigBool[configid_bool_overlay_floatingui_desktops_enabled] = false;
+        }
     }
 
     return id;

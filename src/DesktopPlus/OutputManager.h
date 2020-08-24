@@ -82,6 +82,7 @@ class OutputManager
         void LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8);
         void ResetMouseLastLaserPointerPos();
         void CropToActiveWindow();
+        void CropToDisplay(int display_id);
         void AddOverlay(unsigned int base_id);
 
         void ApplySetting3DMode();

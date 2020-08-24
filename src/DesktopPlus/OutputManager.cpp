@@ -312,7 +312,16 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     HRESULT hr;
 
     m_OutputInvalid = false;
-    SingleOutput = clamp(ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id), -1, ::GetSystemMetrics(SM_CMONITORS) - 1);
+
+    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
+    {
+        SingleOutput = clamp(ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id), -1, ::GetSystemMetrics(SM_CMONITORS) - 1);
+    }
+    else
+    {
+        SingleOutput = -1;
+    }
+    
 
     // Store window handle
     m_WindowHandle = Window;
@@ -1339,6 +1348,10 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         m_OutputPendingFullRefresh = true;
                         break;
                     }
+                    case configid_bool_performance_single_desktop_mirroring:
+                    {
+                        return true; //Reset mirroring
+                    }
                     case configid_bool_state_performance_stats_active:
                     {
                         if (msg.lParam) //Update GPU Copy state
@@ -1366,7 +1379,13 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
                     case configid_int_overlay_desktop_id:
                     {
-                        return true; //Reset mirroring
+                        CropToDisplay(msg.lParam);
+
+                        if (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
+                        {
+                            return true; //Reset mirroring
+                        }
+                        break;
                     }
                     case configid_int_overlay_crop_x:
                     case configid_int_overlay_crop_y:
@@ -2738,8 +2757,8 @@ bool OutputManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
         }
     }
 
-    //Reset mirroing entirely if desktop was changed
-    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id) != desktop_id_prev)
+    //Reset mirroing entirely if desktop was changed (only in single desktop mode)
+    if ( (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) && (ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id) != desktop_id_prev) )
         return true; //Reset mirroring
 
     ResetOverlays(); //This does everything relevant
@@ -2806,9 +2825,9 @@ void OutputManager::CropToActiveWindow()
                 crop_height = crop_rect.GetHeight();
 
                 //Send them over to UI
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_x), crop_x);
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_y), crop_y);
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_width), crop_width);
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_x),      crop_x);
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_y),      crop_y);
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_width),  crop_width);
                 IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
 
                 ApplySettingCrop();
@@ -2818,11 +2837,47 @@ void OutputManager::CropToActiveWindow()
     }
 }
 
+void OutputManager::CropToDisplay(int display_id)
+{
+    int& crop_x      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
+    int& crop_y      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
+    int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
+    int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
+
+    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) && (display_id != -1) )//Individual desktop on full desktop texture
+    {
+        DEVMODE mode = GetDevmodeForDisplayID(display_id);
+        if ((mode.dmSize != 0) && (mode.dmFields & DM_PELSWIDTH) && (mode.dmFields & DM_PELSHEIGHT) && (mode.dmFields & DM_POSITION))
+        {
+            crop_x      = mode.dmPosition.x;
+            crop_y      = mode.dmPosition.y;
+            crop_width  = mode.dmPelsWidth;
+            crop_height = mode.dmPelsHeight;
+        }
+    }
+    else //Full desktop
+    {
+        crop_x      =  0;
+        crop_y      =  0;
+        crop_width  = -1;
+        crop_height = -1;
+    }
+
+    //Send change to UI as well
+    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_x),      crop_x);
+    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y),      crop_y);
+    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width),  crop_width);
+    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+
+    ApplySettingCrop();
+    ApplySettingTransform();
+}
+
 void OutputManager::AddOverlay(unsigned int base_id)
 {
     //Add overlay based on data of lParam ID overlay and set it active
     unsigned int new_id = OverlayManager::Get().GetOverlayCount();
-    OverlayManager::Get().AddOverlay(OverlayManager::Get().GetConfigData(base_id));
+    OverlayManager::Get().AddOverlay(OverlayManager::Get().GetConfigData(base_id), (base_id == k_ulOverlayID_Dashboard));
     OverlayManager::Get().SetCurrentOverlayID(new_id);
     ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, (int)new_id);
 
