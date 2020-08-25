@@ -1083,7 +1083,7 @@ void WindowSettings::UpdateCatInput()
         }
         else*/
         {
-            ImGui::FixedHelpMarker("Controller bindings when pointing at the overlay.\nConfigure the VR Compositor controller bindings to change which buttons these are.");
+            ImGui::FixedHelpMarker("Controller bindings when pointing at the overlay.\nConfigure the VR Dashboard controller bindings to change which buttons these are.");
         }
 
         ActionID actionid_home = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id);
