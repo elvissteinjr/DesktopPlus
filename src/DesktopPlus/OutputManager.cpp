@@ -3816,8 +3816,13 @@ void OutputManager::DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref
             //Get mouse scale for overlay coordinate offset
             vr::VROverlay()->GetOverlayMouseScale(ovrl_handle_ref, &mouse_scale);
 
+            //Get x-offset multiplier, taking width differences into account
+            float ref_overlay_width;
+            vr::VROverlay()->GetOverlayWidthInMeters(ovrl_handle_ref, &ref_overlay_width);
+            float x_offset_mul = ( (ConfigManager::Get().GetConfigFloat(configid_float_overlay_width) / ref_overlay_width) / 2.0f) + 1.0f;
+
             //Put it next to the refernce overlay so it can actually be seen
-            vr::HmdVector2_t coordinate_offset = {mouse_scale.v[0] * 1.5f, mouse_scale.v[1] / 2.0f};
+            vr::HmdVector2_t coordinate_offset = {mouse_scale.v[0] * x_offset_mul, mouse_scale.v[1] / 2.0f};
             vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_ref, universe_origin, coordinate_offset, &overlay_transform);
             transform = overlay_transform;
 
