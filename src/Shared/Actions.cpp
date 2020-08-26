@@ -1,6 +1,7 @@
 #include "Actions.h"
 
 #include "ConfigManager.h"
+#include "OverlayManager.h"
 #include "InterprocessMessaging.h"
 
 const char* g_ActionNames[] =
@@ -196,6 +197,30 @@ void ActionManager::EraseCustomAction(int custom_action_id)
         if (it_del != m_ActionMainBarOrder.end())
         {
             m_ActionMainBarOrder.erase(it_del);
+        }
+
+        //Do the same for every overlay
+        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+        {
+            auto& action_order = OverlayManager::Get().GetConfigData(i).ConfigActionBarOrder;
+
+            auto it_del = action_order.end();
+            for (auto it = action_order.begin(); it != action_order.end(); ++it)
+            {
+                if (it->action_id > action_id)
+                {
+                    it->action_id = (ActionID)(it->action_id - 1);
+                }
+                else if (it->action_id == action_id)
+                {
+                    it_del = it; //Delete it after we're done iterating through this
+                }
+            }
+
+            if (it_del != action_order.end())
+            {
+                action_order.erase(it_del);
+            }
         }
 
         //Set button binding to none if it was bound before

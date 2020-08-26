@@ -863,16 +863,22 @@ void WindowSettings::UpdateCatOverlay()
     {
         ImGui::BeginChild("ViewOverlayTabInterface");
 
-        //Interface
+        //Floating UI
         {
             ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Floating UI");
             ImGui::Columns(2, "ColumnFloatingUI", false);
             ImGui::SetColumnWidth(0, column_width_0);
 
-            ImGui::Checkbox("Show Floating UI",     &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled)); //Pure UI state, no need to sync
-            ImGui::Checkbox("Show Desktop Buttons", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_desktops_enabled)); //Pure UI state, no need to sync
+            //Pure UI states, no need to sync
+            ImGui::Checkbox("Show Floating UI",     &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled)); 
+            ImGui::Checkbox("Show Desktop Buttons", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_desktops_enabled));
 
             ImGui::Columns(1);
+        }
+
+        //Action Order
+        {
+            ActionOrderSetting(OverlayManager::Get().GetCurrentOverlayID());
         }
 
         ImGui::EndChild();
@@ -929,87 +935,7 @@ void WindowSettings::UpdateCatInterface()
 
     //Action Buttons
     {
-        static int list_selected_pos = -1;
-
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Action Buttons");
-
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
-
-        float arrows_width       = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
-        float column_0_width     = ImGui::GetContentRegionAvail().x - arrows_width;
-        float viewbuttons_height = (ImGui::GetFrameHeightWithSpacing() * 7.0f) + (ImGui::GetStyle().ItemSpacing.y * 2.0f);
-
-        ImGui::Columns(2, "ColumnActionButtons", false);
-        ImGui::SetColumnWidth(0, column_0_width);
-        ImGui::SetColumnWidth(1, arrows_width);
-
-        //ActionButton list
-        ImGui::BeginChild("ViewActionButtons", ImVec2(0.0f, viewbuttons_height), true);
-
-        auto& actions = ConfigManager::Get().GetCustomActions();
-        auto& action_order = ConfigManager::Get().GetActionMainBarOrder();
-        int list_id = 0;
-        for (auto& order_data : action_order)
-        {
-            ActionButtonRow((ActionID)order_data.action_id, list_id, list_selected_pos);
-
-            //Drag reordering
-            if ( (ImGui::IsItemActive()) && (!ImGui::IsItemHovered()) && (fabs(ImGui::GetMouseDragDelta(0).y) > ImGui::GetFrameHeight() / 2.0f) )
-            {
-                int list_id_swap = list_id + ((ImGui::GetMouseDragDelta(0).y < 0.0f) ? -1 : 1);
-                if ( (list_id_swap >= 0) && (list_id_swap < action_order.size()) )
-                {
-                    std::iter_swap(action_order.begin() + list_id, action_order.begin() + list_id_swap);
-                    list_selected_pos = list_id_swap;
-                    ImGui::ResetMouseDragDelta();
-                }
-            }
-
-            list_id++;
-        }
-
-        ImGui::EndChild();
-
-        //Reduce horizontal spacing a bit so the arrows are closer to the list
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {ImGui::GetStyle().ItemSpacing.x / 3.0f, ImGui::GetStyle().ItemSpacing.y});
-
-        ImGui::NextColumn();
-
-
-        //This is a bit of a mess, but centers the buttons vertically, yeah.
-        ImGui::Dummy(ImVec2(0.0f, (viewbuttons_height / 2.0f) - ( (ImGui::GetFrameHeightWithSpacing() + ImGui::GetFrameHeight()) / 2.0f ) - ImGui::GetStyle().ItemSpacing.y));
-            
-        int list_selected_pos_pre = list_selected_pos;
-
-        //Up
-        if (list_selected_pos_pre <= 0)
-            ImGui::PushItemDisabled();
-
-        if (ImGui::ArrowButton("MoveUp", ImGuiDir_Up))
-        {
-            std::iter_swap(action_order.begin() + list_selected_pos, action_order.begin() + list_selected_pos - 1);
-            list_selected_pos--;
-        }
-
-        if (list_selected_pos_pre <= 0)
-            ImGui::PopItemDisabled();
-
-        //Down
-        if ( (list_selected_pos_pre < 0) || (list_selected_pos_pre + 1 == action_order.size()) )
-            ImGui::PushItemDisabled();
-
-        if (ImGui::ArrowButton("MoveDown", ImGuiDir_Down))
-        {
-            std::iter_swap(action_order.begin() + list_selected_pos, action_order.begin() + list_selected_pos + 1);
-            list_selected_pos++;
-        }
-
-        if ( (list_selected_pos_pre < 0) || (list_selected_pos_pre + 1 == action_order.size()) )
-            ImGui::PopItemDisabled();
-
-        ImGui::PopStyleVar();
-
-        ImGui::Columns(1);
+        ActionOrderSetting();
     }
 
     //Windows Mixed Reality
@@ -1244,6 +1170,13 @@ void WindowSettings::UpdateCatInput()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), (int)act.FunctionType);
 
             ConfigManager::Get().GetActionMainBarOrder().push_back({ (ActionID)(actions.size() - 1 + action_custom), false });
+
+            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+            {
+                auto& action_order = OverlayManager::Get().GetConfigData(i).ConfigActionBarOrder;
+
+                action_order.push_back({ (ActionID)(actions.size() - 1 + action_custom), false });
+            }
 
             m_ActionEditIsNew = true;
 
@@ -2136,6 +2069,113 @@ void WindowSettings::ProfileSelector(bool multi_overlay)
     ImGui::PopID();
 }
 
+void WindowSettings::ActionOrderSetting(unsigned int overlay_id)
+{
+    static int list_selected_pos = -1;
+    bool use_global_order = false;
+
+    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Action Buttons");
+
+    if (overlay_id != UINT_MAX)
+    {
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
+
+        if (ImGui::Checkbox("Use Global Setting", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_actionbar_order_use_global)))
+        {
+            UIManager::Get()->RepeatFrame();
+        }
+
+        use_global_order = ConfigManager::Get().GetConfigBool(configid_bool_overlay_actionbar_order_use_global);
+    }
+
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
+
+    float arrows_width       = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
+    float column_0_width     = ImGui::GetContentRegionAvail().x - arrows_width;
+    float viewbuttons_height = (ImGui::GetFrameHeightWithSpacing() * 7.0f) + (ImGui::GetStyle().ItemSpacing.y * 2.0f);
+
+    ImGui::Columns(2, "ColumnActionButtons", false);
+    ImGui::SetColumnWidth(0, column_0_width);
+    ImGui::SetColumnWidth(1, arrows_width);
+
+    if (use_global_order)
+    {
+        list_selected_pos = -1;
+        ImGui::PushItemDisabled();
+    }
+
+    //ActionButton list
+    ImGui::BeginChild("ViewActionButtons", ImVec2(0.0f, viewbuttons_height), true);
+
+    auto& actions = ConfigManager::Get().GetCustomActions();
+    auto& action_order = (overlay_id == UINT_MAX) ? ConfigManager::Get().GetActionMainBarOrder() : OverlayManager::Get().GetConfigData(overlay_id).ConfigActionBarOrder;
+    int list_id = 0;
+    for (auto& order_data : action_order)
+    {
+        ActionButtonRow((ActionID)order_data.action_id, list_id, list_selected_pos, overlay_id);
+
+        //Drag reordering
+        if ( (ImGui::IsItemActive()) && (!ImGui::IsItemHovered()) && (fabs(ImGui::GetMouseDragDelta(0).y) > ImGui::GetFrameHeight() / 2.0f) )
+        {
+            int list_id_swap = list_id + ((ImGui::GetMouseDragDelta(0).y < 0.0f) ? -1 : 1);
+            if ( (list_id_swap >= 0) && (list_id_swap < action_order.size()) )
+            {
+                std::iter_swap(action_order.begin() + list_id, action_order.begin() + list_id_swap);
+                list_selected_pos = list_id_swap;
+                ImGui::ResetMouseDragDelta();
+            }
+        }
+
+        list_id++;
+    }
+
+    ImGui::EndChild();
+
+    //Reduce horizontal spacing a bit so the arrows are closer to the list
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {ImGui::GetStyle().ItemSpacing.x / 3.0f, ImGui::GetStyle().ItemSpacing.y});
+
+    ImGui::NextColumn();
+
+
+    //This is a bit of a mess, but centers the buttons vertically, yeah.
+    ImGui::Dummy(ImVec2(0.0f, (viewbuttons_height / 2.0f) - ( (ImGui::GetFrameHeightWithSpacing() + ImGui::GetFrameHeight()) / 2.0f ) - ImGui::GetStyle().ItemSpacing.y));
+            
+    int list_selected_pos_pre = list_selected_pos;
+
+    //Up
+    if (list_selected_pos_pre <= 0)
+        ImGui::PushItemDisabled();
+
+    if (ImGui::ArrowButton("MoveUp", ImGuiDir_Up))
+    {
+        std::iter_swap(action_order.begin() + list_selected_pos, action_order.begin() + list_selected_pos - 1);
+        list_selected_pos--;
+    }
+
+    if (list_selected_pos_pre <= 0)
+        ImGui::PopItemDisabled();
+
+    //Down
+    if ( (list_selected_pos_pre < 0) || (list_selected_pos_pre + 1 == action_order.size()) )
+        ImGui::PushItemDisabled();
+
+    if (ImGui::ArrowButton("MoveDown", ImGuiDir_Down))
+    {
+        std::iter_swap(action_order.begin() + list_selected_pos, action_order.begin() + list_selected_pos + 1);
+        list_selected_pos++;
+    }
+
+    if ( (list_selected_pos_pre < 0) || (list_selected_pos_pre + 1 == action_order.size()) )
+        ImGui::PopItemDisabled();
+
+    ImGui::PopStyleVar();
+
+    ImGui::Columns(1);
+
+    if (use_global_order)
+        ImGui::PopItemDisabled();
+}
+
 void WindowSettings::UpdateLimiterSetting(float column_width_0, bool is_override)
 {
     const ConfigID_Int configid_mode = (is_override) ? configid_int_overlay_update_limit_override_mode : configid_int_performance_update_limit_mode;
@@ -2215,9 +2255,9 @@ void WindowSettings::UpdateLimiterSetting(float column_width_0, bool is_override
     ImGui::Columns(1);
 }
 
-bool WindowSettings::ActionButtonRow(ActionID action_id, int list_pos, int& list_selected_pos)
+bool WindowSettings::ActionButtonRow(ActionID action_id, int list_pos, int& list_selected_pos, unsigned int overlay_id)
 {
-    auto& action_order = ConfigManager::Get().GetActionMainBarOrder();
+    auto& action_order = (overlay_id == UINT_MAX) ? ConfigManager::Get().GetActionMainBarOrder() : OverlayManager::Get().GetConfigData(overlay_id).ConfigActionBarOrder;
     bool delete_pressed = false;
 
     static float column_width_1 = 0.0f;

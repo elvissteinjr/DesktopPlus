@@ -30,6 +30,11 @@ void FloatingUI::Update()
             //Instantly adjust action bar visibility to overlay state before fading in
             if (overlay_data.ConfigBool[configid_bool_overlay_actionbar_enabled])
             {
+                //Hacky: We need to repeat frames in case action buttons were reordered or added/removed in some way, while still getting a smooth alpha fade
+                //We set the alpha just slightly above 0 and don't animate the fade during repeated frames to achieve this
+                UIManager::Get()->RepeatFrame();
+                m_Alpha = 0.0000001f;
+
                 m_WindowActionBar.Show(true);
             }
             else
@@ -39,7 +44,8 @@ void FloatingUI::Update()
         }
 
         //Alpha fade animation
-        m_Alpha += (m_Visible) ? 0.1f : -0.1f;
+        if (!UIManager::Get()->GetRepeatFrame())
+            m_Alpha += (m_Visible) ? 0.1f : -0.1f;
 
         if (m_Alpha > 1.0f)
             m_Alpha = 1.0f;

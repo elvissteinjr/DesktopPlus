@@ -185,8 +185,9 @@ void WindowMainBar::UpdateActionButtons(unsigned int overlay_id)
     //as well as still providing a way to change the size of text buttons by editing the settings icon's dimensions
     ImVec2 b_size_default = b_size;
 
+    OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
     auto& custom_actions = ConfigManager::Get().GetCustomActions();
-    auto& action_order = ConfigManager::Get().GetActionMainBarOrder();
+    auto& action_order = (data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]) ? ConfigManager::Get().GetActionMainBarOrder() : data.ConfigActionBarOrder;
     int list_id = 0;
     for (auto& order_data : action_order)
     {

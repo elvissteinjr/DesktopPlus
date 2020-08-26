@@ -27,6 +27,7 @@ enum ConfigID_Bool
     configid_bool_overlay_floatingui_enabled,
     configid_bool_overlay_floatingui_desktops_enabled,
     configid_bool_overlay_actionbar_enabled,
+    configid_bool_overlay_actionbar_order_use_global,
     configid_bool_overlay_MAX,
     configid_bool_interface_no_ui,
     configid_bool_interface_mainbar_desktop_include_all,
@@ -178,6 +179,7 @@ class OverlayConfigData
         int ConfigInt[configid_int_overlay_MAX];
         float ConfigFloat[configid_float_overlay_MAX];
         Matrix4 ConfigDetachedTransform[ovrl_origin_MAX];
+        std::vector<ActionMainBarOrderData> ConfigActionBarOrder;
 
         OverlayConfigData();
 };

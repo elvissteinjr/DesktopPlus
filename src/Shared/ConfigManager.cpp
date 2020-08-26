@@ -133,6 +133,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigBool[configid_bool_overlay_floatingui_enabled]          = config.ReadBool(section.c_str(), "ShowFloatingUI", true);
     data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled] = config.ReadBool(section.c_str(), "ShowDesktopButtons", (current_id == k_ulOverlayID_Dashboard));
     data.ConfigBool[configid_bool_overlay_actionbar_enabled]           = config.ReadBool(section.c_str(), "ShowActionBar", false);
+    data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]  = config.ReadBool(section.c_str(), "ActionBarOrderUseGlobal", true);
 
     //Disable settings which are invalid for the dashboard overlay
     if (current_id == k_ulOverlayID_Dashboard)
@@ -172,6 +173,32 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     transform_str = config.ReadString(section.c_str(), "DetachedTransformAux");
     if (!transform_str.empty())
         data.ConfigDetachedTransform[ovrl_origin_aux] = transform_str;
+
+    //Load action order
+    auto& action_order_global = ConfigManager::GetActionMainBarOrder();
+    auto& action_order = data.ConfigActionBarOrder;
+    action_order.clear();
+    std::string order_str = config.ReadString(section.c_str(), "ActionBarOrderCustom");
+    std::stringstream ss(order_str);
+    int id;
+    bool visible;
+    char sep;
+
+    for (;;)
+    {
+        ss >> id >> visible >> sep;
+
+        if (ss.fail())
+            break;
+
+        action_order.push_back({ (ActionID)id, visible });
+    }
+
+    //If there is a mismatch or it's fully missing, reset to global
+    if (action_order.size() != action_order_global.size())
+    {
+        action_order = action_order_global;
+    }
 }
 
 void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
@@ -219,9 +246,10 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteInt( section.c_str(), "UpdateLimitMS",      int(data.ConfigFloat[configid_float_overlay_update_limit_override_ms] * 100.0f));
     config.WriteInt( section.c_str(), "UpdateLimitFPS",         data.ConfigInt[configid_int_overlay_update_limit_override_fps]);
 
-    config.WriteBool(section.c_str(), "ShowFloatingUI",         data.ConfigBool[configid_bool_overlay_floatingui_enabled]);
-    config.WriteBool(section.c_str(), "ShowDesktopButtons",     data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled]);
-    config.WriteBool(section.c_str(), "ShowActionBar",          data.ConfigBool[configid_bool_overlay_actionbar_enabled]);
+    config.WriteBool(section.c_str(), "ShowFloatingUI",          data.ConfigBool[configid_bool_overlay_floatingui_enabled]);
+    config.WriteBool(section.c_str(), "ShowDesktopButtons",      data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled]);
+    config.WriteBool(section.c_str(), "ShowActionBar",           data.ConfigBool[configid_bool_overlay_actionbar_enabled]);
+    config.WriteBool(section.c_str(), "ActionBarOrderUseGlobal", data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]);
 
     config.WriteString(section.c_str(), "DetachedTransformPlaySpace", data.ConfigDetachedTransform[ovrl_origin_room].toString().c_str());
     config.WriteString(section.c_str(), "DetachedTransformHMDFloor",  data.ConfigDetachedTransform[ovrl_origin_hmd_floor].toString().c_str());
@@ -230,6 +258,16 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteString(section.c_str(), "DetachedTransformRightHand", data.ConfigDetachedTransform[ovrl_origin_right_hand].toString().c_str());
     config.WriteString(section.c_str(), "DetachedTransformLeftHand",  data.ConfigDetachedTransform[ovrl_origin_left_hand].toString().c_str());
     config.WriteString(section.c_str(), "DetachedTransformAux",       data.ConfigDetachedTransform[ovrl_origin_aux].toString().c_str());
+
+    //Save action order
+    std::stringstream ss;
+
+    for (auto& data_order : data.ConfigActionBarOrder)
+    {
+        ss << data_order.action_id << ' ' << data_order.visible << ";";
+    }
+
+    config.WriteString(section.c_str(), "ActionBarOrderCustom", ss.str().c_str());
 }
 
 bool ConfigManager::LoadConfigFromFile()
@@ -238,8 +276,6 @@ bool ConfigManager::LoadConfigFromFile()
     bool existed = FileExists(wpath.c_str());
 
     Ini config(wpath.c_str());
-
-    LoadMultiOverlayProfile(config);
 
     m_ConfigBool[configid_bool_interface_no_ui]                              = config.ReadBool("Interface", "NoUIAutoLaunch", false);
     m_ConfigInt[configid_int_interface_overlay_current_id]                   = config.ReadInt( "Interface", "OverlayCurrentID", 0);
@@ -411,6 +447,9 @@ bool ConfigManager::LoadConfigFromFile()
     {
         m_ConfigInt[configid_int_input_shortcut03_action_id] = action_none;
     }
+
+    //Load last used overlay config
+    LoadMultiOverlayProfile(config);
     
     return existed; //We use default values if it doesn't, but still return if the file existed
 }
