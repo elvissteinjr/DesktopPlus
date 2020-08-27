@@ -855,6 +855,21 @@ void WindowSettings::UpdateCatOverlay()
             UpdateLimiterSetting(column_width_0, true);
         }
 
+        //Input
+        {
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Input");
+            ImGui::Columns(2, "ColumnOverlayInput", false);
+            ImGui::SetColumnWidth(0, column_width_0);
+
+            bool& enable_input = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_input_enabled);
+            if (ImGui::Checkbox("Enable Input", &enable_input))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_input_enabled), enable_input);
+            }
+
+            ImGui::Columns(1);
+        }
+
         ImGui::EndChild();
         ImGui::EndTabItem();
     }

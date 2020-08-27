@@ -199,7 +199,7 @@ void OutputManager::ShowOverlay(unsigned int id)
         ForceScreenRefresh();
     }
 
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) && (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
+    if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) && (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
          (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
     {
         vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
@@ -1343,7 +1343,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         ApplySettingInputMode();
                         break;
                     }
-                    case configid_bool_input_enabled:
+                    case configid_bool_overlay_input_enabled:
                     case configid_bool_input_mouse_render_intersection_blob:
                     case configid_bool_input_mouse_hmd_pointer_override:
                     {
@@ -2388,7 +2388,7 @@ bool OutputManager::HandleOpenVREvents()
             {
                 case vr::VREvent_MouseMove:
                 {
-                    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) || (m_MouseIgnoreMoveEvent) ||
+                    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) || (m_MouseIgnoreMoveEvent) ||
                          ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) ) ||
                          (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
                     {
@@ -3219,7 +3219,7 @@ void OutputManager::ApplySettingInputMode()
 
         vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetCurrentOverlay().GetHandle();
 
-        if ((ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) || (drag_or_select_mode_enabled) )
+        if ((ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) || (drag_or_select_mode_enabled) )
         {
             //Don't activate drag mode for HMD origin when the pointer is also the HMD (or it's the dashboard overlay)
             if ( ((vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd) && (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_hmd)) )
@@ -3273,7 +3273,7 @@ void OutputManager::ApplySettingMouseInput()
 
         vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetCurrentOverlay().GetHandle();
 
-        if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_enabled)) && (!m_OutputInvalid) )
+        if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) && (!m_OutputInvalid) )
         {
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
             vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
@@ -3661,15 +3661,15 @@ void OutputManager::DragFinish()
 
     //Restore normal mode
     m_DragModeDeviceID = -1;
-
-    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
     
     vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRSmoothScrollEvents, false);
 
-    if (ConfigManager::Get().GetConfigBool(configid_bool_input_enabled))
+    if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled))
     {
         vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
     }
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
 void OutputManager::DragGestureStart()
