@@ -331,6 +331,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     IDXGIAdapter* adapter_ptr_preferred = nullptr;
     IDXGIAdapter* adapter_ptr_vr = nullptr;
     int output_id_adapter = SingleOutput;           //Output ID on the adapter actually used. Only different from initial SingleOutput if there's desktops across multiple GPUs
+    m_DesktopRects.clear();
 
     hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
     if (!FAILED(hr))
@@ -365,6 +366,12 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
                     output_id_adapter = output_count - first_output_adapter;
                 }
+
+                //Cache rect of the output
+                DXGI_OUTPUT_DESC output_desc;
+                output_ptr->GetDesc(&output_desc);
+                m_DesktopRects.emplace_back(output_desc.DesktopCoordinates.left,  output_desc.DesktopCoordinates.top, 
+                                            output_desc.DesktopCoordinates.right, output_desc.DesktopCoordinates.bottom);
 
                 output_ptr->Release();
                 ++output_count;
@@ -2843,17 +2850,16 @@ void OutputManager::CropToDisplay(int display_id)
     int& crop_y      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
     int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
     int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
-
-    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) && (display_id != -1) )//Individual desktop on full desktop texture
+    
+    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) && (display_id >= 0) && (display_id < m_DesktopRects.size()) ) 
     {
-        DEVMODE mode = GetDevmodeForDisplayID(display_id);
-        if ((mode.dmSize != 0) && (mode.dmFields & DM_PELSWIDTH) && (mode.dmFields & DM_PELSHEIGHT) && (mode.dmFields & DM_POSITION))
-        {
-            crop_x      = mode.dmPosition.x;
-            crop_y      = mode.dmPosition.y;
-            crop_width  = mode.dmPelsWidth;
-            crop_height = mode.dmPelsHeight;
-        }
+        //Individual desktop on full desktop texture
+        const DPRect& rect = m_DesktopRects[display_id];
+
+        crop_x      = rect.GetTL().x;
+        crop_y      = rect.GetTL().y;
+        crop_width  = rect.GetWidth();
+        crop_height = rect.GetHeight();
     }
     else //Full desktop
     {
@@ -4271,25 +4277,25 @@ void OutputManager::DoAction(ActionID action_id)
                 int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
                 int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
 
-                if ((crop_x == 0) && (crop_y == 0) && (crop_width == -1) && (crop_height == -1)) //If uncropped, crop to active window
+                //Check if crop is just exactly the current desktop
+                bool crop_equals_current_desktop = false;
+                int desktop_id = ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id);
+
+                if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) )
+                {
+                    DPRect crop_rect(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
+
+                    crop_equals_current_desktop = (crop_rect == m_DesktopRects[desktop_id]);
+                }
+
+                //If uncropped, crop to active window
+                if ( (crop_equals_current_desktop) || ((crop_x == 0) && (crop_y == 0) && (crop_width == -1) && (crop_height == -1)) )
                 {
                     CropToActiveWindow();
                 }
                 else //If cropped in some way, active window or not, reset it
                 {
-                    crop_x      =  0;
-                    crop_y      =  0;
-                    crop_width  = -1;
-                    crop_height = -1;
-
-                    //Send changes over to UI
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_x), crop_x);
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_y), crop_y);
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_width), crop_width);
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
-
-                    ApplySettingCrop();
-                    ApplySettingTransform();
+                    CropToDisplay(desktop_id);
                 }
                 break;
             }

@@ -144,6 +144,7 @@ class OutputManager
         int m_DesktopY;
         int m_DesktopWidth;
         int m_DesktopHeight;
+        std::vector<DPRect> m_DesktopRects;     //Cached position and size of available desktops
         DWORD m_MaxActiveRefreshDelay;
         bool m_OutputInvalid;
         bool m_OutputPendingSkippedFrame;
