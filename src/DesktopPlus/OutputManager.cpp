@@ -3992,6 +3992,12 @@ void OutputManager::DetachedInteractionAutoToggle()
     {
         bool do_set_interactive = false;
 
+        //Add some additional distance for disabling interaction again
+        if (overlay.GetGlobalInteractiveFlag())
+        {
+            max_distance += 0.01f;
+        }
+
         vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
         vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
