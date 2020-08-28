@@ -12,10 +12,12 @@ void WindowMainBar::DisplayTooltipIfHovered(const char* text)
 {
     if (ImGui::IsItemHovered())
     {
+        static ImVec2 pos_last; //Remeber last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
         ImVec2 pos = ImGui::GetItemRectMin();
         float button_width = ImGui::GetItemRectSize().x;
 
         //Default tooltips are not suited for this as there's too much trouble with resize flickering and stuff
+        ImGui::SetNextWindowPos(pos_last);
         ImGui::Begin(text, NULL, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | 
                                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
 
@@ -23,12 +25,10 @@ void WindowMainBar::DisplayTooltipIfHovered(const char* text)
 
         ImVec2 window_size = ImGui::GetWindowSize();
 
-        //32 is the default size returned by ImGui on the first frame
-        //I'm not sure if there isn't a better way to make the tooltip go away before we can position it correctly (ImGui::IsWindowAppearing() doesn't help)
-        //Well, it works
-        if (window_size.y == 32.0f)
+        //Repeat frame when the window is appearing as it will not have the right position (either from being first time or still having old pos)
+        if (ImGui::IsWindowAppearing())
         {
-            pos.y = -1000.0f;
+            UIManager::Get()->RepeatFrame();
         }
         else
         {
@@ -38,7 +38,8 @@ void WindowMainBar::DisplayTooltipIfHovered(const char* text)
             //Clamp x so the tooltip does not get cut off
             pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);
         }
-        ImGui::SetWindowPos(pos);
+
+        pos_last = pos;
 
         ImGui::End();
     }
