@@ -141,6 +141,11 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     {
         data.ConfigBool[configid_bool_overlay_gazefade_enabled] = false;
     }
+    else if (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
+    {
+        //If single desktop mirroring is active, set desktop ID to dashboard one
+        data.ConfigInt[configid_int_overlay_desktop_id] = OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigInt[configid_int_overlay_desktop_id];
+    }
 
     //Default the transform matrices to zero
     float matrix_zero[16] = { 0.0f };

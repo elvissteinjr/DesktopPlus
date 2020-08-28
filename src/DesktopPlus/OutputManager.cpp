@@ -1215,6 +1215,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
         return false;
     }
 
+    bool reset_mirroring = false;
     IPCMsgID msgid = IPCManager::Get().GetIPCMessageID(msg.message);
 
     //Apply overlay id override if needed
@@ -1234,7 +1235,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
             {
                 case ipcact_mirror_reset:
                 {
-                    return true; //Reset mirroring
+                    reset_mirroring = true;
                     break;
                 }
                 case ipcact_overlay_position_reset:
@@ -1280,11 +1281,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 }
                 case ipcact_overlay_profile_load:
                 {
-                    bool reset_mirror = HandleOverlayProfileLoadMessage(msg.lParam);
-
-                    if (reset_mirror)
-                        return true;
-
+                    reset_mirroring = HandleOverlayProfileLoadMessage(msg.lParam);
                     break;
                 }
                 case ipcact_crop_to_active_window:
@@ -1357,7 +1354,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
                     case configid_bool_performance_single_desktop_mirroring:
                     {
-                        return true; //Reset mirroring
+                        if (msg.lParam) //Unify the desktop IDs when turning the setting on
+                        {
+                            CropToDisplay(OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigInt[configid_int_overlay_desktop_id]);
+                        }
+
+                        reset_mirroring = true;
                     }
                     case configid_bool_state_performance_stats_active:
                     {
@@ -1388,10 +1390,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         CropToDisplay(msg.lParam);
 
-                        if (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
-                        {
-                            return true; //Reset mirroring
-                        }
+                        reset_mirroring = ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring);
                         break;
                     }
                     case configid_int_overlay_crop_x:
@@ -1493,7 +1492,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
         OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
     }
 
-    return false;
+    return reset_mirroring;
 }
 
 HWND OutputManager::GetWindowHandle()
@@ -2874,6 +2873,19 @@ void OutputManager::CropToDisplay(int display_id)
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y),      crop_y);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width),  crop_width);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+
+    //In single desktop mode, set desktop ID for all overlays
+    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
+    {
+        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+        {
+            OverlayManager::Get().GetConfigData(i).ConfigInt[configid_int_overlay_desktop_id] = display_id;
+
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_desktop_id), display_id);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+        }
+    }
 
     ApplySettingCrop();
     ApplySettingTransform();
