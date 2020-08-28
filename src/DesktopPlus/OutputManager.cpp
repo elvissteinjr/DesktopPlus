@@ -2883,11 +2883,13 @@ void OutputManager::CropToDisplay(int display_id)
         crop_height = -1;
     }
 
-    //Send change to UI as well
+    //Send change to UI as well (also set override since this may be called during one)
+    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), OverlayManager::Get().GetCurrentOverlayID());
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_x),      crop_x);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y),      crop_y);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width),  crop_width);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
 
     //In single desktop mode, set desktop ID for all overlays
     if (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
