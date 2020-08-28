@@ -75,6 +75,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     else
         hwnd = ::CreateWindow(wc.lpszClassName, L"Desktop+ UI", 0, 0, 0, 1, 1, HWND_MESSAGE, nullptr, wc.hInstance, nullptr);
 
+    ui_manager.SetWindowHandle(hwnd);
+
     //Init OpenVR
     //Don't try to init OpenVR without the dashboard app running since checking for active VR means launching SteamVR
     if ( (!desktop_mode) || (IPCManager::IsDashboardAppRunning()) )
@@ -232,6 +234,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 break; //Breaks the message loop, causing clean shutdown
             }
         }
+        else
+        {
+            do_idle = ::IsIconic(hwnd);
+        }
 
         //Do texture reload now if it had been scheduled
         if (TextureManager::Get().GetReloadLaterFlag())
@@ -242,7 +248,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         //While we still need to poll, greatly reduce the rate and don't do any ImGui stuff to not waste resources (hopefully this does not mess up ImGui input state)
         if (do_idle)
         {
-            ::Sleep(300);
+            ::Sleep(64); //Could wait longer, but it doesn't really make much of a difference in load and we stay more responsive like this)
             continue;
         }
 
