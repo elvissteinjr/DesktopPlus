@@ -337,6 +337,8 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates] = config.ReadBool("Performance", "RapidLaserPointerUpdates", false);
     m_ConfigBool[configid_bool_performance_single_desktop_mirroring]    = config.ReadBool("Performance", "SingleDesktopMirroring", false);
 
+    m_ConfigBool[configid_bool_misc_auto_focus_scene_app]               = config.ReadBool("Misc", "AutoFocusSceneApp", false);
+
     //Load custom actions (this is where using ini feels dumb, but it still kinda works)
     auto& custom_actions = m_ActionManager.GetCustomActions();
     int custom_action_count = config.ReadInt("CustomActions", "Count", 0);
@@ -592,6 +594,8 @@ void ConfigManager::SaveConfigToFile()
     config.WriteInt( "Performance", "UpdateLimitFPS",           m_ConfigInt[configid_int_performance_update_limit_fps]);
     config.WriteBool("Performance", "RapidLaserPointerUpdates", m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]);
     config.WriteBool("Performance", "SingleDesktopMirroring",   m_ConfigBool[configid_bool_performance_single_desktop_mirroring]);
+
+    config.WriteBool("Misc", "AutoFocusSceneApp",               m_ConfigBool[configid_bool_misc_auto_focus_scene_app]);
 
     //Save custom actions
     config.RemoveSection("CustomActions"); //Remove old section first to avoid any leftovers

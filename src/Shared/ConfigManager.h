@@ -41,6 +41,7 @@ enum ConfigID_Bool
     configid_bool_input_mouse_render_intersection_blob,
     configid_bool_input_mouse_hmd_pointer_override,
     configid_bool_input_keyboard_helper_enabled,
+    configid_bool_misc_auto_focus_scene_app,
     configid_bool_state_overlay_dragmode,
     configid_bool_state_overlay_selectmode,
     configid_bool_state_performance_stats_active,             //Only count when the stats are visible

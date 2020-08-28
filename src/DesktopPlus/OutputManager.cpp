@@ -2333,6 +2333,22 @@ bool OutputManager::HandleOpenVREvents()
                     }
                 }
 
+                if (ConfigManager::Get().GetConfigBool(configid_bool_misc_auto_focus_scene_app))
+                {
+                    //Try finding and focusing the window of the current scene application
+                    uint32_t pid = vr::VRApplications()->GetCurrentSceneProcessId();
+
+                    if (pid != 0)
+                    {
+                        HWND scene_process_window = FindMainWindow(pid);
+
+                        if (scene_process_window != 0)
+                        {
+                            ::SetForegroundWindow(scene_process_window);
+                        }
+                    }
+                }
+
                 break;
             }
             case vr::VREvent_KeyboardCharInput:
@@ -2355,7 +2371,6 @@ bool OutputManager::HandleOpenVREvents()
                 IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -1);
                 break;
             }
-
             case vr::VREvent_Input_ActionManifestReloaded:
             case vr::VREvent_Input_BindingsUpdated:
             case vr::VREvent_Input_BindingLoadSuccessful:

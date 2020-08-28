@@ -1528,6 +1528,22 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(1);
     }
 
+    //Focus
+    {
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Focus");
+
+        ImGui::Columns(2, "ColumnMiscFocus", false);
+        ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
+
+        bool& focus_scene_app = ConfigManager::Get().GetConfigBoolRef(configid_bool_misc_auto_focus_scene_app);
+        if (ImGui::Checkbox("Focus Scene-App on Dashboard Deactivation", &focus_scene_app))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_misc_auto_focus_scene_app), focus_scene_app);
+        }
+
+        ImGui::Columns(1);
+    }
+
     //Troubleshooting
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Troubleshooting");

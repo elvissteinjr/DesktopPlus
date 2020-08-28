@@ -38,6 +38,7 @@ void ForceScreenRefresh();
 bool IsProcessElevated();
 bool FileExists(LPCTSTR path);
 void StopProcessByWindowClass(LPCTSTR class_name); //Used to stop the previous instance of the application
+HWND FindMainWindow(DWORD pid);
 
 //Virtual Keycode string mapping
 const char* GetStringForKeyCode(unsigned char keycode);

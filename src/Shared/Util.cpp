@@ -390,6 +390,42 @@ void StopProcessByWindowClass(LPCTSTR class_name)
     }
 }
 
+HWND FindMainWindow(DWORD pid)
+{
+    std::pair<HWND, DWORD> params = { 0, pid };
+
+    //Enumerate the windows using a lambda to process each window
+    BOOL bResult = ::EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL 
+                                 {
+                                     auto pParams = (std::pair<HWND, DWORD>*)(lParam);
+
+                                     DWORD processId;
+                                     if ( (::GetWindowThreadProcessId(hwnd, &processId)) && (processId == pParams->second) )
+                                     {
+                                         //If it's an unowned top-level window and visible, it's assumed to be the main window
+                                         //Take the first match in the process, should be good enough for our use-case
+                                         if ( (::GetWindow(hwnd, GW_OWNER) == (HWND)0) && (::IsWindowVisible(hwnd)) )
+                                         {
+                                             //Stop enumerating
+                                             ::SetLastError(-1);
+                                             pParams->first = hwnd;
+                                             return FALSE;
+                                         }
+                                     }
+
+                                      //Continue enumerating
+                                      return TRUE;
+                                  },
+                                  (LPARAM)&params);
+
+    if ( (!bResult) && (::GetLastError() == -1) && (params.first) )
+    {
+        return params.first;
+    }
+
+    return 0;
+}
+
 //This ain't pretty, but GetKeyNameText() works with scancodes, which are not exactly the same and the output strings aren't that nice either (and always localized)
 //Those duplicate lines are optimized away to the same address by any sane compiler, nothing to worry about.
 const char* g_VK_name[256] = 
