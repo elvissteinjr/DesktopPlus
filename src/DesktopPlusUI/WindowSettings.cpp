@@ -1209,8 +1209,28 @@ void WindowSettings::UpdateCatInput()
         {
             if (ImGui::Button("Do"))
             {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, action_custom + list_selected_index);
+                if (actions[list_selected_index].FunctionType != caction_press_keys) //Press and release of action keys is handled below instead
+                {
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, action_custom + list_selected_index);
+                }
                 delete_confirm_state = false;
+            }
+
+            //Enable press and release of action keys based on button press
+            if (ImGui::IsItemActivated())
+            {
+                if (actions[list_selected_index].FunctionType == caction_press_keys)
+                {
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_start, action_custom + list_selected_index);
+                }
+            }
+
+            if (ImGui::IsItemDeactivated())
+            {
+                if (actions[list_selected_index].FunctionType == caction_press_keys)
+                {
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_stop, action_custom + list_selected_index);
+                }
             }
 
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
