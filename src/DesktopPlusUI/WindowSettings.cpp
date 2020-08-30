@@ -185,6 +185,11 @@ void WindowSettings::UpdateCatOverlay()
         {
             OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
             data.ConfigNameStr = buffer_overlay_name;
+
+            if (ImGui::StringContainsUnmappedCharacter(buffer_overlay_name))
+            {
+                TextureManager::Get().ReloadAllTexturesLater();
+            }
         }
 
         if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup))
@@ -219,6 +224,11 @@ void WindowSettings::UpdateCatOverlay()
 
             size_t copied_length = data.ConfigNameStr.copy(buffer_overlay_name, 1023);
             buffer_overlay_name[copied_length] = '\0';
+
+            if (ImGui::StringContainsUnmappedCharacter(buffer_overlay_name))
+            {
+                TextureManager::Get().ReloadAllTexturesLater();
+            }
 
             //Deactivate selection mode
             ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, false);

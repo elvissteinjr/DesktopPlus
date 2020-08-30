@@ -33,4 +33,7 @@ namespace ImGui
 
     //Returns true if the hovered item has changed to a different one
     bool HasHoveredNewItem();
+
+    //Returns true if a character in the string is mapped in the active font
+    bool StringContainsUnmappedCharacter(const char* str);
 }

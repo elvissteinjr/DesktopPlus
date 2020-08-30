@@ -363,4 +363,25 @@ namespace ImGui
 
         return ( (g.HoveredId != g.HoveredIdPreviousFrame) && (g.HoveredId != 0) && (!blocked_by_active_item) );
     }
+
+    bool StringContainsUnmappedCharacter(const char* str)
+    {
+        const char* str_end = str + strlen(str);
+        ImWchar32 c;
+        int decoded_length;
+
+        while (str < str_end)
+        {
+            decoded_length = ImTextCharFromUtf8(&c, str, str_end);
+
+            if (ImGui::GetFont()->FindGlyphNoFallback((ImWchar)c) == nullptr)
+            {
+                return true;
+            }
+
+            str += decoded_length;
+        }
+
+        return false;
+    }
 }

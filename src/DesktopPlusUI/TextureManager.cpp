@@ -18,6 +18,7 @@ namespace Gdiplus
 #include "ConfigManager.h"
 #include "Util.h"
 #include "UIManager.h"
+#include "OverlayManager.h"
 #include "imgui_impl_dx11_openvr.h"
 
 const wchar_t* TextureManager::s_TextureFilenames[] =
@@ -86,6 +87,11 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     for (const std::string& str : ConfigManager::Get().GetOverlayProfileList()) //Also from overlay profiles
     {
         builder.AddText(str.c_str());
+    }
+
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i) //And overlay names
+    {
+        builder.AddText(OverlayManager::Get().GetConfigData(i).ConfigNameStr.c_str());
     }
 
     builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
