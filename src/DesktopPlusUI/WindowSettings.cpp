@@ -1158,14 +1158,14 @@ void WindowSettings::UpdateCatInput()
                 delete_confirm_state = false;
             }
 
-            if (m_ActionEditIsNew) //Make newly created action visible
-            {
-                ImGui::SetScrollHereY(1.0f);
-            }
-
             ImGui::PopID();
 
             act_index++;
+        }
+
+        if (m_ActionEditIsNew) //Make newly created action visible
+        {
+            ImGui::SetScrollHereY(1.0f);
         }
 
         ImGui::EndChild();
@@ -2143,7 +2143,7 @@ void WindowSettings::ActionOrderSetting(unsigned int overlay_id)
 
     float arrows_width       = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
     float column_0_width     = ImGui::GetContentRegionAvail().x - arrows_width;
-    float viewbuttons_height = (ImGui::GetFrameHeightWithSpacing() * 7.0f) + (ImGui::GetStyle().ItemSpacing.y * 2.0f);
+    float viewbuttons_height = (ImGui::GetFrameHeightWithSpacing() * 6.0f) + ImGui::GetFrameHeight() + (ImGui::GetStyle().WindowPadding.y * 2.0f);
 
     ImGui::Columns(2, "ColumnActionButtons", false);
     ImGui::SetColumnWidth(0, column_0_width);
@@ -3062,6 +3062,8 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
             TextureManager::Get().ReloadAllTexturesLater();
 
             action.SendUpdateToDashboardApp(id, UIManager::Get()->GetWindowHandle());
+
+            m_ActionEditIsNew = false;
 
             ImGui::CloseCurrentPopup();
         }
