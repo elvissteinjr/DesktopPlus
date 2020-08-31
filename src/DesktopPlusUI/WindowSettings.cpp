@@ -2405,7 +2405,14 @@ bool WindowSettings::PopupCurrentOverlayChange()
             has_list_changed = false;
         }
 
-        ImGui::Text("Click on an overlay or choose one from the list");
+        if (UIManager::Get()->IsOpenVRLoaded())
+        {
+            ImGui::Text("Click on an overlay or choose one from the list");
+        }
+        else
+        {
+            ImGui::Text("Choose an overlay from the list");
+        }
 
         int& current_overlay = ConfigManager::Get().GetConfigIntRef(configid_int_interface_overlay_current_id);
 
