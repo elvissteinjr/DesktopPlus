@@ -705,23 +705,26 @@ void InitImGui(HWND hwnd)
     }
 
     UIManager::Get()->SetUIScale(dpi_scale);
-
     
     TextureManager::Get().LoadAllTexturesAndBuildFonts();
+
+    //Set DPI-dependent style
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.LogSliderDeadzone = (float)int(58.0f * dpi_scale); //Force whole pixel size
 
     if (UIManager::Get()->IsInDesktopMode())
     {
         io.DisplaySize.x = TEXSPACE_TOTAL_WIDTH  * dpi_scale;
         io.DisplaySize.y = TEXSPACE_DASHBOARD_UI_HEIGHT * dpi_scale;
 
-        ImGui::GetStyle().ScrollbarSize = (float)int(23.0f * dpi_scale); //Force whole pixel size
+        style.ScrollbarSize = (float)int(23.0f * dpi_scale); 
     }
     else
     {
         io.DisplaySize.x = TEXSPACE_TOTAL_WIDTH;
         io.DisplaySize.y = TEXSPACE_DASHBOARD_UI_HEIGHT;
 
-        ImGui::GetStyle().ScrollbarSize = (float)int(32.0f * dpi_scale); //Force whole pixel size
+        style.ScrollbarSize = (float)int(32.0f * dpi_scale);
     }
 }
 
