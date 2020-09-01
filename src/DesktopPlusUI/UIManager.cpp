@@ -579,9 +579,30 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
             curve *= (2.75f / config_data.ConfigFloat[configid_float_overlay_width]);
         }
 
+        //Try to reduce flicker by blocking abrupt Y movements (unless X has changed as well, which we assume to happen on real movement)
+        //The flicker itself comes from a race condition of the UI possibly getting the overlay transform while it's changing width and position, hard to predict
+        bool anti_flicker_can_move = false;
+        float anti_flicker_x = matrix.m[0][3];
+        float anti_flicker_y = matrix.m[1][3];
+        static float anti_flicker_x_last = anti_flicker_x;
+        static float anti_flicker_y_last = anti_flicker_y;
+        static int anti_flicker_block_count = 0;
+
+        if ( (anti_flicker_x != anti_flicker_x_last) || (fabs(anti_flicker_y - anti_flicker_y_last) < 0.001f) || (anti_flicker_block_count >= 2) )
+        {
+            anti_flicker_can_move = true;
+            anti_flicker_x_last = anti_flicker_x;
+            anti_flicker_y_last = anti_flicker_y;
+            anti_flicker_block_count = 0;
+        }
+        else
+        {
+            anti_flicker_block_count++;
+        }
+
         //Only apply when left mouse is not held down, prevent moving it around while dragging or holding a widget modifying the forward distance value
         //Same goes for the curvature
-        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        if ( (anti_flicker_can_move) && (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) )
         {
             vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandle, origin, &matrix);
             vr::VROverlay()->SetOverlayCurvature(m_OvrlHandle, curve);
