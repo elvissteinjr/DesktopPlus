@@ -122,7 +122,7 @@ bool OutputManager::GetOverlayInputActive() const
 
 DWORD OutputManager::GetMaxRefreshDelay() const
 {
-    if (m_OvrlActiveCount != 0)
+    if ( (m_OvrlActiveCount != 0) || (m_OvrlDashboardActive) )
     {
         //Actually causes extreme load while not really being necessary (looks nice tho)
         if ( (m_OvrlInputActive) && (ConfigManager::Get().GetConfigBool(configid_bool_performance_rapid_laser_pointer_updates)) )
