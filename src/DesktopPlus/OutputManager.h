@@ -39,6 +39,7 @@ class OutputManager
         void ResetOverlays();
         void ResetCurrentOverlay();
         ID3D11Texture2D* GetOverlayTexture() const; //This returns m_OvrlTex, the backing texture used by the desktop texture overlay (and all overlays stealing its texture)
+        ID3D11Texture2D* GetMultiGPUTargetTexture() const;
         vr::VROverlayHandle_t GetDesktopTextureOverlay() const;
         bool GetOverlayActive() const;
         bool GetOverlayInputActive() const;

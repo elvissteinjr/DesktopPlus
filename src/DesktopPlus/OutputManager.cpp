@@ -358,13 +358,16 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
             IDXGIOutput* output_ptr;
             while (adapter_ptr->EnumOutputs(output_count, &output_ptr) != DXGI_ERROR_NOT_FOUND)
             {
-                //Check if this happens to be the output we're looking for
-                if ( (adapter_ptr_preferred == nullptr) && (SingleOutput == output_count) )
+                //Check if this happens to be the output we're looking for (or for combined desktop, set the first adapter with available output)
+                if ( (adapter_ptr_preferred == nullptr) && ( (SingleOutput == output_count) || (SingleOutput == -1) ) )
                 {
                     adapter_ptr_preferred = adapter_ptr;
                     adapter_ptr_preferred->AddRef();
 
-                    output_id_adapter = output_count - first_output_adapter;
+                    if (SingleOutput != -1)
+                    {
+                        output_id_adapter = output_count - first_output_adapter;
+                    }
                 }
 
                 //Cache rect of the output
@@ -1624,6 +1627,11 @@ void OutputManager::ResetCurrentOverlay()
 ID3D11Texture2D* OutputManager::GetOverlayTexture() const
 {
     return m_OvrlTex;
+}
+
+ID3D11Texture2D* OutputManager::GetMultiGPUTargetTexture() const
+{
+    return m_MultiGPUTexTarget;
 }
 
 vr::VROverlayHandle_t OutputManager::GetDesktopTextureOverlay() const

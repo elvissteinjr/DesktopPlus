@@ -97,10 +97,11 @@ void Overlay::AssignTexture()
         vr::EColorSpace ovrl_color_space;
         vr::VRTextureBounds_t ovrl_tex_bounds;
 
+        ID3D11Texture2D* multigpu_target_tex = OutputManager::Get()->GetMultiGPUTargetTexture();
         vr::Texture_t vrtex;
         vrtex.eType = vr::TextureType_DirectX;
         vrtex.eColorSpace = vr::ColorSpace_Gamma;
-        vrtex.handle = OutputManager::Get()->GetOverlayTexture();
+        vrtex.handle = (multigpu_target_tex != nullptr) ? multigpu_target_tex : OutputManager::Get()->GetOverlayTexture();
 
         vr::VROverlayError ovrl_error = vr::VROverlayError_None;
         ovrl_error = vr::VROverlay()->GetOverlayTexture(ovrl_handle_desktop_tex, (void**)&ovrl_shader_res, vrtex.handle, &ovrl_width, &ovrl_height, &ovrl_native_format,
