@@ -322,7 +322,6 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
         SingleOutput = -1;
     }
     
-
     // Store window handle
     m_WindowHandle = Window;
 
@@ -331,6 +330,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     IDXGIAdapter* adapter_ptr_preferred = nullptr;
     IDXGIAdapter* adapter_ptr_vr = nullptr;
     int output_id_adapter = SingleOutput;           //Output ID on the adapter actually used. Only different from initial SingleOutput if there's desktops across multiple GPUs
+    std::vector<DPRect> desktop_rects_prev = m_DesktopRects;
     m_DesktopRects.clear();
 
     hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
@@ -627,6 +627,35 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
             ::DeleteObject(info.hbmColor);
             ::DeleteObject(info.hbmMask);
+        }
+    }
+
+    //In case this was called due to a resolution change, check if the crop was just exactly the set desktop in each overlay and adapt then
+    if (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
+    {
+        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+        {
+            OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+            int desktop_id = data.ConfigInt[configid_int_overlay_desktop_id];
+
+            if ((desktop_id >= 0) && (desktop_id < desktop_rects_prev.size()) && (desktop_id < m_DesktopRects.size()))
+            {
+                int& crop_x = data.ConfigInt[configid_int_overlay_crop_x];
+                int& crop_y = data.ConfigInt[configid_int_overlay_crop_y];
+                int& crop_width = data.ConfigInt[configid_int_overlay_crop_width];
+                int& crop_height = data.ConfigInt[configid_int_overlay_crop_height];
+                DPRect crop_rect(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
+
+                if (crop_rect == desktop_rects_prev[desktop_id])
+                {
+                    const DPRect& rect = m_DesktopRects[desktop_id];
+
+                    crop_x = rect.GetTL().x;
+                    crop_y = rect.GetTL().y;
+                    crop_width = rect.GetWidth();
+                    crop_height = rect.GetHeight();
+                }
+            }
         }
     }
 
