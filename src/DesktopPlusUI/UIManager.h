@@ -21,6 +21,7 @@
 #define TEXSPACE_KEYBOARD_HELPER_SCALE 0.35f
 #define TEXSPACE_TOTAL_WIDTH 1920
 #define TEXSPACE_TOTAL_HEIGHT (TEXSPACE_DASHBOARD_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_FLOATING_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_KEYBOARD_HELPER_HEIGHT)
+#define OVERLAY_WIDTH_METERS_DASHBOARD_UI 2.75f
 
 class WindowKeyboardHelper;
 
@@ -38,6 +39,9 @@ class UIManager
         bool m_NoRestartOnExit;      //Prevent auto-restart when closing from desktop mode while dashboard app is running (i.e. when using troubleshooting buttons)
 
         float m_UIScale;
+        ImFont* m_FontCompact;
+        ImFont* m_FontLarge;         //Only loaded when the UI scale is set to large
+
         bool m_LowCompositorRes;     //Set when compositor's resolution is set below 100% during init. The user is warned about this as it affects overlay rendering
         bool m_LowCompositorQuality; //Set when the compositor's quality setting to set to something other than High or Auto
         vr::EVROverlayError m_OverlayErrorLast; //Last encountered error when adding an overlay (usually just overlay limit exceeded)
@@ -87,6 +91,9 @@ class UIManager
 
         void SetUIScale(float scale);
         float GetUIScale() const;
+        void SetFonts(ImFont* font_compact, ImFont* font_large);
+        ImFont* GetFontCompact() const;
+        ImFont* GetFontLarge() const;               //May return nullptr
 
         bool IsCompositorResolutionLow() const;
         bool IsCompositorRenderQualityLow() const;

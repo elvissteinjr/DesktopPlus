@@ -285,6 +285,7 @@ bool ConfigManager::LoadConfigFromFile()
     Ini config(wpath.c_str());
 
     m_ConfigBool[configid_bool_interface_no_ui]                              = config.ReadBool("Interface", "NoUIAutoLaunch", false);
+    m_ConfigBool[configid_bool_interface_large_style]                        = config.ReadBool("Interface", "DisplaySizeLarge", false);
     m_ConfigInt[configid_int_interface_overlay_current_id]                   = config.ReadInt( "Interface", "OverlayCurrentID", 0);
     m_ConfigInt[configid_int_interface_mainbar_desktop_listing]              = config.ReadInt( "Interface", "DesktopButtonCyclingMode", mainbar_desktop_listing_individual);
     m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]        = config.ReadBool("Interface", "DesktopButtonIncludeAll", false);
@@ -552,6 +553,7 @@ void ConfigManager::SaveConfigToFile()
 
     config.WriteInt( "Interface", "OverlayCurrentID",                  m_ConfigInt[configid_int_interface_overlay_current_id]);
     config.WriteInt( "Interface", "DesktopButtonCyclingMode",          m_ConfigInt[configid_int_interface_mainbar_desktop_listing]);
+    config.WriteBool("Interface", "DisplaySizeLarge",                  m_ConfigBool[configid_bool_interface_large_style]);
     config.WriteBool("Interface", "DesktopButtonIncludeAll",           m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]);
     config.WriteInt( "Interface", "LastVRUIScale",                 int(m_ConfigFloat[configid_float_interface_last_vr_ui_scale] * 100.0f));
     config.WriteBool("Interface", "WarningCompositorResolutionHidden", m_ConfigBool[configid_bool_interface_warning_compositor_res_hidden]);

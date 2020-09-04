@@ -17,6 +17,8 @@ class WindowSettings
 
         bool m_ActionEditIsNew;
         bool m_OverlayNameBufferNeedsUpdate;
+        ImGuiStyle m_StyleOrig;
+        bool m_IsStyleScaled;
 
         void UpdateWarnings();
         void UpdateCatOverlay();
@@ -24,6 +26,9 @@ class WindowSettings
         void UpdateCatInput();
         void UpdateCatPerformance();
         void UpdateCatMisc();
+
+        void PushInterfaceScale();
+        void PopInterfaceScale();
 
         bool ButtonKeybind(unsigned char* key_code);
         bool ButtonAction(ActionID& action_id);

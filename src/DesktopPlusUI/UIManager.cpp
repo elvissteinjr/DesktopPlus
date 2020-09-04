@@ -55,6 +55,8 @@ UIManager::UIManager(bool desktop_mode) : m_WindowHandle(nullptr),
                                           m_OpenVRLoaded(false),
                                           m_NoRestartOnExit(false),
                                           m_UIScale(1.0f),
+                                          m_FontCompact(nullptr),
+                                          m_FontLarge(nullptr),
                                           m_LowCompositorRes(false),
                                           m_LowCompositorQuality(false),
                                           m_OverlayErrorLast(vr::VROverlayError_None),
@@ -153,12 +155,12 @@ vr::EVRInitError UIManager::InitOverlay()
 
         if (m_OvrlHandle != vr::k_ulOverlayHandleInvalid)
         {
-            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandle, 2.75f);
+            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandle, OVERLAY_WIDTH_METERS_DASHBOARD_UI);
 
             //Init Floating UI and Keyboard Helper overlay
             vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusUIFloating", "Desktop+ Floating UI", &m_OvrlHandleFloatingUI);
             vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusKeyboardHelper", "Desktop+ Keyboard Helper", &m_OvrlHandleKeyboardHelper);
-            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleFloatingUI, 2.75f);
+            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleFloatingUI, OVERLAY_WIDTH_METERS_DASHBOARD_UI);
             vr::VROverlay()->SetOverlayAlpha(m_OvrlHandleFloatingUI, 0.0f);
 
             //Set input parameters
@@ -435,6 +437,22 @@ void UIManager::SetUIScale(float scale)
 float UIManager::GetUIScale() const
 {
     return m_UIScale;
+}
+
+void UIManager::SetFonts(ImFont* font_compact, ImFont* font_large)
+{
+    m_FontCompact = font_compact;
+    m_FontLarge = font_large;
+}
+
+ImFont* UIManager::GetFontCompact() const
+{
+    return m_FontCompact;
+}
+
+ImFont* UIManager::GetFontLarge() const
+{
+    return m_FontLarge;
 }
 
 bool UIManager::IsCompositorResolutionLow() const

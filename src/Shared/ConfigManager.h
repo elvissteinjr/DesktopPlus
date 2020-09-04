@@ -31,6 +31,7 @@ enum ConfigID_Bool
     configid_bool_overlay_actionbar_order_use_global,
     configid_bool_overlay_MAX,
     configid_bool_interface_no_ui,
+    configid_bool_interface_large_style,
     configid_bool_interface_mainbar_desktop_include_all,
     configid_bool_interface_warning_compositor_res_hidden,
     configid_bool_interface_warning_compositor_quality_hidden,

@@ -928,6 +928,41 @@ void WindowSettings::UpdateCatInterface()
 
     //Most interface options don't need to be sent to the dashboard overlay application
 
+    //Settings Interface
+    {
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Settings Interface");
+        ImGui::Columns(2, "ColumnInterfaceSettingsUI", false);
+        ImGui::SetColumnWidth(0, column_width_0);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Display Scale");
+
+        if (UIManager::Get()->IsInDesktopMode())
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::FixedHelpMarker("Does not apply in desktop mode");
+        }
+        ImGui::NextColumn();
+
+        bool& use_large_style = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_large_style);
+
+        if (ImGui::RadioButton("Compact", !use_large_style))
+        {
+            use_large_style = false;
+            TextureManager::Get().ReloadAllTexturesLater();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::RadioButton("Large", use_large_style))
+        {
+            use_large_style = true;
+            TextureManager::Get().ReloadAllTexturesLater();
+        }
+
+        ImGui::Columns(1);
+    }
+
     //Desktop Buttons
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Desktop Buttons");
@@ -1682,6 +1717,33 @@ void WindowSettings::UpdateCatMisc()
     }
 
     ImGui::EndChild();
+}
+
+void WindowSettings::PushInterfaceScale()
+{
+    if ( (ConfigManager::Get().GetConfigBool(configid_bool_interface_large_style)) && (!UIManager::Get()->IsInDesktopMode()) )
+    {
+        ImGui::PushFont(UIManager::Get()->GetFontLarge());
+
+        //Backup original style so it can be restored on pop
+        m_StyleOrig = ImGui::GetStyle();
+        ImGui::GetStyle().ScaleAllSizes(1.5f);
+
+        m_IsStyleScaled = true; //configid_bool_interface_large_style may change between push and pop calls
+    }
+}
+
+void WindowSettings::PopInterfaceScale()
+{
+    if (m_IsStyleScaled)
+    {
+        ImGui::PopFont();
+
+        //Restore original style
+        ImGui::GetStyle() = m_StyleOrig;
+
+        m_IsStyleScaled = false;
+    }
 }
 
 bool WindowSettings::ButtonKeybind(unsigned char* key_code)
@@ -3487,7 +3549,7 @@ void WindowSettings::HighlightOverlay(int overlay_id)
     }
 }
 
-WindowSettings::WindowSettings() : m_Visible(false), m_Alpha(0.0f), m_ActionEditIsNew(false), m_OverlayNameBufferNeedsUpdate(true)
+WindowSettings::WindowSettings() : m_Visible(false), m_Alpha(0.0f), m_ActionEditIsNew(false), m_OverlayNameBufferNeedsUpdate(true), m_IsStyleScaled(false)
 {
 
 }
@@ -3554,6 +3616,8 @@ void WindowSettings::Update()
 
     if (m_Alpha == 0.0f)
         return;
+
+    PushInterfaceScale();
 
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_Alpha);
 
@@ -3641,6 +3705,8 @@ void WindowSettings::Update()
 
     ImGui::End();
     ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
+
+    PopInterfaceScale();
 
     //Toggle performance stats based on the active page
     bool& performance_stats_active = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_performance_stats_active);

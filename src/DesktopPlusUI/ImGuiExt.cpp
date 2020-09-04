@@ -184,7 +184,9 @@ namespace ImGui
 
             ImGui::BeginTooltip();
             ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+            ImGui::PushTextWrapPos(ImGui::GetIO().DisplaySize.x - ImGui::GetCursorScreenPos().x);
             ImGui::TextUnformatted(desc);
+            ImGui::PopTextWrapPos();
             ImGui::PopTextWrapPos();
 
             if (ImGui::IsWindowAppearing()) //New tooltip, reset offset
