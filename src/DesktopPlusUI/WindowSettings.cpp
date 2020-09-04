@@ -172,6 +172,8 @@ void WindowSettings::UpdateCatOverlay()
         static char buffer_overlay_name[1024] = "";
         static float button_change_width = 0.0f;
 
+        int& current_overlay = ConfigManager::Get().GetConfigIntRef(configid_int_interface_overlay_current_id);
+
         ImGui::Columns(2, "ColumnCurrentOverlay", false);
         ImGui::SetColumnWidth(0, column_width_0);
 
@@ -179,7 +181,9 @@ void WindowSettings::UpdateCatOverlay()
         ImGui::Text("Current Overlay");
         ImGui::NextColumn();
 
-        ImGui::SetNextItemWidth(-1 - button_change_width);
+        ImGui::SetNextItemWidth(-1 - button_change_width - ImGui::GetFrameHeight());
+
+        float input_text_x = ImGui::GetCursorPos().x;
 
         if ( (ImGui::InputText("##InputOverlayName", buffer_overlay_name, 1024)) || (ImGui::PopupContextMenuInputText("##InputOverlayName", buffer_overlay_name, 1024)) )
         {
@@ -196,7 +200,7 @@ void WindowSettings::UpdateCatOverlay()
         {
             if (ImGui::IsItemHovered())
             {
-                HighlightOverlay(ConfigManager::Get().GetConfigInt(configid_int_interface_overlay_current_id));
+                HighlightOverlay(current_overlay);
             }
             else if (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
             {
@@ -204,11 +208,76 @@ void WindowSettings::UpdateCatOverlay()
             }
         }
 
+        ImGui::SameLine(0.0f, 0.0f);
+
+        static float arrow_button_width = 0.0f;
+        bool combo_popup_was_already_open = false;
+
+        //This makes the combo popup appear at the InputText's coordinates so it looks like it's part of one widget
+        if (ImGui::IsPopupOpen("##ComboOverlaySelector"))
+        {
+            const ImGuiStyle& style = ImGui::GetStyle();
+
+            //We need to calculate our own popup size here (only setting window content size has trouble with scrollbars)
+            ImVec2 window_size = { (ImGui::GetCursorPosX() - input_text_x) + arrow_button_width - (ImGui::GetStyle().WindowPadding.x), 0.0f };
+            float window_height = (ImGui::GetFontSize() + style.ItemSpacing.y) * 8.0f - style.ItemSpacing.y + (style.WindowPadding.y * 2.0f); //8 items height (ImGui default)
+
+            ImGui::SetNextWindowContentSize(window_size);
+            ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {window_size.x, window_height});
+            combo_popup_was_already_open = true;
+        }
+
+        if (ImGui::BeginCombo("##ComboOverlaySelector", "", ImGuiComboFlags_NoPreview | ImGuiComboFlags_PopupAlignLeft))
+        {
+            int index_hovered = -1;
+
+            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+            {
+                const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+                bool current_overlay_enabled = data.ConfigBool[configid_bool_overlay_enabled];
+
+                if (!current_overlay_enabled)
+                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+
+                if (ImGui::Selectable(data.ConfigNameStr.c_str(), (i == current_overlay)))
+                {
+                    current_overlay = i;
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
+                    OverlayManager::Get().SetCurrentOverlayID(current_overlay);
+
+                    m_OverlayNameBufferNeedsUpdate = true;
+                }
+
+                if (ImGui::IsItemHovered())
+                {
+                    index_hovered = i;
+                }
+
+                if (!current_overlay_enabled)
+                    ImGui::PopStyleVar();
+            }
+
+            ImGui::EndCombo();
+
+            HighlightOverlay(index_hovered);
+        }
+
+        if ( (ImGui::IsPopupOpen("##ComboOverlaySelector")) && (!combo_popup_was_already_open) )
+        {
+            //Repeat frame when the popup was just opened to avoid a conflict between calling SetNextWindowContentSize() for the wrong window and flicker 
+            //from the popup state changing a frame too late
+            //Perhaps there's a smarter way to get the combo to do what we want, but this is fine
+            UIManager::Get()->RepeatFrame();
+        }
+
+        arrow_button_width = ImGui::GetItemRectSize().x + ImGui::GetStyle().ItemSpacing.x;
+
         ImGui::SameLine();
 
-        if (ImGui::Button("Change"))
+        if (ImGui::Button("Manage"))
         {
-            ImGui::OpenPopup("CurrentOverlayChange");
+            ImGui::OpenPopup("CurrentOverlayManage");
 
             //Activate selection mode
             ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, true);
@@ -217,7 +286,7 @@ void WindowSettings::UpdateCatOverlay()
 
         button_change_width = ImGui::GetItemRectSize().x + ImGui::GetStyle().ItemSpacing.x;
 
-        if ( (PopupCurrentOverlayChange()) || (ImGui::IsWindowAppearing()) || (m_OverlayNameBufferNeedsUpdate) )
+        if ( (PopupCurrentOverlayManage()) || (ImGui::IsWindowAppearing()) || (m_OverlayNameBufferNeedsUpdate) )
         {
             //Update buffer
             OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
@@ -2416,7 +2485,7 @@ bool WindowSettings::ActionButtonRow(ActionID action_id, int list_pos, int& list
     return delete_pressed;
 }
 
-bool WindowSettings::PopupCurrentOverlayChange()
+bool WindowSettings::PopupCurrentOverlayManage()
 {
     static bool popup_was_open = false;
 
@@ -2428,7 +2497,7 @@ bool WindowSettings::PopupCurrentOverlayChange()
     ImGui::SetNextWindowSize(ImVec2(GetSize().x * 0.5f, GetSize().y * 0.75f));
     ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 
-    if (ImGui::BeginPopup("CurrentOverlayChange", ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    if (ImGui::BeginPopup("CurrentOverlayManage", ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
         popup_was_open = true;
 
@@ -2667,7 +2736,7 @@ bool WindowSettings::PopupCurrentOverlayChange()
     }
 
     //Detect if the popup was closed, which can happen at any time from clicking outside of it
-    if ((popup_was_open) && (!ImGui::IsPopupOpen("CurrentOverlayChange")))
+    if ((popup_was_open) && (!ImGui::IsPopupOpen("CurrentOverlayManage")))
     {
         popup_was_open = false;
         return true;
