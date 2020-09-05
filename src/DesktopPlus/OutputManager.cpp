@@ -1388,7 +1388,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         if (msg.lParam) //Unify the desktop IDs when turning the setting on
                         {
-                            CropToDisplay(OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigInt[configid_int_overlay_desktop_id]);
+                            CropToDisplay(OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigInt[configid_int_overlay_desktop_id], true);
                         }
 
                         reset_mirroring = true;
@@ -2895,7 +2895,7 @@ void OutputManager::CropToActiveWindow()
     }
 }
 
-void OutputManager::CropToDisplay(int display_id)
+void OutputManager::CropToDisplay(int display_id, bool do_not_apply_setting)
 {
     int& crop_x      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
     int& crop_y      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
@@ -2941,8 +2941,12 @@ void OutputManager::CropToDisplay(int display_id)
         }
     }
 
-    ApplySettingCrop();
-    ApplySettingTransform();
+    //Applying the setting when a duplication resets happens right after has the chance of screwing up the transform (too many transform updates?), so give the option to not do it
+    if (!do_not_apply_setting)
+    {
+        ApplySettingCrop();
+        ApplySettingTransform();
+    }
 }
 
 void OutputManager::AddOverlay(unsigned int base_id)
@@ -3228,7 +3232,20 @@ void OutputManager::ApplySettingTransform()
 void OutputManager::ApplySettingCrop()
 {
     Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+    OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
     vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+
+    //Initialize crop to desktop 0 first if desktop ID is -2 (default value)
+    if (data.ConfigInt[configid_int_overlay_desktop_id] == -2)
+    {
+        data.ConfigInt[configid_int_overlay_desktop_id] = 0;
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), OverlayManager::Get().GetCurrentOverlayID());
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_desktop_id), 0);
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+
+        CropToDisplay(0);
+        return; //CropToDisplay will call this function again
+    }
 
     //Set up overlay cropping
     vr::VRTextureBounds_t tex_bounds;

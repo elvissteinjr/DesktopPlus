@@ -106,7 +106,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigNameStr = config.ReadString(section.c_str(), "Name", default_name.c_str());
 
     data.ConfigBool[configid_bool_overlay_enabled]                     = config.ReadBool(section.c_str(), "Enabled", true);
-    data.ConfigInt[configid_int_overlay_desktop_id]                    = config.ReadInt(section.c_str(),  "DesktopID", 0);
+    data.ConfigInt[configid_int_overlay_desktop_id]                    = config.ReadInt(section.c_str(),  "DesktopID", -2);
     data.ConfigFloat[configid_float_overlay_width]                     = config.ReadInt(section.c_str(),  "Width", 350) / 100.0f;
     data.ConfigFloat[configid_float_overlay_curvature]                 = config.ReadInt(section.c_str(),  "Curvature", -100) / 100.0f;
     data.ConfigFloat[configid_float_overlay_opacity]                   = config.ReadInt(section.c_str(),  "Opacity", 100) / 100.0f;
@@ -140,8 +140,14 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     if (current_id == k_ulOverlayID_Dashboard)
     {
         data.ConfigBool[configid_bool_overlay_gazefade_enabled] = false;
+
+        //If single desktop mirroring is active, set default desktop ID to 0 (in combined desktop mode it's taken care of during ApplySettingCrop())
+        if ( (data.ConfigInt[configid_int_overlay_desktop_id] == -2) && (m_ConfigBool[configid_bool_performance_single_desktop_mirroring]) )
+        {
+            data.ConfigInt[configid_int_overlay_desktop_id] = 0;
+        }
     }
-    else if (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
+    else if (m_ConfigBool[configid_bool_performance_single_desktop_mirroring])
     {
         //If single desktop mirroring is active, set desktop ID to dashboard one
         data.ConfigInt[configid_int_overlay_desktop_id] = OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigInt[configid_int_overlay_desktop_id];

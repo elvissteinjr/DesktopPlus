@@ -53,7 +53,7 @@ enum ConfigID_Bool
 
 enum ConfigID_Int
 {
-    configid_int_overlay_desktop_id,
+    configid_int_overlay_desktop_id,                              //-1 is combined desktop, -2 is a default value that initializes crop to desktop 0
     configid_int_overlay_crop_x,
     configid_int_overlay_crop_y,
     configid_int_overlay_crop_width,
