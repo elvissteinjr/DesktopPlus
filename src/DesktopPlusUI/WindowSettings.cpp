@@ -963,8 +963,21 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::SetColumnWidth(0, column_width_0);
 
             //Pure UI states, no need to sync
-            ImGui::Checkbox("Show Floating UI",     &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled)); 
-            ImGui::Checkbox("Show Desktop Buttons", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_desktops_enabled));
+            if (detached)
+            {
+                ImGui::Checkbox("Show Floating UI", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled));
+            }
+            else //Dashboard's UI is always visible, even though it's technically not the floating UI
+            {
+                ImGui::PushItemDisabled();
+                ImGui::Checkbox("Show Floating UI", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled));
+                ImGui::PopItemDisabled();
+            }
+
+            if (ImGui::Checkbox("Show Desktop Buttons", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_desktops_enabled)))
+            {
+                UIManager::Get()->RepeatFrame();
+            }
 
             ImGui::Columns(1);
         }
