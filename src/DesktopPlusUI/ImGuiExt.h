@@ -24,6 +24,14 @@ namespace ImGui
     //Button, but with wrapped, cropped and center aligned label
     bool ButtonWithWrappedLabel(const char* label, const ImVec2& size);
 
+    //BeginCombo() but with the option of turning the Combo into an Input text like the sliders. Little bit awkward with the state variables but works otherwise
+    //Uses PopupContextMenuInputText() with the InputText
+    //Use normal EndCombo() to finish
+    bool BeginComboWithInputText(const char* str_id, char* str_buffer, size_t buffer_size, bool& out_buffer_changed,
+                                 bool& persist_input_visible, bool& persist_input_activated, bool& persist_mouse_released_once);
+    void ComboWithInputTextActivationCheck(bool& persist_input_visible); //Always call after BeginComboWithInputText(), outside the if statement
+    bool ChoiceTest();
+
     //ImGuiItemFlags_Disabled is not exposed public API yet and has no styling, so here's something that does the job
     void PushItemDisabled();
     void PopItemDisabled();

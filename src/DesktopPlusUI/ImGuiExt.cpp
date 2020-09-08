@@ -2,6 +2,9 @@
 
 #include <string>
 
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
+    #define IMGUI_DEFINE_MATH_OPERATORS
+#endif
 #include "imgui_internal.h"
 #include "UIManager.h"
 
@@ -257,6 +260,152 @@ namespace ImGui
         return ret;
     }
 
+    bool BeginComboWithInputText(const char* str_id, char* str_buffer, size_t buffer_size, bool& out_buffer_changed, bool& persist_input_visible, bool& persist_input_activated, bool& persist_mouse_released_once)
+    {
+        ImGuiContext& g = *GImGui;
+
+        out_buffer_changed = false;
+
+        if (persist_input_visible)
+        {
+            ImGui::PushID("InputText");
+
+            g.NextItemData.Width  = ImGui::CalcItemWidth();
+            g.NextItemData.Width -= ImGui::GetFrameHeight();
+
+            if ((ImGui::InputText(str_id, str_buffer, buffer_size)))
+            {
+                out_buffer_changed = true;
+            }
+
+            ImGuiID input_text_id = ImGui::GetItemID();
+
+            if ( (persist_input_activated) && (persist_mouse_released_once) && (ImGui::PopupContextMenuInputText(str_id, str_buffer, buffer_size)) )
+            {
+                out_buffer_changed = true;
+            }
+
+            if (!persist_input_activated)
+            {
+                ImGui::ActivateItem(ImGui::GetItemID());
+                persist_input_activated = true;
+            }
+            else if ( (!ImGui::IsPopupOpen(str_id)) && ( (ImGui::IsItemDeactivated()) || (g.ActiveId != input_text_id) ) )
+            {
+                persist_input_visible = false;
+                persist_input_activated = false;
+                persist_mouse_released_once = false;
+                UIManager::Get()->RepeatFrame();
+            }
+
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+            {
+                persist_mouse_released_once = true;
+            }
+
+            ImGui::SameLine(0.0f, 0.0f);
+
+            ImGui::PopID();
+        }
+
+        return (ImGui::BeginCombo(str_id, str_buffer, (persist_input_visible) ? (ImGuiComboFlags_NoPreview | ImGuiComboFlags_PopupAlignLeft) : ImGuiComboFlags_None));
+    }
+
+    void ComboWithInputTextActivationCheck(bool& persist_input_visible)
+    {
+        ImGuiContext& g = *GImGui;
+
+        //Right-click or Ctrl+Left-click to edit
+        if ( (ImGui::IsItemClicked(ImGuiMouseButton_Right)) || ((ImGui::IsItemClicked(ImGuiMouseButton_Left)) && g.IO.KeyCtrl) )
+        {
+            persist_input_visible = true;
+        }
+    }
+
+    bool ChoiceTest()
+    {
+        ImGuiContext& g = *GImGui;
+
+        static char buffer_overlay_name[1024];
+        static int current_overlay = 0;
+
+        static bool is_input_text_visible = false;
+        static bool is_input_text_activated = false;
+        static bool mouse_released_once = false;
+
+        bool ret = false;
+
+        if (is_input_text_visible)
+        {
+            g.NextItemData.Width -= ImGui::GetFrameHeight();
+
+            if ((ImGui::InputText("##InputOverlayName", buffer_overlay_name, 1024)))
+            {
+                ret = true;
+            }
+
+            ImGuiID input_text_id = ImGui::GetItemID();
+
+            if ( (is_input_text_activated) && (mouse_released_once) && (ImGui::PopupContextMenuInputText("##InputOverlayName", buffer_overlay_name, 1024)) )
+            {
+                ret = true;
+            }
+
+           
+            //ImGui::SetFocusID(, ImGui::GetCurrentWindow());
+            if (!is_input_text_activated)
+            {
+                ImGui::ActivateItem(ImGui::GetItemID());
+                is_input_text_activated = true;
+            }
+            else if ( (!ImGui::IsPopupOpen("##InputOverlayName")) && ( (ImGui::IsItemDeactivated()) || (g.ActiveId != input_text_id) ) )
+            {
+                is_input_text_visible = false;
+                is_input_text_activated = false;
+                mouse_released_once = false;
+                UIManager::Get()->RepeatFrame();
+            }
+
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+            {
+                mouse_released_once = true;
+            }
+
+            ImGui::SameLine(0.0f, 0.0f);
+        }
+
+        {
+
+            if (ImGui::BeginCombo("##ComboOverlaySelector", buffer_overlay_name, (is_input_text_visible) ? ImGuiComboFlags_NoPreview | ImGuiComboFlags_PopupAlignLeft : ImGuiComboFlags_None ))
+            {
+                int index_hovered = -1;
+
+                for (unsigned int i = 0; i < 10; ++i)
+                {
+                    if (ImGui::Selectable("A", (i == current_overlay)))
+                    {
+                        current_overlay = i;
+                    }
+
+                    if (ImGui::IsItemHovered())
+                    {
+                        index_hovered = i;
+                    }
+                }
+
+                ImGui::EndCombo();
+            }
+        }
+
+        //Right-click or Ctrl+Left-click to edit
+        if ( (ImGui::IsItemClicked(ImGuiMouseButton_Right)) || ((ImGui::IsItemClicked(ImGuiMouseButton_Left)) && g.IO.KeyCtrl) )
+        {
+            is_input_text_visible = true;
+        }
+
+        return ret;
+    }
+
     //ImGuiItemFlags_Disabled is not exposed public API yet and has no styling, so here's something that does the job
     void PushItemDisabled()
     {
@@ -281,7 +430,7 @@ namespace ImGui
                 ImGui::SetClipboardText(str_buffer);
             }
 
-            if (ImGui::MenuItem("Replace with Clipboard"))
+            if (ImGui::MenuItem("Replace with Clipboard", nullptr, false, (ImGui::GetClipboardText() != nullptr) ))
             {
                 std::string str(ImGui::GetClipboardText());
 

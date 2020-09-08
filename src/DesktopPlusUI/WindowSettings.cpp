@@ -181,11 +181,56 @@ void WindowSettings::UpdateCatOverlay()
         ImGui::Text("Current Overlay");
         ImGui::NextColumn();
 
-        ImGui::SetNextItemWidth(-1 - button_change_width - ImGui::GetFrameHeight());
+        ImGui::SetNextItemWidth(-1 - button_change_width);
 
-        float input_text_x = ImGui::GetCursorPos().x;
+        bool buffer_changed = false;
+        static bool is_combo_input_visible = false;
+        static bool is_combo_input_activated = false;
+        static bool is_combo_mouse_released_once = false;
 
-        if ( (ImGui::InputText("##InputOverlayName", buffer_overlay_name, 1024)) || (ImGui::PopupContextMenuInputText("##InputOverlayName", buffer_overlay_name, 1024)) )
+        if (ImGui::BeginComboWithInputText("##ComboOverlaySelector", buffer_overlay_name, 1024, buffer_changed, is_combo_input_visible, is_combo_input_activated, is_combo_mouse_released_once))
+        {
+            int index_hovered = -1;
+
+            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+            {
+                const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+                bool current_overlay_enabled = data.ConfigBool[configid_bool_overlay_enabled];
+
+                if (!current_overlay_enabled)
+                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+
+                ImGui::PushID(i);
+
+                if (ImGui::Selectable(data.ConfigNameStr.c_str(), (i == current_overlay)))
+                {
+                    current_overlay = i;
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
+                    OverlayManager::Get().SetCurrentOverlayID(current_overlay);
+
+                    m_OverlayNameBufferNeedsUpdate = true;
+                }
+
+                ImGui::PopID();
+
+                if (ImGui::IsItemHovered())
+                {
+                    index_hovered = i;
+                }
+
+                if (!current_overlay_enabled)
+                    ImGui::PopStyleVar();
+            }
+
+            ImGui::EndCombo();
+
+            HighlightOverlay(index_hovered);
+        }
+
+        ImGui::ComboWithInputTextActivationCheck(is_combo_input_visible);
+
+        if (buffer_changed)
         {
             OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
             data.ConfigNameStr = buffer_overlay_name;
@@ -207,71 +252,6 @@ void WindowSettings::UpdateCatOverlay()
                 HighlightOverlay(-1);
             }
         }
-
-        ImGui::SameLine(0.0f, 0.0f);
-
-        static float arrow_button_width = 0.0f;
-        bool combo_popup_was_already_open = false;
-
-        //This makes the combo popup appear at the InputText's coordinates so it looks like it's part of one widget
-        if (ImGui::IsPopupOpen("##ComboOverlaySelector"))
-        {
-            const ImGuiStyle& style = ImGui::GetStyle();
-
-            //We need to calculate our own popup size here (only setting window content size has trouble with scrollbars)
-            ImVec2 window_size = { (ImGui::GetCursorPosX() - input_text_x) + arrow_button_width - (ImGui::GetStyle().WindowPadding.x), 0.0f };
-            float window_height = (ImGui::GetFontSize() + style.ItemSpacing.y) * 8.0f - style.ItemSpacing.y + (style.WindowPadding.y * 2.0f); //8 items height (ImGui default)
-
-            ImGui::SetNextWindowContentSize(window_size);
-            ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {window_size.x, window_height});
-            combo_popup_was_already_open = true;
-        }
-
-        if (ImGui::BeginCombo("##ComboOverlaySelector", "", ImGuiComboFlags_NoPreview | ImGuiComboFlags_PopupAlignLeft))
-        {
-            int index_hovered = -1;
-
-            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
-            {
-                const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
-
-                bool current_overlay_enabled = data.ConfigBool[configid_bool_overlay_enabled];
-
-                if (!current_overlay_enabled)
-                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-
-                if (ImGui::Selectable(data.ConfigNameStr.c_str(), (i == current_overlay)))
-                {
-                    current_overlay = i;
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
-                    OverlayManager::Get().SetCurrentOverlayID(current_overlay);
-
-                    m_OverlayNameBufferNeedsUpdate = true;
-                }
-
-                if (ImGui::IsItemHovered())
-                {
-                    index_hovered = i;
-                }
-
-                if (!current_overlay_enabled)
-                    ImGui::PopStyleVar();
-            }
-
-            ImGui::EndCombo();
-
-            HighlightOverlay(index_hovered);
-        }
-
-        if ( (ImGui::IsPopupOpen("##ComboOverlaySelector")) && (!combo_popup_was_already_open) )
-        {
-            //Repeat frame when the popup was just opened to avoid a conflict between calling SetNextWindowContentSize() for the wrong window and flicker 
-            //from the popup state changing a frame too late
-            //Perhaps there's a smarter way to get the combo to do what we want, but this is fine
-            UIManager::Get()->RepeatFrame();
-        }
-
-        arrow_button_width = ImGui::GetItemRectSize().x + ImGui::GetStyle().ItemSpacing.x;
 
         ImGui::SameLine();
 
@@ -640,11 +620,13 @@ void WindowSettings::UpdateCatOverlay()
         if (UIManager::Get()->IsOpenVRLoaded())
         {
             static int list_selected_desktop = 0;
+            static unsigned int list_selected_desktop_overlay_id = k_ulOverlayID_Dashboard;
 
-            if (ImGui::IsWindowAppearing())
+            if ( (ImGui::IsWindowAppearing()) || (list_selected_desktop_overlay_id != OverlayManager::Get().GetCurrentOverlayID()) )
             {
                 //Reset state to current desktop for convenience
                 list_selected_desktop = ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id);
+                list_selected_desktop_overlay_id = OverlayManager::Get().GetCurrentOverlayID();
             }
 
             ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Desktop Cropping");
