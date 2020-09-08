@@ -152,7 +152,7 @@ Matrix4 GetControllerTipMatrix(bool right_hand)
     return Matrix4();
 }
 
-void SetConfigForWMR(int& wmr_ignore_vscreens_selection, int& wmr_ignore_vscreens_combined_desktop)
+void SetConfigForWMR(int& wmr_ignore_vscreens)
 {
     //Check if system is WMR and set WMR-specific default values if needed
     char buffer[vr::k_unMaxPropertyStringSize];
@@ -162,20 +162,14 @@ void SetConfigForWMR(int& wmr_ignore_vscreens_selection, int& wmr_ignore_vscreen
 
     if (is_wmr_system) //Is WMR, enable settings by default
     {
-        if (wmr_ignore_vscreens_selection == -1)
+        if (wmr_ignore_vscreens == -1)
         {
-            wmr_ignore_vscreens_selection = 1;
+            wmr_ignore_vscreens = 1;
         }        
-
-        if (wmr_ignore_vscreens_combined_desktop == -1)
-        {
-            wmr_ignore_vscreens_combined_desktop = 1;
-        }
     }
     else //Not a WMR system, set values to -1. -1 settings will not be save to disk so a WMR user's settings is preserved if they switch around HMDs, but the setting is still false
     {
-        wmr_ignore_vscreens_selection = -1;
-        wmr_ignore_vscreens_combined_desktop = -1;
+        wmr_ignore_vscreens = -1;
     }
 }
 

@@ -204,8 +204,7 @@ vr::EVRInitError UIManager::InitOverlay()
     UpdateOverlayPixelSize();
 
     //Check if it's a WMR system and set up for that if needed
-    SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens_selection), 
-                    ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens_combined_desktop));
+    SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens));
 
     if ((ovrl_error == vr::VROverlayError_None))
         return vr::VRInitError_None;

@@ -331,6 +331,8 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     IDXGIAdapter* adapter_ptr_vr = nullptr;
     int output_id_adapter = SingleOutput;           //Output ID on the adapter actually used. Only different from initial SingleOutput if there's desktops across multiple GPUs
     std::vector<DPRect> desktop_rects_prev = m_DesktopRects;
+    int desktop_x_prev = m_DesktopX;
+    int desktop_y_prev = m_DesktopY;
     m_DesktopRects.clear();
 
     hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
@@ -636,6 +638,8 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     //In case this was called due to a resolution change, check if the crop was just exactly the set desktop in each overlay and adapt then
     if (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
     {
+        unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+
         for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
         {
             OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
@@ -643,23 +647,23 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
             if ((desktop_id >= 0) && (desktop_id < desktop_rects_prev.size()) && (desktop_id < m_DesktopRects.size()))
             {
-                int& crop_x = data.ConfigInt[configid_int_overlay_crop_x];
-                int& crop_y = data.ConfigInt[configid_int_overlay_crop_y];
-                int& crop_width = data.ConfigInt[configid_int_overlay_crop_width];
-                int& crop_height = data.ConfigInt[configid_int_overlay_crop_height];
+                int crop_x = data.ConfigInt[configid_int_overlay_crop_x];
+                int crop_y = data.ConfigInt[configid_int_overlay_crop_y];
+                int crop_width = data.ConfigInt[configid_int_overlay_crop_width];
+                int crop_height = data.ConfigInt[configid_int_overlay_crop_height];
                 DPRect crop_rect(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
+                DPRect desktop_rect = desktop_rects_prev[desktop_id];
+                desktop_rect.Translate({-desktop_x_prev, -desktop_y_prev});
 
-                if (crop_rect == desktop_rects_prev[desktop_id])
+                if (crop_rect == desktop_rect)
                 {
-                    const DPRect& rect = m_DesktopRects[desktop_id];
-
-                    crop_x = rect.GetTL().x;
-                    crop_y = rect.GetTL().y;
-                    crop_width = rect.GetWidth();
-                    crop_height = rect.GetHeight();
+                    OverlayManager::Get().SetCurrentOverlayID(i);
+                    CropToDisplay(desktop_id, true);
                 }
             }
         }
+
+        OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
     }
 
     m_InputSim.RefreshScreenOffsets();
@@ -780,8 +784,7 @@ vr::EVRInitError OutputManager::InitOverlay()
     }
 
     //Check if it's a WMR system and set up for that if needed
-    SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens_selection), 
-                    ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens_combined_desktop));
+    SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens));
 
     if ((ovrl_error == vr::VROverlayError_None) && (input_res))
         return vr::VRInitError_None;
@@ -826,7 +829,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
     if (SingleOutput < 0)
     {
         int monitor_count = ::GetSystemMetrics(SM_CMONITORS);
-        bool wmr_ignore_vscreens = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_combined_desktop) == 1);
+        bool wmr_ignore_vscreens = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1);
 
         if (wmr_ignore_vscreens)
         {
@@ -1880,8 +1883,8 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     };
 
     // Center of desktop dimensions
-    INT CenterX = (m_DesktopWidth / 2);
-    INT CenterY = (m_DesktopHeight / 2);
+    FLOAT CenterX = (m_DesktopWidth  / 2.0f);
+    FLOAT CenterY = (m_DesktopHeight / 2.0f);
 
     // Clipping adjusted coordinates / dimensions
     INT PtrWidth = 0;
@@ -1935,18 +1938,18 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     }
 
     // VERTEX creation
-    Vertices[0].Pos.x = (PtrLeft - CenterX) / (FLOAT)CenterX;
-    Vertices[0].Pos.y = -1 * ((PtrTop + PtrHeight) - CenterY) / (FLOAT)CenterY;
-    Vertices[1].Pos.x = (PtrLeft - CenterX) / (FLOAT)CenterX;
-    Vertices[1].Pos.y = -1 * (PtrTop - CenterY) / (FLOAT)CenterY;
-    Vertices[2].Pos.x = ((PtrLeft + PtrWidth) - CenterX) / (FLOAT)CenterX;
-    Vertices[2].Pos.y = -1 * ((PtrTop + PtrHeight) - CenterY) / (FLOAT)CenterY;
+    Vertices[0].Pos.x = (PtrLeft - CenterX) / CenterX;
+    Vertices[0].Pos.y = -1 * ((PtrTop + PtrHeight) - CenterY) / CenterY;
+    Vertices[1].Pos.x = (PtrLeft - CenterX) / CenterX;
+    Vertices[1].Pos.y = -1 * (PtrTop - CenterY) / CenterY;
+    Vertices[2].Pos.x = ((PtrLeft + PtrWidth) - CenterX) / CenterX;
+    Vertices[2].Pos.y = -1 * ((PtrTop + PtrHeight) - CenterY) / CenterY;
     Vertices[3].Pos.x = Vertices[2].Pos.x;
     Vertices[3].Pos.y = Vertices[2].Pos.y;
     Vertices[4].Pos.x = Vertices[1].Pos.x;
     Vertices[4].Pos.y = Vertices[1].Pos.y;
-    Vertices[5].Pos.x = ((PtrLeft + PtrWidth) - CenterX) / (FLOAT)CenterX;
-    Vertices[5].Pos.y = -1 * (PtrTop - CenterY) / (FLOAT)CenterY;
+    Vertices[5].Pos.x = ((PtrLeft + PtrWidth) - CenterX) / CenterX;
+    Vertices[5].Pos.y = -1 * (PtrTop - CenterY) / CenterY;
 
     //Vertex buffer description
     D3D11_BUFFER_DESC BDesc;
@@ -2911,6 +2914,10 @@ void OutputManager::CropToDisplay(int display_id, bool do_not_apply_setting)
         crop_y      = rect.GetTL().y;
         crop_width  = rect.GetWidth();
         crop_height = rect.GetHeight();
+
+        //Offset by desktop coordinates
+        crop_x      -= m_DesktopX;
+        crop_y      -= m_DesktopY;
     }
     else //Full desktop
     {
@@ -3264,21 +3271,27 @@ void OutputManager::ApplySettingCrop()
 
     overlay.UpdateValidatedCropRect();
     const DPRect& crop_rect = overlay.GetValidatedCropRect();
+    
+    //Use full texture if everything checks out
+    if ( (crop_rect.GetTL().x == 0) && (crop_rect.GetTL().y == 0) && (crop_rect.GetWidth() == m_DesktopWidth) && (crop_rect.GetHeight() == m_DesktopHeight) )
+    {
+        tex_bounds.uMin = 0.0f;
+        tex_bounds.vMin = 0.0f;
+        tex_bounds.uMax = 1.0f;
+        tex_bounds.vMax = 1.0f;
+    }
+    else
+    {
+        //Otherwise offset the calculated texel coordinates a bit. This is to reduce having colors from outside the cropping area bleeding in from the texture filtering
+        //This means the border pixels of the overlay are smaller, but that's something we need to accept it seems
+        //This doesn't 100% solve texel bleed, especially not on high overlay rendering quality where it can require pretty offsets bad depending on overlay size/distance
+        float offset_x = (crop_rect.GetWidth() <= 2) ? 0.0f : 1.5f, offset_y = (crop_rect.GetHeight() <= 2) ? 0.0f : 1.5f; //Yes, we do handle the case of <3 pixel crops
 
-    float offset_x = (crop_rect.GetWidth() == 1) ? 0.0f : 0.5f, offset_y = (crop_rect.GetHeight() == 1) ? 0.0f : 0.5f; //Yes, we do handle the case of 1 pixel crops
-    int texture_width = m_DesktopWidth;
-
-    //Set UV bounds (slightly offset to not have irrelevant partial pixels appear, lookup "diamond exit rule" for that) 
-    tex_bounds.uMin = (crop_rect.GetTL().x == 0) ? 0.0f : (crop_rect.GetTL().x + offset_x) / texture_width;
-    tex_bounds.vMin = (crop_rect.GetTL().y == 0) ? 0.0f : (crop_rect.GetTL().y + offset_y) / m_DesktopHeight;
-    tex_bounds.uMax = (crop_rect.GetWidth()  == texture_width)   ? 1.0f : ( ((crop_rect.GetBR().x) - offset_x) / texture_width);
-    tex_bounds.vMax = (crop_rect.GetHeight() == m_DesktopHeight) ? 1.0f : ( ((crop_rect.GetBR().y) - offset_y) / m_DesktopHeight);
-
-    //Offset is nice for actual cropped content, but let's not go out of the 0.0 - 1.0 range
-    tex_bounds.uMin = std::max(0.0f, tex_bounds.uMin);
-    tex_bounds.vMin = std::max(0.0f, tex_bounds.vMin);
-    tex_bounds.uMax = std::min(1.0f, tex_bounds.uMax);
-    tex_bounds.vMax = std::min(1.0f, tex_bounds.vMax);
+        tex_bounds.uMin = (crop_rect.GetTL().x + offset_x) / m_DesktopWidth;
+        tex_bounds.vMin = (crop_rect.GetTL().y + offset_y) / m_DesktopHeight;
+        tex_bounds.uMax = (crop_rect.GetBR().x - offset_x) / m_DesktopWidth;
+        tex_bounds.vMax = (crop_rect.GetBR().y - offset_y) / m_DesktopHeight;
+    }
 
     //Compare old to new bounds to see if a full refresh is required
     vr::VROverlay()->GetOverlayTextureBounds(ovrl_handle, &tex_bounds_prev);

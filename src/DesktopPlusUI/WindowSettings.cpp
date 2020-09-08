@@ -659,7 +659,7 @@ void WindowSettings::UpdateCatOverlay()
 
             int monitor_count = ::GetSystemMetrics(SM_CMONITORS);
 
-            if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection) == 1)
+            if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1)
             {
                 monitor_count = std::max(1, monitor_count - 3); //If the 3 screen assumption doesn't hold up, at least have one button
             }
@@ -1083,26 +1083,18 @@ void WindowSettings::UpdateCatInterface()
     {
         //This stuff is only shown to WMR systems
         //Assume it's WMR if these settings were changed, this way these option will be available in desktop mode if required
-        if ( (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection) != -1) || 
-             (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_combined_desktop) != -1) )
+        if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) != -1)
         {
-            bool ignore_selection = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection) == 1);
-            bool ignore_combined = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_combined_desktop) == 1);
+            bool ignore_vscreens = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1);
 
             ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Windows Mixed Reality");
             ImGui::Columns(2, "ColumnInterfaceWMR", false);
             ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-            if (ImGui::Checkbox("Ignore WMR Virtual Desktops for Desktop Buttons", &ignore_selection))
+            if (ImGui::Checkbox("Ignore WMR Virtual Desktops", &ignore_vscreens))
             {
-                ConfigManager::Get().SetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection, ignore_selection);
-                UIManager::Get()->RepeatFrame();
-            }
-
-            if (ImGui::Checkbox("Ignore WMR Virtual Desktops for the Combined Desktop", &ignore_combined))
-            {
-                ConfigManager::Get().SetConfigInt(configid_int_interface_wmr_ignore_vscreens_combined_desktop, ignore_combined);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_wmr_ignore_vscreens_combined_desktop), ignore_combined);
+                ConfigManager::Get().SetConfigInt(configid_int_interface_wmr_ignore_vscreens, ignore_vscreens);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_wmr_ignore_vscreens), ignore_vscreens);
             }
 
             ImGui::Columns(1);

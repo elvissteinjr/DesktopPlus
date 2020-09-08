@@ -80,7 +80,7 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
 
     int monitor_count = ::GetSystemMetrics(SM_CMONITORS);
 
-    if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection) == 1)
+    if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1)
     {
         monitor_count = std::max(1, monitor_count - 3); //If the 3 screen assumption doesn't hold up, at least have one button
     }

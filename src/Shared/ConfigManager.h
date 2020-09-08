@@ -65,9 +65,8 @@ enum ConfigID_Int
     configid_int_overlay_update_limit_override_fps,
     configid_int_overlay_MAX,
     configid_int_interface_overlay_current_id,
-    configid_int_interface_mainbar_desktop_listing,
-    configid_int_interface_wmr_ignore_vscreens_selection,         //This and the setting below assumes that the WMR virtual screens are the 3 last ones... this can only go well
-    configid_int_interface_wmr_ignore_vscreens_combined_desktop,  //For both, -1 means auto/unset which is the value non-WMR users get
+    configid_int_interface_mainbar_desktop_listing,    
+    configid_int_interface_wmr_ignore_vscreens,             //This assumes the WMR virtual screens are the 3 last ones... (-1 means auto/unset which is the value non-WMR users get)
     configid_int_input_go_home_action_id,
     configid_int_input_go_back_action_id,
     configid_int_input_shortcut01_action_id,
