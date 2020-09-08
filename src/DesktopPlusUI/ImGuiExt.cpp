@@ -16,13 +16,14 @@ namespace ImGui
     {
         //Hacky solution to make right mouse enable text input on the slider while not touching ImGui code or generalizing it as ctrl press
         ImGuiIO& io = ImGui::GetIO();
-        const bool mouse_left_clicked_old = io.MouseClicked[0];
+        const bool mouse_left_clicked_old = io.MouseClicked[ImGuiMouseButton_Left];
         const bool key_ctrl_old = io.KeyCtrl;
 
-        if (io.MouseClicked[1])
+        if (io.MouseDown[ImGuiMouseButton_Right])
         {
-            io.MouseClicked[0] = true;
+            io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
+            io.KeyMods |= ImGuiKeyModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
         }
 
         ImGuiStyle& style = ImGui::GetStyle();
@@ -78,8 +79,12 @@ namespace ImGui
             value = 0.0f;
 
         //Restore hack
-        io.MouseClicked[0] = mouse_left_clicked_old;
+        io.MouseClicked[ImGuiMouseButton_Left] = mouse_left_clicked_old;
         io.KeyCtrl = key_ctrl_old;
+        if (!io.KeyCtrl)
+        {
+            io.KeyMods &= ~ImGuiKeyModFlags_Ctrl;
+        }
 
         return (value != value_old);
     }
@@ -88,15 +93,15 @@ namespace ImGui
     {
         //Hacky solution to make right mouse enable text input on the slider while not touching ImGui code or generalizing it as ctrl press
         ImGuiIO& io = ImGui::GetIO();
-        const bool mouse_left_clicked_old = io.MouseClicked[0];
+        const bool mouse_left_clicked_old = io.MouseClicked[ImGuiMouseButton_Left];
         const bool key_ctrl_old = io.KeyCtrl;
 
-        if (io.MouseDown[1])
+        if (io.MouseDown[ImGuiMouseButton_Right])
         {
-            io.MouseClicked[0] = true;
+            io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
+            io.KeyMods |= ImGuiKeyModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
         }
-
 
         ImGuiStyle& style = ImGui::GetStyle();
 
@@ -137,8 +142,12 @@ namespace ImGui
         ImGui::PopID();
 
         //Restore hack
-        io.MouseClicked[0] = mouse_left_clicked_old;
+        io.MouseClicked[ImGuiMouseButton_Left] = mouse_left_clicked_old;
         io.KeyCtrl = key_ctrl_old;
+        if (!io.KeyCtrl)
+        {
+            io.KeyMods &= ~ImGuiKeyModFlags_Ctrl;
+        }
 
         return (value != value_old);
     }
