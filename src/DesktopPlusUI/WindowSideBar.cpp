@@ -103,6 +103,7 @@ void WindowSideBar::Update(float mainbar_height, unsigned int overlay_id)
     if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
     {
         is_dragmode_enabled = !is_dragmode_enabled;
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragselectmode_show_hidden), false);
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_dragmode_enabled);
     }
 

@@ -23,10 +23,7 @@ void UIManager::DisplayDashboardAppError(const std::string& str) //Ideally this 
 
     if (res == vr::VRMessageOverlayResponse_ButtonPress_1)
     {
-        //Reset later unrestored state
-        ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode, false);
-        ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, false);
-
+        ConfigManager::Get().ResetConfigStateValues();
         ConfigManager::Get().SaveConfigToFile();
 
         STARTUPINFO si = {0};

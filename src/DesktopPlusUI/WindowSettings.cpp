@@ -261,6 +261,7 @@ void WindowSettings::UpdateCatOverlay()
 
             //Activate selection mode
             ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, true);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragselectmode_show_hidden), true);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_selectmode), true);
         }
 
@@ -281,6 +282,7 @@ void WindowSettings::UpdateCatOverlay()
 
             //Deactivate selection mode
             ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, false);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragselectmode_show_hidden), false);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_selectmode), false);
 
             m_OverlayNameBufferNeedsUpdate = false;
@@ -589,6 +591,7 @@ void WindowSettings::UpdateCatOverlay()
                     }
 
                     is_changing_position = true;
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragselectmode_show_hidden), is_changing_position);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_changing_position);
                 }
             }
@@ -1677,10 +1680,7 @@ void WindowSettings::UpdateCatMisc()
 
         if (ImGui::Button("Restart"))
         {
-            //Reset later unrestored state
-            ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode, false);
-            ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, false);
-
+            ConfigManager::Get().ResetConfigStateValues();
             ConfigManager::Get().SaveConfigToFile();
 
             STARTUPINFO si = {0};
@@ -1700,10 +1700,7 @@ void WindowSettings::UpdateCatMisc()
         {
             if (ImGui::Button("Restart Elevated"))
             {
-                //Reset later unrestored state
-                ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode, false);
-                ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, false);
-
+                ConfigManager::Get().ResetConfigStateValues();
                 ConfigManager::Get().SaveConfigToFile();
 
                 STARTUPINFO si = {0};
@@ -1727,11 +1724,9 @@ void WindowSettings::UpdateCatMisc()
 
         if (ImGui::Button("Restart##UI"))
         {
-            //Reset later unrestored state
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), false);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_selectmode), false);
-
+            ConfigManager::Get().ResetConfigStateValues();
             ConfigManager::Get().SaveConfigToFile();
+
             UIManager::Get()->DisableRestartOnExit();
 
             STARTUPINFO si = {0};
@@ -1749,11 +1744,9 @@ void WindowSettings::UpdateCatMisc()
 
         if (ImGui::Button("Restart in Desktop Mode"))
         {
-            //Reset later unrestored state
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), false);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_selectmode), false);
-
+            ConfigManager::Get().ResetConfigStateValues();
             ConfigManager::Get().SaveConfigToFile();
+
             UIManager::Get()->DisableRestartOnExit();
 
             STARTUPINFO si = {0};
@@ -3482,6 +3475,7 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
         bool& is_changing_position = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_overlay_dragmode);
 
         is_changing_position = false;
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragselectmode_show_hidden), is_changing_position);
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_changing_position);
     }
 }

@@ -827,6 +827,12 @@ float& ConfigManager::GetConfigFloatRef(ConfigID_Float id)
     return (id < configid_float_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigFloat[id] : m_ConfigFloat[id];
 }
 
+void ConfigManager::ResetConfigStateValues()
+{
+    std::fill(std::begin(m_ConfigBool) + configid_bool_state_overlay_dragmode,           std::begin(m_ConfigBool) + configid_bool_state_misc_process_elevated,      false);
+    std::fill(std::begin(m_ConfigInt)  + configid_int_state_overlay_current_id_override, std::begin(m_ConfigInt)  + configid_int_state_performance_duplication_fps,    -1);
+}
+
 ActionManager& ConfigManager::GetActionManager()
 {
     return m_ActionManager;

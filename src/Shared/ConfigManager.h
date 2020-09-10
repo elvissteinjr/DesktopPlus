@@ -45,6 +45,7 @@ enum ConfigID_Bool
     configid_bool_misc_auto_focus_scene_app,
     configid_bool_state_overlay_dragmode,
     configid_bool_state_overlay_selectmode,
+    configid_bool_state_overlay_dragselectmode_show_hidden,   //True if mode is from a popup
     configid_bool_state_performance_stats_active,             //Only count when the stats are visible
     configid_bool_state_performance_gpu_copy_active,
     configid_bool_state_misc_process_elevated,                //True if the dashboard application is running with admin privileges
@@ -235,6 +236,7 @@ class ConfigManager
         bool& GetConfigBoolRef(ConfigID_Bool id);
         int& GetConfigIntRef(ConfigID_Int id);
         float& GetConfigFloatRef(ConfigID_Float id);
+        void ResetConfigStateValues();  //Reset all configid_*_state_* settings. Used when restarting a Desktop+ process
 
         ActionManager& GetActionManager();
         std::vector<CustomAction>& GetCustomActions();

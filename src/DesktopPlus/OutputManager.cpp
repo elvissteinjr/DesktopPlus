@@ -2972,12 +2972,8 @@ void OutputManager::AddOverlay(unsigned int base_id)
     OverlayManager::Get().SetCurrentOverlayID(new_id);
     ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, (int)new_id);
 
-    //Automatically reset the matrix to a saner default if it still is zero or origins are room/HMD floor, which reset to putting it next to the base overlay
-    int origin = ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin);
-    if ( (ConfigManager::Get().GetOverlayDetachedTransform().isZero()) || (origin == ovrl_origin_room) || (origin == ovrl_origin_hmd_floor) )
-    {
-        DetachedTransformReset(OverlayManager::Get().GetOverlay(base_id).GetHandle());
-    }
+    //Automatically reset the matrix to a saner default by putting it next to the base overlay in most cases
+    DetachedTransformReset(OverlayManager::Get().GetOverlay(base_id).GetHandle());
 
     ResetCurrentOverlay();
 }
@@ -3052,8 +3048,8 @@ void OutputManager::ApplySettingTransform()
     const bool is_detached = ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached);
     bool should_be_visible = overlay.ShouldBeVisible();
 
-    if ( (!should_be_visible) && (is_detached) && (m_OvrlDashboardActive) && 
-         ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) ) )
+    if ( (!should_be_visible) && (is_detached) && (m_OvrlDashboardActive) && (m_OvrlDashboardActive) && (ConfigManager::Get().GetConfigBool(configid_bool_overlay_enabled)) &&
+         (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragselectmode_show_hidden)) )
     {
         should_be_visible = true;
         overlay.SetOpacity(0.25f);
@@ -3063,11 +3059,10 @@ void OutputManager::ApplySettingTransform()
         overlay.SetOpacity(ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity));
     }
 
-    should_be_visible = overlay.ShouldBeVisible();
-
     if ( (should_be_visible) && (!overlay.IsVisible()) )
     {
         ShowOverlay(overlay.GetID());
+        return;     //ShowOverlay() calls this function so we back out here
     }
     else if ( (!should_be_visible) && (overlay.IsVisible()) )
     {
@@ -3879,129 +3874,127 @@ void OutputManager::DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref
     Matrix4& transform = ConfigManager::Get().GetOverlayDetachedTransform();
     transform.identity(); //Reset to identity
 
-    //Add default offset if applicable
-    switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin))
+    OverlayOrigin overlay_origin = (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin);
+
+    if (ovrl_handle_ref == vr::k_ulOverlayHandleInvalid)
     {
-        case ovrl_origin_room:
-        case ovrl_origin_hmd_floor:
+        ovrl_handle_ref = m_OvrlHandleMain;
+    }
+
+    //Position next to reference if not main overlay or room/HMD Pos/dashboard origin
+    if ((ovrl_handle_ref != m_OvrlHandleMain) || (overlay_origin <= ovrl_origin_dashboard))
+    {
+        vr::HmdMatrix34_t overlay_transform;
+        vr::HmdVector2_t mouse_scale;
+
+        bool ref_overlay_changed = false;
+        float ref_overlay_alpha_orig = 0.0f;
+
+        //GetTransformForOverlayCoordinates() won't work if the reference overlay is not visible, so make it "visible" by showing it with 0% alpha
+        if (!vr::VROverlay()->IsOverlayVisible(ovrl_handle_ref))
         {
-            vr::HmdMatrix34_t overlay_transform;
-            vr::HmdVector2_t mouse_scale;
+            vr::VROverlay()->GetOverlayAlpha(ovrl_handle_ref, &ref_overlay_alpha_orig);
+            vr::VROverlay()->SetOverlayAlpha(ovrl_handle_ref, 0.0f);
+            vr::VROverlay()->ShowOverlay(ovrl_handle_ref);
 
-            bool ref_overlay_changed = false;
-            float ref_overlay_alpha_orig = 0.0f;
+            //Showing overlays and getting coordinates from them has a race condition if it's the first time the overlay is shown
+            //Doesn't seem like it can be truly detected when it's ready, so as cheap as it is, this Sleep() seems to get around the issue
+            ::Sleep(50);
 
-            if (ovrl_handle_ref == vr::k_ulOverlayHandleInvalid)
-            {
-                ovrl_handle_ref = m_OvrlHandleMain;
-            }
-
-            //GetTransformForOverlayCoordinates() won't work if the reference overlay is not visible, so make it "visible" by showing it with 0% alpha
-            if (!vr::VROverlay()->IsOverlayVisible(ovrl_handle_ref))
-            {
-                vr::VROverlay()->GetOverlayAlpha(ovrl_handle_ref, &ref_overlay_alpha_orig);
-                vr::VROverlay()->SetOverlayAlpha(ovrl_handle_ref, 0.0f);
-                vr::VROverlay()->ShowOverlay(ovrl_handle_ref);
-
-                //Showing overlays and getting coordinates from them has a race condition if it's the first time the overlay is shown
-                //Doesn't seem like it can be truly detected when it's ready, so as cheap as it is, this Sleep() seems to get around the issue
-                ::Sleep(50);
-
-                ref_overlay_changed = true;
-            }
-
-            //Get mouse scale for overlay coordinate offset
-            vr::VROverlay()->GetOverlayMouseScale(ovrl_handle_ref, &mouse_scale);
-
-            //Get x-offset multiplier, taking width differences into account
-            float ref_overlay_width;
-            vr::VROverlay()->GetOverlayWidthInMeters(ovrl_handle_ref, &ref_overlay_width);
-            float x_offset_mul = ( (ConfigManager::Get().GetConfigFloat(configid_float_overlay_width) / ref_overlay_width) / 2.0f) + 1.0f;
-
-            //Put it next to the refernce overlay so it can actually be seen
-            vr::HmdVector2_t coordinate_offset = {mouse_scale.v[0] * x_offset_mul, mouse_scale.v[1] / 2.0f};
-            vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_ref, universe_origin, coordinate_offset, &overlay_transform);
-            transform = overlay_transform;
-
-            //Restore reference overlay state if it was changed
-            if (ref_overlay_changed)
-            {
-                vr::VROverlay()->HideOverlay(ovrl_handle_ref);
-                vr::VROverlay()->SetOverlayAlpha(ovrl_handle_ref, ref_overlay_alpha_orig);
-            }
-
-            //Additional offset for ovrl_origin_hmd_floor
-            if (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_hmd_floor)
-            {
-                //DragGetBaseOffsetMatrix() needs detached to be true or else it will return offset for dashboard
-                bool detached_old = ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached); 
-                ConfigManager::Get().SetConfigBool(configid_bool_overlay_detached, true);
-
-                Matrix4 transform_base = DragGetBaseOffsetMatrix();
-                transform_base.invert();
-                transform = transform_base * transform;
-
-                ConfigManager::Get().SetConfigBool(configid_bool_overlay_detached, detached_old);
-            }
-
-            break;
+            ref_overlay_changed = true;
         }
-        case ovrl_origin_dashboard:
-        {
-            OffsetTransformFromSelf(transform, 0.0f, -0.20f, -0.05f);
-            break;
-        }
-        case ovrl_origin_hmd:
-        {
-            OffsetTransformFromSelf(transform, 0.0f, 0.0f, -2.5f);
-            break;
-        }
-        case ovrl_origin_right_hand:
-        {
-            //Set it to a controller component so it doesn't appear right where the laser pointer comes out
-            //There's some doubt about this code, but it seems to work in the end (is there really no better way?)
-            char buffer[vr::k_unMaxPropertyStringSize];
-            vr::VRSystem()->GetStringTrackedDeviceProperty(vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand), 
-                                                           vr::Prop_RenderModelName_String, buffer, vr::k_unMaxPropertyStringSize);
 
-            vr::VRInputValueHandle_t input_value = vr::k_ulInvalidInputValueHandle;
-            vr::VRInput()->GetInputSourceHandle("/user/hand/right", &input_value);
-            vr::RenderModel_ControllerMode_State_t controller_state = {0};
-            vr::RenderModel_ComponentState_t component_state = {0};
+        //Get mouse scale for overlay coordinate offset
+        vr::VROverlay()->GetOverlayMouseScale(ovrl_handle_ref, &mouse_scale);
+
+        //Get x-offset multiplier, taking width differences into account
+        float ref_overlay_width;
+        vr::VROverlay()->GetOverlayWidthInMeters(ovrl_handle_ref, &ref_overlay_width);
+        float x_offset_mul = ( (ConfigManager::Get().GetConfigFloat(configid_float_overlay_width) / ref_overlay_width) / 2.0f) + 1.0f;
+
+        //Put it next to the refernce overlay so it can actually be seen
+        vr::HmdVector2_t coordinate_offset = {mouse_scale.v[0] * x_offset_mul, mouse_scale.v[1] / 2.0f};
+        vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_ref, universe_origin, coordinate_offset, &overlay_transform);
+        transform = overlay_transform;
+
+        //Restore reference overlay state if it was changed
+        if (ref_overlay_changed)
+        {
+            vr::VROverlay()->HideOverlay(ovrl_handle_ref);
+            vr::VROverlay()->SetOverlayAlpha(ovrl_handle_ref, ref_overlay_alpha_orig);
+        }
+
+        //Adapt to base offset for non-room origins
+        if (overlay_origin != ovrl_origin_room)
+        {
+            //DragGetBaseOffsetMatrix() needs detached to be true or else it will return offset for dashboard
+            bool detached_old = ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached); 
+            ConfigManager::Get().SetConfigBool(configid_bool_overlay_detached, true);
+
+            Matrix4 transform_base = DragGetBaseOffsetMatrix();
+            transform_base.invert();
+            transform = transform_base * transform;
+
+            ConfigManager::Get().SetConfigBool(configid_bool_overlay_detached, detached_old);
+        }
+    }
+    else //Otherwise add some default offset to the previously reset to identity value
+    {
+        switch (overlay_origin)
+        {
+            case ovrl_origin_hmd:
+            {
+                OffsetTransformFromSelf(transform, 0.0f, 0.0f, -2.5f);
+                break;
+            }
+            case ovrl_origin_right_hand:
+            {
+                //Set it to a controller component so it doesn't appear right where the laser pointer comes out
+                //There's some doubt about this code, but it seems to work in the end (is there really no better way?)
+                char buffer[vr::k_unMaxPropertyStringSize];
+                vr::VRSystem()->GetStringTrackedDeviceProperty(vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand), 
+                                                               vr::Prop_RenderModelName_String, buffer, vr::k_unMaxPropertyStringSize);
+
+                vr::VRInputValueHandle_t input_value = vr::k_ulInvalidInputValueHandle;
+                vr::VRInput()->GetInputSourceHandle("/user/hand/right", &input_value);
+                vr::RenderModel_ControllerMode_State_t controller_state = {0};
+                vr::RenderModel_ComponentState_t component_state = {0};
             
-            if (vr::VRRenderModels()->GetComponentStateForDevicePath(buffer, vr::k_pch_Controller_Component_HandGrip, input_value, &controller_state, &component_state))
-            {
-                transform = component_state.mTrackingToComponentLocal;
-                transform.rotateX(-90.0f);
-                OffsetTransformFromSelf(transform, 0.0f, -0.1f, 0.0f); //This seems like a good default, at least for Index controllers
+                if (vr::VRRenderModels()->GetComponentStateForDevicePath(buffer, vr::k_pch_Controller_Component_HandGrip, input_value, &controller_state, &component_state))
+                {
+                    transform = component_state.mTrackingToComponentLocal;
+                    transform.rotateX(-90.0f);
+                    OffsetTransformFromSelf(transform, 0.0f, -0.1f, 0.0f); //This seems like a good default, at least for Index controllers
+                }
+
+                break;
             }
+            case ovrl_origin_left_hand:
+            {
+                char buffer[vr::k_unMaxPropertyStringSize];
+                vr::VRSystem()->GetStringTrackedDeviceProperty(vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand), 
+                                                               vr::Prop_RenderModelName_String, buffer, vr::k_unMaxPropertyStringSize);
 
-            break;
-        }
-        case ovrl_origin_left_hand:
-        {
-            char buffer[vr::k_unMaxPropertyStringSize];
-            vr::VRSystem()->GetStringTrackedDeviceProperty(vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand), 
-                                                           vr::Prop_RenderModelName_String, buffer, vr::k_unMaxPropertyStringSize);
-
-            vr::VRInputValueHandle_t input_value = vr::k_ulInvalidInputValueHandle;
-            vr::VRInput()->GetInputSourceHandle("/user/hand/left", &input_value);
-            vr::RenderModel_ControllerMode_State_t controller_state = {0};
-            vr::RenderModel_ComponentState_t component_state = {0};
+                vr::VRInputValueHandle_t input_value = vr::k_ulInvalidInputValueHandle;
+                vr::VRInput()->GetInputSourceHandle("/user/hand/left", &input_value);
+                vr::RenderModel_ControllerMode_State_t controller_state = {0};
+                vr::RenderModel_ComponentState_t component_state = {0};
             
-            if (vr::VRRenderModels()->GetComponentStateForDevicePath(buffer, vr::k_pch_Controller_Component_HandGrip, input_value, &controller_state, &component_state))
-            {
-                transform = component_state.mTrackingToComponentLocal;
-                transform.rotateX(-90.0f);
-                OffsetTransformFromSelf(transform, 0.0f, -0.1f, 0.0f);
-            }
+                if (vr::VRRenderModels()->GetComponentStateForDevicePath(buffer, vr::k_pch_Controller_Component_HandGrip, input_value, &controller_state, &component_state))
+                {
+                    transform = component_state.mTrackingToComponentLocal;
+                    transform.rotateX(-90.0f);
+                    OffsetTransformFromSelf(transform, 0.0f, -0.1f, 0.0f);
+                }
 
-            break;
-        }
-        case ovrl_origin_aux:
-        {
-            OffsetTransformFromSelf(transform, 0.0f, 0.0f, -0.05f);
-            break;
+                break;
+            }
+            case ovrl_origin_aux:
+            {
+                OffsetTransformFromSelf(transform, 0.0f, 0.0f, -0.05f);
+                break;
+            }
+            default: break;
         }
     }
 
