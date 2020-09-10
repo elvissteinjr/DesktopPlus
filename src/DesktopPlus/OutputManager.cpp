@@ -2339,14 +2339,15 @@ bool OutputManager::HandleOpenVREvents()
             }
             case vr::VREvent_DashboardActivated:
             {
+                //Get current HMD y-position, used for getting the overlay position
+                UpdateDashboardHMD_Y();
+
                 for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                 {
                     OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
                     if ((data.ConfigBool[configid_bool_overlay_detached]) && (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_dashboard))
                     {
-                        //Get current HMD y-position, used for getting the overlay position
-                        UpdateDashboardHMD_Y();
                         ShowOverlay(i);
                     }
                     else if ((data.ConfigBool[configid_bool_overlay_detached]) && (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_scene))
@@ -2727,6 +2728,13 @@ bool OutputManager::HandleOpenVREvents()
     m_InputSim.KeyboardTextFinish();
 
     //Update postion if necessary
+    bool dashboard_origin_was_updated = false;
+    if (HasDashboardMoved()) //The dashboard can move from events we can't detect, like putting the HMD back on, so we check manually as a workaround
+    {
+        UpdateDashboardHMD_Y();
+        dashboard_origin_was_updated = true;
+    }
+
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
         OverlayManager::Get().SetCurrentOverlayID(i);
@@ -2754,9 +2762,9 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     DetachedTransformUpdateHMDFloor();
                 }
-                else if (HasDashboardMoved()) //The dashboard can move from events we can't detect, like putting the HMD back on, so we check manually as a workaround
+                else if ( (dashboard_origin_was_updated) && (m_DragModeDeviceID == -1) && (!m_DragGestureActive) && 
+                          ( (i == k_ulOverlayID_Dashboard) || (data.ConfigInt[configid_int_overlay_detached_origin] == ovrl_origin_dashboard) ) )
                 {
-                    UpdateDashboardHMD_Y();
                     ApplySettingTransform();
                 }
 
@@ -3041,8 +3049,7 @@ void OutputManager::ApplySettingTransform()
 
     //Fixup overlay visibility if needed
     //This has to be done first since there seem to be issues with moving invisible overlays
-    bool is_detached = (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached));
-
+    const bool is_detached = ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached);
     bool should_be_visible = overlay.ShouldBeVisible();
 
     if ( (!should_be_visible) && (is_detached) && (m_OvrlDashboardActive) && 
@@ -3068,49 +3075,43 @@ void OutputManager::ApplySettingTransform()
     }
 
     //Update width
-    float width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
-    float width_dashboard;
-    OverlayOrigin overlay_origin;
-
-    if (is_detached)
-    {
-        overlay_origin = (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin);
-    }
-    else
-    {
-        overlay_origin = ovrl_origin_dashboard;
-    }
+    const float width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
+    float height = 0.0f;
+    float dashboard_offset = 0.0f;
+    OverlayOrigin overlay_origin = (is_detached) ? (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) : ovrl_origin_dashboard;
 
     vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle, width);
 
     //Calculate height of the main overlay to set dashboard dummy height correctly
-    const DPRect& crop_rect = overlay.GetValidatedCropRect();
-    int crop_width = crop_rect.GetWidth(), crop_height = crop_rect.GetHeight();
-
-    int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
-
-    if (m_OutputInvalid) //No cropping on invalid output image
+    if ( (overlay.GetID() == k_ulOverlayID_Dashboard) && (should_be_visible) )
     {
-        crop_width  = m_DesktopWidth;
-        crop_height = m_DesktopHeight;
+        const DPRect& crop_rect = overlay.GetValidatedCropRect();
+        int crop_width = crop_rect.GetWidth(), crop_height = crop_rect.GetHeight();
+
+        int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
+
+        if (m_OutputInvalid) //No cropping on invalid output image
+        {
+            crop_width  = m_DesktopWidth;
+            crop_height = m_DesktopHeight;
+        }
+        else if ((mode_3d == ovrl_3Dmode_ou)) //Converted Over-Under changes texture dimensions, so adapt
+        {
+            crop_width  *= 2;
+            crop_height /= 2;
+        }
+
+        //Overlay is twice as tall when SBS3D/OU3D is active
+        if ((mode_3d == ovrl_3Dmode_sbs) || (mode_3d == ovrl_3Dmode_ou))
+            crop_height *= 2;
+
+        height = width * ((float)crop_height / crop_width);
+
+        //Setting the dashboard dummy width/height has some kind of race-condition and getting the transform coordinates below may use the old size
+        //So we instead calculate the offset the height change would cause and change the dummy height last
+        vr::VROverlay()->GetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, &dashboard_offset);
+        dashboard_offset = (dashboard_offset - (height + 0.20f)) / 2.0f;
     }
-    else if ((mode_3d == ovrl_3Dmode_ou)) //Converted Over-Under changes texture dimensions, so adapt
-    {
-        crop_width  *= 2;
-        crop_height /= 2;
-    }
-
-    //Overlay is twice as tall when SBS3D/OU3D is active
-    if ( (mode_3d == ovrl_3Dmode_sbs) || (mode_3d == ovrl_3Dmode_ou) )
-        crop_height *= 2;
-
-    float height = width * ((float)crop_height / crop_width);
-
-    //Setting the dashboard dummy width/height has some kind of race-condition and getting the transform coordinates below may use the old size
-    //So we instead calculate the offset the height change would cause and change the dummy height last
-    float dashboard_offset = 0.0f;
-    vr::VROverlay()->GetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, &dashboard_offset);
-    dashboard_offset = ( dashboard_offset - (height + 0.20f) ) / 2.0f;
 
     //Update Curvature
     float curve = ConfigManager::Get().GetConfigFloat(configid_float_overlay_curvature);
@@ -3133,9 +3134,6 @@ void OutputManager::ApplySettingTransform()
     vr::VROverlay()->SetOverlayCurvature(ovrl_handle, curve);
 
     //Update transform
-    vr::VROverlayTransformType transform_type;
-    vr::VROverlay()->GetOverlayTransformType(ovrl_handle, &transform_type);
-
     vr::HmdMatrix34_t matrix = {0};
     vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
 
@@ -3156,7 +3154,7 @@ void OutputManager::ApplySettingTransform()
         {
             vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, universe_origin, {0.5f, -0.5f}, &matrix); //-0.5 is past bottom end of the overlay, might break someday
 
-            if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
+            if (is_detached)
             {
                 Matrix4 matrix_base = DragGetBaseOffsetMatrix() * ConfigManager::Get().GetOverlayDetachedTransform();
                 matrix = matrix_base.toOpenVR34();
@@ -3229,10 +3227,7 @@ void OutputManager::ApplySettingTransform()
     //Dashboard dummy still needs correct width/height set for the top dashboard bar above it to be visible
     if (overlay.GetID() == k_ulOverlayID_Dashboard)
     {
-        if (is_detached)
-            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, 1.525f); //Fixed height to fit open settings UI
-        else
-            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, height + 0.20f);
+        vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, std::max(height + 0.20f, 1.525f)); //Enforce minimum height to fit open settings UI
     }
 }
 
