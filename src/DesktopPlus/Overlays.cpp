@@ -192,7 +192,7 @@ float Overlay::GetOpacity() const
 
 void Overlay::SetVisible(bool visible)
 {
-    m_Visible = visible; vr::VROverlay()->ShowOverlay(m_OvrlHandle);
+    m_Visible = visible;
     (visible) ? vr::VROverlay()->ShowOverlay(m_OvrlHandle) : vr::VROverlay()->HideOverlay(m_OvrlHandle);
 }
 
@@ -215,6 +215,10 @@ bool Overlay::ShouldBeVisible() const
 
     if (data.ConfigBool[configid_bool_overlay_detached])
     {
+        OutputManager* outmgr = OutputManager::Get();
+        if (outmgr == nullptr)
+            return false;
+
         switch (data.ConfigInt[configid_int_overlay_detached_display_mode])
         {
             case ovrl_dispmode_always:
@@ -224,7 +228,9 @@ bool Overlay::ShouldBeVisible() const
             }
             case ovrl_dispmode_dashboard:
             {
-                should_be_visible = vr::VROverlay()->IsDashboardVisible();
+                //Our method for getting the dashboard transform only works after it has been manually been brought up once OR the Desktop+ tab has been shown
+                //In practice this means we won't be showing dashboard display mode overlays on the initial SteamVR dashboard that is active when booting up
+                should_be_visible = ( (outmgr->HasDashboardBeenActivatedOnce()) && (vr::VROverlay()->IsDashboardVisible()) );
                 break;
             }
             case ovrl_dispmode_scene:
@@ -234,7 +240,7 @@ bool Overlay::ShouldBeVisible() const
             }
             case ovrl_dispmode_dplustab:
             {
-                should_be_visible = ((OutputManager::Get() != nullptr) && (OutputManager::Get()->IsDashboardTabActive()));
+                should_be_visible = (outmgr->IsDashboardTabActive());
                 break;
             }
         }

@@ -83,6 +83,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_DragGestureScaleDistanceStart(0.0f),
     m_DragGestureScaleWidthStart(0.0f),
     m_DragGestureScaleDistanceLast(0.0f),
+    m_DashboardActivatedOnce(false),
     m_DashboardHMD_Y(-100.0f),
     m_MultiGPUTargetDevice(nullptr),
     m_MultiGPUTargetDeviceContext(nullptr),
@@ -267,7 +268,12 @@ void OutputManager::HideOverlay(unsigned int id)
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
-bool OutputManager::IsDashboardTabActive()
+bool OutputManager::HasDashboardBeenActivatedOnce() const
+{
+    return m_DashboardActivatedOnce;
+}
+
+bool OutputManager::IsDashboardTabActive() const
 {
     return m_OvrlDashboardActive;
 }
@@ -2304,6 +2310,7 @@ bool OutputManager::HandleOpenVREvents()
                 if (!m_OvrlDashboardActive)
                 {
                     m_OvrlDashboardActive = true;
+                    m_DashboardActivatedOnce = true;    //Bringing up the Desktop+ also fixes what we work around with by keeping track of this
 
                     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                     {
@@ -2339,18 +2346,29 @@ bool OutputManager::HandleOpenVREvents()
             }
             case vr::VREvent_DashboardActivated:
             {
+                //The dashboard transform we're using basically cannot be trusted to be correct unless the dashboard has been manually brought up once.
+                //On launch, SteamVR activates the dashboard automatically. Sometimes with and sometimes without this event firing.
+                //In that case, the primary dashboard device is the HMD (or sometimes just invalid). That means we can be sure other dashboard device's activations are user-initiated.
+                //We simply don't show dashboard-origin overlays until the dashboard has been properly activated once.
+                //For HMD-only usage, switching to the Desktop+ dashboard tab also works
+                if ( (!m_DashboardActivatedOnce) && (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndex_Hmd)  && 
+                                                    (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid) )
+                {
+                    m_DashboardActivatedOnce = true;
+                }
+
                 //Get current HMD y-position, used for getting the overlay position
                 UpdateDashboardHMD_Y();
 
-                for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+                for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
                 {
                     OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-                    if ((data.ConfigBool[configid_bool_overlay_detached]) && (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_dashboard))
+                    if ((m_DashboardActivatedOnce) && (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_dashboard))
                     {
                         ShowOverlay(i);
                     }
-                    else if ((data.ConfigBool[configid_bool_overlay_detached]) && (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_scene))
+                    else if (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_scene)
                     {
                         HideOverlay(i);
                     }
@@ -3147,15 +3165,15 @@ void OutputManager::ApplySettingTransform()
         }
         case ovrl_origin_dashboard:
         {
-            vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, universe_origin, {0.5f, -0.5f}, &matrix); //-0.5 is past bottom end of the overlay, might break someday
-
             if (is_detached)
             {
                 Matrix4 matrix_base = DragGetBaseOffsetMatrix() * ConfigManager::Get().GetOverlayDetachedTransform();
                 matrix = matrix_base.toOpenVR34();
             }
             else //Attach to dashboard dummy to pretend we have normal dashboard overlay
-            {                
+            {
+                vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, universe_origin, {0.5f, -0.5f}, &matrix); //-0.5 is past bottom end of the overlay, might break someday
+
                 //Y: Align from bottom edge, and add 0.28m base offset to make space for the UI bar 
                 OffsetTransformFromSelf(matrix, ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_right),
                                                 ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_up) + height + dashboard_offset + 0.28,

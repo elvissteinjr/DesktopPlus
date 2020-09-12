@@ -52,7 +52,8 @@ class OutputManager
         void ShowOverlay(unsigned int id);
         void HideOverlay(unsigned int id);
 
-        bool IsDashboardTabActive();
+        bool HasDashboardBeenActivatedOnce() const;
+        bool IsDashboardTabActive() const;
 
         void SetOutputInvalid(); //Handles state when there's no valid output
         bool IsOutputInvalid() const;
@@ -192,6 +193,7 @@ class OutputManager
         float m_DragGestureScaleDistanceLast;
         Matrix4 m_DragGestureRotateMatLast;
 
+        bool m_DashboardActivatedOnce;
         Matrix4 m_DashboardTransformLast;       //This is only used to check if the dashboard has moved from events we can't detect otherwise
         float m_DashboardHMD_Y;                 //The HMDs y-position when the dashboard was activated. Used for dashboard-relative positioning
 
