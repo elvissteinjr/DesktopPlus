@@ -1,6 +1,7 @@
 #include "Actions.h"
 
 #include "ConfigManager.h"
+#include "OverlayManager.h"
 #include "InterprocessMessaging.h"
 
 const char* g_ActionNames[] =
@@ -31,6 +32,11 @@ void CustomAction::ApplyIntFromConfig()
                 {
                     KeyCodes[sub - 2] = (unsigned char)value;
                 }
+                break;
+            }
+            case caction_toggle_overlay_enabled_state:
+            {
+                IntID = value;
                 break;
             }
             default: break;
@@ -108,6 +114,11 @@ void CustomAction::SendUpdateToDashboardApp(int id, HWND window_handle) const
             IPCManager::Get().SendStringToDashboardApp(configid_str_state_action_value_string, StrArg, window_handle);
 
             break;
+        }
+        case caction_toggle_overlay_enabled_state:
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 2);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), IntID);
         }
         default: break;
     }
@@ -188,6 +199,30 @@ void ActionManager::EraseCustomAction(int custom_action_id)
             m_ActionMainBarOrder.erase(it_del);
         }
 
+        //Do the same for every overlay
+        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+        {
+            auto& action_order = OverlayManager::Get().GetConfigData(i).ConfigActionBarOrder;
+
+            auto it_del = action_order.end();
+            for (auto it = action_order.begin(); it != action_order.end(); ++it)
+            {
+                if (it->action_id > action_id)
+                {
+                    it->action_id = (ActionID)(it->action_id - 1);
+                }
+                else if (it->action_id == action_id)
+                {
+                    it_del = it; //Delete it after we're done iterating through this
+                }
+            }
+
+            if (it_del != action_order.end())
+            {
+                action_order.erase(it_del);
+            }
+        }
+
         //Set button binding to none if it was bound before
         if (ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id) == action_id)
         {
@@ -208,6 +243,8 @@ CustomActionFunctionID ActionManager::ParseCustomActionFunctionString(const std:
         return caction_type_string;
     else if (str == "LaunchApplication")
         return caction_launch_application;
+    else if (str == "ToggleOverlayEnabledState")
+        return caction_toggle_overlay_enabled_state;
 
     return caction_press_keys;
 }
@@ -216,10 +253,11 @@ const char* ActionManager::CustomActionFunctionToString(CustomActionFunctionID f
 {
     switch (function_id)
     {
-        case caction_press_keys:         return "PressKeys";
-        case caction_type_string:        return "TypeString";
-        case caction_launch_application: return "LaunchApplication";
-        default:                         return "UnknownFunction";
+        case caction_press_keys:                   return "PressKeys";
+        case caction_type_string:                  return "TypeString";
+        case caction_launch_application:           return "LaunchApplication";
+        case caction_toggle_overlay_enabled_state: return "ToggleOverlayEnabledState";
+        default:                                   return "UnknownFunction";
     }
 }
 

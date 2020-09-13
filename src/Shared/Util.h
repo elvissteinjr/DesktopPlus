@@ -20,7 +20,7 @@ void OffsetTransformFromSelf(Matrix4& matrix, float offset_right, float offset_u
 void TransformLookAt(Matrix4& matrix, const Vector3 pos_target, const Vector3 up = {0.0f, 1.0f, 0.0f});
 vr::TrackedDeviceIndex_t GetFirstVRTracker();
 Matrix4 GetControllerTipMatrix(bool right_hand = true);
-void SetConfigForWMR(int& wmr_ignore_vscreens_selection, int& wmr_ignore_vscreens_combined_desktop);
+void SetConfigForWMR(int& wmr_ignore_vscreens);
 
 template <typename T> T clamp(const T& value, const T& value_min, const T& value_max) 
 {
@@ -38,6 +38,7 @@ void ForceScreenRefresh();
 bool IsProcessElevated();
 bool FileExists(LPCTSTR path);
 void StopProcessByWindowClass(LPCTSTR class_name); //Used to stop the previous instance of the application
+HWND FindMainWindow(DWORD pid);
 
 //Virtual Keycode string mapping
 const char* GetStringForKeyCode(unsigned char keycode);

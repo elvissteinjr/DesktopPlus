@@ -23,7 +23,9 @@ enum TMNGRTexID
     tmtex_icon_desktop_prev,
     tmtex_icon_settings,
     tmtex_icon_keyboard,
-    tmtex_icon_keyboard_small,
+    tmtex_icon_small_close,
+    tmtex_icon_small_move,
+    tmtex_icon_small_actionbar,
     tmtex_icon_temp,         //This is an odd one to hack-ishly load one icon without associating it with anything. The file for this can be set freely by TextureManager
     tmtex_MAX
 };

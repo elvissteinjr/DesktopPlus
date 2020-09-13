@@ -16,6 +16,9 @@ class WindowSettings
         float m_Alpha;
 
         bool m_ActionEditIsNew;
+        bool m_OverlayNameBufferNeedsUpdate;
+        ImGuiStyle m_StyleOrig;
+        bool m_IsStyleScaled;
 
         void UpdateWarnings();
         void UpdateCatOverlay();
@@ -24,13 +27,22 @@ class WindowSettings
         void UpdateCatPerformance();
         void UpdateCatMisc();
 
+        void PushInterfaceScale();
+        void PopInterfaceScale();
+
         bool ButtonKeybind(unsigned char* key_code);
         bool ButtonAction(ActionID& action_id);
-        bool ActionButtonRow(ActionID action_id, int list_pos, int& list_selected_pos);
-        void PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id);
+        void ProfileSelector(bool multi_overlay);
+        void ActionOrderSetting(unsigned int overlay_id = UINT_MAX);
+        void UpdateLimiterSetting(float column_width_0, bool is_override = false);
+        bool ActionButtonRow(ActionID action_id, int list_pos, int& list_selected_pos, unsigned int overlay_id = UINT_MAX);
+        bool PopupCurrentOverlayManage();
+        void PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id, bool multi_overlay);
         void PopupActionEdit(CustomAction& action, int id);
         void PopupOverlayDetachedPositionChange();
         bool PopupIconSelect(std::string& filename);
+
+        void HighlightOverlay(int overlay_id);
 
     public:
         WindowSettings();

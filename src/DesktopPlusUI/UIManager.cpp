@@ -7,6 +7,7 @@
 
 #include "InterprocessMessaging.h"
 #include "ConfigManager.h"
+#include "OverlayManager.h"
 #include "Util.h"
 
 #include "WindowKeyboardHelper.h"
@@ -22,6 +23,7 @@ void UIManager::DisplayDashboardAppError(const std::string& str) //Ideally this 
 
     if (res == vr::VRMessageOverlayResponse_ButtonPress_1)
     {
+        ConfigManager::Get().ResetConfigStateValues();
         ConfigManager::Get().SaveConfigToFile();
 
         STARTUPINFO si = {0};
@@ -50,10 +52,14 @@ UIManager::UIManager(bool desktop_mode) : m_WindowHandle(nullptr),
                                           m_OpenVRLoaded(false),
                                           m_NoRestartOnExit(false),
                                           m_UIScale(1.0f),
+                                          m_FontCompact(nullptr),
+                                          m_FontLarge(nullptr),
                                           m_LowCompositorRes(false),
                                           m_LowCompositorQuality(false),
+                                          m_OverlayErrorLast(vr::VROverlayError_None),
                                           m_ElevatedTaskSetUp(false),
                                           m_OvrlHandle(vr::k_ulOverlayHandleInvalid),
+                                          m_OvrlHandleFloatingUI(vr::k_ulOverlayHandleInvalid),
                                           m_OvrlHandleKeyboardHelper(vr::k_ulOverlayHandleInvalid),
                                           m_OvrlVisible(false),
                                           m_OvrlVisibleKeyboardHelper(false),
@@ -146,33 +152,45 @@ vr::EVRInitError UIManager::InitOverlay()
 
         if (m_OvrlHandle != vr::k_ulOverlayHandleInvalid)
         {
-            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandle, 2.75f);
+            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandle, OVERLAY_WIDTH_METERS_DASHBOARD_UI);
 
-            //Init Keyboard Helper overlay
+            //Init Floating UI and Keyboard Helper overlay
+            vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusUIFloating", "Desktop+ Floating UI", &m_OvrlHandleFloatingUI);
             vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusKeyboardHelper", "Desktop+ Keyboard Helper", &m_OvrlHandleKeyboardHelper);
+            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleFloatingUI, OVERLAY_WIDTH_METERS_DASHBOARD_UI);
+            vr::VROverlay()->SetOverlayAlpha(m_OvrlHandleFloatingUI, 0.0f);
 
             //Set input parameters
             vr::VROverlay()->SetOverlayFlag(m_OvrlHandle, vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
 
             vr::HmdVector2_t mouse_scale;
-            mouse_scale.v[0] = OVERLAY_WIDTH;
-            mouse_scale.v[1] = OVERLAY_HEIGHT;
+            mouse_scale.v[0] = TEXSPACE_TOTAL_WIDTH;
+            mouse_scale.v[1] = TEXSPACE_TOTAL_HEIGHT;
 
             vr::VROverlay()->SetOverlayMouseScale(m_OvrlHandle, &mouse_scale);
             vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandle, vr::VROverlayInputMethod_Mouse);
+            vr::VROverlay()->SetOverlayMouseScale(m_OvrlHandleFloatingUI, &mouse_scale);
+            vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleFloatingUI, vr::VROverlayInputMethod_Mouse);
+            vr::VROverlay()->SetOverlaySortOrder(m_OvrlHandleFloatingUI, 1);
             vr::VROverlay()->SetOverlayMouseScale(m_OvrlHandleKeyboardHelper, &mouse_scale);
             vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleKeyboardHelper, vr::VROverlayInputMethod_Mouse);
 
-            //Setup texture bounds for both overlays. The keyboard helper is rendered on the same texture as a form of discount multi-viewport rendering
+            //Setup texture bounds for all overlays
+            //The floating UI/keyboard helper is rendered on the same texture as a form of discount multi-viewport rendering
+            float spacing_size = (float)TEXSPACE_VERTICAL_SPACING / TEXSPACE_TOTAL_HEIGHT;
+            float texel_offset = 0.5f / TEXSPACE_TOTAL_HEIGHT;
             vr::VRTextureBounds_t bounds;
             bounds.uMin = 0.0f;
             bounds.vMin = 0.0f;
             bounds.uMax = 1.0f;
-            bounds.vMax = (float)MAIN_SURFACE_HEIGHT / OVERLAY_HEIGHT;
+            bounds.vMax = ((float)TEXSPACE_DASHBOARD_UI_HEIGHT / TEXSPACE_TOTAL_HEIGHT) + texel_offset;
             vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandle, &bounds);
-            bounds.vMin = bounds.vMax;
+            bounds.vMin = bounds.vMax + spacing_size;
+            bounds.vMax = bounds.vMax + spacing_size + ((float)TEXSPACE_FLOATING_UI_HEIGHT / TEXSPACE_TOTAL_HEIGHT);
+            vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleFloatingUI, &bounds);
+            bounds.vMin = bounds.vMax + spacing_size;
             bounds.vMax = 1.0f;
-            bounds.uMax = KEYBOARD_HELPER_SCALE;
+            bounds.uMax = TEXSPACE_KEYBOARD_HELPER_SCALE;
             vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleKeyboardHelper, &bounds);
         }
     }
@@ -183,8 +201,7 @@ vr::EVRInitError UIManager::InitOverlay()
     UpdateOverlayPixelSize();
 
     //Check if it's a WMR system and set up for that if needed
-    SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens_selection), 
-                    ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens_combined_desktop));
+    SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens));
 
     if ((ovrl_error == vr::VROverlayError_None))
         return vr::VRInitError_None;
@@ -202,6 +219,15 @@ void UIManager::HandleIPCMessage(const MSG& msg)
         //Arbitrary size limit to prevent some malicous applications from sending bad data
         if ( (pcds->dwData < configid_str_MAX) && (pcds->cbData > 0) && (pcds->cbData <= 4096) ) 
         {
+            //Apply overlay id override if needed
+            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+            int overlay_override_id = ConfigManager::Get().GetConfigInt(configid_int_state_overlay_current_id_override);
+
+            if (overlay_override_id != -1)
+            {
+                OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
+            }
+
             std::string copystr((char*)pcds->lpData, pcds->cbData); //We rely on the data length. The data is sent without the NUL byte
 
             ConfigID_String str_id = (ConfigID_String)pcds->dwData;
@@ -224,6 +250,12 @@ void UIManager::HandleIPCMessage(const MSG& msg)
                     DisplayDashboardAppError(copystr);
                     break;
                 }
+            }
+
+            //Restore overlay id override
+            if (overlay_override_id != -1)
+            {
+                OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
             }
         }
 
@@ -248,11 +280,25 @@ void UIManager::HandleIPCMessage(const MSG& msg)
                     ImGui_ImplOpenVR_InputOnVRKeyboardClosed();
                     break;
                 }
+                case ipcact_overlay_creation_error:
+                {
+                    m_OverlayErrorLast = (vr::VROverlayError)msg.lParam;
+                    break;
+                }
             }
             break;
         }
         case ipcmsg_set_config:
         {
+            //Apply overlay id override if needed
+            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+            int overlay_override_id = ConfigManager::Get().GetConfigInt(configid_int_state_overlay_current_id_override);
+
+            if (overlay_override_id != -1)
+            {
+                OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
+            }
+
             if (msg.wParam < configid_bool_MAX)
             {
                 ConfigID_Bool bool_id = (ConfigID_Bool)msg.wParam;
@@ -262,11 +308,27 @@ void UIManager::HandleIPCMessage(const MSG& msg)
             {
                 ConfigID_Int int_id = (ConfigID_Int)(msg.wParam - configid_bool_MAX);
                 ConfigManager::Get().SetConfigInt(int_id, (int)msg.lParam);
+
+                switch (int_id)
+                {
+                    case configid_int_interface_overlay_current_id:
+                    {
+                        OverlayManager::Get().SetCurrentOverlayID((unsigned int)msg.lParam);
+                        current_overlay_old = (unsigned int)msg.lParam;
+                    }
+                    default: break;
+                }
             }
             else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX)
             {
                 ConfigID_Float float_id = (ConfigID_Float)(msg.wParam - configid_bool_MAX - configid_int_MAX);
                 ConfigManager::Get().SetConfigFloat(float_id, *(float*)&msg.lParam);    //Interpret lParam as a float variable
+            }
+
+            //Restore overlay id override
+            if (overlay_override_id != -1)
+            {
+                OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
             }
 
             break;
@@ -292,6 +354,16 @@ void UIManager::OnExit()
     }
 }
 
+DashboardUI& UIManager::GetDashboardUI()
+{
+    return m_DashboardUI;
+}
+
+FloatingUI& UIManager::GetFloatingUI()
+{
+    return m_FloatingUI;
+}
+
 void UIManager::SetWindowHandle(HWND handle)
 {
     m_WindowHandle = handle;
@@ -305,6 +377,11 @@ HWND UIManager::GetWindowHandle() const
 vr::VROverlayHandle_t UIManager::GetOverlayHandle() const
 {
     return m_OvrlHandle;
+}
+
+vr::VROverlayHandle_t UIManager::GetOverlayHandleFloatingUI() const
+{
+    return m_OvrlHandleFloatingUI;
 }
 
 vr::VROverlayHandle_t UIManager::GetOverlayHandleKeyboardHelper() const
@@ -358,6 +435,22 @@ float UIManager::GetUIScale() const
     return m_UIScale;
 }
 
+void UIManager::SetFonts(ImFont* font_compact, ImFont* font_large)
+{
+    m_FontCompact = font_compact;
+    m_FontLarge = font_large;
+}
+
+ImFont* UIManager::GetFontCompact() const
+{
+    return m_FontCompact;
+}
+
+ImFont* UIManager::GetFontLarge() const
+{
+    return m_FontLarge;
+}
+
 bool UIManager::IsCompositorResolutionLow() const
 {
     return m_LowCompositorRes;
@@ -370,8 +463,21 @@ bool UIManager::IsCompositorRenderQualityLow() const
 
 void UIManager::UpdateCompositorRenderQualityLow()
 {
+    if (!m_OpenVRLoaded)
+        return;
+
     int compositor_quality = vr::VRSettings()->GetInt32("steamvr", "overlayRenderQuality_2");
     m_LowCompositorQuality = ((compositor_quality > 0) && (compositor_quality < 3)); //0 is Auto (not sure if the result of that is accessible), 3 is High
+}
+
+vr::EVROverlayError UIManager::GetOverlayErrorLast() const
+{
+    return m_OverlayErrorLast;
+}
+
+void UIManager::ResetOverlayErrorLast()
+{
+    m_OverlayErrorLast = vr::VROverlayError_None;
 }
 
 bool UIManager::IsElevatedTaskSetUp() const
@@ -400,8 +506,8 @@ void UIManager::UpdateOverlayPixelSize()
     //If OpenVR was loaded, get it from the overlay
     if (m_OpenVRLoaded)
     {
-        vr::VROverlayHandle_t ovrl_handle_dplus;
-        vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlus", &ovrl_handle_dplus);
+        //Looks confusing at first, but the dashboard overlay either has the mouse scale of the desktop every overlay is set to, or the combined desktop's
+        vr::VROverlayHandle_t ovrl_handle_dplus = OverlayManager::Get().FindOverlayHandle(k_ulOverlayID_Dashboard);
 
         if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
         {
@@ -414,12 +520,31 @@ void UIManager::UpdateOverlayPixelSize()
     }
     else //What we get here may not reflect the real values, but let's do some good guesswork
     {
-        int& desktop_id = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_desktop_id);
+        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+        {
+            OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-        if (desktop_id >= GetSystemMetrics(SM_CMONITORS))
-            desktop_id = -1;
+            if (data.ConfigInt[configid_int_overlay_desktop_id] == -2)  //This should usually be handled by the dashboard app, but it's not here, so
+            {
+                data.ConfigInt[configid_int_overlay_desktop_id] = 0;
+                m_OvrlPixelWidth  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+                m_OvrlPixelHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
-        if (desktop_id == -1)   //All desktops, get virtual screen dimensions
+                DEVMODE mode = GetDevmodeForDisplayID(0);
+
+                if (mode.dmSize != 0)
+                {
+                    data.ConfigInt[configid_int_overlay_crop_x] = 0;
+                    data.ConfigInt[configid_int_overlay_crop_y] = 0;
+                    data.ConfigInt[configid_int_overlay_crop_width]  = mode.dmPelsWidth;
+                    data.ConfigInt[configid_int_overlay_crop_height] = mode.dmPelsHeight;
+                }
+            }
+        }
+
+        int desktop_id = OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigInt[configid_int_overlay_desktop_id];
+
+        if ( (desktop_id == -1) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )  //All desktops, get virtual screen dimensions
         {
             m_OvrlPixelWidth  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
             m_OvrlPixelHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
@@ -444,6 +569,8 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
 
     if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
     {
+        const OverlayConfigData& config_data = OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard);
+
         //Imagine if SetOverlayTransformOverlayRelative() actually worked
         vr::HmdMatrix34_t matrix;
         vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
@@ -451,10 +578,10 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
         vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_dplus, origin, { 0.5f, 0.0f }, &matrix);
 
         //If the desktop overlay is set to be closer than normal and not far behind the user either, move the UI along so it stays usable
-        const float& dplus_forward = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_forward);
+        const float& dplus_forward = config_data.ConfigFloat[configid_float_overlay_offset_forward];
         float distance_forward;
 
-        if ( (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) && (dplus_forward > 0.0f) && (dplus_forward <= 2.5f) ) 
+        if ( (!config_data.ConfigBool[configid_bool_overlay_detached]) && (dplus_forward > 0.0f) && (dplus_forward <= 2.5f) ) 
             distance_forward = dplus_forward;
         else
             distance_forward = 0.0f;
@@ -464,9 +591,9 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
         OffsetTransformFromSelf(matrix, 0.0f, 0.75f, 0.025f + distance_forward);
 
         //Update Curvature
-        float curve = ConfigManager::Get().GetConfigFloat(configid_float_overlay_curvature);
+        float curve = config_data.ConfigFloat[configid_float_overlay_curvature];
 
-        if ( (curve == -1.0f) || (ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached)) ) //-1 is auto, match the dashboard (also do it when detached)
+        if ( (curve == -1.0f) || (config_data.ConfigBool[configid_bool_overlay_detached]) ) //-1 is auto, match the dashboard (also do it when detached)
         {
             vr::VROverlayHandle_t system_dashboard;
             vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
@@ -483,12 +610,33 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
         else
         {
             //Adjust curve value used for UI by the overlay width difference so it's curved according to its size
-            curve *= (2.75f / ConfigManager::Get().GetConfigFloat(configid_float_overlay_width));
+            curve *= (2.75f / config_data.ConfigFloat[configid_float_overlay_width]);
+        }
+
+        //Try to reduce flicker by blocking abrupt Y movements (unless X has changed as well, which we assume to happen on real movement)
+        //The flicker itself comes from a race condition of the UI possibly getting the overlay transform while it's changing width and position, hard to predict
+        bool anti_flicker_can_move = false;
+        float anti_flicker_x = matrix.m[0][3];
+        float anti_flicker_y = matrix.m[1][3];
+        static float anti_flicker_x_last = anti_flicker_x;
+        static float anti_flicker_y_last = anti_flicker_y;
+        static int anti_flicker_block_count = 0;
+
+        if ( (anti_flicker_x != anti_flicker_x_last) || (fabs(anti_flicker_y - anti_flicker_y_last) < 0.001f) || (anti_flicker_block_count >= 2) )
+        {
+            anti_flicker_can_move = true;
+            anti_flicker_x_last = anti_flicker_x;
+            anti_flicker_y_last = anti_flicker_y;
+            anti_flicker_block_count = 0;
+        }
+        else
+        {
+            anti_flicker_block_count++;
         }
 
         //Only apply when left mouse is not held down, prevent moving it around while dragging or holding a widget modifying the forward distance value
         //Same goes for the curvature
-        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        if ( (anti_flicker_can_move) && (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) )
         {
             vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandle, origin, &matrix);
             vr::VROverlay()->SetOverlayCurvature(m_OvrlHandle, curve);
@@ -520,7 +668,7 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
 
     //Position and show keyboard helper if active
     if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_helper_enabled)) &&
-         (ConfigManager::Get().GetConfigBool(configid_bool_state_keyboard_visible_for_dashboard)) )
+         (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) >= (int)k_ulOverlayID_Dashboard) )
     {
         vr::VROverlayHandle_t ovrl_handle_keyboard;
         vr::VROverlay()->FindOverlay("system.keyboard", &ovrl_handle_keyboard);
@@ -541,7 +689,7 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
                 vr::VROverlay()->ShowOverlay(m_OvrlHandleKeyboardHelper);
                 m_OvrlVisibleKeyboardHelper = true;
             }
-            else
+            else if (m_OvrlVisibleKeyboardHelper)
             {
                 vr::VROverlay()->HideOverlay(m_OvrlHandleKeyboardHelper);
                 window_kdbhelper.Hide();
@@ -549,7 +697,7 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
             }
         }
     }
-    else if (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleKeyboardHelper)) //Hide when disabled and still visible
+    else if ( (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleKeyboardHelper)) && (m_OvrlVisibleKeyboardHelper) ) //Hide when disabled and still visible
     {
         vr::VROverlay()->HideOverlay(m_OvrlHandleKeyboardHelper);
         window_kdbhelper.Hide();

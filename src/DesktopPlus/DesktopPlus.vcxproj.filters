@@ -32,6 +32,10 @@
       <Filter>Shared</Filter>
     </ClCompile>
     <ClCompile Include="OUtoSBSConverter.cpp" />
+    <ClCompile Include="Overlays.cpp" />
+    <ClCompile Include="..\Shared\OverlayManager.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -70,6 +74,10 @@
       <Filter>Shared</Filter>
     </ClInclude>
     <ClInclude Include="OUtoSBSConverter.h" />
+    <ClInclude Include="Overlays.h" />
+    <ClInclude Include="..\Shared\OverlayManager.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DesktopPlus.rc" />

@@ -21,21 +21,31 @@
 enum ConfigID_Bool
 {
     configid_bool_overlay_detached,
+    configid_bool_overlay_enabled,
     configid_bool_overlay_3D_swapped,
     configid_bool_overlay_gazefade_enabled,
+    configid_bool_overlay_input_enabled,
+    configid_bool_overlay_floatingui_enabled,
+    configid_bool_overlay_floatingui_desktops_enabled,
+    configid_bool_overlay_actionbar_enabled,
+    configid_bool_overlay_actionbar_order_use_global,
+    configid_bool_overlay_MAX,
     configid_bool_interface_no_ui,
+    configid_bool_interface_large_style,
     configid_bool_interface_mainbar_desktop_include_all,
     configid_bool_interface_warning_compositor_res_hidden,
     configid_bool_interface_warning_compositor_quality_hidden,
     configid_bool_interface_warning_process_elevation_hidden,
     configid_bool_performance_rapid_laser_pointer_updates,
-    configid_bool_input_enabled,
+    configid_bool_performance_single_desktop_mirroring,
     configid_bool_input_mouse_render_cursor,
     configid_bool_input_mouse_render_intersection_blob,
     configid_bool_input_mouse_hmd_pointer_override,
     configid_bool_input_keyboard_helper_enabled,
+    configid_bool_misc_auto_focus_scene_app,
     configid_bool_state_overlay_dragmode,
-    configid_bool_state_keyboard_visible_for_dashboard,
+    configid_bool_state_overlay_selectmode,
+    configid_bool_state_overlay_dragselectmode_show_hidden,   //True if mode is from a popup
     configid_bool_state_performance_stats_active,             //Only count when the stats are visible
     configid_bool_state_performance_gpu_copy_active,
     configid_bool_state_misc_process_elevated,                //True if the dashboard application is running with admin privileges
@@ -44,7 +54,7 @@ enum ConfigID_Bool
 
 enum ConfigID_Int
 {
-    configid_int_overlay_desktop_id,
+    configid_int_overlay_desktop_id,                              //-1 is combined desktop, -2 is a default value that initializes crop to desktop 0
     configid_int_overlay_crop_x,
     configid_int_overlay_crop_y,
     configid_int_overlay_crop_width,
@@ -52,9 +62,12 @@ enum ConfigID_Int
     configid_int_overlay_3D_mode,
     configid_int_overlay_detached_display_mode,
     configid_int_overlay_detached_origin,
-    configid_int_interface_mainbar_desktop_listing,
-    configid_int_interface_wmr_ignore_vscreens_selection,         //This and the setting below assumes that the WMR virtual screens are the 3 last ones... this can only go well
-    configid_int_interface_wmr_ignore_vscreens_combined_desktop,  //For both, -1 means auto/unset which is the value non-WMR users get
+    configid_int_overlay_update_limit_override_mode,
+    configid_int_overlay_update_limit_override_fps,
+    configid_int_overlay_MAX,
+    configid_int_interface_overlay_current_id,
+    configid_int_interface_mainbar_desktop_listing,    
+    configid_int_interface_wmr_ignore_vscreens,             //This assumes the WMR virtual screens are the 3 last ones... (-1 means auto/unset which is the value non-WMR users get)
     configid_int_input_go_home_action_id,
     configid_int_input_go_back_action_id,
     configid_int_input_shortcut01_action_id,
@@ -63,10 +76,12 @@ enum ConfigID_Int
     configid_int_input_mouse_dbl_click_assist_duration_ms,
     configid_int_performance_update_limit_mode,
     configid_int_performance_update_limit_fps,              //This is the enum ID, not the actual number. See ApplySettingUpdateLimiter() code for more info
+    configid_int_state_overlay_current_id_override,         //This is used to send config changes to overlays which aren't the current, mainly to avoid the UI switching around (-1 is disabled)
     configid_int_state_action_current,                      //Action changes are synced through a series of individually sent state settings. This one sets the target custom action (ID start 0)
     configid_int_state_action_current_sub,                  //Target variable. 0 = Name, 1 = Function Type. Remaining values depend on the function. Not the cleanest way but easier
     configid_int_state_action_value_int,                    //to set up with existing IPC stuff
     configid_int_state_mouse_dbl_click_assist_duration_ms,  //Internally used value, which will replace -1 with the current double-click delay automatically
+    configid_int_state_keyboard_visible_for_overlay_id,     //-1 = None
     configid_int_state_performance_duplication_fps,
 	configid_int_MAX
 };
@@ -81,6 +96,8 @@ enum ConfigID_Float
     configid_float_overlay_offset_forward,
     configid_float_overlay_gazefade_distance,
     configid_float_overlay_gazefade_rate,
+    configid_float_overlay_update_limit_override_ms,
+    configid_float_overlay_MAX,
     configid_float_input_keyboard_detached_size,
     configid_float_input_detached_interaction_max_distance,
     configid_float_interface_last_vr_ui_scale,
@@ -156,6 +173,19 @@ enum UpdateLimitFPS
     update_limit_fps_50
 };
 
+class OverlayConfigData
+{
+    public:
+        std::string ConfigNameStr;
+        bool ConfigBool[configid_bool_overlay_MAX];
+        int ConfigInt[configid_int_overlay_MAX];
+        float ConfigFloat[configid_float_overlay_MAX];
+        Matrix4 ConfigDetachedTransform[ovrl_origin_MAX];
+        std::vector<ActionMainBarOrderData> ConfigActionBarOrder;
+
+        OverlayConfigData();
+};
+
 class ConfigManager
 {
 	private:
@@ -170,8 +200,10 @@ class ConfigManager
         std::string m_ApplicationPath;
         std::string m_ExecutableName;
 
-        void LoadOverlayProfile(Ini& config);
-        void SaveOverlayProfile(Ini& config);
+        void LoadOverlayProfile(const Ini& config, unsigned int overlay_id = UINT_MAX);
+        void SaveOverlayProfile(Ini& config, unsigned int overlay_id = UINT_MAX);
+        void LoadMultiOverlayProfile(const Ini& config, bool clear_existing_overlays = true);
+        void SaveMultiOverlayProfile(Ini& config);
 
 	public:
 		ConfigManager();
@@ -180,11 +212,13 @@ class ConfigManager
         bool LoadConfigFromFile();
         void SaveConfigToFile();
 
-        void LoadOverlayProfileDefault();
+        void LoadOverlayProfileDefault(bool multi_overlay = false);
         bool LoadOverlayProfileFromFile(const std::string filename);
         void SaveOverlayProfileToFile(const std::string filename);
-        bool DeleteOverlayProfile(const std::string filename);
-        std::vector<std::string> GetOverlayProfileList();
+        bool LoadMultiOverlayProfileFromFile(const std::string filename, bool clear_existing_overlays = true);
+        void SaveMultiOverlayProfileToFile(const std::string filename);
+        bool DeleteOverlayProfile(const std::string filename, bool multi_overlay = false);
+        std::vector<std::string> GetOverlayProfileList(bool multi_overlay = false);
 
         static WPARAM GetWParamForConfigID(ConfigID_Bool id);
         static WPARAM GetWParamForConfigID(ConfigID_Int id);
@@ -202,6 +236,7 @@ class ConfigManager
         bool& GetConfigBoolRef(ConfigID_Bool id);
         int& GetConfigIntRef(ConfigID_Int id);
         float& GetConfigFloatRef(ConfigID_Float id);
+        void ResetConfigStateValues();  //Reset all configid_*_state_* settings. Used when restarting a Desktop+ process
 
         ActionManager& GetActionManager();
         std::vector<CustomAction>& GetCustomActions();

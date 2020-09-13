@@ -18,6 +18,7 @@ namespace Gdiplus
 #include "ConfigManager.h"
 #include "Util.h"
 #include "UIManager.h"
+#include "OverlayManager.h"
 #include "imgui_impl_dx11_openvr.h"
 
 const wchar_t* TextureManager::s_TextureFilenames[] =
@@ -34,7 +35,9 @@ const wchar_t* TextureManager::s_TextureFilenames[] =
     L"images/icons/desktop_previous.png",
     L"images/icons/settings.png",
     L"images/icons/keyboard.png",
-    L"images/icons/keyboard_small.png",
+    L"images/icons/small_close.png",
+    L"images/icons/small_move.png",
+    L"images/icons/small_actionbar.png",
     L"",                                    //tmtex_icon_temp, blank
 };
 
@@ -86,42 +89,77 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         builder.AddText(str.c_str());
     }
 
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i) //And overlay names
+    {
+        builder.AddText(OverlayManager::Get().GetConfigData(i).ConfigNameStr.c_str());
+    }
+
     builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
     builder.BuildRanges(&ranges);
 
-    ImFontConfig config;
-    config.MergeMode = true;
+    ImFontConfig config_compact;
+    ImFontConfig config_large;
+    config_compact.MergeMode = true;
+    config_large.MergeMode = true;
+    ImFontConfig* config = &config_compact;
 
     //Try to load fonts
     ImFont* font = nullptr;
+    ImFont* font_compact = nullptr;
+    ImFont* font_large = nullptr;
+    float font_base_size = 32.0f;
+    bool load_large_font = ( (ConfigManager::Get().GetConfigBool(configid_bool_interface_large_style)) && (!UIManager::Get()->IsInDesktopMode()) );
 
-    //AddFontFromFileTTF asserts when failing to load, so check for existance, though it's not really an issue in release mode
-    if (FileExists(L"C:\\Windows\\Fonts\\segoeui.ttf"))
+    //Loop to do the same for the large font if needed
+    for (;;)
     {
-        font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", 32.0f * UIManager::Get()->GetUIScale(), nullptr, ranges.Data);
-    }
+        //AddFontFromFileTTF asserts when failing to load, so check for existence, though it's not really an issue in release mode
+        if (FileExists(L"C:\\Windows\\Fonts\\segoeui.ttf"))
+        {
+            font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", font_base_size * UIManager::Get()->GetUIScale(), nullptr, ranges.Data);
+        }
 
-    if (font != nullptr)
-    {
-        font->DisplayOffset.y = -1; //Set offset to make it not look so bad
+        if (font != nullptr)
+        {
+            font->DisplayOffset.y = -1; //Set offset to make it not look so bad
 
-        //Segoe UI doesn't have any CJK, use some fallbacks (loading this is actually pretty fast)
-        if (FileExists(L"C:\\Windows\\Fonts\\msgothic.ttc"))
-            io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\msgothic.ttc", 32.0f * UIManager::Get()->GetUIScale(), &config, ranges.Data);
+            //Segoe UI doesn't have any CJK, use some fallbacks (loading this is actually pretty fast)
+            if (FileExists(L"C:\\Windows\\Fonts\\msgothic.ttc"))
+                io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\msgothic.ttc", font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);
 
-        if (FileExists(L"C:\\Windows\\Fonts\\malgun.ttf"))
-            io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\malgun.ttf", 32.0f * UIManager::Get()->GetUIScale(), &config, ranges.Data);
+            if (FileExists(L"C:\\Windows\\Fonts\\malgun.ttf"))
+                io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\malgun.ttf", font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);
 
-        if (FileExists(L"C:\\Windows\\Fonts\\msyh.ttc"))
-            io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\msyh.ttc", 32.0f * UIManager::Get()->GetUIScale(), &config, ranges.Data);
-        //Also add some symbol support at least... yeah this is far from comprehensive all in all but should cover most uses
-        if (FileExists(L"C:\\Windows\\Fonts\\seguisym.ttf"))
-            io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\seguisym.ttf", 32.0f * UIManager::Get()->GetUIScale(), &config, ranges.Data);
-    }
-    else
-    {
-        //Though we have the default as fallback if it isn't somehow
-        font = io.Fonts->AddFontDefault();
+            if (FileExists(L"C:\\Windows\\Fonts\\msyh.ttc"))
+                io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\msyh.ttc", font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);
+            //Also add some symbol support at least... yeah this is far from comprehensive all in all but should cover most uses
+            if (FileExists(L"C:\\Windows\\Fonts\\seguisym.ttf"))
+                io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\seguisym.ttf", font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);
+        }
+        else
+        {
+            //Though we have the default as fallback if it isn't somehow
+            font = io.Fonts->AddFontDefault();
+        }
+
+        if (font_compact == nullptr)
+        {
+            font_compact = font;
+        }
+        else
+        {
+            font_large = font;
+        }
+
+        if ( (load_large_font) && (font_large == nullptr) )
+        {
+            font_base_size *= 1.5f;
+            config = &config_large;
+        }
+        else
+        {
+            break;
+        }
     }
 
     //Initialize GDI+.
@@ -131,6 +169,8 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     {
         io.Fonts->Build();          //Still build the font so we can have text at least
         io.Fonts->ClearInputData(); //We don't need to keep this around, reduces RAM use a lot
+
+        UIManager::Get()->SetFonts(font_compact, font_large);
 
         return false;       //Everything below will fail as well if this did
     }
@@ -289,6 +329,8 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
 
     //We don't need to keep this around, reduces RAM use a lot
     io.Fonts->ClearInputData();
+
+    UIManager::Get()->SetFonts(font_compact, font_large);
 
     return all_ok;
 }

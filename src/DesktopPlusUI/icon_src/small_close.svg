@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   height="32"
+   width="32"
+   version="1.1"
+   viewBox="0 0 32 32"
+   id="svg2">
+  <defs
+     id="defs12" />
+  <g
+     transform="translate(0,-1020.4)"
+     id="layer1">
+    <g
+       style="fill:none;stroke:#ffffff;stroke-width:133.86999512;stroke-linecap:round"
+       transform="matrix(0.05201719,0,0,0.05201719,-2.9960656,1009.0386)"
+       id="g3763">
+      <path
+         id="rect824"
+         d="m 180.31373,276.1095 c -3.42361,0 -6.84578,3.40361 -13.69301,10.25085 l -41.07902,41.07902 c -13.69446,13.69447 -13.69446,13.69153 0,27.38601 L 296.74211,525.98796 125.5417,697.18837 c -13.69447,13.69445 -13.69447,13.69155 0,27.38601 l 41.07902,41.07901 c 13.69448,13.69448 13.69155,13.69448 27.38601,0 L 365.20715,594.45298 536.36974,765.65339 c 13.69445,13.6945 13.69153,13.6945 27.38601,0 l 41.07902,-41.07901 c 13.69446,-13.69446 13.69446,-13.69154 0,-27.38601 L 433.67218,525.98796 604.83477,354.82538 c 13.69446,-13.69448 13.69446,-13.69154 0,-27.38601 l -41.07902,-41.07902 c -13.69446,-13.69446 -13.69154,-13.69447 -27.38601,0 L 365.20715,457.52293 194.00673,286.36035 c -6.84722,-6.84724 -10.26938,-10.25085 -13.693,-10.25085 z"
+         style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:58.10071182;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:0.72429905;paint-order:normal" />
+    </g>
+  </g>
+  <metadata
+     id="metadata11">
+    <rdf:RDF>
+      <cc:Work>
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+        <dc:title></dc:title>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>

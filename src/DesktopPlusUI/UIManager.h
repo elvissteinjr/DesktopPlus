@@ -10,18 +10,27 @@
 #include "openvr.h"
 #include "Matrices.h"
 
-//Screen/Overlay definitions used to cram the keyboard helper on the same render space as the UI
-#define MAIN_SURFACE_HEIGHT 1080
-#define KEYBOARD_HELPER_HEIGHT 128
-#define KEYBOARD_HELPER_SCALE 0.35f
-#define OVERLAY_WIDTH 1920
-#define OVERLAY_HEIGHT (MAIN_SURFACE_HEIGHT + KEYBOARD_HELPER_HEIGHT)
+#include "DashboardUI.h"
+#include "FloatingUI.h"
+
+//Screen/Overlay definitions used to cram the several overlays on the same render space
+#define TEXSPACE_VERTICAL_SPACING 2             //Space kept blank between render spaces so interpolation doesn't bleed in pixels
+#define TEXSPACE_DASHBOARD_UI_HEIGHT 1080
+#define TEXSPACE_FLOATING_UI_HEIGHT 440         //This will break when changing the icon size, but whatever
+#define TEXSPACE_KEYBOARD_HELPER_HEIGHT 128
+#define TEXSPACE_KEYBOARD_HELPER_SCALE 0.35f
+#define TEXSPACE_TOTAL_WIDTH 1920
+#define TEXSPACE_TOTAL_HEIGHT (TEXSPACE_DASHBOARD_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_FLOATING_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_KEYBOARD_HELPER_HEIGHT)
+#define OVERLAY_WIDTH_METERS_DASHBOARD_UI 2.75f
 
 class WindowKeyboardHelper;
 
 class UIManager
 {
     private:
+        DashboardUI m_DashboardUI;
+        FloatingUI m_FloatingUI;
+
         HWND m_WindowHandle;
         int m_RepeatFrame;
 
@@ -30,12 +39,17 @@ class UIManager
         bool m_NoRestartOnExit;      //Prevent auto-restart when closing from desktop mode while dashboard app is running (i.e. when using troubleshooting buttons)
 
         float m_UIScale;
+        ImFont* m_FontCompact;
+        ImFont* m_FontLarge;         //Only loaded when the UI scale is set to large
+
         bool m_LowCompositorRes;     //Set when compositor's resolution is set below 100% during init. The user is warned about this as it affects overlay rendering
         bool m_LowCompositorQuality; //Set when the compositor's quality setting to set to something other than High or Auto
+        vr::EVROverlayError m_OverlayErrorLast; //Last encountered error when adding an overlay (usually just overlay limit exceeded)
 
         bool m_ElevatedTaskSetUp;   
 
         vr::VROverlayHandle_t m_OvrlHandle;
+        vr::VROverlayHandle_t m_OvrlHandleFloatingUI;
         vr::VROverlayHandle_t m_OvrlHandleKeyboardHelper;
         bool m_OvrlVisible;
         bool m_OvrlVisibleKeyboardHelper;
@@ -55,10 +69,14 @@ class UIManager
         void HandleIPCMessage(const MSG& msg);
         void OnExit();
 
+        DashboardUI& GetDashboardUI();
+        FloatingUI& GetFloatingUI();
+
         void SetWindowHandle(HWND handle);
         HWND GetWindowHandle() const;
 
         vr::VROverlayHandle_t GetOverlayHandle() const;
+        vr::VROverlayHandle_t GetOverlayHandleFloatingUI() const;
         vr::VROverlayHandle_t GetOverlayHandleKeyboardHelper() const;
 
         //This can be called by functions knowingly making changes which will cause visible layout re-alignment due to ImGui's nature of intermediate UI
@@ -73,10 +91,15 @@ class UIManager
 
         void SetUIScale(float scale);
         float GetUIScale() const;
+        void SetFonts(ImFont* font_compact, ImFont* font_large);
+        ImFont* GetFontCompact() const;
+        ImFont* GetFontLarge() const;               //May return nullptr
 
         bool IsCompositorResolutionLow() const;
         bool IsCompositorRenderQualityLow() const;
         void UpdateCompositorRenderQualityLow();
+        vr::EVROverlayError GetOverlayErrorLast() const;
+        void ResetOverlayErrorLast();
         bool IsElevatedTaskSetUp() const;
 
         bool IsOverlayVisible() const;

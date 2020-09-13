@@ -10,7 +10,6 @@ class VRInput
 {
     private:
         vr::VRActionSetHandle_t m_HandleActionsetShortcuts;
-        vr::VRActionHandle_t m_HandleActionSetOverlayDetached;
         vr::VRActionHandle_t m_HandleActionSetDetachedInteractive;
         vr::VRActionHandle_t m_HandleActionDoGlobalShortcut01;
         vr::VRActionHandle_t m_HandleActionDoGlobalShortcut02;
@@ -25,7 +24,6 @@ class VRInput
         void Update();
         void RefreshAnyActionBound();
         void HandleGlobalActionShortcuts(OutputManager& outmgr);
-        bool HandleSetOverlayDetachedShortcut(bool is_detached_interactive);    //Returns true when it changed
 
         bool GetSetDetachedInteractiveDown() const;
         bool IsAnyActionBound() const;

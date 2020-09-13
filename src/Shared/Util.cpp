@@ -1,5 +1,7 @@
 #include "Util.h"
 
+#include <d3d11.h>
+
 std::string StringConvertFromUTF16(LPCWSTR str)
 {
 	std::string stdstr;
@@ -150,7 +152,7 @@ Matrix4 GetControllerTipMatrix(bool right_hand)
     return Matrix4();
 }
 
-void SetConfigForWMR(int& wmr_ignore_vscreens_selection, int& wmr_ignore_vscreens_combined_desktop)
+void SetConfigForWMR(int& wmr_ignore_vscreens)
 {
     //Check if system is WMR and set WMR-specific default values if needed
     char buffer[vr::k_unMaxPropertyStringSize];
@@ -160,20 +162,14 @@ void SetConfigForWMR(int& wmr_ignore_vscreens_selection, int& wmr_ignore_vscreen
 
     if (is_wmr_system) //Is WMR, enable settings by default
     {
-        if (wmr_ignore_vscreens_selection == -1)
+        if (wmr_ignore_vscreens == -1)
         {
-            wmr_ignore_vscreens_selection = 1;
+            wmr_ignore_vscreens = 1;
         }        
-
-        if (wmr_ignore_vscreens_combined_desktop == -1)
-        {
-            wmr_ignore_vscreens_combined_desktop = 1;
-        }
     }
     else //Not a WMR system, set values to -1. -1 settings will not be save to disk so a WMR user's settings is preserved if they switch around HMDs, but the setting is still false
     {
-        wmr_ignore_vscreens_selection = -1;
-        wmr_ignore_vscreens_combined_desktop = -1;
+        wmr_ignore_vscreens = -1;
     }
 }
 
@@ -183,18 +179,54 @@ DEVMODE GetDevmodeForDisplayID(int display_id)
         display_id = 0;
 
     DEVMODE mode = {0};
-    DISPLAY_DEVICE DispDev = {0};
+    IDXGIFactory1* factory_ptr;
 
-    DispDev.cb = sizeof(DISPLAY_DEVICE);
-
-    if (EnumDisplayDevices(nullptr, display_id, &DispDev, 0))
+    //This needs to go through DXGI as EnumDisplayDevices()'s order can be different
+    HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
+    if (!FAILED(hr))
     {
-        mode.dmSize = sizeof(DEVMODE);
+        IDXGIAdapter* adapter_ptr = nullptr;
+        UINT i = 0;
+        int output_count = 0;
 
-        if (EnumDisplaySettings(DispDev.DeviceName, ENUM_CURRENT_SETTINGS, &mode) == FALSE)
+        while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
         {
-            mode.dmSize = 0;    //Reset dmSize to 0 if the call failed
+            //Enum the available outputs
+            IDXGIOutput* output_ptr;
+            while (adapter_ptr->EnumOutputs(output_count, &output_ptr) != DXGI_ERROR_NOT_FOUND)
+            {
+                //Check if this happens to be the output we're looking for
+                if (display_id == output_count)
+                {
+                    //Get devmode
+                    DXGI_OUTPUT_DESC output_desc;
+                    output_ptr->GetDesc(&output_desc);
+
+                    mode.dmSize = sizeof(DEVMODE);
+
+                    if (EnumDisplaySettings(output_desc.DeviceName, ENUM_CURRENT_SETTINGS, &mode) != FALSE)
+                    {
+                        //Cleanup and get out early
+                        output_ptr->Release();
+                        adapter_ptr->Release();
+                        factory_ptr->Release();
+
+                        return mode;
+                    }
+                    
+                    mode.dmSize = 0;    //Reset dmSize to 0 if the call failed
+                }
+
+                output_ptr->Release();
+                ++output_count;
+            }
+
+            adapter_ptr->Release();
+            ++i;
         }
+
+        factory_ptr->Release();
+        factory_ptr = nullptr;
     }
 
     return mode;
@@ -350,6 +382,42 @@ void StopProcessByWindowClass(LPCTSTR class_name)
             ::CloseHandle(phandle);
         }
     }
+}
+
+HWND FindMainWindow(DWORD pid)
+{
+    std::pair<HWND, DWORD> params = { 0, pid };
+
+    //Enumerate the windows using a lambda to process each window
+    BOOL bResult = ::EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL 
+                                 {
+                                     auto pParams = (std::pair<HWND, DWORD>*)(lParam);
+
+                                     DWORD processId;
+                                     if ( (::GetWindowThreadProcessId(hwnd, &processId)) && (processId == pParams->second) )
+                                     {
+                                         //If it's an unowned top-level window and visible, it's assumed to be the main window
+                                         //Take the first match in the process, should be good enough for our use-case
+                                         if ( (::GetWindow(hwnd, GW_OWNER) == (HWND)0) && (::IsWindowVisible(hwnd)) )
+                                         {
+                                             //Stop enumerating
+                                             ::SetLastError(-1);
+                                             pParams->first = hwnd;
+                                             return FALSE;
+                                         }
+                                     }
+
+                                      //Continue enumerating
+                                      return TRUE;
+                                  },
+                                  (LPARAM)&params);
+
+    if ( (!bResult) && (::GetLastError() == -1) && (params.first) )
+    {
+        return params.first;
+    }
+
+    return 0;
 }
 
 //This ain't pretty, but GetKeyNameText() works with scancodes, which are not exactly the same and the output strings aren't that nice either (and always localized)

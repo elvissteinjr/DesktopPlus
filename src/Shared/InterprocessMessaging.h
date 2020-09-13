@@ -35,8 +35,13 @@ enum IPCActionID
     ipcact_action_stop,             //Sent by UI application to stop an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
     ipcact_keyboard_helper,         //Sent by UI application in response to a keyboard helper button press. lParam is win32 key code
     ipcact_vrkeyboard_closed,       //Sent by dashboard application when VREvent_Closed occured and the keyboard is open for the UI application. No data in lParam
-    ipcact_overlay_profile_load,    //Sent by UI application when loading a profile. No data in lParam, but profile name is stored in configid_str_state_profile_name_load beforehand
+    ipcact_overlay_profile_load,    //Sent by UI application when loading a profile. lParam is IPCActionOverlayProfileLoadArg, profile name is stored in configid_str_state_profile_name_load beforehand
     ipcact_crop_to_active_window,   //Sent by UI application to adjust crop values to the active window. No data in lParam
+    ipcact_overlay_new,             //Sent by UI application to add a new overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
+    ipcact_overlay_remove,          //Sent by UI application to remove a overlay. lParam is ID of overlay to remove (typically the active ID)
+    ipcact_overlay_creation_error,  //Sent by dashboard application when an error occured during overlay creation. lParam is EVROverlayError
+    ipcact_overlay_position_sync,   //Sent by the UI application to request a sync of all overlay's transforms. No data in lParam
+    ipcact_overlay_swap,            //Sent by the UI application to swap two overlays. lParam is the ID of overlay to swap with the current overlay
     ipcact_MAX
 };
 
@@ -50,6 +55,13 @@ enum IPCActionOverlayPosAdjustTarget
     ipcactv_ovrl_pos_adjust_roty,
     ipcactv_ovrl_pos_adjust_rotz,
     ipcactv_ovrl_pos_adjust_increase = 0x10
+};
+
+enum IPCActionOverlayProfileLoadArg
+{
+    ipcactv_ovrl_profile_single,
+    ipcactv_ovrl_profile_multi,
+    ipcactv_ovrl_profile_multi_add
 };
 
 class IPCManager

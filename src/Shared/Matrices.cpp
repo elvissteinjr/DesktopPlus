@@ -459,7 +459,7 @@ vr::HmdMatrix34_t Matrix4::toOpenVR34()
     return matrixObj;
 }
 
-std::string Matrix4::toString()
+std::string Matrix4::toString() const
 {
     std::stringstream ss;
     ss << '[';

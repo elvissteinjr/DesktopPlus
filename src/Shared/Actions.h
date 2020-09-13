@@ -24,7 +24,8 @@ enum CustomActionFunctionID
 {
 	caction_press_keys,
 	caction_type_string,
-	caction_launch_application
+	caction_launch_application,
+    caction_toggle_overlay_enabled_state
 };
 
 struct ActionMainBarOrderData
@@ -38,8 +39,9 @@ struct CustomAction
     std::string Name;
     CustomActionFunctionID FunctionType = caction_press_keys;
     unsigned char KeyCodes[3] = { 0 };
-    std::string StrMain; //Type String / Executable Path
+    std::string StrMain;     //Type String / Executable Path
     std::string StrArg;
+    int IntID = 0;           //Overlay ID
 
     #ifdef DPLUS_UI
         std::string IconFilename;

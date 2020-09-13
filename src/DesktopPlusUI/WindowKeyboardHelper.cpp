@@ -27,8 +27,8 @@ void WindowKeyboardHelper::Update()
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.216f, 0.231f, 0.255f, 1.000f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.091f, 0.102f, 0.118f, 1.000f));
 
-    ImGui::SetNextWindowSize(ImVec2(OVERLAY_WIDTH * KEYBOARD_HELPER_SCALE, 0.0f));
-    ImGui::SetNextWindowPos(ImVec2(0.0f, io.DisplaySize.y - KEYBOARD_HELPER_HEIGHT), 0, ImVec2(0.0f, 0.0f));  //Center window at bottom of the overlay
+    ImGui::SetNextWindowSize(ImVec2(TEXSPACE_TOTAL_WIDTH * TEXSPACE_KEYBOARD_HELPER_SCALE, 0.0f));
+    ImGui::SetNextWindowPos(ImVec2(0.0f, io.DisplaySize.y - TEXSPACE_KEYBOARD_HELPER_HEIGHT), 0, ImVec2(0.0f, 0.0f));  //Center window at bottom of the overlay
     ImGui::Begin("WindowKeyboardHelper", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | 
                                                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
 
@@ -147,8 +147,8 @@ void WindowKeyboardHelper::Update()
 
 bool WindowKeyboardHelper::IsVisible()
 {
-    return ( (ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_helper_enabled)) && 
-             (ConfigManager::Get().GetConfigBool(configid_bool_state_keyboard_visible_for_dashboard)) );
+    return ( (ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_helper_enabled)) &&
+             (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1) );
 }
 
 void WindowKeyboardHelper::Hide()

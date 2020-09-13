@@ -173,7 +173,7 @@ public:
     const float*      getTranspose();                        // return transposed matrix
     float			  getDeterminant();
 	vr::HmdMatrix34_t toOpenVR34();
-    std::string       toString();
+    std::string       toString() const;
 
 
     Vector3 getTranslation() const;

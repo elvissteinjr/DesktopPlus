@@ -122,7 +122,7 @@ bool Ini::Save(const std::wstring& filename)
     return false;
 }
 
-std::string Ini::ReadString(const char* section, const char* key, const char* default_value)
+std::string Ini::ReadString(const char* section, const char* key, const char* default_value) const
 {
     int section_id = ini_find_section(m_IniPtr, section, 0);
 
@@ -160,7 +160,7 @@ void Ini::WriteString(const char* section, const char* key, const char* value)
     }
 }
 
-int Ini::ReadInt(const char* section, const char* key, int default_value)
+int Ini::ReadInt(const char* section, const char* key, int default_value) const
 {
     std::string str_value = ReadString(section, key, "NAN");
 
@@ -170,7 +170,7 @@ int Ini::ReadInt(const char* section, const char* key, int default_value)
         return default_value;
 }
 
-bool Ini::ReadBool(const char* section, const char* key, bool default_value)
+bool Ini::ReadBool(const char* section, const char* key, bool default_value) const
 {
     std::string str_value = ReadString(section, key, "NAN");
 
@@ -199,12 +199,12 @@ void Ini::WriteBool(const char* section, const char* key, bool value)
         WriteString(section, key, "false");
 }
 
-bool Ini::SectionExists(const char* section)
+bool Ini::SectionExists(const char* section) const
 {
     return (ini_find_section(m_IniPtr, section, 0) != INI_NOT_FOUND);
 }
 
-bool Ini::KeyExists(const char* section, const char* key)
+bool Ini::KeyExists(const char* section, const char* key) const
 {
     int section_id = ini_find_section(m_IniPtr, section, 0);
 

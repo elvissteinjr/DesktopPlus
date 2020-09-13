@@ -174,8 +174,11 @@
     <ClCompile Include="..\Shared\ConfigManager.cpp" />
     <ClCompile Include="..\Shared\Ini.cpp" />
     <ClCompile Include="..\Shared\Matrices.cpp" />
+    <ClCompile Include="..\Shared\OverlayManager.cpp" />
     <ClCompile Include="..\Shared\Util.cpp" />
+    <ClCompile Include="DashboardUI.cpp" />
     <ClCompile Include="DesktopPlusUI.cpp" />
+    <ClCompile Include="FloatingUI.cpp" />
     <ClCompile Include="ImGuiExt.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
@@ -189,6 +192,7 @@
     <ClCompile Include="WindowMainBar.cpp" />
     <ClCompile Include="TextureManager.cpp" />
     <ClCompile Include="WindowSettings.cpp" />
+    <ClCompile Include="WindowSideBar.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Shared\Actions.h" />
@@ -198,8 +202,11 @@
     <ClInclude Include="..\Shared\InterprocessMessaging.h" />
     <ClInclude Include="..\Shared\Matrices.h" />
     <ClInclude Include="..\Shared\openvr.h" />
+    <ClInclude Include="..\Shared\OverlayManager.h" />
     <ClInclude Include="..\Shared\Util.h" />
     <ClInclude Include="..\Shared\Vectors.h" />
+    <ClInclude Include="FloatingUI.h" />
+    <ClInclude Include="DashboardUI.h" />
     <ClInclude Include="ImGuiExt.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="UIManager.h" />
@@ -215,6 +222,7 @@
     <ClInclude Include="imgui_win32_dx11_openvr\imgui_impl_win32_openvr.h" />
     <ClInclude Include="TextureManager.h" />
     <ClInclude Include="WindowSettings.h" />
+    <ClInclude Include="WindowSideBar.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="imgui_win32_dx11_openvr\PixelShaderImGui.hlsl">

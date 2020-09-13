@@ -55,6 +55,12 @@
     <ClCompile Include="..\Shared\Ini.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\Shared\OverlayManager.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="WindowSideBar.cpp" />
+    <ClCompile Include="FloatingUI.cpp" />
+    <ClCompile Include="DashboardUI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imstb_truetype.h">
@@ -115,6 +121,12 @@
     <ClInclude Include="..\Shared\DPRect.h">
       <Filter>Shared</Filter>
     </ClInclude>
+    <ClInclude Include="..\Shared\OverlayManager.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowSideBar.h" />
+    <ClInclude Include="FloatingUI.h" />
+    <ClInclude Include="DashboardUI.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="imgui_win32_dx11_openvr\PixelShaderImGui.hlsl">

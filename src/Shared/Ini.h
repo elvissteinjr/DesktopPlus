@@ -20,15 +20,15 @@ class Ini
         bool Save();
         bool Save(const std::wstring& filename);
 
-        std::string ReadString(const char* section, const char* key, const char* default_value = "");
-        int ReadInt(const char* section, const char* key, int default_value = -1);
-        bool ReadBool(const char* section, const char* key, bool default_value = false);
+        std::string ReadString(const char* section, const char* key, const char* default_value = "") const;
+        int ReadInt(const char* section, const char* key, int default_value = -1) const;
+        bool ReadBool(const char* section, const char* key, bool default_value = false) const;
         void WriteString(const char* section, const char* key, const char* value);
         void WriteInt(const char* section, const char* key, int value);
         void WriteBool(const char* section, const char* key, bool value);
 
-        bool SectionExists(const char* section);
-        bool KeyExists(const char* section, const char* key);
+        bool SectionExists(const char* section) const;
+        bool KeyExists(const char* section, const char* key) const;
         void RemoveSection(const char* section);
         void RemoveKey(const char* section, const char* key);
 };

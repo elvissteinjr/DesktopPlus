@@ -6,30 +6,29 @@
 #include "WindowSettings.h"
 #include "Util.h"
 #include "UIManager.h"
-
-static const ImVec4 Col_ButtonActiveDesktop(0.180f, 0.349f, 0.580f, 0.404f);
+#include "OverlayManager.h"
 
 void WindowMainBar::DisplayTooltipIfHovered(const char* text)
 {
     if (ImGui::IsItemHovered())
     {
+        static ImVec2 pos_last; //Remeber last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
         ImVec2 pos = ImGui::GetItemRectMin();
         float button_width = ImGui::GetItemRectSize().x;
 
         //Default tooltips are not suited for this as there's too much trouble with resize flickering and stuff
+        ImGui::SetNextWindowPos(pos_last);
         ImGui::Begin(text, NULL, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | 
-                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize);
+                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
 
         ImGui::Text(text);
 
         ImVec2 window_size = ImGui::GetWindowSize();
 
-        //32 is the default size returned by ImGui on the first frame
-        //I'm not sure if there isn't a better way to make the tooltip go away before we can position it correctly (ImGui::IsWindowAppearing() doesn't help)
-        //Well, it works
-        if (window_size.y == 32.0f)
+        //Repeat frame when the window is appearing as it will not have the right position (either from being first time or still having old pos)
+        if (ImGui::IsWindowAppearing())
         {
-            pos.y = -1000.0f;
+            UIManager::Get()->RepeatFrame();
         }
         else
         {
@@ -39,33 +38,36 @@ void WindowMainBar::DisplayTooltipIfHovered(const char* text)
             //Clamp x so the tooltip does not get cut off
             pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);
         }
-        ImGui::SetWindowPos(pos);
+
+        pos_last = pos;
 
         ImGui::End();
     }
 }
 
-void WindowMainBar::UpdateDesktopButtons()
+void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
 {
     ImGuiIO& io = ImGui::GetIO();
 
     ImVec2 b_size, b_uv_min, b_uv_max;
-    int current_desktop = ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id);
+    int current_desktop = OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_desktop_id];
 
     if (ConfigManager::Get().GetConfigBool(configid_bool_interface_mainbar_desktop_include_all))
     {
         if (current_desktop == -1)
-            ImGui::PushStyleColor(ImGuiCol_Button, Col_ButtonActiveDesktop);
+            ImGui::PushStyleColor(ImGuiCol_Button, Style_ImGuiCol_ButtonPassiveToggled);
 
         ImGui::PushID(tmtex_icon_desktop_all);
         TextureManager::Get().GetTextureInfo(tmtex_icon_desktop_all, b_size, b_uv_min, b_uv_max);
         if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
         {
             //Don't change to same value to avoid flicker from mirror reset
-            if (current_desktop != -1)
+            if ( (current_desktop != -1) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )
             {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), -1);
-                ConfigManager::Get().SetConfigInt(configid_int_overlay_desktop_id, -1);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_desktop_id] = -1;
             }
         }
         DisplayTooltipIfHovered("Combined Desktop");
@@ -78,7 +80,7 @@ void WindowMainBar::UpdateDesktopButtons()
 
     int monitor_count = ::GetSystemMetrics(SM_CMONITORS);
 
-    if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens_selection) == 1)
+    if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1)
     {
         monitor_count = std::max(1, monitor_count - 3); //If the 3 screen assumption doesn't hold up, at least have one button
     }
@@ -106,15 +108,17 @@ void WindowMainBar::UpdateDesktopButtons()
                 
 
                 if (i == current_desktop)
-                    ImGui::PushStyleColor(ImGuiCol_Button, Col_ButtonActiveDesktop);
+                    ImGui::PushStyleColor(ImGuiCol_Button, Style_ImGuiCol_ButtonPassiveToggled);
 
                 if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
                 {
                     //Don't change to same value to avoid flicker from mirror reset
-                    if (i != current_desktop)
+                    if ( (i != current_desktop) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )
                     {
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), i);
-                        ConfigManager::Get().SetConfigInt(configid_int_overlay_desktop_id, i);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                        OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_desktop_id] = i;
                     }
                 }
 
@@ -142,8 +146,10 @@ void WindowMainBar::UpdateDesktopButtons()
                 if (current_desktop == -1)
                     current_desktop = monitor_count - 1;
 
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), current_desktop);
-                ConfigManager::Get().SetConfigInt(configid_int_overlay_desktop_id, current_desktop);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_desktop_id] = current_desktop;
             }
             DisplayTooltipIfHovered("Previous Desktop");
             ImGui::PopID();
@@ -158,8 +164,10 @@ void WindowMainBar::UpdateDesktopButtons()
                 if (current_desktop == monitor_count)
                     current_desktop = 0;
 
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), current_desktop);
-                ConfigManager::Get().SetConfigInt(configid_int_overlay_desktop_id, current_desktop);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_desktop_id] = current_desktop;
             }
             DisplayTooltipIfHovered("Next Desktop");
             ImGui::PopID();
@@ -167,15 +175,9 @@ void WindowMainBar::UpdateDesktopButtons()
             break;
         }
     }
-
-    /*ImGui::SameLine();
-    ImGui::PushClipRect(ImVec2(0, 0), ImVec2(OVERLAY_WIDTH, OVERLAY_HEIGHT), false);
-    ImGui::GetWindowDrawList()->AddText(ImVec2(ImGui::GetCursorScreenPos().x - 96, ImGui::GetCursorScreenPos().y + (96 - ImGui::GetFont()->FontSize) / 2),
-                                        ImGui::GetColorU32(ImGuiCol_Text), "1");
-    ImGui::PopClipRect();*/
 }
 
-void WindowMainBar::UpdateActionButtons()
+void WindowMainBar::UpdateActionButtons(unsigned int overlay_id)
 {
     ImGuiIO& io = ImGui::GetIO();
     ImVec2 b_size, b_uv_min, b_uv_max;
@@ -184,8 +186,9 @@ void WindowMainBar::UpdateActionButtons()
     //as well as still providing a way to change the size of text buttons by editing the settings icon's dimensions
     ImVec2 b_size_default = b_size;
 
+    OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
     auto& custom_actions = ConfigManager::Get().GetCustomActions();
-    auto& action_order = ConfigManager::Get().GetActionMainBarOrder();
+    auto& action_order = (data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]) ? ConfigManager::Get().GetActionMainBarOrder() : data.ConfigActionBarOrder;
     int list_id = 0;
     for (auto& order_data : action_order)
     {
@@ -208,7 +211,9 @@ void WindowMainBar::UpdateActionButtons()
                 {
                     if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
                     {
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
                     }
                     DisplayTooltipIfHovered(ActionManager::Get().GetActionName(order_data.action_id));
                 }
@@ -216,7 +221,9 @@ void WindowMainBar::UpdateActionButtons()
                 {
                     if (ImGui::ButtonWithWrappedLabel(ActionManager::Get().GetActionName(order_data.action_id), b_size_default))
                     {
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
                     }
                 }
             }
@@ -273,55 +280,112 @@ void WindowMainBar::UpdateActionButtons()
     }
 }
 
-WindowMainBar::WindowMainBar(WindowSettings* settings_window) : m_WndSettingsPtr(settings_window)
+WindowMainBar::WindowMainBar(WindowSettings* settings_window) : m_Visible(true),
+                                                                m_Alpha(1.0f), 
+                                                                m_WndSettingsPtr(settings_window)
 {
-
+    m_Size.x = 32.0f;
 }
 
-void WindowMainBar::Update()
+void WindowMainBar::Show(bool skip_fade)
 {
+    m_Visible = true;
+
+    if (skip_fade)
+    {
+        m_Alpha = 1.0f;
+    }
+}
+
+void WindowMainBar::Hide(bool skip_fade)
+{
+    m_Visible = false;
+
+    if (skip_fade)
+    {
+        m_Alpha = 0.0f;
+    }
+}
+
+void WindowMainBar::Update(unsigned int overlay_id)
+{
+    if ( (m_Alpha != 0.0f) || (m_Visible) )
+    {
+        //Alpha fade animation
+        m_Alpha += (m_Visible) ? 0.1f : -0.1f;
+
+        if (m_Alpha > 1.0f)
+            m_Alpha = 1.0f;
+        else if (m_Alpha < 0.0f)
+            m_Alpha = 0.0f;
+    }
+
+    //We need to not skip on alpha 0.0 at least twice to get the real height of the bar. 32.0f is the placeholder width ImGui seems to use until then
+    if ( (m_Alpha == 0.0f) && (m_Size.x != 32.0f) )
+        return;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_Alpha);
+
     ImGuiIO& io = ImGui::GetIO();
 
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y), 0, ImVec2(0.5f, 1.0f));  //Center window at bottom of the overlay
-    ImGui::Begin("WindowMainBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | 
-                                            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
+    ImVec2 b_size, b_uv_min, b_uv_max;
+    bool floating_ui_mode = (m_WndSettingsPtr == nullptr);
+
+    if (floating_ui_mode)
+    {
+        TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
+        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - b_size.y - ImGui::GetStyle().FramePadding.x, io.DisplaySize.y), 0, ImVec2(1.0f, 1.0f));  //Put window at bottom right of the overlay
+
+        ImGui::Begin("WindowActionBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
+                                                 ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
+    }
+    else
+    {
+        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y), 0, ImVec2(0.5f, 1.0f));  //Center window at bottom of the overlay
+        
+        ImGui::Begin("WindowMainBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
+                                               ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
+    }
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 
-    UpdateDesktopButtons();
-
-    UpdateActionButtons();
-
-
-    ImVec2 b_size, b_uv_min, b_uv_max;
-
-    //Settings Button
-    bool settings_shown = m_WndSettingsPtr->IsShown();
-    if (settings_shown)
-        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-
-    ImGui::PushID(tmtex_icon_settings);
-    TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+    if (OverlayManager::Get().GetConfigData(overlay_id).ConfigBool[configid_bool_overlay_floatingui_desktops_enabled])
     {
-        if (!m_WndSettingsPtr->IsShown())
-        {
-            m_WndSettingsPtr->Show();
-        }
-        else
-        {
-            m_WndSettingsPtr->Hide();
-        }
+        UpdateDesktopButtons(overlay_id);
     }
 
-    if (settings_shown)
-        ImGui::PopStyleColor(); //ImGuiCol_Button
+    UpdateActionButtons(overlay_id);
 
-    DisplayTooltipIfHovered("Settings");
-        
-    ImGui::PopID();
-    //
+    if (!floating_ui_mode)
+    {
+        //Settings Button
+        bool settings_shown = m_WndSettingsPtr->IsShown();
+        if (settings_shown)
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+
+        ImGui::PushID(tmtex_icon_settings);
+        TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
+        if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+        {
+            if (!m_WndSettingsPtr->IsShown())
+            {
+                m_WndSettingsPtr->Show();
+            }
+            else
+            {
+                m_WndSettingsPtr->Hide();
+            }
+        }
+
+        if (settings_shown)
+            ImGui::PopStyleColor(); //ImGuiCol_Button
+
+        DisplayTooltipIfHovered("Settings");
+
+        ImGui::PopID();
+        //
+    }
 
     ImGui::PopStyleColor(); //ImGuiCol_Button
     ImGui::PopStyleVar();   //ImGuiStyleVar_FrameRounding
@@ -330,6 +394,7 @@ void WindowMainBar::Update()
     m_Size = ImGui::GetWindowSize();
 
     ImGui::End();
+    ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
 }
 
 const ImVec2 & WindowMainBar::GetPos() const
@@ -340,4 +405,14 @@ const ImVec2 & WindowMainBar::GetPos() const
 const ImVec2 & WindowMainBar::GetSize() const
 {
     return m_Size;
+}
+
+bool WindowMainBar::IsVisible() const
+{
+    return m_Visible;
+}
+
+float WindowMainBar::GetAlpha() const
+{
+    return m_Alpha;
 }

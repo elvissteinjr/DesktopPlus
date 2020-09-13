@@ -1,11 +1,6 @@
 {
   "actions": [
     {
-      "name": "/actions/shortcuts/in/SetOverlayDetached",
-      "requirement": "optional",
-      "type": "boolean"
-    },
-    {
       "name": "/actions/shortcuts/in/SetDetachedInteractive",
       "requirement": "optional",
       "type": "boolean"
@@ -38,7 +33,6 @@
 
 		"/actions/shortcuts" : "Global Shortcuts",
 
-		"/actions/shortcuts/in/SetOverlayDetached" : "Set Overlay Floating State",
 		"/actions/shortcuts/in/SetDetachedInteractive" : "Enable Floating Overlay Interaction",
 		"/actions/shortcuts/in/GlobalShortcut01" : "Do Global Shortcut 1",
 		"/actions/shortcuts/in/GlobalShortcut02" : "Do Global Shortcut 2",

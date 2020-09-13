@@ -17,6 +17,7 @@
 #include "TextureManager.h"
 #include "InterprocessMessaging.h"
 #include "WindowMainBar.h"
+#include "WindowSideBar.h"
 #include "WindowSettings.h"
 #include "WindowKeyboardHelper.h"
 #include "Util.h"
@@ -35,6 +36,7 @@ bool CreateDeviceD3D(HWND hWnd, bool desktop_mode);
 void CleanupDeviceD3D();
 void CreateRenderTarget(bool desktop_mode);
 void CleanupRenderTarget();
+void InitOverlayTextureSharing();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void InitImGui(HWND hwnd);
 void ProcessCmdline(bool& force_desktop_mode);
@@ -73,6 +75,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     else
         hwnd = ::CreateWindow(wc.lpszClassName, L"Desktop+ UI", 0, 0, 0, 1, 1, HWND_MESSAGE, nullptr, wc.hInstance, nullptr);
 
+    ui_manager.SetWindowHandle(hwnd);
+
     //Init OpenVR
     //Don't try to init OpenVR without the dashboard app running since checking for active VR means launching SteamVR
     if ( (!desktop_mode) || (IPCManager::IsDashboardAppRunning()) )
@@ -91,6 +95,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         ::UnregisterClass(wc.lpszClassName, wc.hInstance);
         return 1;
     }
+
+    //Initialize overlay texture sharing if needed
+    if (ui_manager.IsOpenVRLoaded())
+    {
+        InitOverlayTextureSharing();
+    }
     
     InitImGui(hwnd);
     ImGuiIO& io = ImGui::GetIO();
@@ -101,9 +111,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         RECT r;
         r.left   = 0;
         r.top    = 0;
-        r.right  = int(OVERLAY_WIDTH       * ui_manager.GetUIScale());
-        r.bottom = int(MAIN_SURFACE_HEIGHT * ui_manager.GetUIScale());
-        //r.bottom = int(OVERLAY_HEIGHT      * ui_manager.GetUIScale());
+        r.right  = int(TEXSPACE_TOTAL_WIDTH       * ui_manager.GetUIScale());
+        r.bottom = int(TEXSPACE_DASHBOARD_UI_HEIGHT * ui_manager.GetUIScale());
+        //r.bottom = int(TEXSPACE_TOTAL_HEIGHT      * ui_manager.GetUIScale());
 
         ::AdjustWindowRect(&r, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
         ::SetWindowPos(hwnd, NULL, 0, 0, r.right - r.left, r.bottom - r.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
@@ -114,11 +124,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         ::UpdateWindow(hwnd);
     }
 
-    ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 0.00f);
+    ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
 
     //Windows
-    WindowSettings window_settings;
-    WindowMainBar window_mainbar(&window_settings);
     WindowKeyboardHelper window_kbdhelper;
 
     //Main loop
@@ -160,7 +168,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             vr::VREvent_t vr_event;
             bool do_quit = false;
 
-            //Handle OpenVR events for the main overlay
+            //Handle OpenVR events for the dashboard UI
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandle(), &vr_event, sizeof(vr_event)))
             {
                 ImGui_ImplOpenVR_InputEventHandler(vr_event);
@@ -170,16 +178,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                     case vr::VREvent_FocusEnter:
                     {
                         //Adjust sort order so mainbar tooltips are displayed right
-                        if (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached))
-                        {
-                            vr::VROverlay()->SetOverlaySortOrder(ui_manager.GetOverlayHandle(), 1);
-                        }
+                        vr::VROverlay()->SetOverlaySortOrder(ui_manager.GetOverlayHandle(), 1);
                         break;
                     }
                     case vr::VREvent_FocusLeave:
                     {
                         //Reset adjustment so other overlays are not always behind the UI unless really needed
-                        if (!window_settings.IsShown())
+                        if (!ui_manager.GetDashboardUI().GetSettingsWindow().IsShown())
                         {
                             vr::VROverlay()->SetOverlaySortOrder(ui_manager.GetOverlayHandle(), 0);
                         }
@@ -190,6 +195,19 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                         do_quit = true;
                         break;
                     }
+                }
+            }
+
+            //Handle OpenVR events for the floating UI
+            while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleFloatingUI(), &vr_event, sizeof(vr_event)))
+            {
+                if (!ImGui_ImplOpenVR_InputEventHandler(vr_event))
+                {
+                    //Event was not handled by ImGui
+                    /*switch (vr_event.eventType)
+                    {
+
+                    }*/
                 }
             }
 
@@ -207,13 +225,18 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             }
 
             ui_manager.PositionOverlay(window_kbdhelper);
+            ui_manager.GetFloatingUI().UpdateUITargetState();
 
-            do_idle = ( (!ui_manager.IsOverlayVisible()) && (!ui_manager.IsOverlayKeyboardHelperVisible()) );
+            do_idle = ( (!ui_manager.IsOverlayVisible()) && (!ui_manager.IsOverlayKeyboardHelperVisible()) && (!ui_manager.GetFloatingUI().IsVisible()) );
 
             if (do_quit)
             {
                 break; //Breaks the message loop, causing clean shutdown
             }
+        }
+        else
+        {
+            do_idle = ::IsIconic(hwnd);
         }
 
         //Do texture reload now if it had been scheduled
@@ -225,7 +248,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         //While we still need to poll, greatly reduce the rate and don't do any ImGui stuff to not waste resources (hopefully this does not mess up ImGui input state)
         if (do_idle)
         {
-            ::Sleep(300);
+            ::Sleep(64); //Could wait longer, but it doesn't really make much of a difference in load and we stay more responsive like this)
             continue;
         }
 
@@ -239,22 +262,26 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         
         ImGui::NewFrame();
 
-        //Make ImGui think the surface is smaller than it is (a poor man's multi-viewport hack)
         if (!desktop_mode)
         {
-            io.DisplaySize.y = MAIN_SURFACE_HEIGHT * ui_manager.GetUIScale();
+            //Make ImGui think the surface is smaller than it is (a poor man's multi-viewport hack)
+            io.DisplaySize.y = TEXSPACE_DASHBOARD_UI_HEIGHT * ui_manager.GetUIScale();
 
-            window_settings.Update();
-            window_mainbar.Update();
+            ui_manager.GetDashboardUI().Update();
 
-            //Reset it
-            io.DisplaySize.y = OVERLAY_HEIGHT * ui_manager.GetUIScale();
+            //Once again for the floating surface
+            io.DisplaySize.y = (TEXSPACE_DASHBOARD_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_FLOATING_UI_HEIGHT) * ui_manager.GetUIScale();
+
+            ui_manager.GetFloatingUI().Update();
+
+            //Reset/full size for the keyboard helper
+            io.DisplaySize.y = TEXSPACE_TOTAL_HEIGHT * ui_manager.GetUIScale();
 
             window_kbdhelper.Update();
         }
         else
         {
-            window_settings.Update();
+            ui_manager.GetDashboardUI().Update();
         }
 
         //Haptic feedback for hovered items, like the rest of the SteamVR UI
@@ -263,6 +290,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             if (vr::VROverlay()->IsHoverTargetOverlay(ui_manager.GetOverlayHandle()))
             {
                 vr::VROverlay()->TriggerLaserMouseHapticVibration(ui_manager.GetOverlayHandle(), 0.0f, 1.0f, 0.16f);
+            }
+            else if (vr::VROverlay()->IsHoverTargetOverlay(ui_manager.GetOverlayHandleFloatingUI()))
+            {
+                vr::VROverlay()->TriggerLaserMouseHapticVibration(ui_manager.GetOverlayHandleFloatingUI(), 0.0f, 1.0f, 0.16f);
             }
             else if (vr::VROverlay()->IsHoverTargetOverlay(ui_manager.GetOverlayHandleKeyboardHelper()))
             {
@@ -282,7 +313,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
             if (desktop_mode)
             {
-                g_pd3dDeviceContext->OMSetRenderTargets(1, &g_desktopRenderTargetView, NULL);
+                g_pd3dDeviceContext->OMSetRenderTargets(1, &g_desktopRenderTargetView, nullptr);
                 g_pd3dDeviceContext->ClearRenderTargetView(g_desktopRenderTargetView, (float*)&clear_color);
                 ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -295,7 +326,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             }
             else
             {
-                g_pd3dDeviceContext->OMSetRenderTargets(1, &g_vrRenderTargetView, NULL);
+                g_pd3dDeviceContext->OMSetRenderTargets(1, &g_vrRenderTargetView, nullptr);
                 g_pd3dDeviceContext->ClearRenderTargetView(g_vrRenderTargetView, (float*)&clear_color);
                 ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -308,15 +339,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                     vrtex.eColorSpace = vr::ColorSpace_Gamma;
 
                     vr::VROverlay()->SetOverlayTexture(ui_manager.GetOverlayHandle(), &vrtex);
-
-                    if (window_kbdhelper.IsVisible())
-                    {
-                        vr::VROverlay()->SetOverlayTexture(ui_manager.GetOverlayHandleKeyboardHelper(), &vrtex);
-                    }
                 }
 
                 //Set overlay intersection mask... there doesn't seem to be much overhead from doing this every frame, even though we only need to update this sometimes
                 ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(ui_manager.GetOverlayHandle());
+                ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(ui_manager.GetOverlayHandleFloatingUI());
                 ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(ui_manager.GetOverlayHandleKeyboardHelper());
 
                 //Since we don't get vsync on our message-only window from a swapchain, we don't use any in non-desktop mode.
@@ -458,8 +485,8 @@ void CreateRenderTarget(bool desktop_mode)
     // Create overlay texture
     D3D11_TEXTURE2D_DESC TexD;
     RtlZeroMemory(&TexD, sizeof(D3D11_TEXTURE2D_DESC));
-    TexD.Width = OVERLAY_WIDTH;
-    TexD.Height = OVERLAY_HEIGHT;
+    TexD.Width = TEXSPACE_TOTAL_WIDTH;
+    TexD.Height = TEXSPACE_TOTAL_HEIGHT;
     TexD.MipLevels = 1;
     TexD.ArraySize = 1;
     TexD.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -516,6 +543,62 @@ void CleanupRenderTarget()
     }
 }
 
+void InitOverlayTextureSharing()
+{
+    //Set up advanced texture sharing between the overlays
+
+    //Set texture to g_vrTex for the first time
+    vr::Texture_t vrtex;
+    vrtex.handle = g_vrTex;
+    vrtex.eType = vr::TextureType_DirectX;
+    vrtex.eColorSpace = vr::ColorSpace_Gamma;
+
+    vr::VROverlay()->SetOverlayTexture(UIManager::Get()->GetOverlayHandle(), &vrtex);
+
+    //Get overlay texture handle for the main texture overlay from OpenVR and set it as handle for the other overlays
+    vr::VROverlayHandle_t ovrl_handle_main = UIManager::Get()->GetOverlayHandle();
+    ID3D11ShaderResourceView* ovrl_shader_res;
+    uint32_t ovrl_width;
+    uint32_t ovrl_height;
+    uint32_t ovrl_native_format;
+    vr::ETextureType ovrl_api_type;
+    vr::EColorSpace ovrl_color_space;
+    vr::VRTextureBounds_t ovrl_tex_bounds;
+
+    vr::VROverlayError ovrl_error = vr::VROverlayError_None;
+    ovrl_error = vr::VROverlay()->GetOverlayTexture(ovrl_handle_main, (void**)&ovrl_shader_res, vrtex.handle, &ovrl_width, &ovrl_height, &ovrl_native_format,
+                                                    &ovrl_api_type, &ovrl_color_space, &ovrl_tex_bounds);
+
+    if (ovrl_error == vr::VROverlayError_None)
+    {
+        ID3D11Resource* ovrl_tex;
+        ovrl_shader_res->GetResource(&ovrl_tex);
+
+        HANDLE ovrl_tex_handle = nullptr;
+        IDXGIResource* ovrl_dxgi_resource;
+        HRESULT hr = ovrl_tex->QueryInterface(__uuidof(IDXGIResource), (void**)&ovrl_dxgi_resource);
+
+        ovrl_dxgi_resource->GetSharedHandle(&ovrl_tex_handle);
+
+        vr::Texture_t vrtex_target;
+        vrtex_target.eType       = vr::TextureType_DXGISharedHandle;
+        vrtex_target.eColorSpace = vr::ColorSpace_Gamma;
+        vrtex_target.handle      = ovrl_tex_handle;
+
+        vr::VROverlay()->SetOverlayTexture(UIManager::Get()->GetOverlayHandleFloatingUI(), &vrtex_target);
+        vr::VROverlay()->SetOverlayTexture(UIManager::Get()->GetOverlayHandleKeyboardHelper(), &vrtex_target);
+
+        ovrl_dxgi_resource->Release();
+        ovrl_dxgi_resource = nullptr;
+
+        ovrl_tex->Release();
+        ovrl_tex = nullptr;
+
+        vr::VROverlay()->ReleaseNativeOverlayHandle(ovrl_handle_main, (void*)ovrl_shader_res);
+        ovrl_shader_res = nullptr;
+    }
+}
+
 
 
 // Win32 message handler
@@ -541,6 +624,13 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             if (UIManager::Get())
             {
+                MSG pmsg;
+                //Process all custom window messages posted before this
+                while (PeekMessage(&pmsg, nullptr, 0xC000, 0xFFFF, PM_REMOVE))
+                {
+                    UIManager::Get()->HandleIPCMessage(pmsg);
+                }
+
                 MSG wmsg;
                 wmsg.hwnd = hWnd;
                 wmsg.message = msg;
@@ -597,6 +687,7 @@ void InitImGui(HWND hwnd)
     colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     Style_ImGuiCol_TextWarning              = ImVec4(0.98f, 0.81f, 0.26f, 1.00f);
     Style_ImGuiCol_TextError                = ImVec4(0.97f, 0.33f, 0.33f, 1.00f);
+    Style_ImGuiCol_ButtonPassiveToggled     = ImVec4(0.180f, 0.349f, 0.580f, 0.404f);
 
 
     //Setup Platform/Renderer bindings
@@ -614,23 +705,26 @@ void InitImGui(HWND hwnd)
     }
 
     UIManager::Get()->SetUIScale(dpi_scale);
-
     
     TextureManager::Get().LoadAllTexturesAndBuildFonts();
 
+    //Set DPI-dependent style
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.LogSliderDeadzone = (float)int(58.0f * dpi_scale); //Force whole pixel size
+
     if (UIManager::Get()->IsInDesktopMode())
     {
-        io.DisplaySize.x = OVERLAY_WIDTH  * dpi_scale;
-        io.DisplaySize.y = MAIN_SURFACE_HEIGHT * dpi_scale;
+        io.DisplaySize.x = TEXSPACE_TOTAL_WIDTH  * dpi_scale;
+        io.DisplaySize.y = TEXSPACE_DASHBOARD_UI_HEIGHT * dpi_scale;
 
-        ImGui::GetStyle().ScrollbarSize = (float)int(23.0f * dpi_scale); //Force whole pixel size
+        style.ScrollbarSize = (float)int(23.0f * dpi_scale); 
     }
     else
     {
-        io.DisplaySize.x = OVERLAY_WIDTH;
-        io.DisplaySize.y = MAIN_SURFACE_HEIGHT;
+        io.DisplaySize.x = TEXSPACE_TOTAL_WIDTH;
+        io.DisplaySize.y = TEXSPACE_DASHBOARD_UI_HEIGHT;
 
-        ImGui::GetStyle().ScrollbarSize = (float)int(32.0f * dpi_scale); //Force whole pixel size
+        style.ScrollbarSize = (float)int(32.0f * dpi_scale);
     }
 }
 
