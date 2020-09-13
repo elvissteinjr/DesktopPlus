@@ -1617,7 +1617,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.1.1-Mutli-Overlay-WiP");
+        ImGui::Text("Desktop+ Version 2.2");
 
         ImGui::Columns(1);
     }

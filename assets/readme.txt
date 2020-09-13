@@ -31,9 +31,20 @@ Configuration
 Desktop+ can be fully configured from within VR. If desired, the settings interface can also be used from the desktop, however.
 Either run DesktopPlusUI.exe while SteamVR is not running, press the [Misc|Troubleshooting|Desktop+ UI: Restart in Desktop Mode]
 button in the VR settings interface, or run DesktopPlusUI.exe with the "-DesktopMode" command line argument to do so.
+Some settings are only available while SteamVR is running.
 
 Settings are applied instantly and written to disk when the settings window is dismissed or Desktop+ UI closes.
 The setting slider values can be edited directly by right-clicking the slider.
+
+
+Overlay Management
+------------------
+To use multiple overlays in Desktop+, click on the "Manage" button at the top-right of the Overlay settings page. This will open
+a popup in which overlays can be added, removed and organized.
+This and several other popups can also be dismissed by simple clicking outside of it, in addition to the "Done" button.
+Overlays can be renamed by right-clicking the dropdown selector at the top of the Overlay settings page.
+The current overlay setup will be remembered automatically between sessions. Overlay profiles can be used to save and restore
+multiple of such setups.
 
 
 Actions
@@ -54,8 +65,7 @@ Actions can be bound to 3 different global shortcuts which can be activated by t
 Desktop+ does not come with default SteamVR Input bindings. These can be set up by going to the Desktop+ controller bindings.
 SteamVR currently only lists overlay applications in the old input binding interface, so that one has to be used instead.
 
-Apart from the 3 global shortcuts, functions for floating overlay interaction can also be bound.
-"Set Overlay Floating State": Can be used to change visibility of floating overlay.
+Apart from the 3 global shortcuts, a function for floating overlay interaction can also be bound.
 "Enable Floating Overlay Interaction": Can be used to enable the laser pointer outside of the dashboard.
 
 
@@ -137,6 +147,53 @@ Overlay is no longer visible:
 -
 There are several settings controlling overlay visibility and position. Check if they are not set to unexpected values.
 Loading the Default overlay profile also works as a quick way to restore the initial overlay state.
+
+
+Overlay settings are not applying:
+-
+The overlay settings page always applies to the current overlay. Make sure to have selected the right overlay as current when
+making changes.
+
+
+No overlays visible on laptop:
+-
+On laptops with hybrid-GPU solutions, the desktops are typically rendered on the power-saving integrated GPU. Make sure to have
+DesktopPlus.exe set to be running on integrated graphics so it can mirror them.
+
+
+Warnings
+--------
+Desktop+ may display several warnings in its settings interface. They are mostly informational and can be safely ignored.
+Click on warnings to dismiss or not have them show up again.
+
+"Compositor resolution is below 100%! This affects overlay rendering quality.":
+-
+The resolution of the VR compositor is based on the auto-resolution calculated by SteamVR, regardless of whether this resolution
+has been chosen as the VR render resolution or not. There's no official way to change this. The auto-resolution can be increased
+by lowering the HMD's refresh rate or getting a faster GPU.
+Inofficially, there are tools such as SteamVR-ForceCompositorScale to combat this behavior.
+
+
+"Overlay render quality is not set to high!":
+-
+The overlay render quality is a setting in SteamVR. It is recommended to set it to high to improve the visual clarity of the
+overlays.
+
+
+"Desktop+ is running with administrative privileges!":
+-
+This message serves as a reminder about Desktop+ being in elevated mode.
+Please keep the security implications of that mode in mind and don't run the application like this when not needed.
+
+
+"Warning: An overlay creation failed!":
+-
+This message will typically appear with "(Maximum Overlay limit exceeded)" appended. It appears when the total overlay limit
+in SteamVR has been exceeded. This limit is not set by Desktop+ and other overlay applications can affect how many overlays can
+be created by Desktop+.
+While the warning can be safely ignored, the overlays that were attempted to be created will be missing.
+If this message appears with a different error status appended, it might be because of a bug in Desktop+ or SteamVR. Please
+report it in that case.
 
 
 License
