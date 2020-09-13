@@ -506,6 +506,7 @@ void UIManager::UpdateOverlayPixelSize()
     //If OpenVR was loaded, get it from the overlay
     if (m_OpenVRLoaded)
     {
+        //Looks confusing at first, but the dashboard overlay either has the mouse scale of the desktop every overlay is set to, or the combined desktop's
         vr::VROverlayHandle_t ovrl_handle_dplus = OverlayManager::Get().FindOverlayHandle(k_ulOverlayID_Dashboard);
 
         if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
@@ -519,12 +520,31 @@ void UIManager::UpdateOverlayPixelSize()
     }
     else //What we get here may not reflect the real values, but let's do some good guesswork
     {
-        int& desktop_id = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_desktop_id);
+        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+        {
+            OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-        if (desktop_id >= GetSystemMetrics(SM_CMONITORS))
-            desktop_id = -1;
+            if (data.ConfigInt[configid_int_overlay_desktop_id] == -2)  //This should usually be handled by the dashboard app, but it's not here, so
+            {
+                data.ConfigInt[configid_int_overlay_desktop_id] = 0;
+                m_OvrlPixelWidth  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+                m_OvrlPixelHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
-        if (desktop_id == -1)   //All desktops, get virtual screen dimensions
+                DEVMODE mode = GetDevmodeForDisplayID(0);
+
+                if (mode.dmSize != 0)
+                {
+                    data.ConfigInt[configid_int_overlay_crop_x] = 0;
+                    data.ConfigInt[configid_int_overlay_crop_y] = 0;
+                    data.ConfigInt[configid_int_overlay_crop_width]  = mode.dmPelsWidth;
+                    data.ConfigInt[configid_int_overlay_crop_height] = mode.dmPelsHeight;
+                }
+            }
+        }
+
+        int desktop_id = OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigInt[configid_int_overlay_desktop_id];
+
+        if ( (desktop_id == -1) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )  //All desktops, get virtual screen dimensions
         {
             m_OvrlPixelWidth  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
             m_OvrlPixelHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);

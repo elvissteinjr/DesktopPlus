@@ -2117,6 +2117,7 @@ void WindowSettings::ProfileSelector(bool multi_overlay)
         IPCManager::Get().SendStringToDashboardApp(configid_str_state_profile_name_load, overlay_profile_list[overlay_profile_selected_id], UIManager::Get()->GetWindowHandle());
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_profile_load, (multi_overlay) ? ipcactv_ovrl_profile_multi : ipcactv_ovrl_profile_single);
 
+        UIManager::Get()->UpdateOverlayPixelSize();
         UIManager::Get()->RepeatFrame();
 
         overwrite_confirm_state = false;
@@ -2147,6 +2148,7 @@ void WindowSettings::ProfileSelector(bool multi_overlay)
             IPCManager::Get().SendStringToDashboardApp(configid_str_state_profile_name_load, overlay_profile_list[overlay_profile_selected_id], UIManager::Get()->GetWindowHandle());
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_profile_load, ipcactv_ovrl_profile_multi_add);
 
+            UIManager::Get()->UpdateOverlayPixelSize();
             UIManager::Get()->RepeatFrame();
 
             overwrite_confirm_state = false;
