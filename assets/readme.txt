@@ -83,6 +83,8 @@ In order to use elevated mode, a scheduled task has to be set up to allow Deskto
 requiring approval through an UAC prompt. To do this, run "misc\CreateElevatedTask.bat".
 It can then be accessed in [Misc|Troubleshooting|Desktop+: Restart Elevated].
 If you move Desktop+' files, the scheduled task will break but the button remains. Re-run the batch file to fix this.
+If you do not see the 'Restart Elevated' option in settings, check that the PowerShell execution policy may not be set to
+allow the script to run. See the Troubleshooting section below.
 
 Note that actions launching applications will run them with the same privileges as Desktop+, so be careful if you don't intend
 them to have administrator rights.
@@ -141,6 +143,15 @@ Input not working in certain applications:
 -
 Input simulated by Desktop+ is subject to User Interface Privilege Isolation (UIPI), see the Elevated Mode section for a
 workaround.
+
+
+No 'Restart Elevated' button after running CreateElevatedTask
+-
+The PowerShell execution policy may not be set to allow the script to run. Check Microsoft's PowerShell documentation below.
+! Change this only at your own risk and only if you understand the security implications of it. 
+! This can be changed back to the default setting after the script runs successfully.
+! The author of Desktop+ shall not be liable for any damage caused by a user's changes to this setting.
+https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-7
 
 
 Overlay is no longer visible:
