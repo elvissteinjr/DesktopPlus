@@ -3280,8 +3280,9 @@ void OutputManager::ApplySettingCrop()
     overlay.UpdateValidatedCropRect();
     const DPRect& crop_rect = overlay.GetValidatedCropRect();
     
-    //Use full texture if everything checks out
-    if ( (crop_rect.GetTL().x == 0) && (crop_rect.GetTL().y == 0) && (crop_rect.GetWidth() == m_DesktopWidth) && (crop_rect.GetHeight() == m_DesktopHeight) )
+    //Use full texture if everything checks out or texture source is 3D Over-Under converted
+    if ( (overlay.GetTextureSource() == ovrl_tex_source_desktop_duplication_3dou_converted) || 
+         ( (crop_rect.GetTL().x == 0) && (crop_rect.GetTL().y == 0) && (crop_rect.GetWidth() == m_DesktopWidth) && (crop_rect.GetHeight() == m_DesktopHeight) ) )
     {
         tex_bounds.uMin = 0.0f;
         tex_bounds.vMin = 0.0f;
@@ -3292,7 +3293,7 @@ void OutputManager::ApplySettingCrop()
     {
         //Otherwise offset the calculated texel coordinates a bit. This is to reduce having colors from outside the cropping area bleeding in from the texture filtering
         //This means the border pixels of the overlay are smaller, but that's something we need to accept it seems
-        //This doesn't 100% solve texel bleed, especially not on high overlay rendering quality where it can require pretty offsets bad depending on overlay size/distance
+        //This doesn't 100% solve texel bleed, especially not on high overlay rendering quality where it can require pretty big offsets depending on overlay size/distance
         float offset_x = (crop_rect.GetWidth() <= 2) ? 0.0f : 1.5f, offset_y = (crop_rect.GetHeight() <= 2) ? 0.0f : 1.5f; //Yes, we do handle the case of <3 pixel crops
 
         tex_bounds.uMin = (crop_rect.GetTL().x + offset_x) / m_DesktopWidth;
@@ -4254,8 +4255,8 @@ void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter
     //Convert()'s arguments are almost all stuff from OutputManager, so we take this roundabout way of calling it
     const DPRect& crop_rect = overlay.GetValidatedCropRect();
 
-    bool res = converter.Convert(m_Device, m_DeviceContext, m_PixelShader, m_VertexShader, m_Sampler, m_MultiGPUTargetDevice, m_MultiGPUTargetDeviceContext,
-                                 m_OvrlTex, m_DesktopWidth, m_DesktopHeight, crop_rect.GetTL().x, crop_rect.GetWidth(), crop_rect.GetHeight());
+    bool res = converter.Convert(m_Device, m_DeviceContext, m_MultiGPUTargetDevice, m_MultiGPUTargetDeviceContext, m_OvrlTex,
+                                 m_DesktopWidth, m_DesktopHeight, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
 
     if (res)
     {
