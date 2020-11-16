@@ -24,7 +24,7 @@ Advanced desktop access for OpenVR.
 
 ### Release Archive
 
-Download and extract the archive. Follow instructions in the included [readme file](assets/readme.txt).
+Download and extract the latest archive from the [releases page](https://github.com/elvissteinjr/DesktopPlus/releases). Follow instructions in the included [readme file](assets/readme.txt).
 
 ### Building from Source
 
