@@ -61,6 +61,9 @@
     <ClCompile Include="WindowSideBar.cpp" />
     <ClCompile Include="FloatingUI.cpp" />
     <ClCompile Include="DashboardUI.cpp" />
+    <ClCompile Include="..\Shared\WindowList.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imstb_truetype.h">
@@ -127,6 +130,9 @@
     <ClInclude Include="WindowSideBar.h" />
     <ClInclude Include="FloatingUI.h" />
     <ClInclude Include="DashboardUI.h" />
+    <ClInclude Include="..\Shared\WindowList.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="imgui_win32_dx11_openvr\PixelShaderImGui.hlsl">

@@ -5,8 +5,8 @@
 #include "OUtoSBSConverter.h"
 
 //About the Overlay class:
-//Overlay 0 (k_ulOverlayID_Dashboard) is is the dashboard overlay. It always exists and is safe to access/returned when trying to access an invalid overlay id.
-//OutputManager's m_OvrlHandleDesktopTexture holds the actual texture handle for every other overlay created by SteamVR
+//Overlay 0 (k_ulOverlayID_Dashboard) is the dashboard overlay. It always exists and is safe to access/returned when trying to access an invalid overlay id.
+//OutputManager's m_OvrlHandleDesktopTexture holds the actual texture handle for every other desktop duplication overlay created by SteamVR
 //This is *not* documented functionality in SteamVR, but it is the one with the best results.
 //Additional overlays are also almost free except for the compositor rendering them.
 //The alternative approach for this would be the documented way of using one texture handle for every overlay created by the overlay application, but this
@@ -14,12 +14,12 @@
 //Given that variant exists, doing it this way is probably somewhat safe. It wouldn't be super hard to fix this up if it broke eventually, though.
 //Using a separate texture for every overlay would be slower and take up more memory, so there's honestly no upside of that.
 
-//In the future this could possibly expanded to overlay types which use a different capture method or show custom UI
-//For now this just denotes that 3D OU overlays are not using the duplication texture directly
 enum OverlayTextureSource
 {
-    ovrl_tex_source_desktop_duplication,
-    ovrl_tex_source_desktop_duplication_3dou_converted
+    ovrl_texsource_none,                                //Used with capture sources other than desktop duplication while capture is not active
+    ovrl_texsource_desktop_duplication,
+    ovrl_texsource_desktop_duplication_3dou_converted,
+    ovrl_texsource_winrt_capture
 };
 
 class Overlay
@@ -41,7 +41,7 @@ class Overlay
         ~Overlay();
 
         void InitOverlay();
-        void AssignTexture();
+        void AssignDesktopDuplicationTexture();
         unsigned int GetID() const;
         void SetID(unsigned int id);
         vr::VROverlayHandle_t GetHandle() const;

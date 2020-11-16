@@ -175,9 +175,9 @@ namespace ImGui
     }
 
     //Like imgui_demo's HelpMarker, but with a fixed position tooltip
-    void FixedHelpMarker(const char* desc)
+    void FixedHelpMarker(const char* desc, const char* marker_str)
     {
-        ImGui::TextDisabled("(?)");
+        ImGui::TextDisabled(marker_str);
         if (ImGui::IsItemHovered())
         {
             static float last_y_offset = FLT_MIN;       //Try to avoid getting the tooltip off-screen... the way it's done here is a bit messy to be fair

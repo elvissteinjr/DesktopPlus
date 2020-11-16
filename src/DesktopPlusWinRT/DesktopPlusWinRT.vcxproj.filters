@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="DesktopPlusWinRT.cpp" />
+    <ClCompile Include="CaptureManager.cpp" />
+    <ClCompile Include="..\Shared\Util.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Shared\WindowList.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="PickerDummyWindow.cpp" />
+    <ClCompile Include="..\Shared\OUtoSBSConverter.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="OverlayCapture.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="util\capture.desktop.interop.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\DesktopWindow.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\dispatcherqueue.desktop.interop.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\hwnd.interop.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonHeaders.h" />
+    <ClInclude Include="DesktopPlusWinRT.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="ThreadData.h" />
+    <ClInclude Include="CaptureManager.h" />
+    <ClInclude Include="..\Shared\openvr.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\Util.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\WindowList.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="PickerDummyWindow.h" />
+    <ClInclude Include="util\direct3d11.interop.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\OUtoSBSConverter.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\DPRect.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="OverlayCapture.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Util">
+      <UniqueIdentifier>{bd52fd2f-19e3-47c1-afb1-969ba28603f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shared">
+      <UniqueIdentifier>{58894ab8-4129-462f-9ab7-503477dec788}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="DesktopPlusWinRT.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+</Project>

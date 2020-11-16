@@ -9,6 +9,7 @@
 #include "ConfigManager.h"
 #include "OverlayManager.h"
 #include "Util.h"
+#include "WindowList.h"
 
 #include "WindowKeyboardHelper.h"
 
@@ -57,6 +58,7 @@ UIManager::UIManager(bool desktop_mode) : m_WindowHandle(nullptr),
                                           m_LowCompositorRes(false),
                                           m_LowCompositorQuality(false),
                                           m_OverlayErrorLast(vr::VROverlayError_None),
+                                          m_WinRTErrorLast(S_OK),
                                           m_ElevatedTaskSetUp(false),
                                           m_OvrlHandle(vr::k_ulOverlayHandleInvalid),
                                           m_OvrlHandleFloatingUI(vr::k_ulOverlayHandleInvalid),
@@ -198,7 +200,7 @@ vr::EVRInitError UIManager::InitOverlay()
     m_OpenVRLoaded = true;
     m_LowCompositorRes = (vr::VRSettings()->GetFloat("GpuSpeed", "gpuSpeedRenderTargetScale") < 1.0f);
 
-    UpdateOverlayPixelSize();
+    UpdateDesktopOverlayPixelSize();
 
     //Check if it's a WMR system and set up for that if needed
     SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens));
@@ -272,7 +274,7 @@ void UIManager::HandleIPCMessage(const MSG& msg)
             {
                 case ipcact_resolution_update:
                 {
-                    UpdateOverlayPixelSize();
+                    UpdateDesktopOverlayPixelSize();
                     break;
                 }
                 case ipcact_vrkeyboard_closed:
@@ -283,6 +285,11 @@ void UIManager::HandleIPCMessage(const MSG& msg)
                 case ipcact_overlay_creation_error:
                 {
                     m_OverlayErrorLast = (vr::VROverlayError)msg.lParam;
+                    break;
+                }
+                case ipcact_winrt_thread_error:
+                {
+                    m_WinRTErrorLast = (HRESULT)msg.lParam;
                     break;
                 }
             }
@@ -315,6 +322,7 @@ void UIManager::HandleIPCMessage(const MSG& msg)
                     {
                         OverlayManager::Get().SetCurrentOverlayID((unsigned int)msg.lParam);
                         current_overlay_old = (unsigned int)msg.lParam;
+                        break;
                     }
                     default: break;
                 }
@@ -323,6 +331,26 @@ void UIManager::HandleIPCMessage(const MSG& msg)
             {
                 ConfigID_Float float_id = (ConfigID_Float)(msg.wParam - configid_bool_MAX - configid_int_MAX);
                 ConfigManager::Get().SetConfigFloat(float_id, *(float*)&msg.lParam);    //Interpret lParam as a float variable
+            }
+            else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX + configid_intptr_MAX)
+            {
+                ConfigID_IntPtr intptr_id = (ConfigID_IntPtr)(msg.wParam - configid_bool_MAX - configid_int_MAX - configid_float_MAX);
+                ConfigManager::Get().SetConfigIntPtr(intptr_id, msg.lParam);
+
+                switch (intptr_id)
+                {
+                    case configid_intptr_overlay_state_winrt_hwnd:
+                    {
+                        //Set last known title and exe name from new handle
+                        HWND window_handle = (HWND)msg.lParam;
+                        WindowInfo info(window_handle);
+                        info.ExeName = WindowInfo::GetExeName(window_handle);
+
+                        ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,    StringConvertFromUTF16(info.Title.c_str()));
+                        ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, info.ExeName);
+                    }
+                    default: break;
+                }
             }
 
             //Restore overlay id override
@@ -475,9 +503,19 @@ vr::EVROverlayError UIManager::GetOverlayErrorLast() const
     return m_OverlayErrorLast;
 }
 
+HRESULT UIManager::GetWinRTErrorLast() const
+{
+    return m_WinRTErrorLast;
+}
+
 void UIManager::ResetOverlayErrorLast()
 {
     m_OverlayErrorLast = vr::VROverlayError_None;
+}
+
+void UIManager::ResetWinRTErrorLast()
+{
+    m_WinRTErrorLast = S_OK;
 }
 
 bool UIManager::IsElevatedTaskSetUp() const
@@ -495,18 +533,17 @@ bool UIManager::IsOverlayKeyboardHelperVisible() const
     return m_OvrlVisibleKeyboardHelper;
 }
 
-void UIManager::GetOverlayPixelSize(int& width, int& height) const
+void UIManager::GetDesktopOverlayPixelSize(int& width, int& height) const
 {
-    width = m_OvrlPixelWidth;
+    width  = m_OvrlPixelWidth;
     height = m_OvrlPixelHeight;
 }
 
-void UIManager::UpdateOverlayPixelSize()
+void UIManager::UpdateDesktopOverlayPixelSize()
 {
     //If OpenVR was loaded, get it from the overlay
     if (m_OpenVRLoaded)
     {
-        //Looks confusing at first, but the dashboard overlay either has the mouse scale of the desktop every overlay is set to, or the combined desktop's
         vr::VROverlayHandle_t ovrl_handle_dplus = OverlayManager::Get().FindOverlayHandle(k_ulOverlayID_Dashboard);
 
         if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
@@ -520,31 +557,14 @@ void UIManager::UpdateOverlayPixelSize()
     }
     else //What we get here may not reflect the real values, but let's do some good guesswork
     {
-        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
-        {
-            OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+        int& desktop_id = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_desktop_id);
 
-            if (data.ConfigInt[configid_int_overlay_desktop_id] == -2)  //This should usually be handled by the dashboard app, but it's not here, so
-            {
-                data.ConfigInt[configid_int_overlay_desktop_id] = 0;
-                m_OvrlPixelWidth  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-                m_OvrlPixelHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+        if (desktop_id >= GetSystemMetrics(SM_CMONITORS))
+            desktop_id = -1;
+        else if (desktop_id == -2)  //-2 tell the dashboard application to crop it to desktop 0 and the value changes afterwards, though that doesn't happen when it's not running
+            desktop_id = 0;
 
-                DEVMODE mode = GetDevmodeForDisplayID(0);
-
-                if (mode.dmSize != 0)
-                {
-                    data.ConfigInt[configid_int_overlay_crop_x] = 0;
-                    data.ConfigInt[configid_int_overlay_crop_y] = 0;
-                    data.ConfigInt[configid_int_overlay_crop_width]  = mode.dmPelsWidth;
-                    data.ConfigInt[configid_int_overlay_crop_height] = mode.dmPelsHeight;
-                }
-            }
-        }
-
-        int desktop_id = OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigInt[configid_int_overlay_desktop_id];
-
-        if ( (desktop_id == -1) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )  //All desktops, get virtual screen dimensions
+        if (desktop_id == -1)   //All desktops, get virtual screen dimensions
         {
             m_OvrlPixelWidth  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
             m_OvrlPixelHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);

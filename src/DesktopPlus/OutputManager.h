@@ -28,16 +28,20 @@ class OutputManager
 
         OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent);
         ~OutputManager();
+        void CleanRefs();
         DUPL_RETURN InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
         vr::EVRInitError InitOverlay();
         DUPL_RETURN_UPD Update(_In_ PTR_INFO* PointerInfo, _In_ DPRect& DirtyRegionTotal, bool NewFrame, bool SkipFrame);
-        bool HandleIPCMessage(const MSG& msg); //Returns true if message caused a duplication reset (i.e. desktop switch)
-        void CleanRefs();
+        bool HandleIPCMessage(const MSG& msg);   //Returns true if message caused a duplication reset (i.e. desktop switch)
+        void HandleWinRTMessage(const MSG& msg); //Messages sent by the Desktop+ WinRT library
+
         HWND GetWindowHandle();
         HANDLE GetSharedHandle();
         IDXGIAdapter* GetDXGIAdapter(); //Don't forget to call Release() on the returned pointer when done with it
+
         void ResetOverlays();
         void ResetCurrentOverlay();
+
         ID3D11Texture2D* GetOverlayTexture() const; //This returns m_OvrlTex, the backing texture used by the desktop texture overlay (and all overlays stealing its texture)
         ID3D11Texture2D* GetMultiGPUTargetTexture() const;
         vr::VROverlayHandle_t GetDesktopTextureOverlay() const;
@@ -51,10 +55,12 @@ class OutputManager
 
         void ShowOverlay(unsigned int id);
         void HideOverlay(unsigned int id);
+        void ResetOverlayActiveCount();     //Called by OverlayManager after removing all overlays, makes sure the active counts are correct
 
         bool HasDashboardBeenActivatedOnce() const;
         bool IsDashboardTabActive() const;
 
+        void SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle);
         void SetOutputInvalid(); //Handles state when there's no valid output
         bool IsOutputInvalid() const;
 
@@ -78,15 +84,17 @@ class OutputManager
         DUPL_RETURN_UPD RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy = false); //Refreshes the overlay texture of the VR runtime with content of the m_OvrlTex backing texture
 
         bool HandleOpenVREvents();  //Returns true if quit event happened
+        void OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned int& current_overlay_old);
         void HandleKeyboardHelperMessage(LPARAM lparam);
         bool HandleOverlayProfileLoadMessage(LPARAM lparam);
-        
+
         void LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8);
         void ResetMouseLastLaserPointerPos();
         void CropToActiveWindow();
         void CropToDisplay(int display_id, bool do_not_apply_setting = false);
         void AddOverlay(unsigned int base_id);
 
+        void ApplySettingCaptureSource();
         void ApplySetting3DMode();
         void ApplySettingTransform();
         void ApplySettingCrop();
@@ -104,7 +112,7 @@ class OutputManager
         void DragGestureStart();
         void DragGestureUpdate();
         void DragGestureFinish();
-        
+
         void DetachedTransformSyncAll();
         void DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref = vr::k_ulOverlayHandleInvalid);
         void DetachedTransformAdjust(unsigned int packed_value);
@@ -162,6 +170,7 @@ class OutputManager
         ID3D11RenderTargetView* m_OvrlRTV;
         ID3D11ShaderResourceView* m_OvrlShaderResView;
         int m_OvrlActiveCount;
+        int m_OvrlDesktopDuplActiveCount;
         bool m_OvrlDashboardActive;
         bool m_OvrlInputActive;
         bool m_OvrlDetachedInteractiveAll;

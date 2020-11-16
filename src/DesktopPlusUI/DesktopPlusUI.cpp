@@ -22,6 +22,8 @@
 #include "WindowKeyboardHelper.h"
 #include "Util.h"
 
+#include "DesktopPlusWinRT.h"
+
 // Data
 static ID3D11Device*            g_pd3dDevice = nullptr;
 static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
@@ -111,9 +113,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         RECT r;
         r.left   = 0;
         r.top    = 0;
-        r.right  = int(TEXSPACE_TOTAL_WIDTH       * ui_manager.GetUIScale());
+        r.right  = int(TEXSPACE_TOTAL_WIDTH         * ui_manager.GetUIScale());
         r.bottom = int(TEXSPACE_DASHBOARD_UI_HEIGHT * ui_manager.GetUIScale());
-        //r.bottom = int(TEXSPACE_TOTAL_HEIGHT      * ui_manager.GetUIScale());
 
         ::AdjustWindowRect(&r, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
         ::SetWindowPos(hwnd, NULL, 0, 0, r.right - r.left, r.bottom - r.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
@@ -128,6 +129,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     //Windows
     WindowKeyboardHelper window_kbdhelper;
+
+    //Init WinRT DLL
+    DPWinRT_Init();
 
     //Main loop
     MSG msg;
@@ -547,7 +551,7 @@ void InitOverlayTextureSharing()
 {
     //Set up advanced texture sharing between the overlays
 
-    //Set texture to g_vrTex for the first time
+    //Set texture to g_vrTex for the main overlay
     vr::Texture_t vrtex;
     vrtex.handle = g_vrTex;
     vrtex.eType = vr::TextureType_DirectX;
@@ -555,48 +559,9 @@ void InitOverlayTextureSharing()
 
     vr::VROverlay()->SetOverlayTexture(UIManager::Get()->GetOverlayHandle(), &vrtex);
 
-    //Get overlay texture handle for the main texture overlay from OpenVR and set it as handle for the other overlays
-    vr::VROverlayHandle_t ovrl_handle_main = UIManager::Get()->GetOverlayHandle();
-    ID3D11ShaderResourceView* ovrl_shader_res;
-    uint32_t ovrl_width;
-    uint32_t ovrl_height;
-    uint32_t ovrl_native_format;
-    vr::ETextureType ovrl_api_type;
-    vr::EColorSpace ovrl_color_space;
-    vr::VRTextureBounds_t ovrl_tex_bounds;
-
-    vr::VROverlayError ovrl_error = vr::VROverlayError_None;
-    ovrl_error = vr::VROverlay()->GetOverlayTexture(ovrl_handle_main, (void**)&ovrl_shader_res, vrtex.handle, &ovrl_width, &ovrl_height, &ovrl_native_format,
-                                                    &ovrl_api_type, &ovrl_color_space, &ovrl_tex_bounds);
-
-    if (ovrl_error == vr::VROverlayError_None)
-    {
-        ID3D11Resource* ovrl_tex;
-        ovrl_shader_res->GetResource(&ovrl_tex);
-
-        HANDLE ovrl_tex_handle = nullptr;
-        IDXGIResource* ovrl_dxgi_resource;
-        HRESULT hr = ovrl_tex->QueryInterface(__uuidof(IDXGIResource), (void**)&ovrl_dxgi_resource);
-
-        ovrl_dxgi_resource->GetSharedHandle(&ovrl_tex_handle);
-
-        vr::Texture_t vrtex_target;
-        vrtex_target.eType       = vr::TextureType_DXGISharedHandle;
-        vrtex_target.eColorSpace = vr::ColorSpace_Gamma;
-        vrtex_target.handle      = ovrl_tex_handle;
-
-        vr::VROverlay()->SetOverlayTexture(UIManager::Get()->GetOverlayHandleFloatingUI(), &vrtex_target);
-        vr::VROverlay()->SetOverlayTexture(UIManager::Get()->GetOverlayHandleKeyboardHelper(), &vrtex_target);
-
-        ovrl_dxgi_resource->Release();
-        ovrl_dxgi_resource = nullptr;
-
-        ovrl_tex->Release();
-        ovrl_tex = nullptr;
-
-        vr::VROverlay()->ReleaseNativeOverlayHandle(ovrl_handle_main, (void*)ovrl_shader_res);
-        ovrl_shader_res = nullptr;
-    }
+    //Share this with the other UI overlays
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandle(), UIManager::Get()->GetOverlayHandleFloatingUI(),     g_vrTex);
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandle(), UIManager::Get()->GetOverlayHandleKeyboardHelper(), g_vrTex);
 }
 
 

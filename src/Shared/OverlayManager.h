@@ -7,6 +7,8 @@
 #endif
 
 static const unsigned int k_ulOverlayID_Dashboard = 0;
+static const int k_lOverlayOutputErrorTextureWidth  = 960;  //Unfortunately the best option is to just hardcode the size in some places
+static const int k_lOverlayOutputErrorTextureHeight = 540;
 
 class OverlayManager
 {
@@ -25,6 +27,7 @@ class OverlayManager
         #ifndef DPLUS_UI
             Overlay& GetOverlay(unsigned int id);
             Overlay& GetCurrentOverlay();
+            unsigned int FindOverlayID(vr::VROverlayHandle_t handle);
         #endif
         OverlayConfigData& GetConfigData(unsigned int id);
         OverlayConfigData& GetCurrentConfigData();

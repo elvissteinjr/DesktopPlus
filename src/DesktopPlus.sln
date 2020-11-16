@@ -4,10 +4,16 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.29519.87
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DesktopPlus", "DesktopPlus\DesktopPlus.vcxproj", "{05050918-71E9-AF87-0B3C-6F34D471A55A}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C34B4755-C6E3-4A4B-9992-76CAC48CA3CB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{045FFB0E-D0D4-404D-8C33-13C7074B3236} = {045FFB0E-D0D4-404D-8C33-13C7074B3236}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DesktopPlusUI", "DesktopPlusUI\DesktopPlusUI.vcxproj", "{14405CEC-DF3D-435E-8F11-B79BAC56D7D8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{045FFB0E-D0D4-404D-8C33-13C7074B3236} = {045FFB0E-D0D4-404D-8C33-13C7074B3236}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DesktopPlusWinRT", "DesktopPlusWinRT\DesktopPlusWinRT.vcxproj", "{045FFB0E-D0D4-404D-8C33-13C7074B3236}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,8 +25,8 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{05050918-71E9-AF87-0B3C-6F34D471A55A}.Debug|x64.ActiveCfg = Debug|x64
 		{05050918-71E9-AF87-0B3C-6F34D471A55A}.Debug|x64.Build.0 = Debug|x64
-		{05050918-71E9-AF87-0B3C-6F34D471A55A}.Debug|x86.ActiveCfg = Debug|x64
-		{05050918-71E9-AF87-0B3C-6F34D471A55A}.Debug|x86.Build.0 = Debug|x64
+		{05050918-71E9-AF87-0B3C-6F34D471A55A}.Debug|x86.ActiveCfg = Debug|Win32
+		{05050918-71E9-AF87-0B3C-6F34D471A55A}.Debug|x86.Build.0 = Debug|Win32
 		{05050918-71E9-AF87-0B3C-6F34D471A55A}.Release|x64.ActiveCfg = Release|x64
 		{05050918-71E9-AF87-0B3C-6F34D471A55A}.Release|x64.Build.0 = Release|x64
 		{05050918-71E9-AF87-0B3C-6F34D471A55A}.Release|x86.ActiveCfg = Release|Win32
@@ -33,8 +39,19 @@ Global
 		{14405CEC-DF3D-435E-8F11-B79BAC56D7D8}.Release|x64.Build.0 = Release|x64
 		{14405CEC-DF3D-435E-8F11-B79BAC56D7D8}.Release|x86.ActiveCfg = Release|Win32
 		{14405CEC-DF3D-435E-8F11-B79BAC56D7D8}.Release|x86.Build.0 = Release|Win32
+		{045FFB0E-D0D4-404D-8C33-13C7074B3236}.Debug|x64.ActiveCfg = Debug|x64
+		{045FFB0E-D0D4-404D-8C33-13C7074B3236}.Debug|x64.Build.0 = Debug|x64
+		{045FFB0E-D0D4-404D-8C33-13C7074B3236}.Debug|x86.ActiveCfg = Debug|Win32
+		{045FFB0E-D0D4-404D-8C33-13C7074B3236}.Debug|x86.Build.0 = Debug|Win32
+		{045FFB0E-D0D4-404D-8C33-13C7074B3236}.Release|x64.ActiveCfg = Release|x64
+		{045FFB0E-D0D4-404D-8C33-13C7074B3236}.Release|x64.Build.0 = Release|x64
+		{045FFB0E-D0D4-404D-8C33-13C7074B3236}.Release|x86.ActiveCfg = Release|Win32
+		{045FFB0E-D0D4-404D-8C33-13C7074B3236}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6AC6EA93-8452-42F0-A7BF-B88BDB800DB6}
 	EndGlobalSection
 EndGlobal

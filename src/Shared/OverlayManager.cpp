@@ -2,6 +2,7 @@
 
 #ifndef DPLUS_UI
     #include "OutputManager.h"
+    #include "DesktopPlusWinRT.h"
 #endif
 
 #include <sstream>
@@ -58,6 +59,13 @@ Overlay& OverlayManager::GetCurrentOverlay()
     return GetOverlay(m_CurrentOverlayID);
 }
 
+unsigned int OverlayManager::FindOverlayID(vr::VROverlayHandle_t handle)
+{
+    const auto it = std::find_if(m_Overlays.begin(), m_Overlays.end(), [&](const auto& overlay){ return (overlay.GetHandle() == handle); });
+
+    return (it != m_Overlays.end()) ? it->GetID() : k_ulOverlayID_Dashboard;
+}
+
 #endif
 
 OverlayConfigData& OverlayManager::GetConfigData(unsigned int id)
@@ -106,16 +114,34 @@ void OverlayManager::SwapOverlays(unsigned int id, unsigned int id2)
     std::iter_swap(m_OverlayConfigData.begin() + id, m_OverlayConfigData.begin() + id2);
 
     #ifndef DPLUS_UI
+        Overlay& overlay   = GetOverlay(id);
+        Overlay& overlay_2 = GetOverlay(id2);
+
+        //If any if the swapped overlays are active WinRT capture targets, swap them there as well
+        if ((overlay.GetTextureSource() == ovrl_texsource_winrt_capture) || (overlay_2.GetTextureSource() == ovrl_texsource_winrt_capture))
+        {
+            DPWinRT_SwapCaptureTargetOverlays(overlay.GetHandle(), overlay_2.GetHandle());
+
+            //Despite below comment, set texture sources directly if needed to avoid interruption of capture from resetting the overlays later
+            OverlayTextureSource source_temp = overlay.GetTextureSource();
+
+            if (overlay_2.GetTextureSource() == ovrl_texsource_winrt_capture)
+                overlay.SetTextureSource(ovrl_texsource_winrt_capture);
+            else if (source_temp == ovrl_texsource_winrt_capture)
+                overlay_2.SetTextureSource(ovrl_texsource_winrt_capture);
+
+        }
+
         //We don't swap the overlays themselves, instead we reset the overlays with the swapped config data
-        //The Overlay class is supposed to hold the state of the OpenVR overlay only, so this may break it's not being kept like that
+        //The Overlay class is supposed to hold the state of the OpenVR overlay only, so this may break if it's not being kept like that
         if (OutputManager* outmgr = OutputManager::Get())
         {
-            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-            OverlayManager::Get().SetCurrentOverlayID(id);
+            unsigned int current_overlay_old = GetCurrentOverlayID();
+            SetCurrentOverlayID(id);
             outmgr->ResetCurrentOverlay();
-            OverlayManager::Get().SetCurrentOverlayID(id2);
+            SetCurrentOverlayID(id2);
             outmgr->ResetCurrentOverlay();
-            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+            SetCurrentOverlayID(current_overlay_old);
         }
     #endif
 }
@@ -124,6 +150,14 @@ void OverlayManager::RemoveOverlay(unsigned int id)
 {
     if (id < m_OverlayConfigData.size())
     {
+        #ifndef DPLUS_UI
+            //Hide overlay before removal to keep active count correct
+            if (OutputManager* outmgr = OutputManager::Get())
+            {
+                outmgr->HideOverlay(id);
+            }
+        #endif
+
         m_OverlayConfigData.erase(m_OverlayConfigData.begin() + id);
 
         #ifndef DPLUS_UI
@@ -188,4 +222,12 @@ void OverlayManager::RemoveAllOverlays()
     }
 
     m_CurrentOverlayID = 0;
+
+    #ifndef DPLUS_UI
+        //Fixup active overlay counts after we just removed everything that might've been considered active
+        if (OutputManager* outmgr = OutputManager::Get())
+        {
+            outmgr->ResetOverlayActiveCount();
+        }
+    #endif
 }

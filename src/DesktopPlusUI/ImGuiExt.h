@@ -19,7 +19,7 @@ namespace ImGui
     bool SliderWithButtonsFloatPercentage(const char* str_id, float& value, int step, int min, int max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
 
     //Like imgui_demo's HelpMarker, but with a fixed position tooltip
-    void FixedHelpMarker(const char* desc);
+    void FixedHelpMarker(const char* desc, const char* marker_str = "(?)");
 
     //Button, but with wrapped, cropped and center aligned label
     bool ButtonWithWrappedLabel(const char* label, const ImVec2& size);

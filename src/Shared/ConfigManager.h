@@ -54,7 +54,9 @@ enum ConfigID_Bool
 
 enum ConfigID_Int
 {
-    configid_int_overlay_desktop_id,                              //-1 is combined desktop, -2 is a default value that initializes crop to desktop 0
+    configid_int_overlay_desktop_id,                        //-1 is combined desktop, -2 is a default value that initializes crop to desktop 0
+    configid_int_overlay_capture_source,
+    configid_int_overlay_winrt_desktop_id,                  //-1 is combined desktop, -2 is unset
     configid_int_overlay_crop_x,
     configid_int_overlay_crop_y,
     configid_int_overlay_crop_width,
@@ -64,6 +66,8 @@ enum ConfigID_Int
     configid_int_overlay_detached_origin,
     configid_int_overlay_update_limit_override_mode,
     configid_int_overlay_update_limit_override_fps,
+    configid_int_overlay_state_content_width,
+    configid_int_overlay_state_content_height,
     configid_int_overlay_MAX,
     configid_int_interface_overlay_current_id,
     configid_int_interface_mainbar_desktop_listing,    
@@ -105,17 +109,33 @@ enum ConfigID_Float
 	configid_float_MAX
 };
 
+enum ConfigID_IntPtr
+{
+    configid_intptr_overlay_state_winrt_hwnd,               //HWNDs are technically always in 32-bit range, but avoiding truncation warnings and perhaps some other issues here
+    configid_intptr_overlay_MAX,
+    configid_intptr_MAX = configid_intptr_overlay_MAX
+};
+
 enum ConfigID_String
 {
+    configid_str_overlay_winrt_last_window_title,
+    configid_str_overlay_winrt_last_window_exe_name,
+    configid_str_overlay_MAX,
     configid_str_state_detached_transform_current,
     configid_str_state_action_value_string,
-    configid_str_state_ui_keyboard_string,          //SteamVR keyboard input for the UI application
-    configid_str_state_dashboard_error_string,      //Error messages are displayed in VR through the UI app
-    configid_str_state_profile_name_load,           //Name of the profile to load 
+    configid_str_state_ui_keyboard_string,           //SteamVR keyboard input for the UI application
+    configid_str_state_dashboard_error_string,       //Error messages are displayed in VR through the UI app
+    configid_str_state_profile_name_load,            //Name of the profile to load 
 	configid_str_MAX
 };
 
 //Actually stored as ints, but still have this for readability
+enum OverlayCaptureSource
+{
+    ovrl_capsource_desktop_duplication,
+    ovrl_capsource_winrt_capture
+};
+
 enum Overlay3DMode
 {
     ovrl_3Dmode_none,
@@ -180,6 +200,8 @@ class OverlayConfigData
         bool ConfigBool[configid_bool_overlay_MAX];
         int ConfigInt[configid_int_overlay_MAX];
         float ConfigFloat[configid_float_overlay_MAX];
+        intptr_t ConfigIntPtr[configid_intptr_overlay_MAX];
+        std::string ConfigStr[configid_str_overlay_MAX];
         Matrix4 ConfigDetachedTransform[ovrl_origin_MAX];
         std::vector<ActionMainBarOrderData> ConfigActionBarOrder;
 
@@ -192,6 +214,7 @@ class ConfigManager
 		bool m_ConfigBool[configid_bool_MAX];
 		int m_ConfigInt[configid_int_MAX];
 		float m_ConfigFloat[configid_float_MAX];
+        //No m_ConfigIntPtr as so far it only contains overlay-specific data
 		std::string m_ConfigString[configid_str_MAX];
         Matrix4 m_ConfigOverlayDetachedTransform[ovrl_origin_MAX];
 
@@ -223,19 +246,23 @@ class ConfigManager
         static WPARAM GetWParamForConfigID(ConfigID_Bool id);
         static WPARAM GetWParamForConfigID(ConfigID_Int id);
         static WPARAM GetWParamForConfigID(ConfigID_Float id);
+        static WPARAM GetWParamForConfigID(ConfigID_IntPtr id);
 
         void SetConfigBool(ConfigID_Bool id, bool value);
         void SetConfigInt(ConfigID_Int id, int value);
         void SetConfigFloat(ConfigID_Float id, float value);
+        void SetConfigIntPtr(ConfigID_IntPtr id, intptr_t value);
         void SetConfigString(ConfigID_String id, const std::string& value);
         bool GetConfigBool(ConfigID_Bool id) const;
         int GetConfigInt(ConfigID_Int id) const;
         float GetConfigFloat(ConfigID_Float id) const;
+        intptr_t GetConfigIntPtr(ConfigID_IntPtr id) const;
         const std::string& GetConfigString(ConfigID_String id) const;
         //These are meant for direct use with ImGui widgets
         bool& GetConfigBoolRef(ConfigID_Bool id);
         int& GetConfigIntRef(ConfigID_Int id);
         float& GetConfigFloatRef(ConfigID_Float id);
+        intptr_t& GetConfigIntPtrRef(ConfigID_IntPtr id);
         void ResetConfigStateValues();  //Reset all configid_*_state_* settings. Used when restarting a Desktop+ process
 
         ActionManager& GetActionManager();

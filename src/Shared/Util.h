@@ -6,6 +6,7 @@
 #include <string>
 #define NOMINMAX
 #include <windows.h>
+#include <d3d11.h>
 
 #include "Matrices.h"
 
@@ -21,6 +22,7 @@ void TransformLookAt(Matrix4& matrix, const Vector3 pos_target, const Vector3 up
 vr::TrackedDeviceIndex_t GetFirstVRTracker();
 Matrix4 GetControllerTipMatrix(bool right_hand = true);
 void SetConfigForWMR(int& wmr_ignore_vscreens);
+vr::EVROverlayError SetSharedOverlayTexture(vr::VROverlayHandle_t ovrl_handle_source, vr::VROverlayHandle_t ovrl_handle_target, ID3D11Resource* device_texture_ref);
 
 template <typename T> T clamp(const T& value, const T& value_min, const T& value_max) 
 {
@@ -28,7 +30,7 @@ template <typename T> T clamp(const T& value, const T& value_min, const T& value
 }
 
 //Display stuff
-DEVMODE GetDevmodeForDisplayID(int display_id); //DEVMODE.dmSize != 0 on success
+DEVMODE GetDevmodeForDisplayID(int display_id, HMONITOR* hmon = nullptr); //DEVMODE.dmSize != 0 on success
 int GetMonitorRefreshRate(int display_id);
 void CenterRectToMonitor(LPRECT prc);
 void CenterWindowToMonitor(HWND hwnd, bool use_cursor_pos = false);

@@ -161,12 +161,31 @@ void FloatingUI::UpdateUITargetState()
         vr::VROverlay()->GetOverlayTextureBounds(m_OvrlHandleCurrentUITarget, &bounds);
 
 
-        int ovrl_pixel_width, ovrl_pixel_height;
-        ui_manager.GetOverlayPixelSize(ovrl_pixel_width, ovrl_pixel_height);
-
-        //Get 3D height factor
         const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
 
+        int ovrl_pixel_width, ovrl_pixel_height;
+        uint32_t ovrl_tex_width = 1, ovrl_tex_height = 1;
+
+        //Use texture size of overlay directly if possible as it can sometimes differ from the config size
+        if (vr::VROverlay()->GetOverlayTextureSize(m_OvrlHandleCurrentUITarget, &ovrl_tex_width, &ovrl_tex_height) == vr::VROverlayError_None)
+        {
+            ovrl_pixel_width  = (int)ovrl_tex_width;
+            ovrl_pixel_height = (int)ovrl_tex_height;
+        }
+        else
+        {
+            if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+            {
+                ui_manager.GetDesktopOverlayPixelSize(ovrl_pixel_width, ovrl_pixel_height);
+            }
+            else
+            {
+                ovrl_pixel_width  = data.ConfigInt[configid_int_overlay_state_content_width];
+                ovrl_pixel_height = data.ConfigInt[configid_int_overlay_state_content_height];
+            }
+        }
+
+        //Get 3D height factor
         float height_factor_3d = 1.0f;
 
         if ( (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) )

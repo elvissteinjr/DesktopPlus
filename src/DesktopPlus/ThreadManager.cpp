@@ -1,6 +1,6 @@
 #include "ThreadManager.h"
 
-DWORD WINAPI DDProc(_In_ void* Param);
+DWORD WINAPI CaptureThreadEntry(_In_ void* Param);
 
 THREADMANAGER::THREADMANAGER() : m_ThreadCount(0),
                                  m_ThreadHandles(nullptr),
@@ -137,7 +137,7 @@ DUPL_RETURN THREADMANAGER::Initialize(INT SingleOutput, UINT OutputCount, HANDLE
         }
 
         DWORD ThreadId;
-        m_ThreadHandles[i] = CreateThread(nullptr, 0, DDProc, &m_ThreadData[i], 0, &ThreadId);
+        m_ThreadHandles[i] = CreateThread(nullptr, 0, CaptureThreadEntry, &m_ThreadData[i], 0, &ThreadId);
         if (m_ThreadHandles[i] == nullptr)
         {
             if (DXGIAdapter != nullptr)

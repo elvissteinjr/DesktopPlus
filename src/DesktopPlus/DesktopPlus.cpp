@@ -8,6 +8,8 @@
 #include <sstream>
 #include <system_error>
 
+#include "DesktopPlusWinRT.h"
+
 #include "Util.h"
 #include "DisplayManager.h"
 #include "DuplicationManager.h"
@@ -54,7 +56,7 @@ HRESULT EnumOutputsExpectedErrors[] = {
 //
 // Forward Declarations
 //
-DWORD WINAPI DDProc(_In_ void* Param);
+DWORD WINAPI CaptureThreadEntry(_In_ void* Param);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 //
 // Class for progressive waits
@@ -244,6 +246,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     //Allow IPC messages even when elevated
     IPCManager::Get().DisableUIPForRegisteredMessages(WindowHandle);
 
+    //Init WinRT DLL
+    DPWinRT_Init();
+
     THREADMANAGER ThreadMgr;
     OutputManager OutMgr(PauseDuplicationEvent, ResumeDuplicationEvent);
     RECT DeskBounds;
@@ -291,6 +296,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 {
                     SetEvent(ExpectedErrorEvent);
                 }
+            }
+            else if (msg.message >= WM_DPLUSWINRT) //WinRT library messages
+            {
+                OutMgr.HandleWinRTMessage(msg);
             }
             else
             {
@@ -534,7 +543,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //
 // Entry point for new duplication threads
 //
-DWORD WINAPI DDProc(_In_ void* Param)
+DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
 {
     // Classes
     DISPLAYMANAGER DispMgr;

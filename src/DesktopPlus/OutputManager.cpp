@@ -10,6 +10,8 @@ using namespace DirectX;
 #include "OverlayManager.h"
 #include "Util.h"
 
+#include "DesktopPlusWinRT.h"
+
 static OutputManager* g_OutputManager; //May not always exist, but there also should never be two, so this is fine
 
 OutputManager* OutputManager::Get()
@@ -62,6 +64,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlRTV(nullptr),
     m_OvrlShaderResView(nullptr),
     m_OvrlActiveCount(0),
+    m_OvrlDesktopDuplActiveCount(0),
     m_OvrlDashboardActive(false),
     m_OvrlInputActive(false),
     m_OvrlDetachedInteractiveAll(false),
@@ -188,16 +191,10 @@ void OutputManager::ShowOverlay(unsigned int id)
     {
         ::timeBeginPeriod(1);   //This is somewhat frowned upon, but we want to hit the polling rate, it's only when active and we're in a high performance situation anyways
 
-        //Signal duplication threads to resume in case they're paused
-        ::ResetEvent(m_PauseDuplicationEvent);
-        ::SetEvent(m_ResumeDuplicationEvent);
-
         //Set last pointer values to current to not trip the movement detection up
         ResetMouseLastLaserPointerPos();
 
         m_MouseIgnoreMoveEvent = false;
-
-        ForceScreenRefresh();
     }
 
     if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) && (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
@@ -207,6 +204,25 @@ void OutputManager::ShowOverlay(unsigned int id)
     }
 
     m_OvrlActiveCount++;
+
+    if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+    {
+        if (m_OvrlDesktopDuplActiveCount == 0) //First Desktop Duplication overlay to become active
+        {
+            //Signal duplication threads to resume in case they're paused
+            ::ResetEvent(m_PauseDuplicationEvent);
+            ::SetEvent(m_ResumeDuplicationEvent);
+
+            ForceScreenRefresh();
+        }
+
+        m_OvrlDesktopDuplActiveCount++;
+    }
+    else if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
+    {
+        //Unpause capture
+        DPWinRT_PauseCapture(ovrl_handle, false);
+    }
 
     overlay.SetVisible(true);
 
@@ -219,7 +235,7 @@ void OutputManager::ShowOverlay(unsigned int id)
     }
 
     //If the last clipping rect doesn't fully contain the overlay's crop rect, the desktop texture overlay is probably outdated there, so force a full refresh
-    if (!m_OutputLastClippingRect.Contains(overlay.GetValidatedCropRect()))
+    if ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) && (!m_OutputLastClippingRect.Contains(overlay.GetValidatedCropRect())) )
     {
         RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
     }
@@ -259,13 +275,67 @@ void OutputManager::HideOverlay(unsigned int id)
     if (m_OvrlActiveCount == 0) //Last overlay to become inactive
     {
         ::timeEndPeriod(1);
+    }
 
-        //Signal duplication threads to pause since we don't need them to do needless work
-        ::ResetEvent(m_ResumeDuplicationEvent);
-        ::SetEvent(m_PauseDuplicationEvent);
+    if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+    {
+        m_OvrlDesktopDuplActiveCount--;
+
+        if (m_OvrlDesktopDuplActiveCount == 0) //Last Desktop Duplication overlay to become inactive
+        {
+            //Signal duplication threads to pause since we don't need them to do needless work
+            ::ResetEvent(m_ResumeDuplicationEvent);
+            ::SetEvent(m_PauseDuplicationEvent);
+        }
+    }
+    else if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
+    {
+        //Pause capture
+        DPWinRT_PauseCapture(ovrl_handle, true);
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+}
+
+void OutputManager::ResetOverlayActiveCount()
+{
+    bool desktop_duplication_was_paused = (m_OvrlDesktopDuplActiveCount == 0);
+
+    m_OvrlActiveCount = 0;
+    m_OvrlDesktopDuplActiveCount = 0;
+
+    //Check every existing overlay for visibility and count them as active
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        Overlay& overlay = OverlayManager::Get().GetOverlay(i);
+        OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+        if (overlay.IsVisible())
+        {
+            m_OvrlActiveCount++;
+
+            if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+            {
+                m_OvrlDesktopDuplActiveCount++;
+            }
+        }
+    }
+
+    //Fixup desktop duplication state
+    if ( (desktop_duplication_was_paused) && (m_OvrlDesktopDuplActiveCount > 0) )
+    {
+        //Signal duplication threads to resume
+        ::ResetEvent(m_PauseDuplicationEvent);
+        ::SetEvent(m_ResumeDuplicationEvent);
+
+        ForceScreenRefresh();
+    }
+    else if ( (!desktop_duplication_was_paused) && (m_OvrlDesktopDuplActiveCount == 0) )
+    {
+        //Signal duplication threads to pause
+        ::ResetEvent(m_ResumeDuplicationEvent);
+        ::SetEvent(m_PauseDuplicationEvent);
+    }
 }
 
 bool OutputManager::HasDashboardBeenActivatedOnce() const
@@ -278,29 +348,25 @@ bool OutputManager::IsDashboardTabActive() const
     return m_OvrlDashboardActive;
 }
 
+void OutputManager::SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle)
+{
+    vr::EVROverlayError vr_error = vr::VROverlay()->SetOverlayFromFile(overlay_handle, (ConfigManager::Get().GetApplicationPath() + "images/output_error.png").c_str());    
+
+    vr::VRTextureBounds_t tex_bounds;
+    tex_bounds.uMin = 0.0f;
+    tex_bounds.vMin = 0.0f;
+    tex_bounds.uMax = 1.0f;
+    tex_bounds.vMax = 1.0f;
+
+    vr::VROverlay()->SetOverlayTextureBounds(overlay_handle, &tex_bounds);
+}
+
 void OutputManager::SetOutputInvalid()
 {
     m_OutputInvalid = true;
-
-    vr::VROverlay()->SetOverlayFromFile(m_OvrlHandleMain, (ConfigManager::Get().GetApplicationPath() + "images/output_error.png").c_str());
-
-    uint32_t ovrl_w, ovrl_h;
-    vr::EVROverlayError vr_error = vr::VROverlay()->GetOverlayTextureSize(m_OvrlHandleMain, &ovrl_w, &ovrl_h);
-    if (vr_error == vr::VROverlayError_None)
-    {
-        m_DesktopWidth  = ovrl_w;
-        m_DesktopHeight = ovrl_h;
-    }
-    else //GetOverlayTextureSize() generally seems to return VROverlayError_InvalidHandle for some reason, even though we just wanted to do the right thing for once
-    {
-        //Hardcode the size as a fallback then, eh
-        m_DesktopWidth  = 960;
-        m_DesktopHeight = 450;
-    }
-
-    vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Parallel, false);
-    vr::VROverlay()->SetOverlayFlag(m_OvrlHandleMain, vr::VROverlayFlags_SideBySide_Crossed, false);
-    vr::VROverlay()->SetOverlayTexelAspect(m_OvrlHandleMain, 1.0f);
+    SetOutputErrorTexture(m_OvrlHandleDesktopTexture);
+    m_DesktopWidth  = k_lOverlayOutputErrorTextureWidth;
+    m_DesktopHeight = k_lOverlayOutputErrorTextureHeight;
 
     ResetOverlays();
 }
@@ -1352,6 +1418,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     OverlayManager::Get().SwapOverlays(OverlayManager::Get().GetCurrentOverlayID(), (unsigned int)msg.lParam);
                     break;
                 }
+                case ipcact_winrt_show_picker:
+                {
+                    DPWinRT_StartCaptureFromPicker(OverlayManager::Get().GetCurrentOverlay().GetHandle());
+                    ApplySetting3DMode();
+                    break;
+                }
             }
             break;
         }
@@ -1391,6 +1463,10 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_bool_input_mouse_render_cursor:
                     {
                         m_OutputPendingFullRefresh = true;
+
+                        if (DPWinRT_IsCaptureCursorEnabledPropertySupported())
+                            DPWinRT_SetCaptureCursorEnabled(msg.lParam);
+
                         break;
                     }
                     case configid_bool_performance_single_desktop_mirroring:
@@ -1432,6 +1508,18 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         CropToDisplay(msg.lParam);
 
                         reset_mirroring = ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring);
+                        break;
+                    }
+                    case configid_int_overlay_capture_source:
+                    {
+                        ResetOverlayActiveCount();
+                        ResetCurrentOverlay();
+                        break;
+                    }
+                    case configid_int_overlay_winrt_desktop_id:
+                    {
+                        OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_none);
+                        ResetCurrentOverlay();
                         break;
                     }
                     case configid_int_overlay_crop_x:
@@ -1522,6 +1610,21 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 }
                 
             }
+            else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX + configid_intptr_MAX)
+            {
+                ConfigID_IntPtr intptr_id = (ConfigID_IntPtr)(msg.wParam - configid_bool_MAX - configid_int_MAX - configid_float_MAX);
+                ConfigManager::Get().SetConfigIntPtr(intptr_id, msg.lParam);
+
+                switch (intptr_id)
+                {
+                    case configid_intptr_overlay_state_winrt_hwnd:
+                    {
+                        OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_none);
+                        ResetCurrentOverlay();
+                        break;
+                    }
+                }
+            }
 
             break;
         }
@@ -1534,6 +1637,118 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
     }
 
     return reset_mirroring;
+}
+
+void OutputManager::HandleWinRTMessage(const MSG& msg)
+{
+    switch (msg.message)
+    {
+        case WM_DPLUSWINRT_SIZE:
+        {
+            const unsigned int overlay_id = OverlayManager::Get().FindOverlayID(msg.wParam);
+            const int content_width  = LOWORD(msg.lParam);
+            const int content_height = HIWORD(msg.lParam);
+
+            OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+
+            data.ConfigInt[configid_int_overlay_state_content_width]  = content_width;
+            data.ConfigInt[configid_int_overlay_state_content_height] = content_height;
+
+            //Send update to UI
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_state_content_width),  content_width);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_state_content_height), content_height);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+
+            //Apply change to overlay
+            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+            OverlayManager::Get().SetCurrentOverlayID(overlay_id);
+            ApplySettingCrop();
+            ApplySettingTransform();
+            //Mouse scale is set by WinRT library
+            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
+            break;
+        }
+        case WM_DPLUSWINRT_SET_HWND:
+        {
+            const unsigned int overlay_id = OverlayManager::Get().FindOverlayID(msg.wParam);
+            Overlay& overlay = OverlayManager::Get().GetOverlay(overlay_id);
+            OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+
+            data.ConfigInt[configid_int_overlay_capture_source]         = ovrl_capsource_winrt_capture;
+            data.ConfigInt[configid_int_overlay_winrt_desktop_id]       = -2;
+            data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] = msg.lParam;
+            overlay.SetTextureSource(ovrl_texsource_winrt_capture);
+
+            //Apply change to overlay
+            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+            OverlayManager::Get().SetCurrentOverlayID(overlay_id);
+
+            ResetOverlayActiveCount();
+            ResetCurrentOverlay();
+
+            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
+            //Send update to UI
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_capture_source), ovrl_capsource_winrt_capture);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), -2);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), msg.lParam);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+
+            break;
+        }
+        case WM_DPLUSWINRT_SET_DESKTOP:
+        {
+            const unsigned int overlay_id = OverlayManager::Get().FindOverlayID(msg.wParam);
+            Overlay& overlay = OverlayManager::Get().GetOverlay(overlay_id);
+            OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+
+            data.ConfigInt[configid_int_overlay_capture_source]         = ovrl_capsource_winrt_capture;
+            data.ConfigInt[configid_int_overlay_winrt_desktop_id]       = msg.lParam;
+            data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] = 0;
+            overlay.SetTextureSource(ovrl_texsource_winrt_capture);
+
+            //Apply change to overlay
+            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+            OverlayManager::Get().SetCurrentOverlayID(overlay_id);
+
+            ResetOverlayActiveCount();
+            ResetCurrentOverlay();
+
+            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
+            //Send update to UI
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_capture_source), ovrl_capsource_winrt_capture);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), msg.lParam);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+
+            break;
+        }
+        case WM_DPLUSWINRT_CAPTURE_LOST:
+        {
+            const unsigned int overlay_id = OverlayManager::Get().FindOverlayID(msg.wParam);
+            Overlay& overlay = OverlayManager::Get().GetOverlay(overlay_id);
+            OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+
+            //Only change texture source if the overlay is still a winrt capture (this can be false when a picker gets canceled late)
+            if ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) || (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) )
+            {
+                overlay.SetTextureSource(ovrl_texsource_none);
+            }
+
+            break;
+        }
+        case WM_DPLUSWINRT_THREAD_ERROR:
+        {
+            //We get capture lost messages for each affected overlay, so just forward the error to the UI so a warning can be displayed for now
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_winrt_thread_error, msg.lParam);
+            break;
+        }
+    }
 }
 
 HWND OutputManager::GetWindowHandle()
@@ -1594,6 +1809,7 @@ void OutputManager::ResetOverlays()
     {
         OverlayManager::Get().SetCurrentOverlayID(i);
 
+        ApplySettingCaptureSource();
         ApplySettingCrop();
         ApplySettingTransform();
         ApplySetting3DMode();
@@ -1605,6 +1821,8 @@ void OutputManager::ResetOverlays()
     ApplySettingMouseInput();
     ApplySettingInputMode();
     ApplySettingUpdateLimiter();
+
+    ResetOverlayActiveCount();
 
     //Post resolution update to UI app
     IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_resolution_update);
@@ -1621,6 +1839,7 @@ void OutputManager::ResetOverlays()
 void OutputManager::ResetCurrentOverlay()
 {
     //Reset current overlay
+    ApplySettingCaptureSource();
     ApplySettingCrop();
     ApplySettingTransform();
     ApplySettingMouseInput();
@@ -1630,7 +1849,10 @@ void OutputManager::ResetCurrentOverlay()
     ApplySettingUpdateLimiter();
 
     //Make sure that the entire overlay texture gets at least one full update for regions that will never be dirty (i.e. blank space not occupied by any desktop)
-    m_OutputPendingFullRefresh = true;
+    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
+    {
+        m_OutputPendingFullRefresh = true;
+    }
 }
 
 ID3D11Texture2D* OutputManager::GetOverlayTexture() const
@@ -2210,7 +2432,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
             for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
             {
                 Overlay& overlay = OverlayManager::Get().GetOverlay(i);
-                overlay.AssignTexture();
+                overlay.AssignDesktopDuplicationTexture();
                 overlay.OnDesktopDuplicationUpdate();
             }
         }
@@ -2460,188 +2682,12 @@ bool OutputManager::HandleOpenVREvents()
             switch (vr_event.eventType)
             {
                 case vr::VREvent_MouseMove:
-                {
-                    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) || (m_MouseIgnoreMoveEvent) ||
-                         ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) ) ||
-                         (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
-                    {
-                        break;
-                    }
-
-                    if ((ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms) == 0) ||
-                        (::GetTickCount64() >= m_MouseLastClickTick + ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms)))
-                    {
-                        //Check coordinates if HMDPointerOverride is enabled
-                        if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
-                            (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd))
-                        {
-                            POINT pt;
-                            ::GetCursorPos(&pt);
-
-                            //If mouse coordinates are not what the last laser pointer was (with tolerance), meaning some other source moved it
-                            if ((abs(pt.x - m_MouseLastLaserPointerX) > 32) || (abs(pt.y - m_MouseLastLaserPointerY) > 32))
-                            {
-                                m_MouseIgnoreMoveEventMissCount++; //GetCursorPos() may lag behind or other jumps may occasionally happen. We count up a few misses first before acting on them
-
-                                int max_miss_count = 10; //Arbitrary number, but appears to work reliably
-
-                                if (m_PerformanceUpdateLimiterDelay.QuadPart != 0) //When updates are limited, try adapting for the lower update rate
-                                {
-                                    max_miss_count = std::max(1, max_miss_count - int((m_PerformanceUpdateLimiterDelay.QuadPart / 1000) / 20));
-                                }
-
-                                if (m_MouseIgnoreMoveEventMissCount > max_miss_count)
-                                {
-                                    m_MouseIgnoreMoveEvent = true;
-
-                                    //Set flag for all overlays
-                                    if ((i == 0) || (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)))
-                                    {
-                                        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
-                                        {
-                                            vr::VROverlay()->SetOverlayFlag(OverlayManager::Get().GetOverlay(i).GetHandle(), vr::VROverlayFlags_HideLaserIntersection, true);
-                                        }
-                                    }
-                                }
-                                break;
-                            }
-                            else
-                            {
-                                m_MouseIgnoreMoveEventMissCount = 0;
-                            }
-                        }
-
-                        //Get hotspot value to use
-                        int hotspot_x = 0;
-                        int hotspot_y = 0;
-
-                        if (m_MouseLastInfo.Visible) //We're using a cached value here so we don't have to lock the shared surface for this function
-                        {
-                            hotspot_x = m_MouseDefaultHotspotX;
-                            hotspot_y = m_MouseDefaultHotspotY;
-                        }
-
-                        //GL space (0,0 is bottom left), so we need to flip that around
-                        m_MouseLastLaserPointerX = (round(vr_event.data.mouse.x) - hotspot_x) + m_DesktopX;
-                        m_MouseLastLaserPointerY = ((-round(vr_event.data.mouse.y) + m_DesktopHeight) - hotspot_y) + m_DesktopY;
-                        m_InputSim.MouseMove(m_MouseLastLaserPointerX, m_MouseLastLaserPointerY);
-
-                        //This is only relevant when limiting updates. See Update() for details.
-                        m_MouseLaserPointerUsedLastUpdate = true;
-                    }
-
-                    break;
-                }
                 case vr::VREvent_MouseButtonDown:
-                {
-                    if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
-                    {
-                        if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
-                        {
-                            //Select this as current overlay
-                            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), i);
-                            current_overlay_old = i; //Set a new reset value since we're in the middle of a temporary current overlay loop
-                        }
-                        break;
-                    }
-                    else if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) )
-                    {
-                        if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
-                        {
-                            if (m_DragModeDeviceID == -1)
-                            {
-                                DragStart();
-                            }
-                        }
-                        else if (vr_event.data.mouse.button == vr::VRMouseButton_Right)
-                        {
-                            if (!m_DragGestureActive)
-                            {
-                                DragGestureStart();
-                            }
-                        }
-                        break;
-                    }
-
-                    if (m_MouseIgnoreMoveEvent) //This can only be true if IgnoreHMDPointer enabled
-                    {
-                        m_MouseIgnoreMoveEvent = false;
-
-                        ResetMouseLastLaserPointerPos();
-                        ApplySettingMouseInput();
-
-                        break;  //Click to restore shouldn't generate a mouse click
-                    }
-
-                    m_MouseLastClickTick = ::GetTickCount64();
-
-                    switch (vr_event.data.mouse.button)
-                    {
-                        case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(true);   break;
-                        case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(true);  break;
-                        case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but supported in case it ever starts happening
-                    }
-
-                    break;
-                }
                 case vr::VREvent_MouseButtonUp:
-                {
-                    if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
-                    {
-                        break;
-                    }
-                    else if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) )
-                    {
-                        if ((vr_event.data.mouse.button == vr::VRMouseButton_Left) && (m_DragModeDeviceID != -1))
-                        {
-                            DragFinish();
-                        }
-                        else if ((vr_event.data.mouse.button == vr::VRMouseButton_Right) && (m_DragGestureActive))
-                        {
-                            DragGestureFinish();
-                        }
-
-                        break;
-                    }
-
-                    switch (vr_event.data.mouse.button)
-                    {
-                        case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(false);   break;
-                        case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(false);  break;
-                        case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(false); break;
-                    }
-
-                    break;
-                }
-                case vr::VREvent_LockMousePosition: //This seems like an interesting feature to support, but this never triggers and the freeze on the default desktop also doesn't work here somehow
-                {
-                    break;
-                }
                 case vr::VREvent_ScrollDiscrete:
-                {
-                    if ( ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (i != k_ulOverlayID_Dashboard) ) ||
-                         (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
-                        break;
-
-                    if (vr_event.data.scroll.xdelta != 0.0f) //This doesn't seem to be ever sent by SteamVR
-                    {
-                        m_InputSim.MouseWheelHorizontal(vr_event.data.scroll.xdelta);
-                    }
-
-                    if (vr_event.data.scroll.ydelta != 0.0f)
-                    {
-                        m_InputSim.MouseWheelVertical(vr_event.data.scroll.ydelta);
-                    }
-
-                    break;
-                }
                 case vr::VREvent_ScrollSmooth:
                 {
-                    //Smooth scrolls are only used for dragging mode
-                    if (m_DragModeDeviceID != -1)
-                    {
-                        DragAddDistance(vr_event.data.scroll.ydelta);
-                    }
+                    OnOpenVRMouseEvent(vr_event, current_overlay_old);
                     break;
                 }
                 case vr::VREvent_ButtonPress:
@@ -2796,6 +2842,270 @@ bool OutputManager::HandleOpenVREvents()
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
     return false;
+}
+
+void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned int& current_overlay_old)
+{
+    const Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
+
+    switch (vr_event.eventType)
+    {
+        case vr::VREvent_MouseMove:
+        {
+            if ((!ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) || (m_MouseIgnoreMoveEvent) ||
+                ((ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (overlay_current.GetID() != k_ulOverlayID_Dashboard)) ||
+                (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) ||
+                (overlay_current.GetTextureSource() == ovrl_texsource_none) )
+            {
+                break;
+            }
+
+            if ((ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms) == 0) ||
+                (::GetTickCount64() >= m_MouseLastClickTick + ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms)))
+            {
+                //Check coordinates if HMDPointerOverride is enabled
+                if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
+                    (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd))
+                {
+                    POINT pt;
+                    ::GetCursorPos(&pt);
+
+                    //If mouse coordinates are not what the last laser pointer was (with tolerance), meaning some other source moved it
+                    if ((abs(pt.x - m_MouseLastLaserPointerX) > 32) || (abs(pt.y - m_MouseLastLaserPointerY) > 32))
+                    {
+                        m_MouseIgnoreMoveEventMissCount++; //GetCursorPos() may lag behind or other jumps may occasionally happen. We count up a few misses first before acting on them
+
+                        int max_miss_count = 10; //Arbitrary number, but appears to work reliably
+
+                        if (m_PerformanceUpdateLimiterDelay.QuadPart != 0) //When updates are limited, try adapting for the lower update rate
+                        {
+                            max_miss_count = std::max(1, max_miss_count - int((m_PerformanceUpdateLimiterDelay.QuadPart / 1000) / 20));
+                        }
+
+                        if (m_MouseIgnoreMoveEventMissCount > max_miss_count)
+                        {
+                            m_MouseIgnoreMoveEvent = true;
+
+                            //Set flag for all overlays
+                            if ((overlay_current.GetID() == k_ulOverlayID_Dashboard) || (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)))
+                            {
+                                for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+                                {
+                                    const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
+
+                                    if (overlay.GetTextureSource() != ovrl_texsource_none)
+                                    {
+                                        vr::VROverlay()->SetOverlayFlag(overlay.GetHandle(), vr::VROverlayFlags_HideLaserIntersection, true);
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        m_MouseIgnoreMoveEventMissCount = 0;
+                    }
+                }
+
+                //Get hotspot value to use
+                int hotspot_x = 0;
+                int hotspot_y = 0;
+                bool is_cursor_visible = false;
+
+                if (m_OvrlDesktopDuplActiveCount != 0)
+                {
+                    is_cursor_visible = m_MouseLastInfo.Visible; //We're using a cached value here so we don't have to lock the shared surface for this function
+
+                }
+                else //If there are no desktop duplication overlays we can't rely on the cached value since it receive no updates
+                {
+                    CURSORINFO cursor_info;
+                    cursor_info.cbSize = sizeof(CURSORINFO);
+
+                    if (::GetCursorInfo(&cursor_info))
+                    {
+                        is_cursor_visible = (cursor_info.flags == CURSOR_SHOWING);
+                    }
+                }
+
+                if (is_cursor_visible) 
+                {
+                    hotspot_x = m_MouseDefaultHotspotX;
+                    hotspot_y = m_MouseDefaultHotspotY;
+                }
+
+                //Offset depending on capture source
+                int content_height = 0;
+                int offset_x = 0;
+                int offset_y = 0;
+
+                if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_winrt_capture)
+                {
+                    content_height = ConfigManager::Get().GetConfigInt(configid_int_overlay_state_content_height);
+
+                    int desktop_id = ConfigManager::Get().GetConfigInt(configid_int_overlay_winrt_desktop_id);
+
+                    if (desktop_id != -2) //Desktop capture through WinRT
+                    {
+                        if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) ) //Combined desktop is at 0,0 so nothing has to be done in that case
+                        {
+                            offset_x = m_DesktopRects[desktop_id].GetTL().x;
+                            offset_y = m_DesktopRects[desktop_id].GetTL().y;
+                        }
+                    }
+                    else //Window capture
+                    {
+                        HWND window_handle = (HWND)ConfigManager::Get().GetConfigIntPtr(configid_intptr_overlay_state_winrt_hwnd);
+
+                        //Get position of the window
+                        RECT window_rect = {0};
+
+                        if (::DwmGetWindowAttribute(window_handle, DWMWA_EXTENDED_FRAME_BOUNDS, &window_rect, sizeof(window_rect)) == S_OK)
+                        {
+                            offset_x = window_rect.left;
+                            offset_y = window_rect.top;
+                        }
+                    }
+                }
+                else
+                {
+                    content_height = m_DesktopHeight;
+                    offset_x = m_DesktopX;
+                    offset_y = m_DesktopY;
+                }
+
+                //GL space (0,0 is bottom left), so we need to flip that around
+                m_MouseLastLaserPointerX = (round(vr_event.data.mouse.x) - hotspot_x) + offset_x;
+                m_MouseLastLaserPointerY = ((-round(vr_event.data.mouse.y) + content_height) - hotspot_y) + offset_y;
+                m_InputSim.MouseMove(m_MouseLastLaserPointerX, m_MouseLastLaserPointerY);
+
+                //This is only relevant when limiting updates. See Update() for details.
+                m_MouseLaserPointerUsedLastUpdate = true;
+            }
+
+            break;
+        }
+        case vr::VREvent_MouseButtonDown:
+        {
+            if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
+            {
+                if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
+                {
+                    //Select this as current overlay
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), overlay_current.GetID());
+                    current_overlay_old = overlay_current.GetID(); //Set a new reset value since we're in the middle of a temporary current overlay loop
+                }
+                break;
+            }
+            else if ((ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (overlay_current.GetID() != k_ulOverlayID_Dashboard))
+            {
+                if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
+                {
+                    if (m_DragModeDeviceID == -1)
+                    {
+                        DragStart();
+                    }
+                }
+                else if (vr_event.data.mouse.button == vr::VRMouseButton_Right)
+                {
+                    if (!m_DragGestureActive)
+                    {
+                        DragGestureStart();
+                    }
+                }
+                break;
+            }
+            else if (overlay_current.GetTextureSource() == ovrl_texsource_none)
+            {
+                break;
+            }
+
+            if (m_MouseIgnoreMoveEvent) //This can only be true if IgnoreHMDPointer enabled
+            {
+                m_MouseIgnoreMoveEvent = false;
+
+                ResetMouseLastLaserPointerPos();
+                ApplySettingMouseInput();
+
+                break;  //Click to restore shouldn't generate a mouse click
+            }
+
+            m_MouseLastClickTick = ::GetTickCount64();
+
+            switch (vr_event.data.mouse.button)
+            {
+                case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(true);   break;
+                case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(true);  break;
+                case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but supported in case it ever starts happening
+            }
+
+            break;
+        }
+        case vr::VREvent_MouseButtonUp:
+        {
+            if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
+            {
+                break;
+            }
+            else if ((ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (overlay_current.GetID() != k_ulOverlayID_Dashboard))
+            {
+                if ((vr_event.data.mouse.button == vr::VRMouseButton_Left) && (m_DragModeDeviceID != -1))
+                {
+                    DragFinish();
+                }
+                else if ((vr_event.data.mouse.button == vr::VRMouseButton_Right) && (m_DragGestureActive))
+                {
+                    DragGestureFinish();
+                }
+
+                break;
+            }
+            else if (overlay_current.GetTextureSource() == ovrl_texsource_none)
+            {
+                break;
+            }
+
+            switch (vr_event.data.mouse.button)
+            {
+                case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(false);   break;
+                case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(false);  break;
+                case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(false); break;
+            }
+
+            break;
+        }
+        case vr::VREvent_ScrollDiscrete:
+        {
+            if (((ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (overlay_current.GetID() != k_ulOverlayID_Dashboard)) ||
+                (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) || 
+                (overlay_current.GetTextureSource() == ovrl_texsource_none) )
+            {
+                break;
+            }
+
+            if (vr_event.data.scroll.xdelta != 0.0f) //This doesn't seem to be ever sent by SteamVR
+            {
+                m_InputSim.MouseWheelHorizontal(vr_event.data.scroll.xdelta);
+            }
+
+            if (vr_event.data.scroll.ydelta != 0.0f)
+            {
+                m_InputSim.MouseWheelVertical(vr_event.data.scroll.ydelta);
+            }
+
+            break;
+        }
+        case vr::VREvent_ScrollSmooth:
+        {
+            //Smooth scrolls are only used for dragging mode
+            if (m_DragModeDeviceID != -1)
+            {
+                DragAddDistance(vr_event.data.scroll.ydelta);
+            }
+            break;
+        }
+    }
 }
 
 void OutputManager::HandleKeyboardHelperMessage(LPARAM lparam)
@@ -2991,15 +3301,85 @@ void OutputManager::AddOverlay(unsigned int base_id)
     ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, (int)new_id);
 
     //Automatically reset the matrix to a saner default by putting it next to the base overlay in most cases
-    DetachedTransformReset(OverlayManager::Get().GetOverlay(base_id).GetHandle());
+    const Overlay& overlay_base = OverlayManager::Get().GetOverlay(base_id);
+    Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
+    DetachedTransformReset(overlay_base.GetHandle());
+
+    //If base overlay is an active WinRT Capture, duplicate capture before resetting the overlay
+    if (overlay_base.GetTextureSource() == ovrl_texsource_winrt_capture)
+    {
+        if (DPWinRT_StartCaptureFromOverlay(overlay_current.GetHandle(), overlay_base.GetHandle()))
+        {
+            overlay_current.SetTextureSource(ovrl_texsource_winrt_capture);
+        }
+    }
 
     ResetCurrentOverlay();
 }
 
+void OutputManager::ApplySettingCaptureSource()
+{
+    Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+
+    switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source))
+    {
+        case ovrl_capsource_desktop_duplication:
+        {
+            if (!m_OutputInvalid)
+            {
+                OverlayTextureSource tex_source = overlay.GetTextureSource();
+                if ((tex_source != ovrl_texsource_desktop_duplication) || (tex_source != ovrl_texsource_desktop_duplication_3dou_converted))
+                {
+                    ApplySetting3DMode(); //Sets texture source for us when capture source is desktop duplication
+                }
+            }
+            else
+            {
+                overlay.SetTextureSource(ovrl_texsource_none);
+            }
+            break;
+        }
+        case ovrl_capsource_winrt_capture:
+        {
+            if (overlay.GetTextureSource() != ovrl_texsource_winrt_capture)
+            {
+                if (DPWinRT_IsCaptureFromHandleSupported())
+                {
+                    OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+                    if (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0)
+                    {
+                        if (DPWinRT_StartCaptureFromHWND(overlay.GetHandle(), (HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]))
+                        {
+                            overlay.SetTextureSource(ovrl_texsource_winrt_capture);
+                            ApplySetting3DMode(); //Syncs 3D state if needed
+                        }
+                        break;
+                    }
+                    else if (data.ConfigInt[configid_int_overlay_winrt_desktop_id] != -2)
+                    {
+                        if (DPWinRT_StartCaptureFromDesktop(overlay.GetHandle(), data.ConfigInt[configid_int_overlay_winrt_desktop_id]))
+                        {
+                            overlay.SetTextureSource(ovrl_texsource_winrt_capture);
+                            ApplySetting3DMode();
+                        }
+                        break;
+                    }
+                }
+
+                //Couldn't set up capture, set source to none
+                overlay.SetTextureSource(ovrl_texsource_none);
+            }
+            break;
+        }
+    }
+}
+
 void OutputManager::ApplySetting3DMode()
 {
-    vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetCurrentOverlay().GetHandle();
-    int mode = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
+    const Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
+    vr::VROverlayHandle_t ovrl_handle = overlay_current.GetHandle();
+    int mode = (overlay_current.GetTextureSource() != ovrl_texsource_none) ? ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode) : ovrl_3Dmode_none;
 
     if (mode != ovrl_3Dmode_none)
     {
@@ -3021,14 +3401,18 @@ void OutputManager::ApplySetting3DMode()
         vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 1.0f);
     }
 
-    if ( (mode == ovrl_3Dmode_ou) || (mode == ovrl_3Dmode_hou) )
+    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
     {
-        OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_tex_source_desktop_duplication_3dou_converted);
+        if ((mode == ovrl_3Dmode_ou) || (mode == ovrl_3Dmode_hou))
+        {
+            OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_desktop_duplication_3dou_converted);
+        }
+        else
+        {
+            OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_desktop_duplication);
+        }
     }
-    else
-    {
-        OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_tex_source_desktop_duplication);
-    }
+    //WinRT OU3D state is set in ApplySettingCrop since it needs cropping values
 
     switch (mode)
     {
@@ -3051,9 +3435,12 @@ void OutputManager::ApplySetting3DMode()
         default: break;
     }
 
-    ApplySettingCrop();
+    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
+    {
+        RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
+    }
 
-    RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
+    ApplySettingCrop();
 }
 
 void OutputManager::ApplySettingTransform()
@@ -3072,9 +3459,10 @@ void OutputManager::ApplySettingTransform()
         should_be_visible = true;
         overlay.SetOpacity(0.25f);
     }
-    else if (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled))
+    else if ( (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) && (overlay.GetOpacity() != ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity)) )
     {
         overlay.SetOpacity(ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity));
+        should_be_visible = overlay.ShouldBeVisible(); //Re-evaluate this in case the overlay was left hidden after deactivating gaze fade
     }
 
     if ( (should_be_visible) && (!overlay.IsVisible()) )
@@ -3105,8 +3493,23 @@ void OutputManager::ApplySettingTransform()
 
         if (m_OutputInvalid) //No cropping on invalid output image
         {
-            crop_width  = m_DesktopWidth;
-            crop_height = m_DesktopHeight;
+            crop_width  = k_lOverlayOutputErrorTextureWidth;
+            crop_height = k_lOverlayOutputErrorTextureHeight;
+        }
+        else if (overlay.GetTextureSource() == ovrl_texsource_none)
+        {
+            //Get dimensions from mouse scale if possible 
+            vr::HmdVector2_t mouse_scale;
+            if (vr::VROverlay()->GetOverlayMouseScale(ovrl_handle, &mouse_scale) == vr::VROverlayError_None)
+            {
+                crop_width  = mouse_scale.v[0];
+                crop_height = mouse_scale.v[1];
+            }
+            else
+            {
+                crop_width  = k_lOverlayOutputErrorTextureWidth;
+                crop_height = k_lOverlayOutputErrorTextureHeight;
+            }
         }
         else if ((mode_3d == ovrl_3Dmode_ou)) //Converted Over-Under changes texture dimensions, so adapt
         {
@@ -3266,7 +3669,7 @@ void OutputManager::ApplySettingCrop()
     vr::VRTextureBounds_t tex_bounds;
     vr::VRTextureBounds_t tex_bounds_prev;
 
-    if (m_OutputInvalid)
+    if (overlay.GetTextureSource() == ovrl_texsource_none)
     {
         tex_bounds.uMin = 0.0f;
         tex_bounds.vMin = 0.0f;
@@ -3279,10 +3682,14 @@ void OutputManager::ApplySettingCrop()
 
     overlay.UpdateValidatedCropRect();
     const DPRect& crop_rect = overlay.GetValidatedCropRect();
-    
-    //Use full texture if everything checks out or texture source is 3D Over-Under converted
-    if ( (overlay.GetTextureSource() == ovrl_tex_source_desktop_duplication_3dou_converted) || 
-         ( (crop_rect.GetTL().x == 0) && (crop_rect.GetTL().y == 0) && (crop_rect.GetWidth() == m_DesktopWidth) && (crop_rect.GetHeight() == m_DesktopHeight) ) )
+    const int content_width  = data.ConfigInt[configid_int_overlay_state_content_width];
+    const int content_height = data.ConfigInt[configid_int_overlay_state_content_height];
+
+    const int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
+    const bool is_ou3d = (mode_3d == ovrl_3Dmode_ou) || (mode_3d == ovrl_3Dmode_hou);
+
+    //Use full texture if everything checks out or 3D mode is Over-Under (converted to a 1:1 fitting texture)
+    if ( (is_ou3d) || ( (crop_rect.GetTL().x == 0) && (crop_rect.GetTL().y == 0) && (crop_rect.GetWidth() == content_width) && (crop_rect.GetHeight() == content_height) ) )
     {
         tex_bounds.uMin = 0.0f;
         tex_bounds.vMin = 0.0f;
@@ -3296,18 +3703,25 @@ void OutputManager::ApplySettingCrop()
         //This doesn't 100% solve texel bleed, especially not on high overlay rendering quality where it can require pretty big offsets depending on overlay size/distance
         float offset_x = (crop_rect.GetWidth() <= 2) ? 0.0f : 1.5f, offset_y = (crop_rect.GetHeight() <= 2) ? 0.0f : 1.5f; //Yes, we do handle the case of <3 pixel crops
 
-        tex_bounds.uMin = (crop_rect.GetTL().x + offset_x) / m_DesktopWidth;
-        tex_bounds.vMin = (crop_rect.GetTL().y + offset_y) / m_DesktopHeight;
-        tex_bounds.uMax = (crop_rect.GetBR().x - offset_x) / m_DesktopWidth;
-        tex_bounds.vMax = (crop_rect.GetBR().y - offset_y) / m_DesktopHeight;
+        tex_bounds.uMin = (crop_rect.GetTL().x + offset_x) / content_width;
+        tex_bounds.vMin = (crop_rect.GetTL().y + offset_y) / content_height;
+        tex_bounds.uMax = (crop_rect.GetBR().x - offset_x) / content_width;
+        tex_bounds.vMax = (crop_rect.GetBR().y - offset_y) / content_height;
     }
 
-    //Compare old to new bounds to see if a full refresh is required
-    vr::VROverlay()->GetOverlayTextureBounds(ovrl_handle, &tex_bounds_prev);
-
-    if ((tex_bounds.uMin < tex_bounds_prev.uMin) || (tex_bounds.vMin < tex_bounds_prev.vMin) || (tex_bounds.uMax > tex_bounds_prev.uMax) || (tex_bounds.vMax > tex_bounds_prev.vMax))
+    //If capture source is WinRT, set 3D mode with cropping values
+    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_winrt_capture)
     {
-        RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
+        DPWinRT_SetOverlayOverUnder3D(ovrl_handle, is_ou3d, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
+    }
+    else //For Desktop Duplication, compare old to new bounds to see if a full refresh is required
+    {
+        vr::VROverlay()->GetOverlayTextureBounds(ovrl_handle, &tex_bounds_prev);
+
+        if ((tex_bounds.uMin < tex_bounds_prev.uMin) || (tex_bounds.vMin < tex_bounds_prev.vMin) || (tex_bounds.uMax > tex_bounds_prev.uMax) || (tex_bounds.vMax > tex_bounds_prev.vMax))
+        {
+            RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
+        }
     }
 
     vr::VROverlay()->SetOverlayTextureBounds(ovrl_handle, &tex_bounds);
@@ -3322,7 +3736,8 @@ void OutputManager::ApplySettingInputMode()
     {
         OverlayManager::Get().SetCurrentOverlayID(i);
 
-        vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetCurrentOverlay().GetHandle();
+        const Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
+        vr::VROverlayHandle_t ovrl_handle = overlay_current.GetHandle();
 
         if ((ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) || (drag_or_select_mode_enabled) )
         {
@@ -3331,7 +3746,8 @@ void OutputManager::ApplySettingInputMode()
             {
                 vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
             }
-            else if ( (i != k_ulOverlayID_Dashboard) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
+            else if ( (i != k_ulOverlayID_Dashboard) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) ||
+                      (overlay_current.GetTextureSource() == ovrl_texsource_none) )
             {
                 vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
                 vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, false);
@@ -3376,9 +3792,10 @@ void OutputManager::ApplySettingMouseInput()
     {
         OverlayManager::Get().SetCurrentOverlayID(i);
 
-        vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetCurrentOverlay().GetHandle();
+        Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+        vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
 
-        if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) && (!m_OutputInvalid) )
+        if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled))
         {
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
             vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
@@ -3398,13 +3815,45 @@ void OutputManager::ApplySettingMouseInput()
             vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
         }
 
-        vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, !ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_intersection_blob));
+        bool hide_intersection = (overlay.GetTextureSource() != ovrl_texsource_none) ? !ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_intersection_blob) : false;
+        vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, hide_intersection);
 
-        vr::HmdVector2_t mouse_scale;
-        mouse_scale.v[0] = m_DesktopWidth;
-        mouse_scale.v[1] = m_DesktopHeight;
+        if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
+        {
+            vr::HmdVector2_t mouse_scale;
+            mouse_scale.v[0] = m_DesktopWidth;
+            mouse_scale.v[1] = m_DesktopHeight;
 
-        vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
+            vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
+        }
+        else if (overlay.GetTextureSource() != ovrl_texsource_none)
+        {
+            vr::HmdVector2_t mouse_scale;
+            mouse_scale.v[0] = ConfigManager::Get().GetConfigInt(configid_int_overlay_state_content_width);
+            mouse_scale.v[1] = ConfigManager::Get().GetConfigInt(configid_int_overlay_state_content_height);
+
+            vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
+        }
+        else
+        {
+            //The mouse scale defines the surface aspect ratio for the intersection test... yeah. If it's off there will be hits over empty space, so try to match it even here
+            vr::HmdVector2_t mouse_scale;
+            uint32_t ovrl_tex_width = 1, ovrl_tex_height = 1;
+
+            //Content size might not be what the current texture size is in case of ovrl_texsource_none
+            if (vr::VROverlay()->GetOverlayTextureSize(ovrl_handle, &ovrl_tex_width, &ovrl_tex_height) == vr::VROverlayError_None)
+            {
+                mouse_scale.v[0] = ovrl_tex_width;
+                mouse_scale.v[1] = ovrl_tex_height;
+            }
+            else //ovrl_texsource_none pretty much means overlay output error texture, so fall back to that if we can't get the real size
+            {
+                mouse_scale.v[0] = k_lOverlayOutputErrorTextureWidth;
+                mouse_scale.v[1] = k_lOverlayOutputErrorTextureHeight;
+            }
+
+            vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
+        }
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
@@ -3469,7 +3918,10 @@ void OutputManager::ApplySettingUpdateLimiter()
             limit_ms = fps_enum_values_ms[enum_id];
         }
     }
- 
+
+    LARGE_INTEGER limit_delay_global;
+    limit_delay_global.QuadPart = 1000.0f * limit_ms;
+
     //See if there are any overrides from visible overlays
     //This is the straight forward and least error-prone way, not quite the most efficient one
     //Calls to this are minimized and there typically aren't many overlays so it's not really that bad (and we do iterate over all of them in many other places too)
@@ -3479,7 +3931,8 @@ void OutputManager::ApplySettingUpdateLimiter()
         const Overlay& overlay        = OverlayManager::Get().GetOverlay(i);
         const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-        if ( (overlay.IsVisible()) && (data.ConfigInt[configid_int_overlay_update_limit_override_mode] != update_limit_mode_off) )
+        if ( (overlay.IsVisible()) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) && 
+             (data.ConfigInt[configid_int_overlay_update_limit_override_mode] != update_limit_mode_off) )
         {
             float override_ms = 0.0f;
 
@@ -3503,6 +3956,27 @@ void OutputManager::ApplySettingUpdateLimiter()
                 limit_ms = override_ms;
                 is_first_override = false;
             }
+        }
+        else if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) //Set limit values for WinRT overlays as well
+        {
+            LARGE_INTEGER limit_delay = limit_delay_global;
+
+            if (data.ConfigInt[configid_int_overlay_update_limit_override_mode] == update_limit_mode_ms)
+            {
+                limit_delay.QuadPart = 1000.0f * data.ConfigFloat[configid_float_overlay_update_limit_override_ms];
+            }
+            else if (data.ConfigInt[configid_int_overlay_update_limit_override_mode] == update_limit_mode_fps)
+            {
+                int enum_id = data.ConfigInt[configid_int_overlay_update_limit_override_fps];
+
+                if (enum_id <= update_limit_fps_50)
+                {
+                    limit_delay.QuadPart = 1000.0f * fps_enum_values_ms[enum_id];
+                }
+            }
+
+            //Calling this regardless of change might be overkill, but doesn't seem too bad for now
+            DPWinRT_SetOverlayUpdateLimitDelay(overlay.GetHandle(), limit_delay.QuadPart);
         }
     }
     
@@ -4255,10 +4729,10 @@ void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter
     //Convert()'s arguments are almost all stuff from OutputManager, so we take this roundabout way of calling it
     const DPRect& crop_rect = overlay.GetValidatedCropRect();
 
-    bool res = converter.Convert(m_Device, m_DeviceContext, m_MultiGPUTargetDevice, m_MultiGPUTargetDeviceContext, m_OvrlTex,
-                                 m_DesktopWidth, m_DesktopHeight, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
+    HRESULT hr = converter.Convert(m_Device, m_DeviceContext, m_MultiGPUTargetDevice, m_MultiGPUTargetDeviceContext, m_OvrlTex,
+                                   m_DesktopWidth, m_DesktopHeight, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
 
-    if (res)
+    if (hr == S_OK)
     {
         vr::Texture_t vrtex;
         vrtex.eType = vr::TextureType_DirectX;
@@ -4266,6 +4740,10 @@ void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter
         vrtex.handle = converter.GetTexture(); //OUtoSBSConverter takes care of multi-gpu support automatically, so no further processing needed
 
         vr::VROverlay()->SetOverlayTexture(overlay.GetHandle(), &vrtex);
+    }
+    else
+    {
+        ProcessFailure(m_Device, L"Failed to convert OU texture to SBS", L"Error", hr, SystemTransitionsExpectedErrors);
     }
 }
 

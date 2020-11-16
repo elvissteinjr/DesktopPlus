@@ -45,6 +45,7 @@ class UIManager
         bool m_LowCompositorRes;     //Set when compositor's resolution is set below 100% during init. The user is warned about this as it affects overlay rendering
         bool m_LowCompositorQuality; //Set when the compositor's quality setting to set to something other than High or Auto
         vr::EVROverlayError m_OverlayErrorLast; //Last encountered error when adding an overlay (usually just overlay limit exceeded)
+        HRESULT m_WinRTErrorLast;    //Last encountered error when a Graphics Capture thread crashed (ideally never happens)
 
         bool m_ElevatedTaskSetUp;   
 
@@ -99,14 +100,16 @@ class UIManager
         bool IsCompositorRenderQualityLow() const;
         void UpdateCompositorRenderQualityLow();
         vr::EVROverlayError GetOverlayErrorLast() const;
+        HRESULT GetWinRTErrorLast() const;
         void ResetOverlayErrorLast();
+        void ResetWinRTErrorLast();
         bool IsElevatedTaskSetUp() const;
 
         bool IsOverlayVisible() const;
         bool IsOverlayKeyboardHelperVisible() const;
 
-        void GetOverlayPixelSize(int& width, int& height) const;
-        void UpdateOverlayPixelSize();
+        void GetDesktopOverlayPixelSize(int& width, int& height) const;
+        void UpdateDesktopOverlayPixelSize();
 
         void PositionOverlay(WindowKeyboardHelper& window_kdbhelper);
 };

@@ -94,6 +94,11 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         builder.AddText(OverlayManager::Get().GetConfigData(i).ConfigNameStr.c_str());
     }
 
+    for (const std::string& str : m_FontBuilderExtraStrings) //And extra strings... yeah. This might not be the best way to tackle this issue
+    {
+        builder.AddText(str.c_str());
+    }
+
     builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
     builder.BuildRanges(&ranges);
 
@@ -388,4 +393,9 @@ bool TextureManager::GetTextureInfo(const CustomAction& action, ImVec2& size, Im
     }
 
     return false;
+}
+
+void TextureManager::AddFontBuilderString(const char* str)
+{
+    m_FontBuilderExtraStrings.emplace_back(str);
 }

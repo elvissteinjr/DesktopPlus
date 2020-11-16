@@ -38,6 +38,7 @@ class TextureManager
         ImVec2 m_AtlasSizes[tmtex_MAX];
         ImVec4 m_AtlasUVs[tmtex_MAX];
         std::wstring m_TextureFilenameIconTemp;
+        std::vector<std::string> m_FontBuilderExtraStrings; //Extra strings containing characters to be included when building the fonts. Might fill up over time but better than nothing
 
         bool m_ReloadLater;
 
@@ -53,4 +54,6 @@ class TextureManager
         void SetTextureFilenameIconTemp(const wchar_t* filename);
         bool GetTextureInfo(TMNGRTexID texid, ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const;
         bool GetTextureInfo(const CustomAction& action, ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const;
+
+        void AddFontBuilderString(const char* str);
 };

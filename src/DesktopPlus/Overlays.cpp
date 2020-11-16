@@ -5,13 +5,14 @@
 #include "CommonTypes.h"
 #include "OverlayManager.h"
 #include "OutputManager.h"
+#include "DesktopPlusWinRT.h"
 
 Overlay::Overlay(unsigned int id) : m_ID(id),
                                     m_OvrlHandle(vr::k_ulOverlayHandleInvalid),
                                     m_Visible(false),
                                     m_Opacity(1.0f),
                                     m_GlobalInteractive(false),
-                                    m_TextureSource(ovrl_tex_source_desktop_duplication)
+                                    m_TextureSource(ovrl_texsource_desktop_duplication)
 {
     //Don't call InitOverlay when OpenVR isn't loaded yet. This happens during startup when loading the config and will be fixed up by OutputManager::InitOverlay() afterwards
     if (vr::VROverlay() != nullptr)
@@ -32,6 +33,11 @@ Overlay& Overlay::operator=(Overlay&& b)
     {
         if (m_OvrlHandle != vr::k_ulOverlayHandleInvalid)
         {
+            if (m_TextureSource == ovrl_texsource_winrt_capture)
+            {
+                DPWinRT_StopCapture(m_OvrlHandle);
+            }
+
             vr::VROverlay()->DestroyOverlay(m_OvrlHandle);
         }
 
@@ -54,6 +60,11 @@ Overlay::~Overlay()
 {
     if (m_OvrlHandle != vr::k_ulOverlayHandleInvalid)
     {
+        if (m_TextureSource == ovrl_texsource_winrt_capture)
+        {
+            DPWinRT_StopCapture(m_OvrlHandle);
+        }
+
         vr::VROverlay()->DestroyOverlay(m_OvrlHandle);
     }
 }
@@ -76,64 +87,43 @@ void Overlay::InitOverlay()
     }
 }
 
-void Overlay::AssignTexture()
+void Overlay::AssignDesktopDuplicationTexture()
 {
-    if (m_TextureSource != ovrl_tex_source_desktop_duplication)
-        return;
-
-    OutputManager* outmgr = OutputManager::Get();
-    if (outmgr == nullptr)
-        return;
-
     if (m_OvrlHandle != vr::k_ulOverlayHandleInvalid)
     {
-        //Get overlay texture handle for the desktop texture overlay from OpenVR and set it as handle for this overlay
-        vr::VROverlayHandle_t ovrl_handle_desktop_tex = outmgr->GetDesktopTextureOverlay();
-        ID3D11ShaderResourceView* ovrl_shader_res;
-        uint32_t ovrl_width;
-        uint32_t ovrl_height;
-        uint32_t ovrl_native_format;
-        vr::ETextureType ovrl_api_type;
-        vr::EColorSpace ovrl_color_space;
-        vr::VRTextureBounds_t ovrl_tex_bounds;
+        OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_ID);
 
-        ID3D11Texture2D* multigpu_target_tex = OutputManager::Get()->GetMultiGPUTargetTexture();
-        vr::Texture_t vrtex;
-        vrtex.eType = vr::TextureType_DirectX;
-        vrtex.eColorSpace = vr::ColorSpace_Gamma;
-        vrtex.handle = (multigpu_target_tex != nullptr) ? multigpu_target_tex : OutputManager::Get()->GetOverlayTexture();
+        if (data.ConfigInt[configid_int_overlay_capture_source] != ovrl_capsource_desktop_duplication)
+            return;
 
-        vr::VROverlayError ovrl_error = vr::VROverlayError_None;
-        ovrl_error = vr::VROverlay()->GetOverlayTexture(ovrl_handle_desktop_tex, (void**)&ovrl_shader_res, vrtex.handle, &ovrl_width, &ovrl_height, &ovrl_native_format,
-                                                        &ovrl_api_type, &ovrl_color_space, &ovrl_tex_bounds);
+        OutputManager* outmgr = OutputManager::Get();
+        if (outmgr == nullptr)
+            return;
 
-        if (ovrl_error == vr::VROverlayError_None)
+        //Set content size to desktop duplication values
+        int dwidth  = outmgr->GetDesktopWidth();
+        int dheight = outmgr->GetDesktopHeight();
+
+        //Avoid sending it over to UI if we can help it
+        if ( (data.ConfigInt[configid_int_overlay_state_content_width] != dwidth) || (data.ConfigInt[configid_int_overlay_state_content_height] != dheight) )
         {
-            ID3D11Resource* ovrl_tex;
-            ovrl_shader_res->GetResource(&ovrl_tex);
+            data.ConfigInt[configid_int_overlay_state_content_width]  = dwidth;
+            data.ConfigInt[configid_int_overlay_state_content_height] = dheight;
+            UpdateValidatedCropRect();
 
-            HANDLE ovrl_tex_handle = nullptr;
-            IDXGIResource* ovrl_dxgi_resource;
-            HRESULT hr = ovrl_tex->QueryInterface(__uuidof(IDXGIResource), (void**)&ovrl_dxgi_resource);
-
-            ovrl_dxgi_resource->GetSharedHandle(&ovrl_tex_handle);
-
-            vr::Texture_t vrtex_target;
-            vrtex_target.eType       = vr::TextureType_DXGISharedHandle;
-            vrtex_target.eColorSpace = vr::ColorSpace_Gamma;
-            vrtex_target.handle      = ovrl_tex_handle;
-
-            vr::VROverlay()->SetOverlayTexture(m_OvrlHandle, &vrtex_target);
-
-            ovrl_dxgi_resource->Release();
-            ovrl_dxgi_resource = nullptr;
-
-            ovrl_tex->Release();
-            ovrl_tex = nullptr;
-
-            vr::VROverlay()->ReleaseNativeOverlayHandle(ovrl_handle_desktop_tex, (void*)ovrl_shader_res);
-            ovrl_shader_res = nullptr;
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), m_ID);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_state_content_width),  dwidth);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_state_content_height), dheight);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
         }
+
+        //Exclude indirect desktop duplication sources, like converted Over-Under 3D
+        if (m_TextureSource != ovrl_texsource_desktop_duplication)
+            return;
+
+        //Use desktop texture overlay as source for a shared overlay texture
+        ID3D11Resource* device_texture_ref = (OutputManager::Get()->GetMultiGPUTargetTexture() != nullptr) ? OutputManager::Get()->GetMultiGPUTargetTexture() : OutputManager::Get()->GetOverlayTexture();
+        SetSharedOverlayTexture(outmgr->GetDesktopTextureOverlay(), m_OvrlHandle, device_texture_ref);
     }
 }
 
@@ -276,14 +266,13 @@ void Overlay::UpdateValidatedCropRect()
     const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_ID);
 
     int x, y, width, height;
-    int desktop_width = outmgr->GetDesktopWidth(), desktop_height = outmgr->GetDesktopHeight();
 
-    x              = std::min( std::max(0, data.ConfigInt[configid_int_overlay_crop_x]), desktop_width);
-    y              = std::min( std::max(0, data.ConfigInt[configid_int_overlay_crop_y]), desktop_height);
+    x              = std::min( std::max(0, data.ConfigInt[configid_int_overlay_crop_x]), data.ConfigInt[configid_int_overlay_state_content_width]);
+    y              = std::min( std::max(0, data.ConfigInt[configid_int_overlay_crop_y]), data.ConfigInt[configid_int_overlay_state_content_height]);
     width          = data.ConfigInt[configid_int_overlay_crop_width];
     height         = data.ConfigInt[configid_int_overlay_crop_height];
-    int width_max  = desktop_width  - x;
-    int height_max = desktop_height - y;
+    int width_max  = data.ConfigInt[configid_int_overlay_state_content_width]  - x;
+    int height_max = data.ConfigInt[configid_int_overlay_state_content_height] - y;
 
     if (width == -1)
         width = width_max;
@@ -312,11 +301,24 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
     //Cleanup old sources if needed
     switch (m_TextureSource)
     {
-        case ovrl_tex_source_desktop_duplication_3dou_converted: m_OUtoSBSConverter.CleanRefs(); break;
+        case ovrl_texsource_desktop_duplication_3dou_converted: m_OUtoSBSConverter.CleanRefs();    break;
+        case ovrl_texsource_winrt_capture:                      DPWinRT_StopCapture(m_OvrlHandle); break;
         default: break;
     }
 
     m_TextureSource = tex_source;
+
+    if (m_TextureSource == ovrl_texsource_none)
+    {
+        if (OutputManager* outmgr = OutputManager::Get())
+        {
+            outmgr->SetOutputErrorTexture(m_OvrlHandle);
+        }
+    }
+    else if (m_TextureSource == ovrl_texsource_desktop_duplication)
+    {
+        AssignDesktopDuplicationTexture();
+    }
 }
 
 OverlayTextureSource Overlay::GetTextureSource() const
@@ -326,7 +328,7 @@ OverlayTextureSource Overlay::GetTextureSource() const
 
 void Overlay::OnDesktopDuplicationUpdate()
 {
-    if (m_TextureSource == ovrl_tex_source_desktop_duplication_3dou_converted)
+    if ( (m_Visible) && (m_TextureSource == ovrl_texsource_desktop_duplication_3dou_converted) )
     {
         OutputManager::Get()->ConvertOUtoSBS(*this, m_OUtoSBSConverter);
     }

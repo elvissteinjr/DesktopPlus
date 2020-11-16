@@ -1,6 +1,7 @@
 #include "Util.h"
 
 #include <d3d11.h>
+#include <wrl/client.h>
 
 std::string StringConvertFromUTF16(LPCWSTR str)
 {
@@ -173,26 +174,71 @@ void SetConfigForWMR(int& wmr_ignore_vscreens)
     }
 }
 
-DEVMODE GetDevmodeForDisplayID(int display_id)
+vr::EVROverlayError SetSharedOverlayTexture(vr::VROverlayHandle_t ovrl_handle_source, vr::VROverlayHandle_t ovrl_handle_target, ID3D11Resource* device_texture_ref)
+{
+    //Get overlay texture handle from OpenVR and set it as handle for the target overlay
+    ID3D11ShaderResourceView* ovrl_shader_res;
+    uint32_t ovrl_width;
+    uint32_t ovrl_height;
+    uint32_t ovrl_native_format;
+    vr::ETextureType ovrl_api_type;
+    vr::EColorSpace ovrl_color_space;
+    vr::VRTextureBounds_t ovrl_tex_bounds;
+
+    vr::VROverlayError ovrl_error = vr::VROverlayError_None;
+    ovrl_error = vr::VROverlay()->GetOverlayTexture(ovrl_handle_source, (void**)&ovrl_shader_res, device_texture_ref, &ovrl_width, &ovrl_height, &ovrl_native_format,
+                                                    &ovrl_api_type, &ovrl_color_space, &ovrl_tex_bounds);
+
+    if (ovrl_error == vr::VROverlayError_None)
+    {
+        {
+            Microsoft::WRL::ComPtr<ID3D11Resource> ovrl_tex;
+            Microsoft::WRL::ComPtr<IDXGIResource> ovrl_dxgi_resource;
+            ovrl_shader_res->GetResource(&ovrl_tex);
+
+            HRESULT hr = ovrl_tex.As(&ovrl_dxgi_resource);//ovrl_tex->QueryInterface(__uuidof(IDXGIResource), (void**)&ovrl_dxgi_resource);
+
+            if (!FAILED(hr))
+            {
+                HANDLE ovrl_tex_handle = nullptr;
+                ovrl_dxgi_resource->GetSharedHandle(&ovrl_tex_handle);
+
+                vr::Texture_t vrtex_target;
+                vrtex_target.eType = vr::TextureType_DXGISharedHandle;
+                vrtex_target.eColorSpace = vr::ColorSpace_Gamma;
+                vrtex_target.handle = ovrl_tex_handle;
+
+                vr::VROverlay()->SetOverlayTexture(ovrl_handle_target, &vrtex_target);
+            }
+        }
+
+        vr::VROverlay()->ReleaseNativeOverlayHandle(ovrl_handle_source, (void*)ovrl_shader_res);
+        ovrl_shader_res = nullptr;
+    }
+
+    return ovrl_error;
+}
+
+DEVMODE GetDevmodeForDisplayID(int display_id, HMONITOR* hmon)
 {
     if (display_id == -1)
         display_id = 0;
 
     DEVMODE mode = {0};
-    IDXGIFactory1* factory_ptr;
+    Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
 
     //This needs to go through DXGI as EnumDisplayDevices()'s order can be different
     HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
     if (!FAILED(hr))
     {
-        IDXGIAdapter* adapter_ptr = nullptr;
+        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
         UINT i = 0;
         int output_count = 0;
 
         while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
         {
             //Enum the available outputs
-            IDXGIOutput* output_ptr;
+            Microsoft::WRL::ComPtr<IDXGIOutput> output_ptr;
             while (adapter_ptr->EnumOutputs(output_count, &output_ptr) != DXGI_ERROR_NOT_FOUND)
             {
                 //Check if this happens to be the output we're looking for
@@ -206,27 +252,30 @@ DEVMODE GetDevmodeForDisplayID(int display_id)
 
                     if (EnumDisplaySettings(output_desc.DeviceName, ENUM_CURRENT_SETTINGS, &mode) != FALSE)
                     {
-                        //Cleanup and get out early
-                        output_ptr->Release();
-                        adapter_ptr->Release();
-                        factory_ptr->Release();
+                        //Set hmon if requested
+                        if (hmon != nullptr)
+                        {
+                            *hmon = output_desc.Monitor;
+                        }
 
+                        //Get out early
                         return mode;
                     }
                     
                     mode.dmSize = 0;    //Reset dmSize to 0 if the call failed
                 }
 
-                output_ptr->Release();
                 ++output_count;
             }
 
-            adapter_ptr->Release();
             ++i;
         }
+    }
 
-        factory_ptr->Release();
-        factory_ptr = nullptr;
+    //Set hmon to nullptr
+    if (hmon != nullptr)
+    {
+        *hmon = nullptr;
     }
 
     return mode;

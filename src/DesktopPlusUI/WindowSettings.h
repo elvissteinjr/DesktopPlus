@@ -6,6 +6,7 @@
 #include "imgui.h"
 
 #include "ConfigManager.h"
+#include "WindowList.h"
 
 //The entire settings interface
 class WindowSettings
@@ -22,6 +23,10 @@ class WindowSettings
 
         void UpdateWarnings();
         void UpdateCatOverlay();
+        void UpdateCatOverlayTabGeneral();
+        void UpdateCatOverlayTabCapture();
+        void UpdateCatOverlayTabAdvanced();
+        void UpdateCatOverlayTabInterface();
         void UpdateCatInterface();
         void UpdateCatInput();
         void UpdateCatPerformance();
@@ -33,6 +38,7 @@ class WindowSettings
         bool ButtonKeybind(unsigned char* key_code);
         bool ButtonAction(ActionID& action_id);
         void ProfileSelector(bool multi_overlay);
+        void UpdateWindowList(std::vector<WindowInfo>& window_list, HWND selected_window, std::string& selected_window_str);
         void ActionOrderSetting(unsigned int overlay_id = UINT_MAX);
         void UpdateLimiterSetting(float column_width_0, bool is_override = false);
         bool ActionButtonRow(ActionID action_id, int list_pos, int& list_selected_pos, unsigned int overlay_id = UINT_MAX);

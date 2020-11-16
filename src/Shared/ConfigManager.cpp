@@ -5,15 +5,18 @@
 
 #include "Util.h"
 #include "OverlayManager.h"
+#include "WindowList.h"
+#include "DesktopPlusWinRT.h"
 
 static ConfigManager g_ConfigManager;
 static const std::string g_EmptyString;       //This way we can still return a const reference. Worth it? iunno
 
 OverlayConfigData::OverlayConfigData()
 {
-    std::fill(std::begin(ConfigBool),  std::end(ConfigBool),  false);
-    std::fill(std::begin(ConfigInt),   std::end(ConfigInt),   -1);
-    std::fill(std::begin(ConfigFloat), std::end(ConfigFloat), 0.0f);
+    std::fill(std::begin(ConfigBool),   std::end(ConfigBool),   false);
+    std::fill(std::begin(ConfigInt),    std::end(ConfigInt),    -1);
+    std::fill(std::begin(ConfigFloat),  std::end(ConfigFloat),  0.0f);
+    std::fill(std::begin(ConfigIntPtr), std::end(ConfigIntPtr), 0);
 
     //Default the transform matrices to zero as an indicator to reset them when possible later
     float matrix_zero[16] = { 0.0f };
@@ -105,16 +108,20 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     
     data.ConfigNameStr = config.ReadString(section.c_str(), "Name", default_name.c_str());
 
-    data.ConfigBool[configid_bool_overlay_enabled]                     = config.ReadBool(section.c_str(), "Enabled", true);
-    data.ConfigInt[configid_int_overlay_desktop_id]                    = config.ReadInt(section.c_str(),  "DesktopID", -2);
-    data.ConfigFloat[configid_float_overlay_width]                     = config.ReadInt(section.c_str(),  "Width", 350) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_curvature]                 = config.ReadInt(section.c_str(),  "Curvature", -100) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_opacity]                   = config.ReadInt(section.c_str(),  "Opacity", 100) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_offset_right]              = config.ReadInt(section.c_str(),  "OffsetRight", 0) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_offset_up]                 = config.ReadInt(section.c_str(),  "OffsetUp", 0) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_offset_forward]            = config.ReadInt(section.c_str(),  "OffsetForward", 0) / 100.0f;
-    data.ConfigInt[configid_int_overlay_detached_display_mode]         = config.ReadInt(section.c_str(),  "DetachedDisplayMode", ovrl_dispmode_always);
-    data.ConfigInt[configid_int_overlay_detached_origin]               = config.ReadInt(section.c_str(),  "DetachedOrigin", ovrl_origin_room);
+    data.ConfigBool[configid_bool_overlay_enabled]                     = config.ReadBool(section.c_str(),   "Enabled", true);
+    data.ConfigInt[configid_int_overlay_desktop_id]                    = config.ReadInt(section.c_str(),    "DesktopID", -2);
+    data.ConfigInt[configid_int_overlay_capture_source]                = config.ReadInt(section.c_str(),    "CaptureSource", ovrl_capsource_desktop_duplication);
+    data.ConfigInt[configid_int_overlay_winrt_desktop_id]              = config.ReadInt(section.c_str(),    "WinRTDesktopID", -2);
+    data.ConfigStr[configid_str_overlay_winrt_last_window_title]       = config.ReadString(section.c_str(), "WinRTLastWindowTitle");
+    data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name]    = config.ReadString(section.c_str(), "WinRTLastWindowExeName");
+    data.ConfigFloat[configid_float_overlay_width]                     = config.ReadInt(section.c_str(),    "Width", 350) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_curvature]                 = config.ReadInt(section.c_str(),    "Curvature", -100) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_opacity]                   = config.ReadInt(section.c_str(),    "Opacity", 100) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_offset_right]              = config.ReadInt(section.c_str(),    "OffsetRight", 0) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_offset_up]                 = config.ReadInt(section.c_str(),    "OffsetUp", 0) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_offset_forward]            = config.ReadInt(section.c_str(),    "OffsetForward", 0) / 100.0f;
+    data.ConfigInt[configid_int_overlay_detached_display_mode]         = config.ReadInt(section.c_str(),    "DetachedDisplayMode", ovrl_dispmode_always);
+    data.ConfigInt[configid_int_overlay_detached_origin]               = config.ReadInt(section.c_str(),    "DetachedOrigin", ovrl_origin_room);
 
     data.ConfigInt[configid_int_overlay_crop_x]                        = config.ReadInt(section.c_str(),  "CroppingX", 0);
     data.ConfigInt[configid_int_overlay_crop_y]                        = config.ReadInt(section.c_str(),  "CroppingY", 0);
@@ -135,6 +142,13 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled] = config.ReadBool(section.c_str(), "ShowDesktopButtons", (current_id == k_ulOverlayID_Dashboard));
     data.ConfigBool[configid_bool_overlay_actionbar_enabled]           = config.ReadBool(section.c_str(), "ShowActionBar", false);
     data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]  = config.ReadBool(section.c_str(), "ActionBarOrderUseGlobal", true);
+
+    //Restore WinRT Capture state if possible
+    if ( (data.ConfigInt[configid_int_overlay_winrt_desktop_id] == -2) && (!data.ConfigStr[configid_str_overlay_winrt_last_window_title].empty()) )
+    {
+        HWND window = WindowInfo::FindClosestWindowForTitle(data.ConfigStr[configid_str_overlay_winrt_last_window_title], data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name]);
+        data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] = (intptr_t)window;
+    }
 
     //Disable settings which are invalid for the dashboard overlay
     if (current_id == k_ulOverlayID_Dashboard)
@@ -235,6 +249,7 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
 
     config.WriteBool(section.c_str(), "Enabled",                data.ConfigBool[configid_bool_overlay_enabled]);
     config.WriteInt( section.c_str(), "DesktopID",              data.ConfigInt[configid_int_overlay_desktop_id]);
+    config.WriteInt( section.c_str(), "CaptureSource",          data.ConfigInt[configid_int_overlay_capture_source]);
     config.WriteInt( section.c_str(), "Width",              int(data.ConfigFloat[configid_float_overlay_width]           * 100.0f));
     config.WriteInt( section.c_str(), "Curvature",          int(data.ConfigFloat[configid_float_overlay_curvature]       * 100.0f));
     config.WriteInt( section.c_str(), "Opacity",            int(data.ConfigFloat[configid_float_overlay_opacity]         * 100.0f));
@@ -271,6 +286,28 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteString(section.c_str(), "DetachedTransformRightHand", data.ConfigDetachedTransform[ovrl_origin_right_hand].toString().c_str());
     config.WriteString(section.c_str(), "DetachedTransformLeftHand",  data.ConfigDetachedTransform[ovrl_origin_left_hand].toString().c_str());
     config.WriteString(section.c_str(), "DetachedTransformAux",       data.ConfigDetachedTransform[ovrl_origin_aux].toString().c_str());
+
+    //Save WinRT Capture state
+    HWND window_handle = (HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd];
+    std::string last_window_title, last_window_exe_name;
+
+    if (window_handle != nullptr)
+    {
+        WindowInfo info(window_handle);
+        info.ExeName = WindowInfo::GetExeName(window_handle);
+
+        last_window_title    = StringConvertFromUTF16(info.Title.c_str());
+        last_window_exe_name = info.ExeName;
+    }
+    else //Save last known title and exe name even when handle is nullptr so we can still restore the window on the next load if it happens to exist
+    {
+        last_window_title    = data.ConfigStr[configid_str_overlay_winrt_last_window_title];
+        last_window_exe_name = data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name];
+    }
+
+    config.WriteString(section.c_str(), "WinRTLastWindowTitle",   last_window_title.c_str());
+    config.WriteString(section.c_str(), "WinRTLastWindowExeName", last_window_exe_name.c_str());
+    config.WriteInt(section.c_str(), "WinRTDesktopID", data.ConfigInt[configid_int_overlay_winrt_desktop_id]);
 
     //Save action order
     std::stringstream ss;
@@ -461,6 +498,12 @@ bool ConfigManager::LoadConfigFromFile()
     {
         m_ConfigInt[configid_int_input_shortcut03_action_id] = action_none;
     }
+
+    //Apply render cursor setting for WinRT Capture
+    #ifndef DPLUS_UI
+        if (DPWinRT_IsCaptureCursorEnabledPropertySupported())
+            DPWinRT_SetCaptureCursorEnabled(m_ConfigBool[configid_bool_input_mouse_render_cursor]);
+    #endif
 
     //Load last used overlay config
     LoadMultiOverlayProfile(config);
@@ -761,6 +804,11 @@ WPARAM ConfigManager::GetWParamForConfigID(ConfigID_Float id)
     return id + configid_bool_MAX + configid_int_MAX;
 }
 
+WPARAM ConfigManager::GetWParamForConfigID(ConfigID_IntPtr id)
+{
+    return id + configid_bool_MAX + configid_int_MAX + configid_float_MAX;
+}
+
 void ConfigManager::SetConfigBool(ConfigID_Bool id, bool value)
 {
     if (id < configid_bool_overlay_MAX)
@@ -785,6 +833,11 @@ void ConfigManager::SetConfigFloat(ConfigID_Float id, float value)
         m_ConfigFloat[id] = value;
 }
 
+void ConfigManager::SetConfigIntPtr(ConfigID_IntPtr id, intptr_t value)
+{
+    OverlayManager::Get().GetCurrentConfigData().ConfigIntPtr[id] = value;
+}
+
 void ConfigManager::SetConfigString(ConfigID_String id, const std::string& value)
 {
     if (id < configid_str_MAX)
@@ -807,6 +860,11 @@ float ConfigManager::GetConfigFloat(ConfigID_Float id) const
     return (id < configid_float_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigFloat[id] : m_ConfigFloat[id];
 }
 
+intptr_t ConfigManager::GetConfigIntPtr(ConfigID_IntPtr id) const
+{
+    return OverlayManager::Get().GetCurrentConfigData().ConfigIntPtr[id];
+}
+
 const std::string& ConfigManager::GetConfigString(ConfigID_String id) const
 {
     return m_ConfigString[id];
@@ -825,6 +883,11 @@ int& ConfigManager::GetConfigIntRef(ConfigID_Int id)
 float& ConfigManager::GetConfigFloatRef(ConfigID_Float id)
 {
     return (id < configid_float_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigFloat[id] : m_ConfigFloat[id];
+}
+
+intptr_t& ConfigManager::GetConfigIntPtrRef(ConfigID_IntPtr id)
+{
+    return OverlayManager::Get().GetCurrentConfigData().ConfigIntPtr[id];
 }
 
 void ConfigManager::ResetConfigStateValues()

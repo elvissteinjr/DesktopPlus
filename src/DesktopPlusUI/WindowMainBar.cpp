@@ -7,12 +7,13 @@
 #include "Util.h"
 #include "UIManager.h"
 #include "OverlayManager.h"
+#include "DesktopPlusWinRT.h"
 
 void WindowMainBar::DisplayTooltipIfHovered(const char* text)
 {
     if (ImGui::IsItemHovered())
     {
-        static ImVec2 pos_last; //Remeber last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
+        static ImVec2 pos_last; //Remember last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
         ImVec2 pos = ImGui::GetItemRectMin();
         float button_width = ImGui::GetItemRectSize().x;
 
@@ -50,10 +51,26 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
     ImGuiIO& io = ImGui::GetIO();
 
     ImVec2 b_size, b_uv_min, b_uv_max;
-    int current_desktop = OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_desktop_id];
+    OverlayConfigData& overlay_config = OverlayManager::Get().GetConfigData(overlay_id);
+    ConfigID_Int current_configid = configid_int_overlay_desktop_id;
+    bool disable_normal = false;
+    bool disable_combined = false;
+        
+    if (overlay_config.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
+    {
+        current_configid = configid_int_overlay_winrt_desktop_id;
+        //Check if buttons would be usable for WinRT capture
+        disable_normal   = !DPWinRT_IsCaptureFromHandleSupported();
+        disable_combined = !DPWinRT_IsCaptureFromCombinedDesktopSupported();
+    }
+
+    int current_desktop = overlay_config.ConfigInt[current_configid];
 
     if (ConfigManager::Get().GetConfigBool(configid_bool_interface_mainbar_desktop_include_all))
     {
+        if (disable_combined)
+            ImGui::PushItemDisabled();
+
         if (current_desktop == -1)
             ImGui::PushStyleColor(ImGuiCol_Button, Style_ImGuiCol_ButtonPassiveToggled);
 
@@ -65,9 +82,9 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
             if ( (current_desktop != -1) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), -1);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), -1);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
-                OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_desktop_id] = -1;
+                overlay_config.ConfigInt[current_configid] = -1;
             }
         }
         DisplayTooltipIfHovered("Combined Desktop");
@@ -76,6 +93,9 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
 
         if (current_desktop == -1)
             ImGui::PopStyleColor();
+
+        if (disable_combined)
+            ImGui::PopItemDisabled();
     }
 
     int monitor_count = ::GetSystemMetrics(SM_CMONITORS);
@@ -84,6 +104,9 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
     {
         monitor_count = std::max(1, monitor_count - 3); //If the 3 screen assumption doesn't hold up, at least have one button
     }
+
+    if (disable_normal)
+        ImGui::PushItemDisabled();
 
     switch (ConfigManager::Get().GetConfigInt(configid_int_interface_mainbar_desktop_listing))
     {
@@ -105,8 +128,6 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
                 else
                     TextureManager::Get().GetTextureInfo(tmtex_icon_desktop, b_size, b_uv_min, b_uv_max);
 
-                
-
                 if (i == current_desktop)
                     ImGui::PushStyleColor(ImGuiCol_Button, Style_ImGuiCol_ButtonPassiveToggled);
 
@@ -116,9 +137,9 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
                     if ( (i != current_desktop) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )
                     {
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), i);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), i);
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
-                        OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_desktop_id] = i;
+                        overlay_config.ConfigInt[current_configid] = i;
                     }
                 }
 
@@ -147,9 +168,9 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
                     current_desktop = monitor_count - 1;
 
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), current_desktop);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), current_desktop);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
-                OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_desktop_id] = current_desktop;
+                overlay_config.ConfigInt[current_configid] = current_desktop;
             }
             DisplayTooltipIfHovered("Previous Desktop");
             ImGui::PopID();
@@ -165,9 +186,9 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
                     current_desktop = 0;
 
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), current_desktop);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), current_desktop);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
-                OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_desktop_id] = current_desktop;
+                OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[current_configid] = current_desktop;
             }
             DisplayTooltipIfHovered("Next Desktop");
             ImGui::PopID();
@@ -175,6 +196,9 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
             break;
         }
     }
+
+    if (disable_normal)
+        ImGui::PopItemDisabled();
 }
 
 void WindowMainBar::UpdateActionButtons(unsigned int overlay_id)
@@ -342,7 +366,7 @@ void WindowMainBar::Update(unsigned int overlay_id)
     else
     {
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y), 0, ImVec2(0.5f, 1.0f));  //Center window at bottom of the overlay
-        
+
         ImGui::Begin("WindowMainBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
                                                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
     }
@@ -384,7 +408,6 @@ void WindowMainBar::Update(unsigned int overlay_id)
         DisplayTooltipIfHovered("Settings");
 
         ImGui::PopID();
-        //
     }
 
     ImGui::PopStyleColor(); //ImGuiCol_Button
