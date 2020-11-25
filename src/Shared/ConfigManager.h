@@ -42,10 +42,15 @@ enum ConfigID_Bool
     configid_bool_input_mouse_render_intersection_blob,
     configid_bool_input_mouse_hmd_pointer_override,
     configid_bool_input_keyboard_helper_enabled,
-    configid_bool_misc_auto_focus_scene_app,
+    configid_bool_windows_auto_focus_scene_app_dashboard,
+    configid_bool_windows_winrt_auto_focus,
+    configid_bool_windows_winrt_keep_on_screen,
+    configid_bool_windows_winrt_auto_size_overlay,
+    configid_bool_windows_winrt_auto_focus_scene_app,
     configid_bool_state_overlay_dragmode,
     configid_bool_state_overlay_selectmode,
     configid_bool_state_overlay_dragselectmode_show_hidden,   //True if mode is from a popup
+    configid_bool_state_window_focused_process_elevated,
     configid_bool_state_performance_stats_active,             //Only count when the stats are visible
     configid_bool_state_performance_gpu_copy_active,
     configid_bool_state_misc_process_elevated,                //True if the dashboard application is running with admin privileges
@@ -78,6 +83,7 @@ enum ConfigID_Int
     configid_int_input_shortcut02_action_id,
     configid_int_input_shortcut03_action_id,
     configid_int_input_mouse_dbl_click_assist_duration_ms,
+    configid_int_windows_winrt_dragging_mode,
     configid_int_performance_update_limit_mode,
     configid_int_performance_update_limit_fps,              //This is the enum ID, not the actual number. See ApplySettingUpdateLimiter() code for more info
     configid_int_state_overlay_current_id_override,         //This is used to send config changes to overlays which aren't the current, mainly to avoid the UI switching around (-1 is disabled)
@@ -191,6 +197,13 @@ enum UpdateLimitFPS
     update_limit_fps_30,
     update_limit_fps_40,
     update_limit_fps_50
+};
+
+enum WindowDraggingMode
+{
+    window_dragging_none,
+    window_dragging_block,
+    window_dragging_overlay
 };
 
 class OverlayConfigData

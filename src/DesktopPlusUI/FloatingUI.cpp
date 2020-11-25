@@ -164,19 +164,19 @@ void FloatingUI::UpdateUITargetState()
         const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
 
         int ovrl_pixel_width, ovrl_pixel_height;
-        uint32_t ovrl_tex_width = 1, ovrl_tex_height = 1;
 
-        //Use texture size of overlay directly if possible as it can sometimes differ from the config size
-        if (vr::VROverlay()->GetOverlayTextureSize(m_OvrlHandleCurrentUITarget, &ovrl_tex_width, &ovrl_tex_height) == vr::VROverlayError_None)
+        if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
         {
-            ovrl_pixel_width  = (int)ovrl_tex_width;
-            ovrl_pixel_height = (int)ovrl_tex_height;
+            ui_manager.GetDesktopOverlayPixelSize(ovrl_pixel_width, ovrl_pixel_height);
         }
         else
         {
-            if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+            vr::HmdVector2_t ovrl_mouse_scale;
+            //Use mouse scale of overlay if possible as it can sometimes differ from the config size (and GetOverlayTextureSize() currently leaks GPU memory, oops)
+            if (vr::VROverlay()->GetOverlayMouseScale(m_OvrlHandleCurrentUITarget, &ovrl_mouse_scale) == vr::VROverlayError_None)
             {
-                ui_manager.GetDesktopOverlayPixelSize(ovrl_pixel_width, ovrl_pixel_height);
+                ovrl_pixel_width  = (int)ovrl_mouse_scale.v[0];
+                ovrl_pixel_height = (int)ovrl_mouse_scale.v[1];
             }
             else
             {

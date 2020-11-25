@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 #include "ThreadData.h"
 #include "OUtoSBSConverter.h"
 
@@ -7,13 +9,14 @@ class OverlayCapture
 {
 public:
     OverlayCapture(winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice const& device, winrt::Windows::Graphics::Capture::GraphicsCaptureItem const& item,
-                  winrt::Windows::Graphics::DirectX::DirectXPixelFormat pixel_format, DWORD global_main_thread_id, const std::vector<DPWinRTOverlayData>& overlays);
+                  winrt::Windows::Graphics::DirectX::DirectXPixelFormat pixel_format, DWORD global_main_thread_id, const std::vector<DPWinRTOverlayData>& overlays, HWND source_window);
     ~OverlayCapture() { Close(); }
 
     void StartCapture();
+    void RestartCapture();
 
-    bool IsCursorEnabled()                                               { CheckClosed(); return m_Session.IsCursorCaptureEnabled(); }
-	void IsCursorEnabled(bool value)                                     { CheckClosed(); m_Session.IsCursorCaptureEnabled(value); }
+    bool IsCursorEnabled()                                               { return m_CursorEnabled; }
+	void IsCursorEnabled(bool value);
     winrt::Windows::Graphics::Capture::GraphicsCaptureItem CaptureItem() { return m_Item; }
 
     void PauseCapture(bool pause)  { m_Paused = pause; }
@@ -25,6 +28,7 @@ public:
 
 private:
     void OnFrameArrived(winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool const& sender, winrt::Windows::Foundation::IInspectable const& args);
+    void OnFrameArrivedMin(winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool const& sender, winrt::Windows::Foundation::IInspectable const& args);
 
     inline void CheckClosed()
     {
@@ -45,14 +49,20 @@ private:
     winrt::Windows::Graphics::DirectX::DirectXPixelFormat m_PixelFormat;
 
     std::atomic<bool> m_Closed = false;
-    std::atomic<bool> m_CaptureNextImage = false;
 
     //Below are only accessed while on the capture's main thread
     const std::vector<DPWinRTOverlayData>& m_Overlays;
-    bool m_Paused = false;
-    bool m_OverlaySharedTextureSetUp = false;
-    winrt::Windows::Graphics::SizeInt32 m_LastTextureSize { 0, 0 };
+    const HWND m_SourceWindow;
     DWORD m_GlobalMainThreadID = 0;
+
+    bool m_Paused = false;
+    bool m_CursorEnabled = true;            //Public cursor enabled state. False is always off, but true may be overridden by m_CursorEnabledInternal
+    bool m_CursorEnabledInternal = true;    //Internal cursor enabled state, which may override m_CursorEnabled during window capture
+    int m_OverlaySharedTextureSetupsNeeded = 2;
+
+    bool m_InitialSizingDone = false;
+    winrt::Windows::Graphics::SizeInt32 m_LastTextureSize { 0, 0 };
+    bool m_RestartPending = false;
 
     LARGE_INTEGER m_UpdateLimiterStartingTime = {0};
     LARGE_INTEGER m_UpdateLimiterFrequency = {0};

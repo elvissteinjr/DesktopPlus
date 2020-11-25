@@ -372,22 +372,41 @@ void ForceScreenRefresh()
 
 bool IsProcessElevated() 
 {
-    bool ret = false;
-    HANDLE handle_token = nullptr;
-    if (::OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &handle_token) ) 
-    {
-        TOKEN_ELEVATION elevation;
-        DWORD cb_size = sizeof(TOKEN_ELEVATION);
+    TOKEN_ELEVATION elevation;
+    DWORD cb_size = sizeof(TOKEN_ELEVATION);
 
-        if (::GetTokenInformation(handle_token, TokenElevation, &elevation, sizeof(elevation), &cb_size) ) 
-        {
-            ret = elevation.TokenIsElevated;
-        }
+    if (::GetTokenInformation(::GetCurrentProcessToken(), TokenElevation, &elevation, sizeof(elevation), &cb_size) ) 
+    {
+        return elevation.TokenIsElevated;
     }
 
-    if (handle_token) 
+    return false;
+}
+
+bool IsProcessElevated(DWORD process_id) 
+{
+    bool ret = false;
+    HANDLE handle_window_process = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, process_id);
+    if (handle_window_process != nullptr)
     {
-        CloseHandle(handle_token);
+        HANDLE handle_token = nullptr;
+        if (::OpenProcessToken(handle_window_process, TOKEN_QUERY, &handle_token))
+        {
+            TOKEN_ELEVATION elevation;
+            DWORD cb_size = sizeof(TOKEN_ELEVATION);
+
+            if (::GetTokenInformation(handle_token, TokenElevation, &elevation, sizeof(elevation), &cb_size))
+            {
+                ret = elevation.TokenIsElevated;
+            }
+        }
+
+        if (handle_token) 
+        {
+            CloseHandle(handle_token);
+        }
+
+        CloseHandle(handle_window_process);
     }
 
     return ret;

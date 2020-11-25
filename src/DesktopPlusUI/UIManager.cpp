@@ -448,6 +448,52 @@ void UIManager::DisableRestartOnExit()
     m_NoRestartOnExit = true;
 }
 
+void UIManager::Restart(bool desktop_mode)
+{
+    ConfigManager::Get().SaveConfigToFile();
+
+    UIManager::Get()->DisableRestartOnExit();
+
+    STARTUPINFO si = {0};
+    PROCESS_INFORMATION pi = {0};
+    si.cb = sizeof(si);
+
+    std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlusUI.exe";
+    WCHAR cmd[] = L"-DesktopMode";
+
+    ::CreateProcess(path.c_str(), (desktop_mode) ? cmd : nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
+
+    //We don't care about these, so close right away
+    ::CloseHandle(pi.hProcess);
+    ::CloseHandle(pi.hThread);
+}
+
+void UIManager::RestartDashboardApp(bool elevated_mode)
+{
+    ConfigManager::Get().ResetConfigStateValues();
+    ConfigManager::Get().SaveConfigToFile();
+
+    STARTUPINFO si = {0};
+    PROCESS_INFORMATION pi = {0};
+    si.cb = sizeof(si);
+
+    if (elevated_mode)
+    {
+        WCHAR cmd[] = L"\"schtasks\" /Run /TN \"DesktopPlus Elevated\""; //"CreateProcessW, can modify the contents of this string", so don't go optimize this away
+
+        ::CreateProcess(nullptr, cmd, nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
+    }
+    else
+    {
+        std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";
+        ::CreateProcess(path.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
+    }
+
+    //We don't care about these, so close right away
+    ::CloseHandle(pi.hProcess);
+    ::CloseHandle(pi.hThread);
+}
+
 void UIManager::SetUIScale(float scale)
 {
     m_UIScale = scale;
@@ -521,6 +567,43 @@ void UIManager::ResetWinRTErrorLast()
 bool UIManager::IsElevatedTaskSetUp() const
 {
     return m_ElevatedTaskSetUp;
+}
+
+void UIManager::TryChangingWindowFocus()
+{
+    //This is a non-exhaustive attempt to get a different window to set focus on, but it works in most cases
+    HWND window_top    = ::GetForegroundWindow();
+    HWND window_switch = nullptr;
+
+    //Just use a capturable window list as a base, it's about what we want here anyways
+    std::vector<WindowInfo> window_list = WindowInfo::CreateCapturableWindowList();
+    auto it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& info){ return (info.WindowHandle == window_top); });
+
+    //Find the next window in that is not elevated
+    if (it != window_list.end())
+    {
+        for (++it; it != window_list.end(); ++it)
+        {
+            //Check if the window is also of an elevated process
+            DWORD process_id = 0;
+            ::GetWindowThreadProcessId(it->WindowHandle, &process_id);
+
+            if (!IsProcessElevated(process_id))
+            {
+                window_switch = it->WindowHandle;
+                break;
+            }
+        }
+    }
+
+    //If no window was found fall back
+    if (window_switch == nullptr)
+    {
+        //Focusing the desktop as last resort works but can be awkward since the focus is not obvious and keyboard input could do unintended stuff
+        window_switch = ::GetShellWindow(); 
+    }
+
+    ::SetForegroundWindow(window_switch); //I still do wonder why it is possible to switch away from elevated windows. Documentation says otherwise too.
 }
 
 bool UIManager::IsOverlayVisible() const

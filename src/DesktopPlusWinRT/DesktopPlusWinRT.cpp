@@ -77,7 +77,7 @@ bool DPWinRT_Internal_StartCapture(vr::VROverlayHandle_t overlay_handle, const D
     {
         for (auto& thread : g_Threads)
         {
-            if ( (thread.DesktopID == data.DesktopID) && (thread.TargetWindow == data.TargetWindow) )
+            if ( (thread.DesktopID == data.DesktopID) && (thread.SourceWindow == data.SourceWindow) )
             {
                 thread.Overlays.push_back(overlay_data);
                 
@@ -197,7 +197,7 @@ bool DPWinRT_StartCaptureFromHWND(vr::VROverlayHandle_t overlay_handle, HWND han
 {
     #ifndef DPLUSWINRT_STUB
         DPWinRTThreadData data;
-        data.TargetWindow = handle;
+        data.SourceWindow = handle;
 
         return DPWinRT_Internal_StartCapture(overlay_handle, data);
     #else
@@ -489,9 +489,9 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
         }
         else if (DPWinRT_IsCaptureFromHandleSupported())
         {
-            if (data.TargetWindow != nullptr)
+            if (data.SourceWindow != nullptr)
             {
-                capture_manager->StartCaptureFromWindowHandle(data.TargetWindow);
+                capture_manager->StartCaptureFromWindowHandle(data.SourceWindow);
             }
             else if (data.DesktopID != -2)
             {

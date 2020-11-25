@@ -90,6 +90,9 @@ class UIManager
         bool IsOpenVRLoaded() const;
         void DisableRestartOnExit();
 
+        void Restart(bool desktop_mode);
+        void RestartDashboardApp(bool elevated_mode);
+
         void SetUIScale(float scale);
         float GetUIScale() const;
         void SetFonts(ImFont* font_compact, ImFont* font_large);
@@ -104,6 +107,7 @@ class UIManager
         void ResetOverlayErrorLast();
         void ResetWinRTErrorLast();
         bool IsElevatedTaskSetUp() const;
+        static void TryChangingWindowFocus();
 
         bool IsOverlayVisible() const;
         bool IsOverlayKeyboardHelperVisible() const;

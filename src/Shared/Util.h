@@ -38,6 +38,7 @@ void ForceScreenRefresh();
 
 //Misc
 bool IsProcessElevated();
+bool IsProcessElevated(DWORD process_id);
 bool FileExists(LPCTSTR path);
 void StopProcessByWindowClass(LPCTSTR class_name); //Used to stop the previous instance of the application
 HWND FindMainWindow(DWORD pid);

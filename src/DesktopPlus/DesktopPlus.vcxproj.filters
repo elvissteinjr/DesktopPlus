@@ -41,6 +41,7 @@
     <ClCompile Include="..\Shared\OUtoSBSConverter.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="WindowManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -88,6 +89,7 @@
     <ClInclude Include="..\Shared\OUtoSBSConverter.h">
       <Filter>Shared</Filter>
     </ClInclude>
+    <ClInclude Include="WindowManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DesktopPlus.rc" />

@@ -8,6 +8,10 @@
 #include "WindowList.h"
 #include "DesktopPlusWinRT.h"
 
+#ifndef DPLUS_UI
+    #include "WindowManager.h"
+#endif
+
 static ConfigManager g_ConfigManager;
 static const std::string g_EmptyString;       //This way we can still return a const reference. Worth it? iunno
 
@@ -374,13 +378,18 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_input_keyboard_helper_enabled]          = config.ReadBool("Keyboard", "EnableKeyboardHelper", true);
     m_ConfigFloat[configid_float_input_keyboard_detached_size]         = config.ReadInt( "Keyboard", "KeyboardDetachedSize", 100) / 100.0f;
 
+    m_ConfigBool[configid_bool_windows_auto_focus_scene_app_dashboard] = config.ReadBool("Windows", "AutoFocusSceneAppDashboard", false);
+    m_ConfigBool[configid_bool_windows_winrt_auto_focus]               = config.ReadBool("Windows", "WinRTAutoFocus", true);
+    m_ConfigBool[configid_bool_windows_winrt_keep_on_screen]           = config.ReadBool("Windows", "WinRTKeepOnScreen", true);
+    m_ConfigInt[configid_int_windows_winrt_dragging_mode]              = config.ReadInt( "Windows", "WinRTDraggingMode", window_dragging_overlay);
+    m_ConfigBool[configid_bool_windows_winrt_auto_size_overlay]        = config.ReadBool("Windows", "WinRTAutoSizeOverlay", false);
+    m_ConfigBool[configid_bool_windows_winrt_auto_focus_scene_app]     = config.ReadBool("Windows", "WinRTAutoFocusSceneApp", false);
+
     m_ConfigInt[configid_int_performance_update_limit_mode]             = config.ReadInt( "Performance", "UpdateLimitMode", update_limit_mode_off);
     m_ConfigFloat[configid_float_performance_update_limit_ms]           = config.ReadInt( "Performance", "UpdateLimitMS", 0) / 100.0f;
     m_ConfigInt[configid_int_performance_update_limit_fps]              = config.ReadInt( "Performance", "UpdateLimitFPS", update_limit_fps_30);
     m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates] = config.ReadBool("Performance", "RapidLaserPointerUpdates", false);
     m_ConfigBool[configid_bool_performance_single_desktop_mirroring]    = config.ReadBool("Performance", "SingleDesktopMirroring", false);
-
-    m_ConfigBool[configid_bool_misc_auto_focus_scene_app]               = config.ReadBool("Misc", "AutoFocusSceneApp", false);
 
     //Load custom actions (this is where using ini feels dumb, but it still kinda works)
     auto& custom_actions = m_ActionManager.GetCustomActions();
@@ -503,6 +512,10 @@ bool ConfigManager::LoadConfigFromFile()
     #ifndef DPLUS_UI
         if (DPWinRT_IsCaptureCursorEnabledPropertySupported())
             DPWinRT_SetCaptureCursorEnabled(m_ConfigBool[configid_bool_input_mouse_render_cursor]);
+    #endif
+
+    #ifndef DPLUS_UI
+        WindowManager::Get().UpdateConfigState();
     #endif
 
     //Load last used overlay config
@@ -636,14 +649,19 @@ void ConfigManager::SaveConfigToFile()
 
     config.WriteBool("Keyboard", "EnableKeyboardHelper",        m_ConfigBool[configid_bool_input_keyboard_helper_enabled]);
     config.WriteInt( "Keyboard", "KeyboardDetachedSize",    int(m_ConfigFloat[configid_float_input_keyboard_detached_size] * 100.0f));
+
+    config.WriteBool("Windows", "AutoFocusSceneAppDashboard",   m_ConfigBool[configid_bool_windows_auto_focus_scene_app_dashboard]);
+    config.WriteBool("Windows", "WinRTAutoFocus",               m_ConfigBool[configid_bool_windows_winrt_auto_focus]);
+    config.WriteBool("Windows", "WinRTKeepOnScreen",            m_ConfigBool[configid_bool_windows_winrt_keep_on_screen]);
+    config.WriteInt( "Windows", "WinRTDraggingMode",            m_ConfigInt[configid_int_windows_winrt_dragging_mode]);
+    config.WriteBool("Windows", "WinRTAutoSizeOverlay",         m_ConfigBool[configid_bool_windows_winrt_auto_size_overlay]);
+    config.WriteBool("Windows", "WinRTAutoFocusSceneApp",       m_ConfigBool[configid_bool_windows_winrt_auto_focus_scene_app]);
     
     config.WriteInt( "Performance", "UpdateLimitMode",          m_ConfigInt[configid_int_performance_update_limit_mode]);
     config.WriteInt( "Performance", "UpdateLimitMS",        int(m_ConfigFloat[configid_float_performance_update_limit_ms] * 100.0f));
     config.WriteInt( "Performance", "UpdateLimitFPS",           m_ConfigInt[configid_int_performance_update_limit_fps]);
     config.WriteBool("Performance", "RapidLaserPointerUpdates", m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]);
     config.WriteBool("Performance", "SingleDesktopMirroring",   m_ConfigBool[configid_bool_performance_single_desktop_mirroring]);
-
-    config.WriteBool("Misc", "AutoFocusSceneApp",               m_ConfigBool[configid_bool_misc_auto_focus_scene_app]);
 
     //Save custom actions
     config.RemoveSection("CustomActions"); //Remove old section first to avoid any leftovers

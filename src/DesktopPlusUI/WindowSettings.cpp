@@ -108,6 +108,37 @@ void WindowSettings::UpdateWarnings()
         }
     }
 
+    //Focused process elevation warning
+    {
+        if (ConfigManager::Get().GetConfigBool(configid_bool_state_window_focused_process_elevated))
+        {
+            //Use selectable stretching over the text area to make it clickable
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f); //Make the selectable invisible though
+            if (ImGui::Selectable("##WarningElevation2"))
+            {
+                ImGui::OpenPopup("FocusedElevatedContext");
+            }
+            ImGui::PopStyleVar();
+            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::TextColored(Style_ImGuiCol_TextWarning, "Warning: An elevated process has focus! Desktop+ is unable to simulate input right now.");
+
+            if (ImGui::BeginPopup("FocusedElevatedContext"))
+            {
+                if (ImGui::Selectable("Try changing Focus"))
+                {
+                    UIManager::TryChangingWindowFocus();
+                }
+                else if ((UIManager::Get()->IsElevatedTaskSetUp()) && ImGui::Selectable("Restart Elevated"))
+                {
+                    UIManager::Get()->RestartDashboardApp(true);
+                }
+                ImGui::EndPopup();
+            }
+
+            warning_displayed = true;
+        }
+    }
+
     //Overlay error warning
     {
         vr::EVROverlayError overlay_error = UIManager::Get()->GetOverlayErrorLast();
@@ -769,7 +800,10 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                     }
                     else
                     {
-                        capture_list_selected_str = "[Unknown Window]";
+                        if (capture_list_selected_str.empty())
+                        {
+                            capture_list_selected_str = "[Unknown Window]";
+                        }
                     }
                 }
 
@@ -1912,6 +1946,95 @@ void WindowSettings::UpdateCatInput()
     ImGui::EndChild();
 }
 
+void WindowSettings::UpdateCatWindows()
+{
+    ImGui::Text("Windows");
+
+    //Horizontal separator
+    ImGui::PushStyleColor(ImGuiCol_Border, ImGui::GetStyleColorVec4(ImGuiCol_Separator));
+    ImGui::BeginChild("hsep", ImVec2(0.0f, 1.0f), true);
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
+
+    ImGui::BeginChild("ViewWindowsSettings");
+
+    if (ImGui::IsWindowAppearing())
+        UIManager::Get()->RepeatFrame();
+
+    const float column_width_0 = ImGui::GetFontSize() * 25.0f;
+
+    //General
+    {
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "General");
+
+        ImGui::Columns(2, "ColumnWindowsGeneral", false);
+        ImGui::SetColumnWidth(0, column_width_0);
+
+        bool& focus_scene_app = ConfigManager::Get().GetConfigBoolRef(configid_bool_windows_auto_focus_scene_app_dashboard);
+        if (ImGui::Checkbox("Focus Scene-App on Dashboard Deactivation", &focus_scene_app))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_auto_focus_scene_app_dashboard), focus_scene_app);
+        }
+
+        ImGui::Columns(1);
+    }
+
+    //Graphics Capture
+    {
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Graphics Capture");
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("These settings only apply to Graphics Capture overlays with a source window");
+
+        ImGui::Columns(2, "ColumnWindowsGraphicsCapture", false);
+        ImGui::SetColumnWidth(0, column_width_0);
+
+        bool& auto_focus = ConfigManager::Get().GetConfigBoolRef(configid_bool_windows_winrt_auto_focus);
+        if (ImGui::Checkbox("Focus Window when Pointing at Overlay", &auto_focus))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_auto_focus), auto_focus);
+        }
+
+        bool& keep_on_screen = ConfigManager::Get().GetConfigBoolRef(configid_bool_windows_winrt_keep_on_screen);
+        if (ImGui::Checkbox("Keep Window on Screen", &keep_on_screen))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_keep_on_screen), keep_on_screen);
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("Automatically move source window inside the screen's work area if its bounds lie outside of it");
+
+        bool& auto_size_overlay = ConfigManager::Get().GetConfigBoolRef(configid_bool_windows_winrt_auto_size_overlay);
+        if (ImGui::Checkbox("Adjust Overlay Size when Window Resizes", &auto_size_overlay))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_auto_size_overlay), auto_size_overlay);
+        }
+
+        bool& focus_scene_app = ConfigManager::Get().GetConfigBoolRef(configid_bool_windows_winrt_auto_focus_scene_app);
+        if (ImGui::Checkbox("Focus Scene-App when Laser Pointer leaves Overlay", &focus_scene_app))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_auto_focus_scene_app), focus_scene_app);
+        }
+
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("On Window Drag");
+        ImGui::NextColumn();
+
+        ImGui::SetNextItemWidth(-1);
+        const char* items[] = { "Do Nothing", "Block Drag", "Drag Overlay" };
+        int& mode_dragging = ConfigManager::Get().GetConfigIntRef(configid_int_windows_winrt_dragging_mode);
+        if (ImGui::Combo("##ComboLimitMode", &mode_dragging, items, IM_ARRAYSIZE(items)))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_windows_winrt_dragging_mode), mode_dragging);
+        }
+
+        ImGui::NextColumn();
+        ImGui::Columns(1);
+    }
+
+    ImGui::EndChild();
+}
+
 void WindowSettings::UpdateCatPerformance()
 {
     ImGui::Text("Performance");
@@ -2066,22 +2189,6 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(1);
     }
 
-    //Focus
-    {
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Focus");
-
-        ImGui::Columns(2, "ColumnMiscFocus", false);
-        ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
-
-        bool& focus_scene_app = ConfigManager::Get().GetConfigBoolRef(configid_bool_misc_auto_focus_scene_app);
-        if (ImGui::Checkbox("Focus Scene-App on Dashboard Deactivation", &focus_scene_app))
-        {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_misc_auto_focus_scene_app), focus_scene_app);
-        }
-
-        ImGui::Columns(1);
-    }
-
     //Troubleshooting
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Troubleshooting");
@@ -2096,18 +2203,7 @@ void WindowSettings::UpdateCatMisc()
 
         if (ImGui::Button("Restart"))
         {
-            ConfigManager::Get().ResetConfigStateValues();
-            ConfigManager::Get().SaveConfigToFile();
-
-            STARTUPINFO si = {0};
-            PROCESS_INFORMATION pi = {0};
-            si.cb = sizeof(si);
-
-            ::CreateProcess(L"DesktopPlus.exe", nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
-
-            //We don't care about these, so close right away
-            ::CloseHandle(pi.hProcess);
-            ::CloseHandle(pi.hThread);
+            UIManager::Get()->RestartDashboardApp(false);
         }
 
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
@@ -2116,20 +2212,7 @@ void WindowSettings::UpdateCatMisc()
         {
             if (ImGui::Button("Restart Elevated"))
             {
-                ConfigManager::Get().ResetConfigStateValues();
-                ConfigManager::Get().SaveConfigToFile();
-
-                STARTUPINFO si = {0};
-                PROCESS_INFORMATION pi = {0};
-                si.cb = sizeof(si);
-
-                WCHAR cmd[] = L"\"schtasks\" /Run /TN \"DesktopPlus Elevated\""; //"CreateProcessW, can modify the contents of this string", so don't go optimize this away
-
-                ::CreateProcess(nullptr, cmd, nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
-
-                //We don't care about these, so close right away
-                ::CloseHandle(pi.hProcess);
-                ::CloseHandle(pi.hThread);
+                UIManager::Get()->RestartDashboardApp(true);
             }
         }
 
@@ -2140,42 +2223,14 @@ void WindowSettings::UpdateCatMisc()
 
         if (ImGui::Button("Restart##UI"))
         {
-            ConfigManager::Get().ResetConfigStateValues();
-            ConfigManager::Get().SaveConfigToFile();
-
-            UIManager::Get()->DisableRestartOnExit();
-
-            STARTUPINFO si = {0};
-            PROCESS_INFORMATION pi = {0};
-            si.cb = sizeof(si);
-
-            ::CreateProcess(L"DesktopPlusUI.exe", nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
-
-            //We don't care about these, so close right away
-            ::CloseHandle(pi.hProcess);
-            ::CloseHandle(pi.hThread);
+            UIManager::Get()->Restart(false);
         }
 
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
         if (ImGui::Button("Restart in Desktop Mode"))
         {
-            ConfigManager::Get().ResetConfigStateValues();
-            ConfigManager::Get().SaveConfigToFile();
-
-            UIManager::Get()->DisableRestartOnExit();
-
-            STARTUPINFO si = {0};
-            PROCESS_INFORMATION pi = {0};
-            si.cb = sizeof(si);
-
-            WCHAR cmd[] = L"-DesktopMode";
-
-            ::CreateProcess(L"DesktopPlusUI.exe", cmd, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
-
-            //We don't care about these, so close right away
-            ::CloseHandle(pi.hProcess);
-            ::CloseHandle(pi.hThread);
+            UIManager::Get()->Restart(true);
         }
 
         ImGui::Columns(1);
@@ -4141,7 +4196,7 @@ void WindowSettings::Update()
         static float selectable_height = 0.0f;
 
         //Dummy sets pane width and pushes the selectables down so they're middle aligned
-        ImGui::Dummy({ pane_left_width, ((ImGui::GetWindowSize().y - ImGui::GetStyle().ItemSpacing.y) / 2.0f) - (selectable_height * 2.5f) });
+        ImGui::Dummy({ pane_left_width, ((ImGui::GetWindowSize().y - ImGui::GetStyle().ItemSpacing.y) / 2.0f) - (selectable_height * 3.0f) });
 
         ImGui::PushClipRect({0.0f, 0.0f}, {FLT_MAX, FLT_MAX}, true); //Push another clip rect as BeginChild() adds its own in-between
 
@@ -4151,10 +4206,12 @@ void WindowSettings::Update()
             selected = 1;
         if (ImGui::Selectable("  Input", selected == 2))
             selected = 2;
-        if (ImGui::Selectable("  Performance", selected == 3))
+        if (ImGui::Selectable("  Windows", selected == 3))
             selected = 3;
-        if (ImGui::Selectable("  Misc", selected == 4))
+        if (ImGui::Selectable("  Performance", selected == 4))
             selected = 4;
+        if (ImGui::Selectable("  Misc", selected == 5))
+            selected = 5;
 
         selectable_height = ImGui::GetItemRectSize().y;
         ImGui::PopClipRect();
@@ -4185,8 +4242,9 @@ void WindowSettings::Update()
             case 0: UpdateCatOverlay();     break;
             case 1: UpdateCatInterface();   break;
             case 2: UpdateCatInput();       break;
-            case 3: UpdateCatPerformance(); break;
-            case 4: UpdateCatMisc();        break;
+            case 3: UpdateCatWindows();     break;
+            case 4: UpdateCatPerformance(); break;
+            case 5: UpdateCatMisc();        break;
         }
 
     ImGui::EndGroup();

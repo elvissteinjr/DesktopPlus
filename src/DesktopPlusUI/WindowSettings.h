@@ -29,6 +29,7 @@ class WindowSettings
         void UpdateCatOverlayTabInterface();
         void UpdateCatInterface();
         void UpdateCatInput();
+        void UpdateCatWindows();
         void UpdateCatPerformance();
         void UpdateCatMisc();
 

@@ -29,7 +29,7 @@
 
 //Thread message IDs
 #define WM_DPLUSWINRT WM_APP                        //Base ID, to allow changing it easily later
-#define WM_DPLUSWINRT_SIZE WM_DPLUSWINRT            //Sent to main thread on size change. wParam = overlay handle, lParam = width & height (in low/high word order)
+#define WM_DPLUSWINRT_SIZE WM_DPLUSWINRT            //Sent to main thread on size change. wParam = overlay handle, lParam = width & height (in low/high word order, signed)
 #define WM_DPLUSWINRT_SET_HWND WM_DPLUSWINRT+1      //Sent to main thread on HWND guess after picker use. wParam = overlay handle, lParam = HWND
 #define WM_DPLUSWINRT_SET_DESKTOP WM_DPLUSWINRT+2   //Sent to main thread on desktop ID guess after picker use. wParam = overlay handle, lParam = desktop ID
 #define WM_DPLUSWINRT_UPDATE_DATA WM_DPLUSWINRT+3   //Sent to capture thread to update its local data

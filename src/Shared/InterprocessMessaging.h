@@ -2,6 +2,7 @@
 //It's generally expected to use matching builds of the dashboard overlay and UI application, as the UI is launched by the dashboard process
 //Due to that, there's no version checking or similar, just some raw messages to get things done
 //This header and its implemenation is shared between both applications' code
+//The IPCManager class doesn't write to any variables after construction, so calling it from other threads is safe
 
 #pragma once
 
@@ -44,6 +45,8 @@ enum IPCActionID
     ipcact_overlay_swap,            //Sent by the UI application to swap two overlays. lParam is the ID of overlay to swap with the current overlay
     ipcact_winrt_show_picker,       //Sent by the UI application to open the capture picker for Graphics Capture
     ipcact_winrt_thread_error,      //Sent by dashboard application when an error occured in a Graphics Capture thread. lParam is HRESULT
+    ipcact_winmanager_drag_start,   //Sent by dashboard application's WindowManager thread to main thread to start an overlay drag. lParam is ID of overlay to drag
+    ipcact_sync_overlay_state,      //Sent by the UI application to request overlay state variables after a restart
     ipcact_MAX
 };
 

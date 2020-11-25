@@ -24,7 +24,7 @@ struct DPWinRTThreadData
     HANDLE ThreadHandle = nullptr;
     DWORD ThreadID = 0;
     std::vector<DPWinRTOverlayData> Overlays;
-    HWND TargetWindow = nullptr;
+    HWND SourceWindow = nullptr;
     int DesktopID = -2;
     bool UsePicker = false;
 };

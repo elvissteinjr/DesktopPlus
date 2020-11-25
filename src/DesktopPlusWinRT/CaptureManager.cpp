@@ -111,7 +111,6 @@ winrt::IAsyncOperation<winrt::GraphicsCaptureItem> CaptureManager::StartCaptureW
         //We might resume on a different thread, so let's resume execution on the main thread. This is important because OverlayCapture uses 
         //Direct3D11CaptureFramePool::Create, which requires the existence of a DispatcherQueue. 
         co_await m_CaptureMainThread;
-        StartCaptureFromItem(item);
 
         //See if we can guess what window this item is
         int desktop_id = -2;
@@ -119,6 +118,8 @@ winrt::IAsyncOperation<winrt::GraphicsCaptureItem> CaptureManager::StartCaptureW
 
         if (window_handle != nullptr)
         {
+            m_ThreadData.SourceWindow = window_handle;
+
             for (const auto& overlay : m_ThreadData.Overlays)
             {
                 ::PostThreadMessage(m_GlobalMainThreadID, WM_DPLUSWINRT_SET_HWND, overlay.Handle, (LPARAM)window_handle);
@@ -131,6 +132,8 @@ winrt::IAsyncOperation<winrt::GraphicsCaptureItem> CaptureManager::StartCaptureW
                 ::PostThreadMessage(m_GlobalMainThreadID, WM_DPLUSWINRT_SET_DESKTOP, overlay.Handle, desktop_id);
             }
         }
+
+        StartCaptureFromItem(item);
     }
     else //Picker was canceled, send status updates for overlays
     {
@@ -146,7 +149,7 @@ winrt::IAsyncOperation<winrt::GraphicsCaptureItem> CaptureManager::StartCaptureW
 
 void CaptureManager::StartCaptureFromItem(winrt::GraphicsCaptureItem item)
 {
-    m_Capture = std::make_unique<OverlayCapture>(m_Device, item, m_PixelFormat, m_GlobalMainThreadID, m_ThreadData.Overlays);
+    m_Capture = std::make_unique<OverlayCapture>(m_Device, item, m_PixelFormat, m_GlobalMainThreadID, m_ThreadData.Overlays, m_ThreadData.SourceWindow);
 
     m_Capture->StartCapture();
     m_ItemClosedRevoker = item.Closed(winrt::auto_revoke, { this, &CaptureManager::OnCaptureItemClosed });
