@@ -278,6 +278,11 @@ void WindowManager::HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, L
 			{
 				::SetCursorPos(m_DragStartMousePos.x, m_DragStartMousePos.y);
 				::SetWindowPos(hwnd, nullptr, m_DragStartWindowRect.left, m_DragStartWindowRect.top, 0, 0, SWP_NOZORDER | SWP_NOSIZE | SWP_NOACTIVATE);
+
+				if (m_ThreadLocalData.KeepOnScreen)
+				{
+					MoveWindowIntoWorkArea(hwnd);
+				}
 			}
 
 			m_DragWindow = nullptr;

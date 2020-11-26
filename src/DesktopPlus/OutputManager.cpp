@@ -3206,12 +3206,6 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) )
             {
                 WindowManager::Get().SetTargetWindow(nullptr);
-
-                //Also move into work area just in case the mouse action moved it outside
-                if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_keep_on_screen))
-                {
-                    WindowManager::MoveWindowIntoWorkArea((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]);
-                }
             }
 
             break;
