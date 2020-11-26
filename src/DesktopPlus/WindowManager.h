@@ -33,19 +33,19 @@ struct WindowManagerThreadData
 class WindowManager
 {
     public:
-        
         static WindowManager& Get();
-        
+
         //- Only called by main thread
         void UpdateConfigState();                                                              //Updates config state from ConfigManager for the WindowManager thread
         void SetTargetWindow(HWND window, unsigned int overlay_id = k_ulOverlayID_Dashboard);  //Sets target window and overlay id for the WindowManager thread
         HWND GetTargetWindow() const;
         void SetActive(bool is_active);                                                        //Set active state for the window manager. Threads are destroyed when it's inactive
 
+        bool WouldDragMaximizedTitleBar(HWND window, int prev_cursor_x, int prev_cursor_y, int new_cursor_x, int new_cursor_y);
         void RaiseAndFocusWindow(HWND window);
         static void MoveWindowIntoWorkArea(HWND window);
         static void FocusActiveVRSceneApp();
-        
+
     private:
         //- Only accessed in main thread
         HANDLE m_ThreadHandle = nullptr;

@@ -3053,6 +3053,27 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 }
             }
 
+            //Check if this mouse move would start a drag of a maximized window's title bar
+            if ((ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_dragging_mode) != window_dragging_none) && 
+                (overlay_current.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0))
+            {
+                if (WindowManager::Get().WouldDragMaximizedTitleBar((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd],
+                                                                    m_MouseLastLaserPointerX, m_MouseLastLaserPointerY, pointer_x, pointer_y))
+                {
+                    //Reset input and WindowManager state manually to block the drag but still move the cursor on the next mouse move event
+                    m_InputSim.MouseSetLeftDown(false);
+                    WindowManager::Get().SetTargetWindow(nullptr);
+
+                    //Start overlay drag if setting enabled
+                    if (ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_dragging_mode) == window_dragging_overlay)
+                    {
+                        DragStart();
+                    }
+
+                    break; //We're not moving the cursor this time, get out
+                }
+            }
+
             //Check coordinates if HMDPointerOverride is enabled
             if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) && (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd))
             {

@@ -88,6 +88,18 @@ void WindowManager::SetActive(bool is_active)
 	UpdateConfigState();
 }
 
+bool WindowManager::WouldDragMaximizedTitleBar(HWND window, int prev_cursor_x, int prev_cursor_y, int new_cursor_x, int new_cursor_y)
+{
+	//If the target window matches (simulated left mouse down), the window is maximized and the cursor position changed
+	if ( (window == m_TargetWindow) && (::IsZoomed(window)) && ( (prev_cursor_x != new_cursor_x) || (prev_cursor_y != new_cursor_y) ) )
+	{
+		//Return true if previous cursor position was on the title bar
+		return (::SendMessage(window, WM_NCHITTEST, 0, MAKELPARAM(prev_cursor_x, prev_cursor_y)) == HTCAPTION);
+	}
+
+	return false;
+}
+
 void WindowManager::RaiseAndFocusWindow(HWND window)
 {
 	bool focus_success = true;
