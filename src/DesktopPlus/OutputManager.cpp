@@ -2969,129 +2969,141 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 break;
             }
 
-            if ((ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms) == 0) ||
-                (::GetTickCount64() >= m_MouseLastClickTick + ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms)))
+            //Get hotspot value to use
+            int hotspot_x = 0;
+            int hotspot_y = 0;
+            bool is_cursor_visible = false;
+
+            if (m_OvrlDesktopDuplActiveCount != 0)
             {
-                //Check coordinates if HMDPointerOverride is enabled
-                if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
-                    (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd))
+                is_cursor_visible = m_MouseLastInfo.Visible; //We're using a cached value here so we don't have to lock the shared surface for this function
+            }
+            else //If there are no desktop duplication overlays we can't rely on the cached value since it receive no updates
+            {
+                CURSORINFO cursor_info;
+                cursor_info.cbSize = sizeof(CURSORINFO);
+
+                if (::GetCursorInfo(&cursor_info))
                 {
-                    POINT pt;
-                    ::GetCursorPos(&pt);
+                    is_cursor_visible = (cursor_info.flags == CURSOR_SHOWING);
+                }
+            }
 
-                    //If mouse coordinates are not what the last laser pointer was (with tolerance), meaning some other source moved it
-                    if ((abs(pt.x - m_MouseLastLaserPointerX) > 32) || (abs(pt.y - m_MouseLastLaserPointerY) > 32))
+            if (is_cursor_visible) 
+            {
+                hotspot_x = m_MouseDefaultHotspotX;
+                hotspot_y = m_MouseDefaultHotspotY;
+            }
+
+            //Offset depending on capture source
+            int content_height = 0;
+            int offset_x = 0;
+            int offset_y = 0;
+
+            if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
+            {
+                content_height = data.ConfigInt[configid_int_overlay_state_content_height];
+
+                int desktop_id = data.ConfigInt[configid_int_overlay_winrt_desktop_id];
+
+                if (desktop_id != -2) //Desktop capture through WinRT
+                {
+                    if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) ) //Combined desktop is at 0,0 so nothing has to be done in that case
                     {
-                        m_MouseIgnoreMoveEventMissCount++; //GetCursorPos() may lag behind or other jumps may occasionally happen. We count up a few misses first before acting on them
+                        offset_x = m_DesktopRects[desktop_id].GetTL().x;
+                        offset_y = m_DesktopRects[desktop_id].GetTL().y;
+                    }
+                }
+                else //Window capture
+                {
+                    HWND window_handle = (HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd];
 
-                        int max_miss_count = 10; //Arbitrary number, but appears to work reliably
+                    //Get position of the window
+                    RECT window_rect = {0};
 
-                        if (m_PerformanceUpdateLimiterDelay.QuadPart != 0) //When updates are limited, try adapting for the lower update rate
+                    if (::DwmGetWindowAttribute(window_handle, DWMWA_EXTENDED_FRAME_BOUNDS, &window_rect, sizeof(window_rect)) == S_OK)
+                    {
+                        offset_x = window_rect.left;
+                        offset_y = window_rect.top;
+                    }
+                }
+            }
+            else
+            {
+                content_height = m_DesktopHeight;
+                offset_x = m_DesktopX;
+                offset_y = m_DesktopY;
+            }
+
+            //GL space (0,0 is bottom left), so we need to flip that around
+            int pointer_x = (round(vr_event.data.mouse.x) - hotspot_x) + offset_x;
+            int pointer_y = ((-round(vr_event.data.mouse.y) + content_height) - hotspot_y) + offset_y;
+
+            //If double click assist is current active, check if there was an obviously deliberate movement and cancel it then
+            if ((ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms) != 0) &&
+                (::GetTickCount64() < m_MouseLastClickTick + ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms)))
+            {
+                if ((abs(pointer_x - m_MouseLastLaserPointerX) > 64) || (abs(pointer_y - m_MouseLastLaserPointerY) > 64))
+                {
+                    m_MouseLastClickTick = 0;
+                }
+                else //But if not, still block the movement
+                {
+                    break;
+                }
+            }
+
+            //Check coordinates if HMDPointerOverride is enabled
+            if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) && (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd))
+            {
+                POINT pt;
+                ::GetCursorPos(&pt);
+
+                //If mouse coordinates are not what the last laser pointer was (with tolerance), meaning some other source moved it
+                if ((abs(pt.x - m_MouseLastLaserPointerX) > 32) || (abs(pt.y - m_MouseLastLaserPointerY) > 32))
+                {
+                    m_MouseIgnoreMoveEventMissCount++; //GetCursorPos() may lag behind or other jumps may occasionally happen. We count up a few misses first before acting on them
+
+                    int max_miss_count = 10; //Arbitrary number, but appears to work reliably
+
+                    if (m_PerformanceUpdateLimiterDelay.QuadPart != 0) //When updates are limited, try adapting for the lower update rate
+                    {
+                        max_miss_count = std::max(1, max_miss_count - int((m_PerformanceUpdateLimiterDelay.QuadPart / 1000) / 20));
+                    }
+
+                    if (m_MouseIgnoreMoveEventMissCount > max_miss_count)
+                    {
+                        m_MouseIgnoreMoveEvent = true;
+
+                        //Set flag for all overlays
+                        if ((overlay_current.GetID() == k_ulOverlayID_Dashboard) || (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)))
                         {
-                            max_miss_count = std::max(1, max_miss_count - int((m_PerformanceUpdateLimiterDelay.QuadPart / 1000) / 20));
-                        }
-
-                        if (m_MouseIgnoreMoveEventMissCount > max_miss_count)
-                        {
-                            m_MouseIgnoreMoveEvent = true;
-
-                            //Set flag for all overlays
-                            if ((overlay_current.GetID() == k_ulOverlayID_Dashboard) || (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)))
+                            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                             {
-                                for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
-                                {
-                                    const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
+                                const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
 
-                                    if (overlay.GetTextureSource() != ovrl_texsource_none)
-                                    {
-                                        vr::VROverlay()->SetOverlayFlag(overlay.GetHandle(), vr::VROverlayFlags_HideLaserIntersection, true);
-                                    }
+                                if (overlay.GetTextureSource() != ovrl_texsource_none)
+                                {
+                                    vr::VROverlay()->SetOverlayFlag(overlay.GetHandle(), vr::VROverlayFlags_HideLaserIntersection, true);
                                 }
                             }
                         }
-                        break;
                     }
-                    else
-                    {
-                        m_MouseIgnoreMoveEventMissCount = 0;
-                    }
-                }
-
-                //Get hotspot value to use
-                int hotspot_x = 0;
-                int hotspot_y = 0;
-                bool is_cursor_visible = false;
-
-                if (m_OvrlDesktopDuplActiveCount != 0)
-                {
-                    is_cursor_visible = m_MouseLastInfo.Visible; //We're using a cached value here so we don't have to lock the shared surface for this function
-
-                }
-                else //If there are no desktop duplication overlays we can't rely on the cached value since it receive no updates
-                {
-                    CURSORINFO cursor_info;
-                    cursor_info.cbSize = sizeof(CURSORINFO);
-
-                    if (::GetCursorInfo(&cursor_info))
-                    {
-                        is_cursor_visible = (cursor_info.flags == CURSOR_SHOWING);
-                    }
-                }
-
-                if (is_cursor_visible) 
-                {
-                    hotspot_x = m_MouseDefaultHotspotX;
-                    hotspot_y = m_MouseDefaultHotspotY;
-                }
-
-                //Offset depending on capture source
-                int content_height = 0;
-                int offset_x = 0;
-                int offset_y = 0;
-
-                if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
-                {
-                    content_height = data.ConfigInt[configid_int_overlay_state_content_height];
-
-                    int desktop_id = data.ConfigInt[configid_int_overlay_winrt_desktop_id];
-
-                    if (desktop_id != -2) //Desktop capture through WinRT
-                    {
-                        if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) ) //Combined desktop is at 0,0 so nothing has to be done in that case
-                        {
-                            offset_x = m_DesktopRects[desktop_id].GetTL().x;
-                            offset_y = m_DesktopRects[desktop_id].GetTL().y;
-                        }
-                    }
-                    else //Window capture
-                    {
-                        HWND window_handle = (HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd];
-
-                        //Get position of the window
-                        RECT window_rect = {0};
-
-                        if (::DwmGetWindowAttribute(window_handle, DWMWA_EXTENDED_FRAME_BOUNDS, &window_rect, sizeof(window_rect)) == S_OK)
-                        {
-                            offset_x = window_rect.left;
-                            offset_y = window_rect.top;
-                        }
-                    }
+                    break;
                 }
                 else
                 {
-                    content_height = m_DesktopHeight;
-                    offset_x = m_DesktopX;
-                    offset_y = m_DesktopY;
+                    m_MouseIgnoreMoveEventMissCount = 0;
                 }
-
-                //GL space (0,0 is bottom left), so we need to flip that around
-                m_MouseLastLaserPointerX = (round(vr_event.data.mouse.x) - hotspot_x) + offset_x;
-                m_MouseLastLaserPointerY = ((-round(vr_event.data.mouse.y) + content_height) - hotspot_y) + offset_y;
-                m_InputSim.MouseMove(m_MouseLastLaserPointerX, m_MouseLastLaserPointerY);
-
-                //This is only relevant when limiting updates. See Update() for details.
-                m_MouseLaserPointerUsedLastUpdate = true;
             }
+
+            //Finally do the actual cursor movement if we're still here
+            m_InputSim.MouseMove(pointer_x, pointer_y);
+            m_MouseLastLaserPointerX = pointer_x;
+            m_MouseLastLaserPointerY = pointer_y;
+
+            //This is only relevant when limiting updates. See Update() for details.
+            m_MouseLaserPointerUsedLastUpdate = true;
 
             break;
         }
