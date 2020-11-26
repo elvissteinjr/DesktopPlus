@@ -3972,15 +3972,7 @@ void OutputManager::ApplySettingMouseInput()
 
             vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
         }
-        else if (overlay.GetTextureSource() != ovrl_texsource_none)
-        {
-            vr::HmdVector2_t mouse_scale;
-            mouse_scale.v[0] = std::max(1, ConfigManager::Get().GetConfigInt(configid_int_overlay_state_content_width)); //Don't set -1 as mouse scale, leads to issues
-            mouse_scale.v[1] = std::max(1, ConfigManager::Get().GetConfigInt(configid_int_overlay_state_content_height));
-
-            vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
-        }
-        else
+        else if (overlay.GetTextureSource() == ovrl_texsource_none)
         {
             //The mouse scale defines the surface aspect ratio for the intersection test... yeah. If it's off there will be hits over empty space, so try to match it even here
             vr::HmdVector2_t mouse_scale;
@@ -4000,6 +3992,7 @@ void OutputManager::ApplySettingMouseInput()
 
             vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
         }
+        //Mouse scale for ovrl_texsource_winrt_capture is set by WinRT library
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);

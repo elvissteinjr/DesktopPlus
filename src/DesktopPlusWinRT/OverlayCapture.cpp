@@ -17,8 +17,6 @@ namespace winrt
     using namespace Windows::Foundation::Numerics;
 }
 
-std::mutex OverlayCapture::s_MutexCaptureClose;
-
 OverlayCapture::OverlayCapture(winrt::IDirect3DDevice const& device, winrt::GraphicsCaptureItem const& item, winrt::DirectXPixelFormat pixel_format, DWORD global_main_thread_id,
                              const std::vector<DPWinRTOverlayData>& overlays, HWND source_window) :
     m_Overlays(overlays),
@@ -202,7 +200,7 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
             m_OverlaySharedTextureSetupsNeeded = 2;
 
             //Send overlay size updates and set mouse scale
-            //If the initial sizing has not been done yet, wait until there's no resize pending before setting it
+            //If the initial sizing has not been done yet, wait until there's no frame pool recreation pending before setting it
             //We do this because windows with native decorations are initially just reported with the client size.
             //The real size follows on the next frame after having resized the frame pool
             //This is necessary to not trip up adaptive overlay sizing
