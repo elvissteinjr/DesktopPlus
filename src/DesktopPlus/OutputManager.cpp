@@ -1452,6 +1452,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                         OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
                     }
+                    else if (overlay_id == 0) //0 (same as k_ulOverlayID_Dashboard, but that can't be dragged anyways) means it came from a blocked drag, reset input and WindowManager state
+                    {
+                        m_InputSim.MouseSetLeftDown(false);
+                        WindowManager::Get().SetTargetWindow(nullptr);
+                    }
+
                     break;
                 }
                 case ipcact_sync_overlay_state:
@@ -1459,7 +1465,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                     {
                         const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
-                        
 
                         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
                         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_state_content_width), 

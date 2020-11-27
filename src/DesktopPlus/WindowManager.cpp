@@ -72,6 +72,9 @@ void WindowManager::UpdateConfigState()
 
 void WindowManager::SetTargetWindow(HWND window, unsigned int overlay_id)
 {
+	if (window != m_TargetWindow)
+		m_DragOverlayMsgSent = false;
+
 	m_TargetWindow    = window;
 	m_TargetOverlayID = overlay_id;
 	UpdateConfigState();
@@ -238,10 +241,11 @@ void WindowManager::HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, L
 						::SetCursorPos(m_DragStartMousePos.x, m_DragStartMousePos.y);
 						::SetWindowPos(hwnd, nullptr, m_DragStartWindowRect.left, m_DragStartWindowRect.top, 0, 0, SWP_NOZORDER | SWP_NOSIZE | SWP_NOACTIVATE);
 
-						if ( (m_ThreadLocalData.DoOverlayDrag) && (!m_DragOverlayMsgSent) )
+						if (!m_DragOverlayMsgSent)
 						{
-							//Start the overlay drag
-							IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_winmanager_drag_start, m_ThreadLocalData.TargetOverlayID);
+							//Start the overlay drag or send overlay ID 0 to have the mouse button be released (so the desktop drag stops)
+							IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_winmanager_drag_start, 
+																		(m_ThreadLocalData.DoOverlayDrag) ? m_ThreadLocalData.TargetOverlayID : 0);
 							m_DragOverlayMsgSent = true;
 						}
 					}
@@ -372,6 +376,15 @@ DWORD WindowManager::WindowManagerThreadEntry(void* /*param*/)
 			//Copy new thread data
 			{
 				std::lock_guard<std::mutex> lock(wman.m_ThreadMutex);
+
+				if (wman.m_ThreadData.TargetWindow == nullptr)
+				{
+					//Give a potentially dragged window's process a little bit of time to realize the mouse release
+					::Sleep(20);
+				}
+
+				//Process all pending messages/callbacks before continuing
+				while (::PeekMessage(&msg, 0, 0, WM_APP, PM_REMOVE));
 
 				wman.m_ThreadLocalData = wman.m_ThreadData;
 			}
