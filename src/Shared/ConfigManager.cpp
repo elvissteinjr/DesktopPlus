@@ -119,7 +119,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigStr[configid_str_overlay_winrt_last_window_title]       = config.ReadString(section.c_str(), "WinRTLastWindowTitle");
     data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name]    = config.ReadString(section.c_str(), "WinRTLastWindowExeName");
     data.ConfigFloat[configid_float_overlay_width]                     = config.ReadInt(section.c_str(),    "Width", 350) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_curvature]                 = config.ReadInt(section.c_str(),    "Curvature", -100) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_curvature]                 = config.ReadInt(section.c_str(),    "Curvature", 17) / 100.0f;
     data.ConfigFloat[configid_float_overlay_opacity]                   = config.ReadInt(section.c_str(),    "Opacity", 100) / 100.0f;
     data.ConfigFloat[configid_float_overlay_offset_right]              = config.ReadInt(section.c_str(),    "OffsetRight", 0) / 100.0f;
     data.ConfigFloat[configid_float_overlay_offset_up]                 = config.ReadInt(section.c_str(),    "OffsetUp", 0) / 100.0f;
@@ -228,6 +228,12 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     if (action_order.size() != action_order_global.size())
     {
         action_order = action_order_global;
+    }
+
+    //Migrate now invalid curvature value
+    if (data.ConfigFloat[configid_float_overlay_curvature] == -1.0f)
+    {
+        data.ConfigFloat[configid_float_overlay_curvature] = 0.17f; //17% is about what the default dashboard curvature is at the default width
     }
 }
 

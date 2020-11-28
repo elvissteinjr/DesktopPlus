@@ -3729,24 +3729,7 @@ void OutputManager::ApplySettingTransform()
     }
 
     //Update Curvature
-    float curve = ConfigManager::Get().GetConfigFloat(configid_float_overlay_curvature);
-
-    if (curve == -1.0f) //-1 is auto, match the dashboard
-    {
-        vr::VROverlayHandle_t system_dashboard;
-        vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
-
-        if (system_dashboard != vr::k_ulOverlayHandleInvalid)
-        {
-            vr::VROverlay()->GetOverlayCurvature(system_dashboard, &curve);
-        }
-        else //Very odd, but hey
-        {
-            curve = 0.0f;
-        }
-    }
-
-    vr::VROverlay()->SetOverlayCurvature(ovrl_handle, curve);
+    vr::VROverlay()->SetOverlayCurvature(ovrl_handle, ConfigManager::Get().GetConfigFloat(configid_float_overlay_curvature));
 
     //Update transform
     vr::HmdMatrix34_t matrix = {0};

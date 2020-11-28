@@ -689,32 +689,31 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
         else
             distance_forward = 0.0f;
 
-        //Y offset probably dependent on UI overlay height. It's static, but something to keep in mind if it ever changes
-        //Z offset makes the UI stand a bit in front of the desktop overlay
-        OffsetTransformFromSelf(matrix, 0.0f, 0.75f, 0.025f + distance_forward);
-
         //Update Curvature
         float curve = config_data.ConfigFloat[configid_float_overlay_curvature];
 
-        if ( (curve == -1.0f) || (config_data.ConfigBool[configid_bool_overlay_detached]) ) //-1 is auto, match the dashboard (also do it when detached)
+        //Adjust curve value used for UI by the overlay width difference so it's curved according to its size
+        if (config_data.ConfigFloat[configid_float_overlay_width] >= 2.0f)
         {
-            vr::VROverlayHandle_t system_dashboard;
-            vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
-
-            if (system_dashboard != vr::k_ulOverlayHandleInvalid)
-            {
-                vr::VROverlay()->GetOverlayCurvature(system_dashboard, &curve);
-            }
-            else //Very odd, but hey
-            {
-                curve = 0.0f;
-            }
-        }
-        else
-        {
-            //Adjust curve value used for UI by the overlay width difference so it's curved according to its size
             curve *= (2.75f / config_data.ConfigFloat[configid_float_overlay_width]);
+            curve = clamp(curve, 0.0f, 1.0f);
         }
+        else //Smaller than 2m can more easily curve into the UI overlay, adjust curve further
+        {
+            //For higher curve values, also move UI overlay forward a bit when needed, even if it doesn't look so nice
+            if ( (curve > 0.16f) && (dplus_forward > -0.1f) )
+            {
+                distance_forward += 0.1f;
+            }
+
+            curve *= 1.5f;
+            curve = clamp(curve, 0.0f, 1.0f);
+        }
+
+        //Offset the overlay
+        //Y offset probably dependent on UI overlay height. It's static, but something to keep in mind if it ever changes
+        //Z offset makes the UI stand a bit in front of the desktop overlay
+        OffsetTransformFromSelf(matrix, 0.0f, 0.75f, 0.025f + distance_forward);
 
         //Try to reduce flicker by blocking abrupt Y movements (unless X has changed as well, which we assume to happen on real movement)
         //The flicker itself comes from a race condition of the UI possibly getting the overlay transform while it's changing width and position, hard to predict

@@ -466,16 +466,11 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
         ImGui::Text("Curvature");
         ImGui::NextColumn();
 
-        //This maps the float curve as int percentage, see the cropping stuff for the rest
         float& curve = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_curvature);
-        int curve_ui = (curve == -1.0f) ? 101 : int(curve * 100.0f);
 
-        if (ImGui::SliderWithButtonsInt("OverlayCurvature", curve_ui, 5, 0, 101, (curve == -1.0f) ? "Auto" : "%d%%"))
+        if (ImGui::SliderWithButtonsFloatPercentage("OverlayCurvature", curve, 5, 0, 100, "%d%%"))
         {
-            curve = clamp(curve_ui, 0, 101) / 100.0f;
-
-            if (curve_ui > 100)
-                curve = -1.0f;
+            curve = clamp(curve, 0.0f, 1.0f);
 
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_curvature), *(LPARAM*)&curve);
         }
