@@ -96,9 +96,11 @@ void OverlayCapture::IsCursorEnabled(bool value)
 
 void OverlayCapture::OnOverlayDataRefresh()
 {
-    //Find the smallest update limiter delay & count Over-Under overlays
+    //Find the smallest update limiter delay and count Over-Under overlays
     size_t ou_count = 0;
-    m_UpdateLimiterDelay = {UINT_MAX};
+    m_UpdateLimiterDelay.QuadPart = UINT_MAX;
+    vr::HmdVector2_t mouse_scale = {(float)m_LastTextureSize.Width, (float)m_LastTextureSize.Height};
+
     for (const auto& overlay : m_Overlays)
     {
         if (!overlay.IsPaused)
@@ -112,6 +114,13 @@ void OverlayCapture::OnOverlayDataRefresh()
         if (overlay.IsOverUnder3D)
         {
             ou_count++;
+        }
+
+        //And also send size and set mouse scale again in case a fresh overlay was added
+        if (m_InitialSizingDone)
+        {
+            ::PostThreadMessage(m_GlobalMainThreadID, WM_DPLUSWINRT_SIZE, overlay.Handle, MAKELPARAM(m_LastTextureSize.Width, m_LastTextureSize.Height));
+            vr::VROverlay()->SetOverlayMouseScale(overlay.Handle, &mouse_scale);
         }
     }
 

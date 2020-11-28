@@ -259,6 +259,7 @@ bool DPWinRT_PauseCapture(vr::VROverlayHandle_t overlay_handle, bool pause)
 
         if (it != thread.Overlays.end())
         {
+            it->IsPaused = pause;
             ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_CAPTURE_PAUSE, overlay_handle, pause);
             return true;
         }
@@ -543,6 +544,7 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
                     {
                         const bool do_pause = msg.lParam;
 
+                        bool is_unchanged = false;
                         bool all_paused = true;
                         for (DPWinRTOverlayData& overlay_data : data.Overlays)
                         {
@@ -550,7 +552,10 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
                             {
                                 //No change, back out
                                 if (overlay_data.IsPaused == do_pause)
+                                {
+                                    is_unchanged = true;
                                     break;
+                                }
 
                                 overlay_data.IsPaused = do_pause;
                             }
@@ -561,7 +566,10 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
                             }
                         }
 
-                        capture_manager->PauseCapture(all_paused);
+                        if (!is_unchanged)
+                        {
+                            capture_manager->PauseCapture(all_paused);
+                        }
                         break;
                     }
                     case WM_DPLUSWINRT_ENABLE_CURSOR:

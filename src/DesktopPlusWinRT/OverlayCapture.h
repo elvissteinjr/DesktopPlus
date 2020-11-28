@@ -19,7 +19,7 @@ public:
 	void IsCursorEnabled(bool value);
     winrt::Windows::Graphics::Capture::GraphicsCaptureItem CaptureItem() { return m_Item; }
 
-    void PauseCapture(bool pause)  { m_Paused = pause; }
+    void PauseCapture(bool pause)  { m_Paused = pause; OnOverlayDataRefresh(); }
     bool IsPaused()                { return m_Paused; }
 
     void OnOverlayDataRefresh();
@@ -28,7 +28,6 @@ public:
 
 private:
     void OnFrameArrived(winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool const& sender, winrt::Windows::Foundation::IInspectable const& args);
-    void OnFrameArrivedMin(winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool const& sender, winrt::Windows::Foundation::IInspectable const& args);
 
     inline void CheckClosed()
     {
@@ -64,9 +63,9 @@ private:
     winrt::Windows::Graphics::SizeInt32 m_LastTextureSize { 0, 0 };
     bool m_RestartPending = false;
 
-    LARGE_INTEGER m_UpdateLimiterStartingTime = {0};
-    LARGE_INTEGER m_UpdateLimiterFrequency = {0};
-    LARGE_INTEGER m_UpdateLimiterDelay = {0};
+    LARGE_INTEGER m_UpdateLimiterStartingTime = {0, 0};
+    LARGE_INTEGER m_UpdateLimiterFrequency = {0, 0};
+    LARGE_INTEGER m_UpdateLimiterDelay = {0, 0};
 
     std::vector<OUtoSBSConverter> m_OUConverters; //Rarely used, so the cache is kept here instead of directly as part of the overlay data
 };

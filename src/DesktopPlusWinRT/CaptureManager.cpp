@@ -153,6 +153,22 @@ void CaptureManager::StartCaptureFromItem(winrt::GraphicsCaptureItem item)
 
     m_Capture->StartCapture();
     m_ItemClosedRevoker = item.Closed(winrt::auto_revoke, { this, &CaptureManager::OnCaptureItemClosed });
+
+    //Check if all overlays of this capture are already paused and pause the capture as well then
+    bool all_paused = true;
+    for (DPWinRTOverlayData& overlay_data : m_ThreadData.Overlays)
+    {
+        if (!overlay_data.IsPaused)
+        {
+            all_paused = false;
+            break;
+        }
+    }
+
+    if (all_paused)
+    {
+        m_Capture->PauseCapture(true);
+    }
 }
 
 void CaptureManager::OnCaptureItemClosed(winrt::GraphicsCaptureItem const&, winrt::Windows::Foundation::IInspectable const&)

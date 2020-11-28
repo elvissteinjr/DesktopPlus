@@ -1427,8 +1427,15 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 }
                 case ipcact_winrt_show_picker:
                 {
-                    DPWinRT_StartCaptureFromPicker(OverlayManager::Get().GetCurrentOverlay().GetHandle());
+                    const Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+                    DPWinRT_StartCaptureFromPicker(overlay.GetHandle());
                     ApplySetting3DMode();
+
+                    //Pause if not visible
+                    if (!overlay.IsVisible())
+                    {
+                        DPWinRT_PauseCapture(overlay.GetHandle(), true);
+                    }
                     break;
                 }
                 case ipcact_winmanager_drag_start:
@@ -1712,6 +1719,12 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
 
             const Overlay& overlay  = OverlayManager::Get().GetOverlay(overlay_id);
             OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+
+            //Skip if no real change
+            if ((data.ConfigInt[configid_int_overlay_state_content_width] == content_width) && (data.ConfigInt[configid_int_overlay_state_content_height] == content_height))
+            {
+                break;
+            }
 
             //Adaptive Size
             bool adaptive_size_apply = ( (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_size_overlay)) && (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && 
@@ -2857,6 +2870,12 @@ bool OutputManager::HandleOpenVREvents()
                         WindowManager::Get().SetTargetWindow(nullptr);
                     }
 
+                    //Finish drag if there's somehow still one going
+                    if (m_DragModeDeviceID != -1)
+                    {
+                        DragFinish();
+                    }
+
                     break;
                 }
                 case vr::VREvent_ChaperoneUniverseHasChanged:
@@ -3461,10 +3480,8 @@ void OutputManager::AddOverlay(unsigned int base_id)
     OverlayManager::Get().SetCurrentOverlayID(new_id);
     ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, (int)new_id);
 
-    //Automatically reset the matrix to a saner default by putting it next to the base overlay in most cases
     const Overlay& overlay_base = OverlayManager::Get().GetOverlay(base_id);
-    Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
-    DetachedTransformReset(overlay_base.GetHandle());
+    Overlay& overlay_current    = OverlayManager::Get().GetCurrentOverlay();
 
     //If base overlay is an active WinRT Capture, duplicate capture before resetting the overlay
     if (overlay_base.GetTextureSource() == ovrl_texsource_winrt_capture)
@@ -3472,8 +3489,12 @@ void OutputManager::AddOverlay(unsigned int base_id)
         if (DPWinRT_StartCaptureFromOverlay(overlay_current.GetHandle(), overlay_base.GetHandle()))
         {
             overlay_current.SetTextureSource(ovrl_texsource_winrt_capture);
+
         }
     }
+
+    //Automatically reset the matrix to a saner default by putting it next to the base overlay in most cases
+    DetachedTransformReset(overlay_base.GetHandle());
 
     ResetCurrentOverlay();
 }
@@ -3515,6 +3536,12 @@ void OutputManager::ApplySettingCaptureSource()
                             overlay.SetTextureSource(ovrl_texsource_winrt_capture);
                             ApplySetting3DMode(); //Syncs 3D state if needed
 
+                            //Pause if not visible
+                            if (!overlay.IsVisible())
+                            {
+                                DPWinRT_PauseCapture(overlay.GetHandle(), true);
+                            }
+
                             if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus))
                             {
                                 WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]);
@@ -3528,6 +3555,12 @@ void OutputManager::ApplySettingCaptureSource()
                         {
                             overlay.SetTextureSource(ovrl_texsource_winrt_capture);
                             ApplySetting3DMode();
+
+                            //Pause if not visible
+                            if (!overlay.IsVisible())
+                            {
+                                DPWinRT_PauseCapture(overlay.GetHandle(), true);
+                            }
                         }
                         break;
                     }
