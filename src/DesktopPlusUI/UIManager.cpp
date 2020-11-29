@@ -24,18 +24,7 @@ void UIManager::DisplayDashboardAppError(const std::string& str) //Ideally this 
 
     if (res == vr::VRMessageOverlayResponse_ButtonPress_1)
     {
-        ConfigManager::Get().ResetConfigStateValues();
-        ConfigManager::Get().SaveConfigToFile();
-
-        STARTUPINFO si = {0};
-        PROCESS_INFORMATION pi = {0};
-        si.cb = sizeof(si);
-
-        ::CreateProcess(L"DesktopPlus.exe", nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
-
-        //We don't care about these, so close right away
-        ::CloseHandle(pi.hProcess);
-        ::CloseHandle(pi.hThread);
+        RestartDashboardApp(false);
     }
 
     //Dashboard will be closed after dismissing the message overlay, so open it back up with Desktop+
@@ -370,15 +359,12 @@ void UIManager::OnExit()
     //This is likely more intuitive than just removing the UI entirely when clicking X
     if ( (m_DesktopMode) && (IPCManager::Get().IsDashboardAppRunning()) && (!ConfigManager::Get().GetConfigBool(configid_bool_interface_no_ui)) && (!m_NoRestartOnExit) )
     {
-        STARTUPINFO si = {0};
-        PROCESS_INFORMATION pi = {0};
-        si.cb = sizeof(si);
-
-        ::CreateProcess(L"DesktopPlusUI.exe", nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
-
-        //We don't care about these, so close right away
-        ::CloseHandle(pi.hProcess);
-        ::CloseHandle(pi.hThread);
+        Restart(false);
+    }
+    else
+    {
+        //Save config, just in case (we don't need to do this when calling Restart())
+        ConfigManager::Get().SaveConfigToFile();
     }
 }
 

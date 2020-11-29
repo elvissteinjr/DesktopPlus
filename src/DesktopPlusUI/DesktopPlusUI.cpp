@@ -360,9 +360,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
     }
 
-    //Save config on exit just in case
-    ConfigManager::Get().SaveConfigToFile();
-
     // Cleanup
     ui_manager.OnExit();
     ImGui_ImplDX11_Shutdown();

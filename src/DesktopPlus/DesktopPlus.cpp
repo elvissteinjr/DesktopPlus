@@ -261,7 +261,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         PROCESS_INFORMATION pi = {0};
         si.cb = sizeof(si);
 
-        ::CreateProcess(L"DesktopPlusUI.exe", nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
+        std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlusUI.exe";
+        ::CreateProcess(path.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
 
         //We don't care about these, so close right away
         ::CloseHandle(pi.hProcess);
