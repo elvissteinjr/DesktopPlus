@@ -4251,12 +4251,12 @@ void WindowSettings::Update()
 
     //Toggle performance stats based on the active page
     bool& performance_stats_active = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_performance_stats_active);
-    if ((selected == 3) && (!performance_stats_active))
+    if ((selected == 4) && (!performance_stats_active))
     {
         performance_stats_active = true;
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_performance_stats_active), true);
     }
-    else if (( (selected != 3) || (!m_Visible) ) && (performance_stats_active))
+    else if (( (selected != 4) || (!m_Visible) ) && (performance_stats_active))
     {
         performance_stats_active = false;
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_performance_stats_active), false);
