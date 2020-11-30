@@ -37,7 +37,14 @@ void WindowMainBar::DisplayTooltipIfHovered(const char* text)
             pos.y -= window_size.y + ImGui::GetStyle().WindowPadding.y;
 
             //Clamp x so the tooltip does not get cut off
-            pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);
+            if (m_WndSettingsPtr == nullptr)                //if floating UI mode
+            {
+                pos.x = clamp(pos.x, 0.0f, m_Pos.x + m_Size.x - window_size.x);             //Clamp right side to right end of bar
+            }
+            else
+            {
+                pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);   //Clamp right side to texture end
+            }
         }
 
         pos_last = pos;

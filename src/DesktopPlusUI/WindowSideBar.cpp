@@ -12,7 +12,7 @@ static const ImVec4 Col_ButtonActiveDesktop(0.180f, 0.349f, 0.580f, 0.404f);
 
 void WindowSideBar::DisplayTooltipIfHovered(const char* text)
 {
-    //Comapred to WindowMainBar's function, this one puts the tooltip to the left of the button
+    //Compared to WindowMainBar's function, this one puts the tooltip to the left of the button
     if (ImGui::IsItemHovered())
     {
         static ImVec2 pos_last; //Remeber last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
@@ -38,9 +38,6 @@ void WindowSideBar::DisplayTooltipIfHovered(const char* text)
         {
             pos.x -= window_size.x + ImGui::GetStyle().WindowPadding.x;
             pos.y += (button_height / 2.0f) - (window_size.y / 2.0f);
-
-            //Clamp x so the tooltip does not get cut off
-            pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);
         }
 
         pos_last = pos;

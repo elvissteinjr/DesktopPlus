@@ -182,23 +182,21 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
 
     //Load images and add custom rects for them
     //Since we have to build the font before actually copying the image data, we have to keep the bitmaps loaded, which is a bit messy, especially with custom action icons
-    std::vector<Gdiplus::Bitmap*> bitmaps;
+    std::vector< std::unique_ptr<Gdiplus::Bitmap> > bitmaps;
     //Load application icons
     int icon_id = 0;
     for (; icon_id < tmtex_MAX; ++icon_id)
     {
-        Gdiplus::Bitmap* bmp = nullptr;
+        std::unique_ptr<Gdiplus::Bitmap> bmp;
         
         if (icon_id == tmtex_icon_temp)
         {
-            bmp = new Gdiplus::Bitmap(m_TextureFilenameIconTemp.c_str());
+            bmp = std::unique_ptr<Gdiplus::Bitmap>( new Gdiplus::Bitmap(m_TextureFilenameIconTemp.c_str()) );
         }
         else
         {
-            bmp = new Gdiplus::Bitmap(s_TextureFilenames[icon_id]);
+            bmp = std::unique_ptr<Gdiplus::Bitmap>( new Gdiplus::Bitmap(s_TextureFilenames[icon_id]) );
         }
-        
-        bitmaps.push_back(bmp);
 
         if (bmp->GetLastStatus() == Gdiplus::Ok)
         {
@@ -213,6 +211,8 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
                 io.Fonts->TexDesiredWidth = (bmp->GetWidth() >= 2048) ? 4096 : (bmp->GetWidth() >= 1024) ? 2048 : (bmp->GetWidth() >= 512) ? 1024 : 512;
             }
         }
+
+        bitmaps.push_back(std::move(bmp));
     }
 
     //Load custom action icons
@@ -223,8 +223,7 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         action.IconImGuiRectID = -1;
         if (!action.IconFilename.empty())
         {
-            Gdiplus::Bitmap* bmp = new Gdiplus::Bitmap(WStringConvertFromUTF8(action.IconFilename.c_str()).c_str());
-            bitmaps.push_back(bmp);
+            std::unique_ptr<Gdiplus::Bitmap> bmp( new Gdiplus::Bitmap(WStringConvertFromUTF8(action.IconFilename.c_str()).c_str()) );
 
             if (bmp->GetLastStatus() == Gdiplus::Ok)
             {
@@ -237,6 +236,8 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
                     io.Fonts->TexDesiredWidth = (bmp->GetWidth() >= 2048) ? 4096 : (bmp->GetWidth() >= 1024) ? 2048 : (bmp->GetWidth() >= 512) ? 1024 : 512;
                 }
             }
+
+            bitmaps.push_back(std::move(bmp));
         }
     }
 
@@ -250,29 +251,42 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
 
     //Actually do the copying now
     icon_id = 0;
-    for (Gdiplus::Bitmap* bmp : bitmaps)
+    int action_id = 0;
+    for (auto& bmp : bitmaps)
     {
         if (bmp->GetLastStatus() == Gdiplus::Ok)
         {
-            int* rect_id;
-            ImVec2* atlas_size;
-            ImVec4* atlas_uvs;
-            
+            int*    rect_id    = nullptr;
+            ImVec2* atlas_size = nullptr;
+            ImVec4* atlas_uvs  = nullptr;
+
             if (icon_id < tmtex_MAX)
             {
-                rect_id = &m_ImGuiRectIDs[icon_id];
+                rect_id    = &m_ImGuiRectIDs[icon_id];
                 atlas_size = &m_AtlasSizes[icon_id];
-                atlas_uvs = &m_AtlasUVs[icon_id];
+                atlas_uvs  = &m_AtlasUVs[icon_id];
             }
             else
             {
-                CustomAction& action = ConfigManager::Get().GetCustomActions()[icon_id - tmtex_MAX];
-                rect_id = &action.IconImGuiRectID;
-                atlas_size = &action.IconAtlasSize;
-                atlas_uvs = &action.IconAtlasUV;
+                //Get the next action, skipping custom actions with no icon
+                do
+                {
+                    if (action_id >= ConfigManager::Get().GetCustomActions().size())
+                    {
+                        break;
+                    }
+
+                    CustomAction& action = ConfigManager::Get().GetCustomActions()[action_id];
+                    rect_id    = &action.IconImGuiRectID;
+                    atlas_size = &action.IconAtlasSize;
+                    atlas_uvs  = &action.IconAtlasUV;
+
+                    action_id++;
+                }
+                while (*rect_id == -1);
             }
             
-            if (*rect_id != -1)
+            if ( (rect_id != nullptr) && (*rect_id != -1) )
             {
                 if (const ImFontAtlasCustomRect* rect = io.Fonts->GetCustomRectByIndex(*rect_id))
                 {
@@ -322,11 +336,11 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
             }
         }
 
-        //We're done with it. Failed or not, delete
-        delete bmp;
-
         icon_id++;
     }
+
+    //Delete Bitmaps before shutting down GDI+
+    bitmaps.clear();
 
     //Shutdown GDI+, we won't need it again
     Gdiplus::GdiplusShutdown(gdiplusToken);
