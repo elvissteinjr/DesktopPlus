@@ -26,6 +26,13 @@ Desktop+ does not write to files outside its own directory. However, if you did 
 remain.
 
 
+User Guide
+----------
+A detailed user guide can be found on https://github.com/elvissteinjr/DesktopPlus/blob/master/docs/user_guide.md
+It's recommended to finish reading this document beforehand, however, as the user guide does not cover some topics this readme
+covers.
+
+
 Configuration
 -------------
 Desktop+ can be fully configured from within VR. If desired, the settings interface can also be used from the desktop, however.
@@ -40,9 +47,9 @@ The setting slider values can be edited directly by right-clicking the slider.
 Overlay Management
 ------------------
 To use multiple overlays in Desktop+, click on the "Manage" button at the top-right of the Overlay settings page. This will open
-a popup in which overlays can be added, removed and organized.
-This and several other popups can also be dismissed by simple clicking outside of it, in addition to the "Done" button.
-Overlays can be renamed by right-clicking the dropdown selector at the top of the Overlay settings page.
+a pop-up in which overlays can be added, removed and organized.
+This and several other pop-ups can also be dismissed by simple clicking outside of it, in addition to the "Done" button.
+Overlays can be renamed by right-clicking the drop-down selector at the top of the Overlay settings page.
 The current overlay setup will be remembered automatically between sessions. Overlay profiles can be used to save and restore
 multiple of such setups.
 
@@ -107,7 +114,8 @@ As long as DesktopPlusUI.exe is running (launched automatically alongside Deskto
 with an option to restart Desktop+. Very early runtime errors may not be displayed in VR, but can be read in error.log when they
 occur.
 
-In general, note that Desktop+ is using the APIs which require Windows 8 or newer.
+In general, note that Desktop+ is using APIs which require Windows 8 or newer.
+Using Graphics Capture overlays requires at least Windows 10 1803 for basic support, Windows 10 2004 or newer for full support.
 
 
 Black screen with question mark display icon instead of desktop mirror:
@@ -146,6 +154,10 @@ workaround.
 Overlay is no longer visible:
 -
 There are several settings controlling overlay visibility and position. Check if they are not set to unexpected values.
+Especially of interest are the cropping values. The cropping rectangle is preserved when switching between capture sources, but
+that also means it could be invalid for the newly selected mirrored window or desktop.
+If that's the case there will be a "(!)" warning next to the Cropping Rectangle section title. Simply reset it then.
+
 Loading the Default overlay profile also works as a quick way to restore the initial overlay state.
 
 
@@ -171,7 +183,7 @@ Click on warnings to dismiss or not have them show up again.
 The resolution of the VR compositor is based on the auto-resolution calculated by SteamVR, regardless of whether this resolution
 has been chosen as the VR render resolution or not. There's no official way to change this. The auto-resolution can be increased
 by lowering the HMD's refresh rate or getting a faster GPU.
-Inofficially, there are tools such as SteamVR-ForceCompositorScale to combat this behavior.
+Unofficially, there are tools such as SteamVR-ForceCompositorScale to combat this behavior.
 
 
 "Overlay render quality is not set to high!":
@@ -186,7 +198,15 @@ This message serves as a reminder about Desktop+ being in elevated mode.
 Please keep the security implications of that mode in mind and don't run the application like this when not needed.
 
 
-"Warning: An overlay creation failed!":
+"An elevated process has focus! Desktop+ is unable to simulate input right now."
+-
+User Interface Privilege Isolation (UIPI) prevents Desktop+ from simulating input when an elevated process has focus.
+This warning persists until the a window with the same or lesser privilege level has gained focus again.
+Clicking on this warning also offers the option to have Desktop+ try to change the focus to another window itself or to restart
+in elevated mode (only if the scheduled task is configured).
+
+
+"An overlay creation failed!":
 -
 This message will typically appear with "(Maximum Overlay limit exceeded)" appended. It appears when the total overlay limit
 in SteamVR has been exceeded. This limit is not set by Desktop+ and other overlay applications can affect how many overlays can
@@ -194,6 +214,13 @@ be created by Desktop+.
 While the warning can be safely ignored, the overlays that were attempted to be created will be missing.
 If this message appears with a different error status appended, it might be because of a bug in Desktop+ or SteamVR. Please
 report it in that case.
+
+
+"An unexpected error occurred in a Graphics Capture thread!":
+-
+This message appears when a Graphics Capture thread crashed. One or more overlays using Graphics Capture will not be updated anymore.
+While this shouldn't ever happen, this message can be safely ignored if it only appears once. The affected overlays will need to 
+have their source be set again from either changing it or reloading a profile.
 
 
 License

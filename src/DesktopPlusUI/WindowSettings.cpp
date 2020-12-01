@@ -191,7 +191,7 @@ void WindowSettings::UpdateWarnings()
             ImGui::PopStyleVar();
             ImGui::SameLine(0.0f, 0.0f);
 
-            ImGui::TextColored(Style_ImGuiCol_TextWarning, "Warning: An unexpected error occured in a Graphics Capture thread! (0x%x)", hr_error);
+            ImGui::TextColored(Style_ImGuiCol_TextWarning, "Warning: An unexpected error occurred in a Graphics Capture thread! (0x%x)", hr_error);
 
             if (ImGui::BeginPopup("DismissWarning2"))
             {
@@ -2151,7 +2151,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.3-WiP");
+        ImGui::Text("Desktop+ Version 2.3");
 
         ImGui::Columns(1);
     }

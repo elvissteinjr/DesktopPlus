@@ -1,6 +1,6 @@
 #pragma once
 
-//This is the part of Destkop+ using Windows Runtime functions, separated from rest of the codebase as a DLL
+//This is the part of Desktop+ using Windows Runtime functions, separated from rest of the codebase as a DLL
 //Windows SDK 10.0.19041.0 or newer is required to build this
 //
 //If you wish to build Desktop+ without support for the functionality provided by this library, define DPLUSWINRT_STUB for the project,
@@ -11,7 +11,7 @@
 //For Graphics Capture, all overlay texture handling is handed off to this library. Apart from that and the mouse scale, everything else is still
 //handled by OutputManager as usual, however.
 
-//As a general rule, the callee of the library functions is responsible to check for support, otherwise it may throw or crash
+//As a general rule, the callee of the library functions is responsible to check for support first, otherwise it may throw or crash
 //In release builds, capture thread exceptions are caught and handled as unexpected errors, trying to just stop the thread. Ideally it never comes to that, of course.
 //The library relies on delay loading CoreMessaging and D3D11 in order to support running on Windows 8, so keep that in mind if ever using a different compiler.
 
