@@ -29,6 +29,11 @@ template <typename T> T clamp(const T& value, const T& value_min, const T& value
     return std::max(value_min, std::min(value, value_max));
 }
 
+template <typename T> int sgn(T val)
+{ 
+    return (T(0) < val) - (val < T(0));
+}
+
 //Display stuff
 DEVMODE GetDevmodeForDisplayID(int display_id, HMONITOR* hmon = nullptr); //DEVMODE.dmSize != 0 on success
 int GetMonitorRefreshRate(int display_id);

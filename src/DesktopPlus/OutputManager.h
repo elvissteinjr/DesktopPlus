@@ -184,6 +184,7 @@ class OutputManager
         PTR_INFO m_MouseLastInfo;
         Vector2Int m_MouseLastCursorSize;
         bool m_MouseLaserPointerUsedLastUpdate;
+        bool m_MouseLastLaserPointerMoveBlocked;
         int m_MouseLastLaserPointerX;
         int m_MouseLastLaserPointerY;
         int m_MouseDefaultHotspotX;

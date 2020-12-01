@@ -76,6 +76,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MouseIgnoreMoveEvent(false),
     m_MouseCursorNeedsUpdate(false),
     m_MouseLaserPointerUsedLastUpdate(false),
+    m_MouseLastLaserPointerMoveBlocked(false),
     m_MouseLastLaserPointerX(-1),
     m_MouseLastLaserPointerY(-1),
     m_MouseDefaultHotspotX(0),
@@ -3073,6 +3074,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 }
                 else //But if not, still block the movement
                 {
+                    m_MouseLastLaserPointerMoveBlocked = true;
                     break;
                 }
             }
@@ -3142,10 +3144,22 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 }
             }
 
-            //Finally do the actual cursor movement if we're still here
-            m_InputSim.MouseMove(pointer_x, pointer_y);
-            m_MouseLastLaserPointerX = pointer_x;
-            m_MouseLastLaserPointerY = pointer_y;
+            //To improve compatibility with dragging certain windows around, simulate a small movement first before fully unlocking the cursor from double-click assist
+            if (m_MouseLastLaserPointerMoveBlocked) 
+            {
+                //Move a single pixel in the direction of the new pointer position
+                m_InputSim.MouseMove(m_MouseLastLaserPointerX + sgn(pointer_x - m_MouseLastLaserPointerX), m_MouseLastLaserPointerY + sgn(pointer_y - m_MouseLastLaserPointerY));
+
+                m_MouseLastLaserPointerMoveBlocked = false;
+                //Real movement continues on the next mouse move event
+            }
+            else
+            {
+                //Finally do the actual cursor movement if we're still here
+                m_InputSim.MouseMove(pointer_x, pointer_y);
+                m_MouseLastLaserPointerX = pointer_x;
+                m_MouseLastLaserPointerY = pointer_y;
+            }
 
             //This is only relevant when limiting updates. See Update() for details.
             m_MouseLaserPointerUsedLastUpdate = true;
