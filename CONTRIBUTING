@@ -15,5 +15,5 @@ Perhaps also avoid stacks of abstraction. The code may run on typically beefy ma
 
 Just felt like I should mention this stuff somewhere. Not like anyone reads this anyways.
 
-If you contribute code to this repository, you are also granting me (GitHub user elvissteinjr) a GNU Lesser General Public License 3 for it for the purpose of distributing it on other platforms such as Steam in binary form, possibly linking to non-free third-party libraries such as the Steamworks API library. Such a build may also contain additional code not present in this repo to support these libraries.
+If you contribute code to this repository, you are also granting me (GitHub user elvissteinjr) permission to distribute it on other platforms such as Steam in binary form, possibly linking to non-free third-party libraries such as the Steamworks API library. Such a build may also contain additional code not present in this repo to support these libraries.
 Please do not contribute if you do not agree to this.
