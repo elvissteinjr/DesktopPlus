@@ -63,7 +63,7 @@ unsigned int OverlayManager::FindOverlayID(vr::VROverlayHandle_t handle)
 {
     const auto it = std::find_if(m_Overlays.begin(), m_Overlays.end(), [&](const auto& overlay){ return (overlay.GetHandle() == handle); });
 
-    return (it != m_Overlays.end()) ? it->GetID() : k_ulOverlayID_Dashboard;
+    return (it != m_Overlays.end()) ? it->GetID() : k_ulOverlayID_None;
 }
 
 #endif
@@ -164,8 +164,13 @@ void OverlayManager::RemoveOverlay(unsigned int id)
             //If the overlay isn't the last one we set its handle to invalid so it won't get destroyed and can be reused below
             if (id + 1 != m_Overlays.size())
             {
-                m_Overlays[id].SetHandle(vr::k_ulOverlayHandleInvalid);
+                if (m_Overlays[id].GetTextureSource() == ovrl_texsource_winrt_capture)
+                {
+                    //Manually stop the capture if there is one since the destructor won't be able to do it
+                    DPWinRT_StopCapture(m_Overlays[id].GetHandle());
+                }
 
+                m_Overlays[id].SetHandle(vr::k_ulOverlayHandleInvalid);
                 m_Overlays.erase(m_Overlays.begin() + id);
 
                 //Fixup IDs for overlays past it
@@ -181,7 +186,18 @@ void OverlayManager::RemoveOverlay(unsigned int id)
 
                         if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
                         {
+                            if (overlay.GetTextureSource() == ovrl_texsource_winrt_capture)
+                            {
+                                DPWinRT_SwapCaptureTargetOverlays(overlay.GetHandle(), ovrl_handle);
+                            }
+
                             overlay.SetHandle(ovrl_handle);
+
+                            //If this overlay got the handle of the removed overlay, set it to not visible since we hid that handle earlier
+                            if (overlay.GetID() == id)
+                            {
+                                overlay.SetVisible(false);
+                            }
                         }
                     }
                 }

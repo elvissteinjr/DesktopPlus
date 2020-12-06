@@ -1715,6 +1715,12 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
         case WM_DPLUSWINRT_SIZE:
         {
             const unsigned int overlay_id = OverlayManager::Get().FindOverlayID(msg.wParam);
+
+            if (overlay_id == k_ulOverlayID_None)
+            {
+                break;
+            }
+
             const int content_width  = GET_X_LPARAM(msg.lParam);
             const int content_height = GET_Y_LPARAM(msg.lParam);
 
@@ -1767,6 +1773,12 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
         case WM_DPLUSWINRT_SET_HWND:
         {
             const unsigned int overlay_id = OverlayManager::Get().FindOverlayID(msg.wParam);
+
+            if (overlay_id == k_ulOverlayID_None)
+            {
+                break;
+            }
+
             Overlay& overlay = OverlayManager::Get().GetOverlay(overlay_id);
             OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
 
@@ -1801,6 +1813,12 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
         case WM_DPLUSWINRT_SET_DESKTOP:
         {
             const unsigned int overlay_id = OverlayManager::Get().FindOverlayID(msg.wParam);
+
+            if (overlay_id == k_ulOverlayID_None)
+            {
+                break;
+            }
+
             Overlay& overlay = OverlayManager::Get().GetOverlay(overlay_id);
             OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
 
@@ -1830,6 +1848,12 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
         case WM_DPLUSWINRT_CAPTURE_LOST:
         {
             const unsigned int overlay_id = OverlayManager::Get().FindOverlayID(msg.wParam);
+
+            if (overlay_id == k_ulOverlayID_None)
+            {
+                break;
+            }
+
             Overlay& overlay = OverlayManager::Get().GetOverlay(overlay_id);
             OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
 
@@ -2000,6 +2024,10 @@ void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
 //
 DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInfo, _Out_ INT* PtrWidth, _Out_ INT* PtrHeight, _Out_ INT* PtrLeft, _Out_ INT* PtrTop, _Outptr_result_bytebuffer_(*PtrHeight * *PtrWidth * BPP) BYTE** InitBuffer, _Out_ D3D11_BOX* Box)
 {
+    //PtrShapeBuffer can sometimes be nullptr when the secure desktop is active, skip
+    if (PtrInfo->PtrShapeBuffer == nullptr)
+       return DUPL_RETURN_SUCCESS;
+
     // Desktop dimensions
     D3D11_TEXTURE2D_DESC FullDesc;
     m_SharedSurf->GetDesc(&FullDesc);
