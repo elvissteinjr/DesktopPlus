@@ -1,4 +1,4 @@
-# Desktop+ OpenVR Overlay
+# Desktop+ VR Overlay
 Advanced desktop access for OpenVR.
 
 ![VR Interface](docs/screenshot.jpg)
@@ -8,14 +8,13 @@ Advanced desktop access for OpenVR.
 - User interface with real-time adjustments accessible in VR or on desktop
 - Smooth, low-latency mirroring of desktops and windows
 - Low memory footprint and performance impact
-- Multi-GPU support
 - Support for creating as many overlays as SteamVR allows at once
 - Customizable overlay settings (width, position, curvature, opacity), with switchable profiles
 - Overlay cropping
 - 3D support (SBS, HSBS, OU, HOU)
 - Overlay visibility and origin settings: Display a desktop/window during gameplay or attach it to a different origin (play space, dashboard, HMD, controllers, tracker)
 - Actions: User-definable functions (input simulation, running applications) which can be bound to controller or UI buttons
-- Keyboard Extension, enabling use of modifier, arrow and function keys
+- Keyboard Extension, enabling use of modifier, arrow and function keys from the SteamVR keyboard
 - Elevated access toggle, making it possible to deal with UAC prompts and other UIP-restricted UI in VR without using full admin-access at all times
 - Gaze Fade: Fade-out overlay when not looking at it
 - Window Management: Change window focus depending on overlay/dashboard state or drag overlays when dragging the title bar of a mirrored window
