@@ -335,6 +335,12 @@ bool ConfigManager::LoadConfigFromFile()
     std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config.ini").c_str() );
     bool existed = FileExists(wpath.c_str());
 
+    //If config.ini doesn't exist (yet), load from config_default.ini instead, which hopefully does (would still work to a lesser extent though)
+    if (!existed)
+    {
+        wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config_default.ini").c_str() );
+    }
+
     Ini config(wpath.c_str());
 
     m_ConfigBool[configid_bool_interface_no_ui]                              = config.ReadBool("Interface", "NoUIAutoLaunch", false);
