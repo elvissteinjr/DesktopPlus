@@ -461,6 +461,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     // Make sure all other threads have exited
     if (SetEvent(TerminateThreadsEvent))
     {
+        //Wake them up first if needed
+        ResetEvent(PauseDuplicationEvent);
+        SetEvent(ResumeDuplicationEvent);
+
         ThreadMgr.WaitForThreadTermination();
     }
 
