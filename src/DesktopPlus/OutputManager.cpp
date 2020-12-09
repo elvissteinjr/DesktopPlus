@@ -4209,6 +4209,55 @@ void OutputManager::DragStart(bool is_gesture_drag)
     vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
     vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
+    Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+
+    //We have no dashboard device, but something still started a drag, eh? This happens when the dashboard is closed but the overlays are still interactive
+    //There doesn't seem to be a way to get around this, so we guess by checking which of the two hand controllers are currently pointing at the overlay
+    //Works for most cases at least
+    if (device_index == vr::k_unTrackedDeviceIndexInvalid)
+    {
+        //Check left and right hand controller
+        vr::ETrackedControllerRole controller_role = vr::TrackedControllerRole_LeftHand;
+        for (;;)
+        {
+            vr::TrackedDeviceIndex_t device_index_intersection = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(controller_role);
+
+            if ((device_index_intersection < vr::k_unMaxTrackedDeviceCount) && (poses[device_index_intersection].bPoseIsValid))
+            {
+                //Get matrix with tip offset
+                Matrix4 mat_controller = poses[device_index_intersection].mDeviceToAbsoluteTracking;
+                mat_controller = mat_controller * GetControllerTipMatrix( (controller_role == vr::TrackedControllerRole_RightHand) );
+
+                //Set up intersection test
+                Vector3 v_pos = mat_controller.getTranslation();
+                Vector3 forward = {mat_controller[8], mat_controller[9], mat_controller[10]};
+                forward *= -1.0f;
+
+                vr::VROverlayIntersectionParams_t params;
+                params.eOrigin = vr::TrackingUniverseStanding;
+                params.vSource = {v_pos.x, v_pos.y, v_pos.z};
+                params.vDirection = {forward.x, forward.y, forward.z};
+
+                vr::VROverlayIntersectionResults_t results;
+
+                if (vr::VROverlay()->ComputeOverlayIntersection(ovrl_handle, &params, &results))
+                {
+                    device_index = device_index_intersection;
+                }
+            }
+
+            if (controller_role == vr::TrackedControllerRole_LeftHand)
+            {
+                controller_role = vr::TrackedControllerRole_RightHand;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
     if ( (device_index < vr::k_unMaxTrackedDeviceCount) && (poses[device_index].bPoseIsValid) )
     {
         if (!is_gesture_drag)
@@ -4216,8 +4265,6 @@ void OutputManager::DragStart(bool is_gesture_drag)
             m_DragModeDeviceID = device_index;
         }
 
-        Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
-        vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
         m_DragModeOverlayID = overlay.GetID();
 
         m_DragModeMatrixSourceStart = poses[device_index].mDeviceToAbsoluteTracking;
@@ -4766,6 +4813,10 @@ void OutputManager::DetachedTransformUpdateHMDFloor()
 
 void OutputManager::DetachedInteractionAutoToggle()
 {
+    //Don't change flags while any drag is currently active
+    if ((m_DragModeDeviceID != -1) || (m_DragGestureActive))
+        return;
+
     Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
     vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
 
