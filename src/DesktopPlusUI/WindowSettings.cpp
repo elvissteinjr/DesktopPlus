@@ -2151,7 +2151,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.3");
+        ImGui::Text("Desktop+ Version 2.3.1");
 
         ImGui::Columns(1);
     }
