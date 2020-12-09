@@ -18,7 +18,20 @@ UIManager* g_UIManagerPtr = nullptr;
 
 void UIManager::DisplayDashboardAppError(const std::string& str) //Ideally this is never called
 {
+    //Hide UI overlay
     vr::VROverlay()->HideOverlay(m_OvrlHandle);
+    m_OvrlVisible = false;
+
+    //Hide all dashboard app overlays as well. Usually the dashboard app closes, but it may sometimes get stuck which could put its overlays in the way of the message overlay.
+    for (unsigned int i = k_ulOverlayID_Dashboard; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(i);
+
+        if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
+        {
+            vr::VROverlay()->HideOverlay(ovrl_handle);
+        }
+    }
 
     vr::VRMessageOverlayResponse res = vr::VROverlay()->ShowMessageOverlay(str.c_str(), "Desktop+ Error", "Ok", "Restart Desktop+");
 
