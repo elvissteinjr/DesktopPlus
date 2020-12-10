@@ -22,10 +22,10 @@ bool VRInput::Init()
 {
     bool ret = false;
 
-    //Load manifest finally
+    //Load manifest, this will fail with VRInputError_MismatchedActionManifest when a Steam configured manifest is already associated with the app key, but we can just ignore that
     vr::EVRInputError input_error = vr::VRInput()->SetActionManifestPath( (ConfigManager::Get().GetApplicationPath() + "action_manifest.json").c_str() );
-            
-    if (input_error == vr::VRInputError_None)
+
+    if ( (input_error == vr::VRInputError_None) || (input_error == vr::VRInputError_MismatchedActionManifest) )
     {
         input_error = vr::VRInput()->GetActionSetHandle("/actions/shortcuts", &m_HandleActionsetShortcuts);
 

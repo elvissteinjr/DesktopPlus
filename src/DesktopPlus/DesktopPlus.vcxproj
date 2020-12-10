@@ -97,7 +97,7 @@
       <TargetMachine>MachineX86</TargetMachine>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>d3d11.lib;dxgi.lib;openvr_api.lib;winmm.lib;dwmapi.lib;DesktopPlusWinRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;openvr_api.lib;winmm.lib;dwmapi.lib;userenv.lib;DesktopPlusWinRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)Shared\lib\x86;$(OutputPath)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
@@ -119,7 +119,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>d3d11.lib;dxgi.lib;openvr_api.lib;winmm.lib;dwmapi.lib;DesktopPlusWinRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;openvr_api.lib;winmm.lib;dwmapi.lib;userenv.lib;DesktopPlusWinRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)Shared\lib\x64;$(OutputPath)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
@@ -153,7 +153,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>d3d11.lib;dxgi.lib;openvr_api.lib;winmm.lib;dwmapi.lib;DesktopPlusWinRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;openvr_api.lib;winmm.lib;dwmapi.lib;userenv.lib;DesktopPlusWinRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)Shared\lib\x86;$(OutputPath)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
@@ -178,7 +178,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>d3d11.lib;dxgi.lib;openvr_api.lib;winmm.lib;dwmapi.lib;DesktopPlusWinRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;openvr_api.lib;winmm.lib;dwmapi.lib;userenv.lib;DesktopPlusWinRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)Shared\lib\x64;$(OutputPath)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>

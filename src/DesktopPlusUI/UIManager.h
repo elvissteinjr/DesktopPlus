@@ -91,7 +91,7 @@ class UIManager
         void DisableRestartOnExit();
 
         void Restart(bool desktop_mode);
-        void RestartDashboardApp(bool elevated_mode);
+        void RestartDashboardApp(bool elevated_mode, bool force_steam = false);
 
         void SetUIScale(float scale);
         float GetUIScale() const;

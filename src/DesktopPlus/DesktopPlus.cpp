@@ -8,6 +8,8 @@
 #include <sstream>
 #include <system_error>
 
+#include <userenv.h>
+
 #include "DesktopPlusWinRT.h"
 
 #include "Util.h"
@@ -58,6 +60,8 @@ HRESULT EnumOutputsExpectedErrors[] = {
 //
 DWORD WINAPI CaptureThreadEntry(_In_ void* Param);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+bool SpawnProcessWithDefaultEnv(LPCWSTR application_name, LPWSTR commandline = nullptr);
+
 //
 // Class for progressive waits
 //
@@ -257,16 +261,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     //Start up UI process unless disabled or already running
     if ( (!ConfigManager::Get().GetConfigBool(configid_bool_interface_no_ui)) && (!IPCManager::IsUIAppRunning()) )
     {
-        STARTUPINFO si = {0};
-        PROCESS_INFORMATION pi = {0};
-        si.cb = sizeof(si);
-
         std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlusUI.exe";
-        ::CreateProcess(path.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
-
-        //We don't care about these, so close right away
-        ::CloseHandle(pi.hProcess);
-        ::CloseHandle(pi.hThread);
+        SpawnProcessWithDefaultEnv(path.c_str());
     }
 
     //Message loop
@@ -352,6 +348,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                         DisplayMsg(L"Failed to init OpenVR", L"Error", S_OK);
                     }
                     Ret = DUPL_RETURN_ERROR_UNEXPECTED;
+                    break;
+                }
+                else if ( (ConfigManager::Get().GetConfigBool(configid_bool_misc_no_steam)) && (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam)) )
+                {
+                    //Was started by Steam but running through it was turned off, so restart without
+                    std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";
+                    SpawnProcessWithDefaultEnv(path.c_str());
+
                     break;
                 }
             }
@@ -543,6 +547,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
 
     return 0;
+}
+
+bool SpawnProcessWithDefaultEnv(LPCWSTR application_name, LPWSTR commandline)
+{
+    LPVOID env = nullptr;
+    STARTUPINFO si = {0};
+    PROCESS_INFORMATION pi = {0};
+    si.cb = sizeof(si);
+
+    //Use a new environment block since we don't want to copy the Steam environment variables if there are any
+    if (::CreateEnvironmentBlock(&env, ::GetCurrentProcessToken(), FALSE))
+    {
+        bool ret = ::CreateProcess(application_name, commandline, nullptr, nullptr, FALSE, CREATE_UNICODE_ENVIRONMENT, env, nullptr, &si, &pi);
+
+        //We don't care about these, so close right away
+        ::CloseHandle(pi.hProcess);
+        ::CloseHandle(pi.hThread);
+
+        ::DestroyEnvironmentBlock(env);
+
+        return ret;
+    }
+
+    return false;
 }
 
 //

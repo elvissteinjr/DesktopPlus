@@ -60,7 +60,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     UIManager ui_manager(desktop_mode);
     ConfigManager::Get().LoadConfigFromFile();
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_sync_overlay_state);
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_sync_config_state);
 
     //Enable basic DPI support for desktop mode
     ::SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);

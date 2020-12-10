@@ -47,6 +47,7 @@ enum ConfigID_Bool
     configid_bool_windows_winrt_keep_on_screen,
     configid_bool_windows_winrt_auto_size_overlay,
     configid_bool_windows_winrt_auto_focus_scene_app,
+    configid_bool_misc_no_steam,                              //Restarts without Steam when it detects to have been launched by Steam
     configid_bool_state_overlay_dragmode,
     configid_bool_state_overlay_selectmode,
     configid_bool_state_overlay_dragselectmode_show_hidden,   //True if mode is from a popup
@@ -54,6 +55,7 @@ enum ConfigID_Bool
     configid_bool_state_performance_stats_active,             //Only count when the stats are visible
     configid_bool_state_performance_gpu_copy_active,
     configid_bool_state_misc_process_elevated,                //True if the dashboard application is running with admin privileges
+    configid_bool_state_misc_process_started_by_steam,
 	configid_bool_MAX
 };
 
@@ -235,6 +237,7 @@ class ConfigManager
 
         std::string m_ApplicationPath;
         std::string m_ExecutableName;
+        bool m_IsSteamInstall;
 
         void LoadOverlayProfile(const Ini& config, unsigned int overlay_id = UINT_MAX);
         void SaveOverlayProfile(Ini& config, unsigned int overlay_id = UINT_MAX);
@@ -285,4 +288,5 @@ class ConfigManager
 
 		const std::string& GetApplicationPath() const;
 		const std::string& GetExecutableName() const;
+        bool IsSteamInstall() const;
 };

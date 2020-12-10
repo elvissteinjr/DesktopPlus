@@ -25,8 +25,8 @@ LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,3,1,0
- PRODUCTVERSION 2,3,1,0
+ FILEVERSION 2,3,2,0
+ PRODUCTVERSION 2,3,2,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -42,11 +42,11 @@ BEGIN
         BLOCK "000004b0"
         BEGIN
             VALUE "CompanyName", "elvissteinjr"
-            VALUE "FileDescription", "Desktop+ OpenVR Overlay WinRT Wrapper"
-            VALUE "FileVersion", "2.3.1.0"
+            VALUE "FileDescription", "Desktop+ WinRT Wrapper"
+            VALUE "FileVersion", "2.3.2.0  WiP"
             VALUE "LegalCopyright", "Copyright © 2019 - 2020 elvissteinjr"
             VALUE "ProductName", "Desktop+ WinRT"
-            VALUE "ProductVersion", "2.3.1.0"
+            VALUE "ProductVersion", "2.3.2.0 WiP"
         END
     END
     BLOCK "VarFileInfo"

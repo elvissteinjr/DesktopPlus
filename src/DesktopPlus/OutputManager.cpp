@@ -844,24 +844,34 @@ vr::EVRInitError OutputManager::InitOverlay()
 
     m_MaxActiveRefreshDelay = 1000.0f / GetHMDFrameRate();
 
-    bool input_res = m_VRInput.Init();
+    //Check if this process was launched by Steam by checking if the "SteamClientLaunch" environment variable exists
+    bool is_steam_app = (::GetEnvironmentVariable(L"SteamClientLaunch", nullptr, 0) != 0);
+    ConfigManager::Get().SetConfigBool(configid_bool_state_misc_process_started_by_steam, is_steam_app);
+    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_started_by_steam), is_steam_app);
 
-    //Add application manifest if needed
-    if (!vr::VRApplications()->IsApplicationInstalled("elvissteinjr.DesktopPlus"))
+    //Add application manifest and set app key to Steam one if needed (setting the app key will make it load Steam input bindings even when not launched by it)
+    if (!is_steam_app)
     {
-        vr::EVRApplicationError app_error;
-        app_error = vr::VRApplications()->AddApplicationManifest( (ConfigManager::Get().GetApplicationPath() + "manifest.vrmanifest").c_str() );
+        vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
 
-        if (app_error == vr::VRApplicationError_None)
+        if (!vr::VRApplications()->IsApplicationInstalled(g_AppKeyDashboardApp))
         {
-            app_error = vr::VRApplications()->SetApplicationAutoLaunch("elvissteinjr.DesktopPlus", true);
+            vr::EVRApplicationError app_error;
+            app_error = vr::VRApplications()->AddApplicationManifest((ConfigManager::Get().GetApplicationPath() + "manifest.vrmanifest").c_str());
 
             if (app_error == vr::VRApplicationError_None)
             {
-                DisplayMsg(L"Desktop+ has been successfully added to SteamVR.\nIt will now automatically launch when SteamVR is run.", L"Desktop+ Initial Setup", S_OK);
+                app_error = vr::VRApplications()->SetApplicationAutoLaunch(g_AppKeyDashboardApp, true);
+
+                if (app_error == vr::VRApplicationError_None)
+                {
+                    DisplayMsg(L"Desktop+ has been successfully added to SteamVR.\nIt will now automatically launch when SteamVR is run.", L"Desktop+ Initial Setup", S_OK);
+                }
             }
         }
     }
+
+    bool input_res = m_VRInput.Init();
 
     //Check if it's a WMR system and set up for that if needed
     SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens));
@@ -1468,8 +1478,9 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                     break;
                 }
-                case ipcact_sync_overlay_state:
+                case ipcact_sync_config_state:
                 {
+                    //Overlay state
                     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                     {
                         const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
@@ -1481,6 +1492,15 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                                                              data.ConfigInt[configid_int_overlay_state_content_height]);
                         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
                     }
+
+                    //Global config state
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_window_focused_process_elevated), 
+                                                         ConfigManager::Get().GetConfigBool(configid_bool_state_window_focused_process_elevated));
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_elevated), 
+                                                         ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated));
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_started_by_steam),
+                                                         ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam));
+
                     break;
                 }
             }

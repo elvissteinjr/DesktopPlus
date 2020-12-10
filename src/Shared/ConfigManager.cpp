@@ -68,7 +68,15 @@ ConfigManager::ConfigManager()
         //We got the full executable path, so let's get the folder part
         std::size_t pos = path_str.find_last_of("\\");
         m_ApplicationPath = path_str.substr(0, pos + 1);	//Includes trailing backslash
-        m_ExecutableName = path_str.substr(pos + 1, std::string::npos);
+        m_ExecutableName  = path_str.substr(pos + 1, std::string::npos);
+
+        //Somewhat naive way to check if this install is from Steam without using Steam API or shipping different binaries
+        //Convert to lower first since there can be capitalization differences for the Steam directories
+        std::wstring path_wstr = buffer;
+        ::CharLowerBuff(buffer, path_wstr.length());
+        path_wstr = buffer;
+
+        m_IsSteamInstall = (path_wstr.find(L"\\steamapps\\common\\desktopplus\\desktopplus") != std::wstring::npos); 
     }
 
     delete[] buffer;
@@ -403,6 +411,8 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates] = config.ReadBool("Performance", "RapidLaserPointerUpdates", false);
     m_ConfigBool[configid_bool_performance_single_desktop_mirroring]    = config.ReadBool("Performance", "SingleDesktopMirroring", false);
 
+    m_ConfigBool[configid_bool_misc_no_steam]                           = config.ReadBool("Misc", "NoSteam", false);
+
     //Load custom actions (this is where using ini feels dumb, but it still kinda works)
     auto& custom_actions = m_ActionManager.GetCustomActions();
     int custom_action_count = config.ReadInt("CustomActions", "Count", 0);
@@ -674,6 +684,8 @@ void ConfigManager::SaveConfigToFile()
     config.WriteInt( "Performance", "UpdateLimitFPS",           m_ConfigInt[configid_int_performance_update_limit_fps]);
     config.WriteBool("Performance", "RapidLaserPointerUpdates", m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]);
     config.WriteBool("Performance", "SingleDesktopMirroring",   m_ConfigBool[configid_bool_performance_single_desktop_mirroring]);
+
+    config.WriteBool("Misc", "NoSteam",                         m_ConfigBool[configid_bool_misc_no_steam]);
 
     //Save custom actions
     config.RemoveSection("CustomActions"); //Remove old section first to avoid any leftovers
@@ -959,4 +971,9 @@ const std::string& ConfigManager::GetApplicationPath() const
 const std::string& ConfigManager::GetExecutableName() const
 {
 	return m_ExecutableName;
+}
+
+bool ConfigManager::IsSteamInstall() const
+{
+    return m_IsSteamInstall;
 }

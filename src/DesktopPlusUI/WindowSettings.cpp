@@ -1537,7 +1537,7 @@ void WindowSettings::UpdateCatInput()
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Active Controller Buttons");
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-        /*if (UIManager::Get()->IsOpenVRLoaded()) //OpenBindingUI() is currently broken
+        if (UIManager::Get()->IsOpenVRLoaded())
         {
             ImGui::FixedHelpMarker("Controller bindings when pointing at the overlay.\nClick here to configure the VR Dashboard controller bindings and change which buttons these are.");
 
@@ -1549,14 +1549,19 @@ void WindowSettings::UpdateCatInput()
 
             if (ImGui::BeginPopup("PopupOpenControllerBindingsCompositor"))
             {
-                if (ImGui::Selectable("Open VR Compositor Controller Bindings"))
+                if (ImGui::Selectable("Open VR Dashboard Controller Bindings"))
                 {
+                    //OpenBindingUI does not use that app key argument it takes, it always opens the bindings of the calling application
+                    //To work around this, we pretend to be the app we want to open the bindings for during the call
+                    //Works and seems to not break anything
+                    vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), "openvr.component.vrcompositor");
                     vr::VRInput()->OpenBindingUI("openvr.component.vrcompositor", vr::k_ulInvalidActionSetHandle, vr::k_ulInvalidInputValueHandle, UIManager::Get()->IsInDesktopMode());
+                    vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
                 }
                 ImGui::EndPopup();
             }
         }
-        else*/
+        else
         {
             ImGui::FixedHelpMarker("Controller bindings when pointing at the overlay.\nConfigure the VR Dashboard controller bindings to change which buttons these are.");
         }
@@ -1596,7 +1601,7 @@ void WindowSettings::UpdateCatInput()
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Global Controller Buttons");
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-        /*if (UIManager::Get()->IsOpenVRLoaded()) //OpenBindingUI() is currently broken
+        if (UIManager::Get()->IsOpenVRLoaded())
         {
             ImGui::FixedHelpMarker("Controller bindings when the dashboard is closed and not pointing at an overlay.\nClick here to configure the Desktop+ controller bindings and change which buttons these are.");
 
@@ -1610,12 +1615,15 @@ void WindowSettings::UpdateCatInput()
             {
                 if (ImGui::Selectable("Desktop+ Controller Bindings"))
                 {
-                    vr::VRInput()->OpenBindingUI("elvissteinjr.DesktopPlus", vr::k_ulInvalidActionSetHandle, vr::k_ulInvalidInputValueHandle, UIManager::Get()->IsInDesktopMode());
+                    //See comment on the active controller buttons
+                    vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
+                    vr::VRInput()->OpenBindingUI(g_AppKeyDashboardApp, vr::k_ulInvalidActionSetHandle, vr::k_ulInvalidInputValueHandle, UIManager::Get()->IsInDesktopMode());
+                    vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
                 }
                 ImGui::EndPopup();
             }
         }
-        else*/
+        else
         {
             ImGui::FixedHelpMarker("Controller bindings when the dashboard is closed and not pointing at an overlay.\nConfigure the Desktop+ controller bindings to change which buttons these are.");
         }
@@ -2151,7 +2159,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.3.1");
+        ImGui::Text("Desktop+ Version 2.3.2 WiP");
 
         ImGui::Columns(1);
     }
@@ -2184,6 +2192,25 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(1);
     }
 
+    //Steam
+    bool& no_steam = ConfigManager::Get().GetConfigBoolRef(configid_bool_misc_no_steam);
+    if (ConfigManager::Get().IsSteamInstall())
+    {
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Steam");
+
+        ImGui::Columns(2, "ColumnMiscSteam", false);
+        ImGui::SetColumnWidth(0, column_width_0);
+
+        if (ImGui::Checkbox("Disable Steam Integration", &no_steam))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_misc_no_steam), no_steam);
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("Restarts Desktop+ without Steam when it was launched by it.\nThis disables the permanent in-app status, usage time statistics and other Steam features.");
+
+        ImGui::Columns(1);
+    }
+
     //Troubleshooting
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Troubleshooting");
@@ -2201,14 +2228,30 @@ void WindowSettings::UpdateCatMisc()
             UIManager::Get()->RestartDashboardApp(false);
         }
 
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-
         if (UIManager::Get()->IsElevatedTaskSetUp())
         {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
             if (ImGui::Button("Restart Elevated"))
             {
                 UIManager::Get()->RestartDashboardApp(true);
             }
+        }
+
+        if ( (ConfigManager::Get().IsSteamInstall()) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam)) )
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+            if (no_steam)
+                ImGui::PushItemDisabled();
+
+            if (ImGui::Button("Restart with Steam"))
+            {
+                UIManager::Get()->RestartDashboardApp(false, true);
+            }
+
+            if (no_steam)
+                ImGui::PopItemDisabled();
         }
 
         ImGui::NextColumn();

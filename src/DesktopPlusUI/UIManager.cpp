@@ -111,6 +111,8 @@ vr::EVRInitError UIManager::InitOverlay()
     if (!vr::VROverlay())
         return vr::VRInitError_Init_InvalidInterface;
 
+    vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
+
     vr::VROverlayError ovrl_error = vr::VROverlayError_None;
 
     if (!m_DesktopMode) //For desktop mode we only init OpenVR, but don't set up any overlays
@@ -467,30 +469,54 @@ void UIManager::Restart(bool desktop_mode)
     ::CloseHandle(pi.hThread);
 }
 
-void UIManager::RestartDashboardApp(bool elevated_mode)
+void UIManager::RestartDashboardApp(bool elevated_mode, bool force_steam)
 {
     ConfigManager::Get().ResetConfigStateValues();
     ConfigManager::Get().SaveConfigToFile();
 
-    STARTUPINFO si = {0};
-    PROCESS_INFORMATION pi = {0};
-    si.cb = sizeof(si);
+    bool use_steam = ( (force_steam) || (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam)) );
 
-    if (elevated_mode)
+    //Elevated mode can't run through Steam, unfortunately. Probably when using the Steam API, but not doing that yet
+    //LaunchDashboardOverlay() technically also launches the non-Steam version if it's registered, but there's no reason to use it in that case
+    if ( (!elevated_mode) && (use_steam) )
     {
-        WCHAR cmd[] = L"\"schtasks\" /Run /TN \"DesktopPlus Elevated\""; //"CreateProcessW, can modify the contents of this string", so don't go optimize this away
+        //We need OpenVR loaded for this
+        if (!m_OpenVRLoaded)
+        {
+            InitOverlay();
+        }
 
-        ::CreateProcess(nullptr, cmd, nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
+        //Steam will not launch the overlay if it's already running, so in this case we need to get rid of the running instance now
+        StopProcessByWindowClass(g_WindowClassNameDashboardApp);
+
+        ULONGLONG start_tick = ::GetTickCount64();
+        while ( (vr::VRApplications()->LaunchDashboardOverlay(g_AppKeyDashboardApp) == vr::VRApplicationError_ApplicationAlreadyRunning) && (::GetTickCount64() - start_tick < 3000) ) //Try 3 seconds max
+        {
+            ::Sleep(100);
+        }
     }
     else
     {
-        std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";
-        ::CreateProcess(path.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
-    }
+        STARTUPINFO si = {0};
+        PROCESS_INFORMATION pi = {0};
+        si.cb = sizeof(si);
 
-    //We don't care about these, so close right away
-    ::CloseHandle(pi.hProcess);
-    ::CloseHandle(pi.hThread);
+        if (elevated_mode)
+        {
+            WCHAR cmd[] = L"\"schtasks\" /Run /TN \"DesktopPlus Elevated\""; //"CreateProcessW, can modify the contents of this string", so don't go optimize this away
+
+            ::CreateProcess(nullptr, cmd, nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
+        }
+        else
+        {
+            std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";
+            ::CreateProcess(path.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
+        }
+
+        //We don't care about these, so close right away
+        ::CloseHandle(pi.hProcess);
+        ::CloseHandle(pi.hThread);
+    }
 }
 
 void UIManager::SetUIScale(float scale)
