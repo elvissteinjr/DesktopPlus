@@ -2264,7 +2264,7 @@ void WindowSettings::UpdateCatMisc()
 
         if (ImGui::Button("Restart"))
         {
-            UIManager::Get()->RestartDashboardApp(false);
+            UIManager::Get()->RestartDashboardApp();
         }
 
         if ( (ConfigManager::Get().IsSteamInstall()) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam)) )
@@ -2276,7 +2276,7 @@ void WindowSettings::UpdateCatMisc()
 
             if (ImGui::Button("Restart with Steam"))
             {
-                UIManager::Get()->RestartDashboardApp(false, true);
+                UIManager::Get()->RestartDashboardApp(true);
             }
 
             if (no_steam)

@@ -37,7 +37,7 @@ void UIManager::DisplayDashboardAppError(const std::string& str) //Ideally this 
 
     if (res == vr::VRMessageOverlayResponse_ButtonPress_1)
     {
-        RestartDashboardApp(false);
+        RestartDashboardApp();
     }
 
     //Dashboard will be closed after dismissing the message overlay, so open it back up with Desktop+
@@ -469,16 +469,15 @@ void UIManager::Restart(bool desktop_mode)
     ::CloseHandle(pi.hThread);
 }
 
-void UIManager::RestartDashboardApp(bool elevated_mode, bool force_steam)
+void UIManager::RestartDashboardApp(bool force_steam)
 {
     ConfigManager::Get().ResetConfigStateValues();
     ConfigManager::Get().SaveConfigToFile();
 
     bool use_steam = ( (force_steam) || (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam)) );
 
-    //Elevated mode can't run through Steam, unfortunately. Probably when using the Steam API, but not doing that yet
     //LaunchDashboardOverlay() technically also launches the non-Steam version if it's registered, but there's no reason to use it in that case
-    if ( (!elevated_mode) && (use_steam) )
+    if (use_steam)
     {
         //We need OpenVR loaded for this
         if (!m_OpenVRLoaded)
