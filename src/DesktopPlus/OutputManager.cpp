@@ -82,6 +82,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MouseDefaultHotspotX(0),
     m_MouseDefaultHotspotY(0),
     m_MouseIgnoreMoveEventMissCount(0),
+    m_IsFirstLaunch(false),
     m_ComInitDone(false),
     m_DragModeDeviceID(-1),
     m_DragModeOverlayID(0),
@@ -102,8 +103,8 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MouseLastInfo = {0};
     m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
 
-    //Initialize ConfigManager
-    ConfigManager::Get().LoadConfigFromFile();
+    //Initialize ConfigManager and set first launch state based on existence of config file (used to detect first launch in Steam version)
+    m_IsFirstLaunch = !ConfigManager::Get().LoadConfigFromFile();
 
     g_OutputManager = this;
 }
@@ -850,24 +851,26 @@ vr::EVRInitError OutputManager::InitOverlay()
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_started_by_steam), is_steam_app);
 
     //Add application manifest and set app key to Steam one if needed (setting the app key will make it load Steam input bindings even when not launched by it)
+    vr::EVRApplicationError app_error;
     if (!is_steam_app)
     {
         vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
 
         if (!vr::VRApplications()->IsApplicationInstalled(g_AppKeyDashboardApp))
         {
-            vr::EVRApplicationError app_error;
-            app_error = vr::VRApplications()->AddApplicationManifest((ConfigManager::Get().GetApplicationPath() + "manifest.vrmanifest").c_str());
+            vr::VRApplications()->AddApplicationManifest((ConfigManager::Get().GetApplicationPath() + "manifest.vrmanifest").c_str());
+            m_IsFirstLaunch = true;
+        }
+    }
 
-            if (app_error == vr::VRApplicationError_None)
-            {
-                app_error = vr::VRApplications()->SetApplicationAutoLaunch(g_AppKeyDashboardApp, true);
+    //Set application auto-launch to true if it's the first launch
+    if (m_IsFirstLaunch)
+    {
+        app_error = vr::VRApplications()->SetApplicationAutoLaunch(g_AppKeyDashboardApp, true);
 
-                if (app_error == vr::VRApplicationError_None)
-                {
-                    DisplayMsg(L"Desktop+ has been successfully added to SteamVR.\nIt will now automatically launch when SteamVR is run.", L"Desktop+ Initial Setup", S_OK);
-                }
-            }
+        if (app_error == vr::VRApplicationError_None)
+        {
+            DisplayMsg(L"Desktop+ has been successfully added to SteamVR.\nIt will now automatically launch when SteamVR is run.", L"Desktop+ Initial Setup", S_OK);
         }
     }
 

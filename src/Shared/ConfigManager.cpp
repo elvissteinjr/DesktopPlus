@@ -28,7 +28,7 @@ OverlayConfigData::OverlayConfigData()
     std::fill(std::begin(ConfigDetachedTransform), std::end(ConfigDetachedTransform), matrix_zero);
 }
 
-ConfigManager::ConfigManager()
+ConfigManager::ConfigManager() : m_IsSteamInstall(false)
 {
     std::fill(std::begin(m_ConfigBool),  std::end(m_ConfigBool),  false);
     std::fill(std::begin(m_ConfigInt),   std::end(m_ConfigInt),   -1);
@@ -74,7 +74,7 @@ ConfigManager::ConfigManager()
         //Somewhat naive way to check if this install is from Steam without using Steam API or shipping different binaries
         //Convert to lower first since there can be capitalization differences for the Steam directories
         std::wstring path_wstr = buffer;
-        ::CharLowerBuff(buffer, path_wstr.length());
+        ::CharLowerBuff(buffer, (DWORD)path_wstr.length());
         path_wstr = buffer;
 
         m_IsSteamInstall = (path_wstr.find(L"\\steamapps\\common\\desktopplus\\desktopplus") != std::wstring::npos); 

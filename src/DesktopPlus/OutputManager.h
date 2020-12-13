@@ -191,6 +191,7 @@ class OutputManager
         int m_MouseDefaultHotspotY;
         int m_MouseIgnoreMoveEventMissCount;
 
+        bool m_IsFirstLaunch;
         bool m_ComInitDone;
 
         int m_DragModeDeviceID;                 //-1 if not dragging
