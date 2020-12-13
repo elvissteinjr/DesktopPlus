@@ -203,6 +203,7 @@
     </ClCompile>
     <ClCompile Include="DisplayManager.cpp" />
     <ClCompile Include="DuplicationManager.cpp" />
+    <ClCompile Include="ElevatedMode.cpp" />
     <ClCompile Include="InputSimulator.cpp" />
     <ClCompile Include="OutputManager.cpp" />
     <ClCompile Include="Overlays.cpp" />
@@ -226,6 +227,7 @@
     <ClInclude Include="CommonTypes.h" />
     <ClInclude Include="DisplayManager.h" />
     <ClInclude Include="DuplicationManager.h" />
+    <ClInclude Include="ElevatedMode.h" />
     <ClInclude Include="InputSimulator.h" />
     <ClInclude Include="OutputManager.h" />
     <ClInclude Include="Overlays.h" />

@@ -42,6 +42,7 @@
       <Filter>Shared</Filter>
     </ClCompile>
     <ClCompile Include="WindowManager.cpp" />
+    <ClCompile Include="ElevatedMode.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -90,6 +91,7 @@
       <Filter>Shared</Filter>
     </ClInclude>
     <ClInclude Include="WindowManager.h" />
+    <ClInclude Include="ElevatedMode.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DesktopPlus.rc" />

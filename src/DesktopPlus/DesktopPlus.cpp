@@ -18,6 +18,7 @@
 #include "OutputManager.h"
 #include "ThreadManager.h"
 #include "InterprocessMessaging.h"
+#include "ElevatedMode.h"
 
 // Below are lists of errors expect from Dxgi API calls when a transition event like mode change, PnpStop, PnpStart
 // desktop switch, TDR or session disconnect/reconnect. In all these cases we want the application to clean up the threads that process
@@ -61,6 +62,7 @@ HRESULT EnumOutputsExpectedErrors[] = {
 DWORD WINAPI CaptureThreadEntry(_In_ void* Param);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 bool SpawnProcessWithDefaultEnv(LPCWSTR application_name, LPWSTR commandline = nullptr);
+void ProcessCmdline(bool& use_elevated_mode);
 
 //
 // Class for progressive waits
@@ -151,15 +153,24 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
+    bool use_elevated_mode = false;
+    ProcessCmdline(use_elevated_mode);
+
+    if (use_elevated_mode)
+    {
+        //Pass all control to eleveated mode and exit when we're done there
+        return ElevatedModeEnter(hInstance);
+    }
+
     INT SingleOutput = 0;
 
     // Synchronization
-    HANDLE UnexpectedErrorEvent = nullptr;
-    HANDLE ExpectedErrorEvent = nullptr;
+    HANDLE UnexpectedErrorEvent   = nullptr;
+    HANDLE ExpectedErrorEvent     = nullptr;
     HANDLE NewFrameProcessedEvent = nullptr;
-    HANDLE PauseDuplicationEvent = nullptr;
+    HANDLE PauseDuplicationEvent  = nullptr;
     HANDLE ResumeDuplicationEvent = nullptr;
-    HANDLE TerminateThreadsEvent = nullptr;
+    HANDLE TerminateThreadsEvent  = nullptr;
 
     // Window
     HWND WindowHandle = nullptr;
@@ -480,6 +491,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     CloseHandle(ResumeDuplicationEvent);
     CloseHandle(TerminateThreadsEvent);
 
+    //Kindly ask elevated mode process to quit if it exists
+    if (HWND window = ::FindWindow(g_WindowClassNameElevatedMode, nullptr))
+    {
+        ::PostMessage(window, WM_QUIT, 0, 0);
+    }
+
     if (msg.message == WM_QUIT)
     {
         // For a WM_QUIT message we should return the wParam value
@@ -571,6 +588,19 @@ bool SpawnProcessWithDefaultEnv(LPCWSTR application_name, LPWSTR commandline)
     }
 
     return false;
+}
+
+void ProcessCmdline(bool& use_elevated_mode)
+{
+    //__argv and __argc are global vars set by system
+    for (UINT i = 0; i < static_cast<UINT>(__argc); ++i)
+    {
+        if ((strcmp(__argv[i], "-ElevatedMode") == 0) ||
+            (strcmp(__argv[i], "/ElevatedMode") == 0))
+        {
+            use_elevated_mode = true;
+        }
+    }
 }
 
 //

@@ -1571,6 +1571,10 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                                                                  (m_MultiGPUTargetDevice != nullptr));
                         }
                     }
+                    case configid_bool_state_misc_elevated_mode_active:
+                    {
+                        m_InputSim.SetElevatedModeForwardingActive(msg.lParam);
+                    }
                     default: break;
                 }
             }
@@ -3407,6 +3411,19 @@ bool OutputManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
 
 void OutputManager::LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8)
 {
+    if (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active))
+    {
+        IPCManager::Get().SendStringToElevatedModeProcess(ipcestrid_launch_application_path, path_utf8, m_WindowHandle);
+
+        if (!arg_utf8.empty())
+        {
+            IPCManager::Get().SendStringToElevatedModeProcess(ipcestrid_launch_application_arg, arg_utf8, m_WindowHandle);
+        }
+
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_launch_application);
+        return;
+    }
+
     if (!m_ComInitDone) //Let's only do this if really needed
     {
         if (::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) != RPC_E_CHANGED_MODE)

@@ -5,6 +5,7 @@
 
 #include "Util.h"
 #include "OverlayManager.h"
+#include "InterprocessMessaging.h"
 #include "WindowList.h"
 #include "DesktopPlusWinRT.h"
 
@@ -360,6 +361,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_interface_warning_compositor_res_hidden]      = config.ReadBool("Interface", "WarningCompositorResolutionHidden", false);
     m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]  = config.ReadBool("Interface", "WarningCompositorQualityHidden", false);
     m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]   = config.ReadBool("Interface", "WarningProcessElevationHidden", false);
+    m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]       = config.ReadBool("Interface", "WarningElevatedModeHidden", false);
     m_ConfigInt[configid_int_interface_wmr_ignore_vscreens]                  = config.ReadInt( "Interface", "WMRIgnoreVScreens", -1);
 
     OverlayManager::Get().SetCurrentOverlayID(m_ConfigInt[configid_int_interface_overlay_current_id]);
@@ -540,6 +542,9 @@ bool ConfigManager::LoadConfigFromFile()
         WindowManager::Get().UpdateConfigState();
     #endif
 
+    //Query elevated mode state
+    m_ConfigBool[configid_bool_state_misc_elevated_mode_active] = IPCManager::IsElevatedModeProcessRunning();
+
     //Load last used overlay config
     LoadMultiOverlayProfile(config);
     
@@ -642,6 +647,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Interface", "WarningCompositorResolutionHidden", m_ConfigBool[configid_bool_interface_warning_compositor_res_hidden]);
     config.WriteBool("Interface", "WarningCompositorQualityHidden",    m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]);
     config.WriteBool("Interface", "WarningProcessElevationHidden",     m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]);
+    config.WriteBool("Interface", "WarningElevatedModeHidden",         m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]);
 
     //Only write WMR settings when they're not -1 since they get set to that when using a non-WMR system. We want to preserve them for HMD-switching users
     if (m_ConfigInt[configid_int_interface_wmr_ignore_vscreens] != -1)

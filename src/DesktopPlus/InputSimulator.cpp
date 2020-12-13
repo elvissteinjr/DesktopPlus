@@ -1,5 +1,7 @@
 #include "InputSimulator.h"
 
+#include "InterprocessMessaging.h"
+#include "OutputManager.h"
 #include "Util.h"
 
 void InputSimulator::SetEventForMouseKeyCode(INPUT& input_event, unsigned char keycode, bool down) const
@@ -38,13 +40,19 @@ void InputSimulator::SetEventForMouseKeyCode(INPUT& input_event, unsigned char k
 
 }
 
-InputSimulator::InputSimulator() : m_SpaceMultiplierX(1.0f), m_SpaceMultiplierY(1.0f), m_SpaceOffsetX(0), m_SpaceOffsetY(0)
+InputSimulator::InputSimulator() : 
+    m_SpaceMultiplierX(1.0f), m_SpaceMultiplierY(1.0f), m_SpaceOffsetX(0), m_SpaceOffsetY(0), m_ForwardToElevatedModeProcess(false), m_ElevatedModeHasTextQueued(false)
 {
     RefreshScreenOffsets();
 }
 
 void InputSimulator::RefreshScreenOffsets()
 {
+    if (m_ForwardToElevatedModeProcess)
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_refresh);
+    }
+
     m_SpaceMultiplierX = 65536.0f / GetSystemMetrics(SM_CXVIRTUALSCREEN);
     m_SpaceMultiplierY = 65536.0f / GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
@@ -54,6 +62,12 @@ void InputSimulator::RefreshScreenOffsets()
 
 void InputSimulator::MouseMove(int x, int y)
 {
+    if (m_ForwardToElevatedModeProcess)
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_mouse_move, MAKELPARAM(x, y));
+        return;
+    }
+
     INPUT input_event = { 0 };
 
     input_event.type = INPUT_MOUSE;
@@ -106,6 +120,15 @@ void InputSimulator::KeyboardSetDown(unsigned char keycode)
     if (keycode == 0)
         return;
 
+    if (m_ForwardToElevatedModeProcess)
+    {
+        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
+        elevated_keycodes[0] = keycode;
+
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_down, *(LPARAM*)&elevated_keycodes);
+        return;
+    }
+
     //Check if the mouse buttons are swapped as this also affects SendInput
     if ( ((keycode == VK_LBUTTON) || (keycode == VK_RBUTTON)) && (::GetSystemMetrics(SM_SWAPBUTTON) != 0) )
     {
@@ -136,6 +159,15 @@ void InputSimulator::KeyboardSetUp(unsigned char keycode)
     if (keycode == 0)
         return;
 
+    if (m_ForwardToElevatedModeProcess)
+    {
+        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
+        elevated_keycodes[0] = keycode;
+
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_up, *(LPARAM*)&elevated_keycodes);
+        return;
+    }
+
     //Check if the mouse buttons are swapped as this also affects SendInput
     if ( ((keycode == VK_LBUTTON) || (keycode == VK_RBUTTON)) && (::GetSystemMetrics(SM_SWAPBUTTON) != 0) )
     {
@@ -164,6 +196,15 @@ void InputSimulator::KeyboardSetUp(unsigned char keycode)
 //Why so awfully specific, seems wasteful? Spamming the key events separately can confuse applications sometimes and we want to make sure the keys are really pressed at once
 void InputSimulator::KeyboardSetDown(unsigned char keycodes[3])
 {
+    if (m_ForwardToElevatedModeProcess)
+    {
+        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
+        std::copy(keycodes, keycodes + 3, elevated_keycodes);
+
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_down, *(LPARAM*)&elevated_keycodes);
+        return;
+    }
+
     INPUT input_event[3] = { 0 };
 
     int used_event_count = 0;
@@ -194,6 +235,15 @@ void InputSimulator::KeyboardSetDown(unsigned char keycodes[3])
 
 void InputSimulator::KeyboardSetUp(unsigned char keycodes[3])
 {
+    if (m_ForwardToElevatedModeProcess)
+    {
+        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
+        std::copy(keycodes, keycodes + 3, elevated_keycodes);
+
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_up, *(LPARAM*)&elevated_keycodes);
+        return;
+    }
+
     INPUT input_event[3] = { 0 };
 
     int used_event_count = 0;
@@ -224,6 +274,12 @@ void InputSimulator::KeyboardSetUp(unsigned char keycodes[3])
 
 void InputSimulator::KeyboardPressAndRelease(unsigned char keycode)
 {
+    if (m_ForwardToElevatedModeProcess)
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_press_and_release, keycode);
+        return;
+    }
+
     if (keycode == 0)
         return;
 
@@ -262,6 +318,19 @@ void InputSimulator::KeyboardPressAndRelease(unsigned char keycode)
 
 void InputSimulator::KeyboardText(const char* str_utf8, bool always_use_unicode_event)
 {
+    if (m_ForwardToElevatedModeProcess)
+    {
+        OutputManager* outmgr = OutputManager::Get();
+
+        if (outmgr != nullptr)
+        {
+            IPCElevatedStringID str_id = (always_use_unicode_event) ? ipcestrid_keyboard_text_force_unicode : ipcestrid_keyboard_text;
+            IPCManager::Get().SendStringToElevatedModeProcess(str_id, str_utf8, outmgr->GetWindowHandle());
+            m_ElevatedModeHasTextQueued = true;
+        }
+        return;
+    }
+
     //Convert to UTF16
     std::wstring wstr = WStringConvertFromUTF8(str_utf8);
 
@@ -373,10 +442,26 @@ void InputSimulator::KeyboardText(const char* str_utf8, bool always_use_unicode_
 
 void InputSimulator::KeyboardTextFinish()
 {
+    if (m_ForwardToElevatedModeProcess)
+    {
+        //Only send if we know there is queued text in that process
+        if (m_ElevatedModeHasTextQueued)
+        {
+            IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_keyboard_text_finish);
+            m_ElevatedModeHasTextQueued = false;
+        }
+        return;
+    }
+
     if (!m_KeyboardTextQueue.empty())
     {
         ::SendInput(m_KeyboardTextQueue.size(), m_KeyboardTextQueue.data(), sizeof(INPUT));
 
         m_KeyboardTextQueue.clear();
     }
+}
+
+void InputSimulator::SetElevatedModeForwardingActive(bool do_forward)
+{
+    m_ForwardToElevatedModeProcess = do_forward;
 }

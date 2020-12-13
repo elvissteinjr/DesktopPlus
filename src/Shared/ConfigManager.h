@@ -36,6 +36,7 @@ enum ConfigID_Bool
     configid_bool_interface_warning_compositor_res_hidden,
     configid_bool_interface_warning_compositor_quality_hidden,
     configid_bool_interface_warning_process_elevation_hidden,
+    configid_bool_interface_warning_elevated_mode_hidden,
     configid_bool_performance_rapid_laser_pointer_updates,
     configid_bool_performance_single_desktop_mirroring,
     configid_bool_input_mouse_render_cursor,
@@ -55,6 +56,7 @@ enum ConfigID_Bool
     configid_bool_state_performance_stats_active,             //Only count when the stats are visible
     configid_bool_state_performance_gpu_copy_active,
     configid_bool_state_misc_process_elevated,                //True if the dashboard application is running with admin privileges
+    configid_bool_state_misc_elevated_mode_active,            //True if the elevated mode process is running
     configid_bool_state_misc_process_started_by_steam,
 	configid_bool_MAX
 };

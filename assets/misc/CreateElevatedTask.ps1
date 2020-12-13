@@ -2,10 +2,10 @@
 
 $msg = 'Desktop+ Elevated Scheduled Task Creation Script
 ------------------------------------------------
-This creates an elevated scheduled task for Desktop+ to allow it to be run with adminstrator rights without UAC prompt.
-Desktop+ will only use this task when the button in the settings is used to switch into elevated mode.
+This creates an elevated scheduled task for Desktop+ to allow it to simulate inputs with administrator rights without UAC prompt.
+Desktop+ will only use this task when the button in the UI is used to enter elevated mode.
 Please keep the security implications of doing this in mind.
-At the very least restrict writing access to the Desktop+ executable file.
+At the very least consider restricting write access to the Desktop+ executable file.
 '
 
 Write-Host $msg
@@ -47,6 +47,7 @@ Desktop+ will only use it when the button in the settings is used to switch into
   <Actions Context="Author">
     <Exec>
       <Command>"'+ $PSScriptRoot + '\..\DesktopPlus.exe"</Command>
+	  <Arguments>-ElevatedMode</Arguments>
     </Exec>
   </Actions>
 </Task>'

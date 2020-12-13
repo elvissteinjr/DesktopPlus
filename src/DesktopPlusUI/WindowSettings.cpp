@@ -108,9 +108,43 @@ void WindowSettings::UpdateWarnings()
         }
     }
 
+    //Elevated mode warning (this is different from elevated dashboard process)
+    {
+        bool& hide_elevated_mode_warning = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_elevated_mode_hidden);
+
+        if ((!hide_elevated_mode_warning) && (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active)))
+        {
+            //Use selectable stretching over the text area to make it clickable
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f); //Make the selectable invisible though
+            if (ImGui::Selectable("##WarningElevatedMode"))
+            {
+                ImGui::OpenPopup("DontShowAgain4");
+            }
+            ImGui::PopStyleVar();
+            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::TextColored(Style_ImGuiCol_TextWarning, "Warning: Elevated mode is active!");
+
+            if (ImGui::BeginPopup("DontShowAgain4"))
+            {
+                if (ImGui::Selectable("Don't show this again"))
+                {
+                    hide_elevated_mode_warning = true;
+                }
+                else if (ImGui::Selectable("Leave Elevated Mode"))
+                {
+                    UIManager::Get()->ElevatedModeLeave();
+                }
+                ImGui::EndPopup();
+            }
+
+            warning_displayed = true;
+        }
+    }
+
     //Focused process elevation warning
     {
-        if (ConfigManager::Get().GetConfigBool(configid_bool_state_window_focused_process_elevated))
+        if (  (ConfigManager::Get().GetConfigBool(configid_bool_state_window_focused_process_elevated)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated)) && 
+             (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active)) )
         {
             //Use selectable stretching over the text area to make it clickable
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f); //Make the selectable invisible though
@@ -127,10 +161,12 @@ void WindowSettings::UpdateWarnings()
                 if (ImGui::Selectable("Try changing Focus"))
                 {
                     UIManager::TryChangingWindowFocus();
+                    UIManager::Get()->RepeatFrame();
                 }
-                else if ((UIManager::Get()->IsElevatedTaskSetUp()) && ImGui::Selectable("Restart Elevated"))
+                else if ((UIManager::Get()->IsElevatedTaskSetUp()) && ImGui::Selectable("Enter Elevated Mode"))
                 {
-                    UIManager::Get()->RestartDashboardApp(true);
+                    UIManager::Get()->ElevatedModeEnter();
+                    UIManager::Get()->RepeatFrame();
                 }
                 ImGui::EndPopup();
             }
@@ -2179,14 +2215,17 @@ void WindowSettings::UpdateCatMisc()
             warning_hidden_count++;
         if (ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_process_elevation_hidden))
             warning_hidden_count++;
+        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_elevated_mode_hidden))
+            warning_hidden_count++;
 
         ImGui::Text("Warnings Hidden: %i", warning_hidden_count);
 
         if (ImGui::Button("Reset Hidden Warnings"))
         {
             ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_compositor_quality_hidden, false);
-            ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_compositor_res_hidden, false);
-            ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_process_elevation_hidden, false);
+            ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_compositor_res_hidden,     false);
+            ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_process_elevation_hidden,  false);
+            ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_elevated_mode_hidden,      false);
         }
 
         ImGui::Columns(1);
@@ -2228,16 +2267,6 @@ void WindowSettings::UpdateCatMisc()
             UIManager::Get()->RestartDashboardApp(false);
         }
 
-        if (UIManager::Get()->IsElevatedTaskSetUp())
-        {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-
-            if (ImGui::Button("Restart Elevated"))
-            {
-                UIManager::Get()->RestartDashboardApp(true);
-            }
-        }
-
         if ( (ConfigManager::Get().IsSteamInstall()) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam)) )
         {
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
@@ -2251,6 +2280,34 @@ void WindowSettings::UpdateCatMisc()
             }
 
             if (no_steam)
+                ImGui::PopItemDisabled();
+        }
+
+        if (UIManager::Get()->IsElevatedTaskSetUp())
+        {
+            const bool dashboard_app_running  = IPCManager::IsDashboardAppRunning();
+
+            if (!dashboard_app_running)
+                ImGui::PushItemDisabled();
+
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+            if (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active))
+            {
+                if (ImGui::Button("Enter Elevated Mode"))
+                {
+                    UIManager::Get()->ElevatedModeEnter();
+                }
+            }
+            else
+            {
+                if (ImGui::Button("Leave Elevated Mode"))
+                {
+                    UIManager::Get()->ElevatedModeLeave();
+                }
+            }
+
+            if (!dashboard_app_running)
                 ImGui::PopItemDisabled();
         }
 

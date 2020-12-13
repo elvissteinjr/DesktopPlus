@@ -501,21 +501,35 @@ void UIManager::RestartDashboardApp(bool elevated_mode, bool force_steam)
         PROCESS_INFORMATION pi = {0};
         si.cb = sizeof(si);
 
-        if (elevated_mode)
-        {
-            WCHAR cmd[] = L"\"schtasks\" /Run /TN \"DesktopPlus Elevated\""; //"CreateProcessW, can modify the contents of this string", so don't go optimize this away
-
-            ::CreateProcess(nullptr, cmd, nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
-        }
-        else
-        {
-            std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";
-            ::CreateProcess(path.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
-        }
+        std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";
+        ::CreateProcess(path.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
 
         //We don't care about these, so close right away
         ::CloseHandle(pi.hProcess);
         ::CloseHandle(pi.hThread);
+    }
+}
+
+void UIManager::ElevatedModeEnter()
+{
+    STARTUPINFO si = {0};
+    PROCESS_INFORMATION pi = {0};
+    si.cb = sizeof(si);
+
+    WCHAR cmd[] = L"\"schtasks\" /Run /TN \"DesktopPlus Elevated\""; //"CreateProcessW, can modify the contents of this string", so don't go optimize this away
+    ::CreateProcess(nullptr, cmd, nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
+
+    //We don't care about these, so close right away
+    ::CloseHandle(pi.hProcess);
+    ::CloseHandle(pi.hThread);
+}
+
+void UIManager::ElevatedModeLeave()
+{
+    //Kindly ask elevated mode process to quit
+    if (HWND window = ::FindWindow(g_WindowClassNameElevatedMode, nullptr))
+    {
+        ::PostMessage(window, WM_QUIT, 0, 0);
     }
 }
 

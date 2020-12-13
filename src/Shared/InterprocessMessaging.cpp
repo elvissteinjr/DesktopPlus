@@ -5,8 +5,9 @@ static IPCManager g_IPCManager;
 IPCManager::IPCManager()
 {
 	//Register messages
-	m_RegisteredMessages[ipcmsg_action]     = ::RegisterWindowMessage(L"WMIPC_DPLUS_Action");
-	m_RegisteredMessages[ipcmsg_set_config] = ::RegisterWindowMessage(L"WMIPC_DPLUS_SetConfig");
+	m_RegisteredMessages[ipcmsg_action]          = ::RegisterWindowMessage(L"WMIPC_DPLUS_Action");
+	m_RegisteredMessages[ipcmsg_set_config]      = ::RegisterWindowMessage(L"WMIPC_DPLUS_SetConfig");
+	m_RegisteredMessages[ipcmsg_elevated_action] = ::RegisterWindowMessage(L"WMIPC_DPLUS_ElevatedAction");
 }
 
 IPCManager & IPCManager::Get()
@@ -67,6 +68,11 @@ bool IPCManager::IsUIAppRunning()
     return (::FindWindow(g_WindowClassNameUIApp, nullptr) != 0);
 }
 
+bool IPCManager::IsElevatedModeProcessRunning()
+{
+    return (::FindWindow(g_WindowClassNameElevatedMode, nullptr) != 0);
+}
+
 void IPCManager::PostMessageToDashboardApp(IPCMsgID IPC_id, WPARAM w_param, LPARAM l_param) const
 {
 	//We take the cost of finding the window for every message (which isn't frequent anyways) so we don't have to worry about the process going anywhere
@@ -82,6 +88,14 @@ void IPCManager::PostMessageToUIApp(IPCMsgID IPC_id, WPARAM w_param, LPARAM l_pa
 	{
 		::PostMessage(window, GetWin32MessageID(IPC_id), w_param, l_param);
 	}
+}
+
+void IPCManager::PostMessageToElevatedModeProcess(IPCMsgID IPC_id, WPARAM w_param, LPARAM l_param) const
+{
+    if (HWND window = ::FindWindow(g_WindowClassNameElevatedMode, nullptr))
+    {
+        ::PostMessage(window, GetWin32MessageID(IPC_id), w_param, l_param);
+    }
 }
 
 void IPCManager::SendStringToDashboardApp(ConfigID_String config_id, const std::string& str, HWND source_window) const
@@ -106,4 +120,16 @@ void IPCManager::SendStringToUIApp(ConfigID_String config_id, const std::string&
         cds.lpData = (void*)str.c_str();
         ::SendMessage(window, WM_COPYDATA, (WPARAM)source_window, (LPARAM)(LPVOID)&cds);
 	}
+}
+
+void IPCManager::SendStringToElevatedModeProcess(IPCElevatedStringID elevated_str_id, const std::string& str, HWND source_window) const
+{
+    if (HWND window = ::FindWindow(g_WindowClassNameElevatedMode, nullptr))
+    {
+        COPYDATASTRUCT cds;
+        cds.dwData = elevated_str_id;
+        cds.cbData = (DWORD)str.length();  //We do not include the NUL byte
+        cds.lpData = (void*)str.c_str();
+        ::SendMessage(window, WM_COPYDATA, (WPARAM)source_window, (LPARAM)(LPVOID)&cds);
+    }
 }

@@ -19,6 +19,8 @@ class InputSimulator
         int m_SpaceOffsetY;
 
         std::vector<INPUT> m_KeyboardTextQueue;
+        bool m_ForwardToElevatedModeProcess;
+        bool m_ElevatedModeHasTextQueued;
 
         void SetEventForMouseKeyCode(INPUT& input_event, unsigned char keycode, bool down) const;
 
@@ -39,6 +41,8 @@ class InputSimulator
         void KeyboardPressAndRelease(unsigned char keycode);
         void KeyboardText(const char* str_utf8, bool always_use_unicode_event = false);
         void KeyboardTextFinish();
+
+        void SetElevatedModeForwardingActive(bool do_forward);
 };
 
 #endif

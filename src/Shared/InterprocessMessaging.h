@@ -14,6 +14,7 @@
 
 LPCWSTR const g_WindowClassNameDashboardApp = L"elvdesktop";
 LPCWSTR const g_WindowClassNameUIApp        = L"elvdesktopUI";
+LPCWSTR const g_WindowClassNameElevatedMode = L"elvdesktopelevated";
 const char* const g_AppKeyDashboardApp      = "steam.overlay.1494460";      //1494460 is the appid on Steam, but we just use this for all builds
 const char* const g_AppKeyUIApp             = "elvissteinjr.DesktopPlusUI";
 
@@ -22,6 +23,7 @@ enum IPCMsgID
     ipcmsg_action,            //wParam = IPCActionID, lParam = Action-specific value. Many things will get away with being stuffed inside this. Saves some global message IDs
     ipcmsg_set_config,        //wParam = ConfigID, lParam = Value. Generic ConfigIDs are derived from their specific ID + predecending *_MAX values.
                               //e.g. configid_float_stuff is configid_bool_MAX + configid_int_MAX + configid_float_stuff. Strings are handled separately
+    ipcmsg_elevated_action,   //wParam = IPCElevatedActionID, lParam = Action-specific value. Actions sent to the elevated mode process
 	ipcmsg_MAX
 };
 
@@ -71,6 +73,26 @@ enum IPCActionOverlayProfileLoadArg
     ipcactv_ovrl_profile_multi_add
 };
 
+enum IPCElevatedActionID
+{
+    ipceact_refresh,                //Prompts to refresh possibly changed data, such as InputSimulator screen offsets. No data in lParam
+    ipceact_mouse_move,             //lParam = X & Y (in low/high word order, signed)
+    ipceact_key_down,               //lParam = Keycodes (3 unsigned chars)
+    ipceact_key_up,                 //lParam = Keycodes (3 unsigned chars)
+    ipceact_key_press_and_release,  //lParam = Keycode  (1 unsigned char)
+    ipceact_keyboard_text_finish,   //Finishes the keyboard text queue. Keyboard text is queued by sending strings with ipcestrid_keyboard_text*. No data in lParam
+    ipceact_launch_application,     //Launches application previously defined by sending ipcestrid_launch_application_path and ipcestrid_launch_application_arg strings. No data in lParam
+    ipceact_MAX
+};
+
+enum IPCElevatedStringID
+{
+    ipcestrid_keyboard_text,
+    ipcestrid_keyboard_text_force_unicode,
+    ipcestrid_launch_application_path,            //This also resets ipcestrid_launch_application_arg so sending that can be avoided
+    ipcestrid_launch_application_arg
+};
+
 class IPCManager
 {
 	private:
@@ -85,9 +107,12 @@ class IPCManager
 		bool GetAllMesssagesRegistered() const;			//Sanity check in case registering the messages fails, which should usually not happen
         static bool IsDashboardAppRunning();
         static bool IsUIAppRunning();
+        static bool IsElevatedModeProcessRunning();
 
 		void PostMessageToDashboardApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
 		void PostMessageToUIApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
+		void PostMessageToElevatedModeProcess(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
         void SendStringToDashboardApp(ConfigID_String config_id, const std::string& str, HWND source_window) const;
         void SendStringToUIApp(ConfigID_String config_id, const std::string& str, HWND source_window) const;
+        void SendStringToElevatedModeProcess(IPCElevatedStringID elevated_str_id, const std::string& str, HWND source_window) const;
 };
