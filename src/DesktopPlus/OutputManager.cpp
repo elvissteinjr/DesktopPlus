@@ -870,7 +870,47 @@ vr::EVRInitError OutputManager::InitOverlay()
 
         if (app_error == vr::VRApplicationError_None)
         {
-            DisplayMsg(L"Desktop+ has been successfully added to SteamVR.\nIt will now automatically launch when SteamVR is run.", L"Desktop+ Initial Setup", S_OK);
+            //Check if the user is currently using the HMD and display the initial setup message as a VR notification instead then
+            vr::EDeviceActivityLevel activity_level = vr::VRSystem()->GetTrackedDeviceActivityLevel(vr::k_unTrackedDeviceIndex_Hmd);
+
+            if ((activity_level == vr::k_EDeviceActivityLevel_UserInteraction) || (activity_level == vr::k_EDeviceActivityLevel_UserInteraction_Timeout))
+            {
+                //Documentation says CreateNotification() would take the icon from the overlay, but it doesn't. So let's do it ourselves then!
+                vr::NotificationBitmap_t* icon_bmp_ptr = nullptr;
+                vr::NotificationBitmap_t icon_bmp;
+                icon_bmp.m_nBytesPerPixel = 4;
+                std::unique_ptr<uint8_t[]> icon_bmp_data;
+
+                //We need to sleep a bit so the icon overlay has actually finished loading before reading the image data (though the notification still works if we miss it)
+                ::Sleep(100);
+
+                uint32_t img_width, img_height, img_buffer_size;
+                if (vr::VROverlay()->GetOverlayImageData(m_OvrlHandleIcon, nullptr, 0, &img_width, &img_height) == vr::VROverlayError_ArrayTooSmall)
+                {
+                    img_buffer_size = img_width * img_height * icon_bmp.m_nBytesPerPixel;
+                    icon_bmp_data = std::unique_ptr<uint8_t[]>{ new uint8_t[img_buffer_size] };
+
+                    if (vr::VROverlay()->GetOverlayImageData(m_OvrlHandleIcon, icon_bmp_data.get(), img_buffer_size, &img_width, &img_height) == vr::VROverlayError_None)
+                    {
+                        icon_bmp.m_nWidth  = img_width;
+                        icon_bmp.m_nHeight = img_height;
+                        icon_bmp.m_pImageData = icon_bmp_data.get();
+
+                        icon_bmp_ptr = &icon_bmp;
+                    }
+                }
+
+
+                vr::VRNotificationId notification_id = 0; //Unused, but documentation doesn't say if passing nullptr is allowed, so we pass this
+
+                vr::VRNotifications()->CreateNotification(m_OvrlHandleDashboardDummy, 0, vr::EVRNotificationType_Transient,
+                                                          "Initial Setup\nDesktop+ has been successfully added to SteamVR and will now automatically launch when SteamVR is run.",
+                                                          vr::EVRNotificationStyle_Application, icon_bmp_ptr, &notification_id);
+            }
+            else
+            {
+                DisplayMsg(L"Desktop+ has been successfully added to SteamVR.\nIt will now automatically launch when SteamVR is run.", L"Desktop+ Initial Setup", S_OK);
+            }
         }
     }
 
