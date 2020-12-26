@@ -332,6 +332,14 @@ void WindowManager::ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINE
 
 	if (hook_handle_focus_change == nullptr)
 	{
+		//Set initial elevated process focus state beforehand
+		DWORD process_id;
+		::GetWindowThreadProcessId(::GetForegroundWindow(), &process_id);
+		m_FocusLastProcess = process_id;
+
+		//Send process elevation state to UI
+		IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_window_focused_process_elevated), IsProcessElevated(process_id));
+
 		hook_handle_focus_change = SetWinEventHook(EVENT_OBJECT_FOCUS, EVENT_OBJECT_FOCUS, nullptr, WindowManager::WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
 	}
 
