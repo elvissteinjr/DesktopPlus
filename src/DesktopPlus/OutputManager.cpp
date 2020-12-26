@@ -861,6 +861,10 @@ vr::EVRInitError OutputManager::InitOverlay()
             vr::VRApplications()->AddApplicationManifest((ConfigManager::Get().GetApplicationPath() + "manifest.vrmanifest").c_str());
             m_IsFirstLaunch = true;
         }
+        else
+        {
+            m_IsFirstLaunch = false;
+        }
     }
 
     //Set application auto-launch to true if it's the first launch
