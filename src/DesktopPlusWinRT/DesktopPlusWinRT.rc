@@ -43,10 +43,10 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "elvissteinjr"
             VALUE "FileDescription", "Desktop+ WinRT Wrapper"
-            VALUE "FileVersion", "2.3.2.0  WiP"
-            VALUE "LegalCopyright", "Copyright © 2019 - 2020 elvissteinjr"
+            VALUE "FileVersion", "2.3.2.0"
+            VALUE "LegalCopyright", "Copyright © 2019 - 2021 elvissteinjr"
             VALUE "ProductName", "Desktop+ WinRT"
-            VALUE "ProductVersion", "2.3.2.0 WiP"
+            VALUE "ProductVersion", "2.3.2.0"
         END
     END
     BLOCK "VarFileInfo"

@@ -1,11 +1,11 @@
 Desktop+, an advanced SteamVR Desktop Overlay, by elvissteinjr
 --------------------------------------------------------------
 
-Installation
-------------
+Installation (GitHub Version)
+-----------------------------
 Extract the complete archive if not done yet. Put the files in a location where they can stay.
-Run DesktopPlus.exe. This will launch SteamVR if it's not already running. A VR-HMD must be connected.
-If everything is fine, a message box will come up to indicate successful first-time setup.
+Run DesktopPlus.exe. This will also launch SteamVR if it's not already running. A VR-HMD must be connected.
+If everything is fine, a message will come up to indicate successful first-time setup.
 Desktop+ will continue running as a SteamVR overlay application afterwards.
 If the message does not come up on the first launch, check the Troubleshooting section.
 
@@ -13,17 +13,34 @@ Desktop+ will register itself as an overlay application to SteamVR and run autom
 If you move the files of this application, you'll have to repeat these steps.
 
 
+Installation (Steam Version)
+----------------------------
+Simply install the application through Steam and launch it. This will also launch SteamVR if it's not already running.
+A VR-HMD must be connected. If everything is fine, a message will come up to indicate successful first-time setup.
+Desktop+ will continue running as a SteamVR overlay application afterwards.
+If the message does not come up on the first launch, check the "Startup / Shutdown" settings in SteamVR and the Troubleshooting
+section.
+
+
 Updates
 -------
-The latest version of Desktop+ can be found on https://github.com/elvissteinjr/DesktopPlus/
+The latest version of Desktop+ can be found on https://github.com/elvissteinjr/DesktopPlus/ and on Steam.
 
 
-Uninstallation
---------------
+Uninstallation (GitHub Version)
+-------------------------------
 Delete all files that came with the archive. 
 SteamVR will automatically remove the overlay application entry when the executable isn't present anymore.
 Desktop+ does not write to files outside its own directory. However, if you did set up elevated mode, its scheduled task will
 remain.
+
+
+Uninstallation (Steam Version)
+------------------------------
+Uninstall the application through Steam.
+Steam will not delete your configuration and profiles. They can be found in "[Steam Library Path]\SteamApps\common\DesktopPlus"
+and be safely deleted if desired. These files are also synced to the Steam Cloud if that feature is enabled.
+Additionally, if you did set up elevated mode, its scheduled task will remain.
 
 
 User Guide
@@ -88,15 +105,15 @@ Desktop+ offers an easy way to quickly switch into elevated mode to get around t
 
 In order to use elevated mode, a scheduled task has to be set up to allow Desktop+ to be launched as an administrator without
 requiring approval through an UAC prompt. To do this, run "misc\CreateElevatedTask.bat".
-It can then be accessed in [Misc|Troubleshooting|Desktop+: Restart Elevated].
-If you move Desktop+' files, the scheduled task will break but the button remains. Re-run the batch file to fix this.
+It can then be accessed in [Misc|Troubleshooting|Desktop+: Enter Elevated Mode].
+If you move Desktop+'s files, the scheduled task will break but the button remains. Re-run the batch file to fix this.
 
 Note that actions launching applications will run them with the same privileges as Desktop+, so be careful if you don't intend
 them to have administrator rights.
 
 In general, if you don't know what you're doing, reconsider just activating this. This mode is provided as a convenience to
 prevent users just running it elevated at all times instead.
-Switch back into normal mode as soon as possible.
+Leave elevated mode as soon as possible.
 
 
 Keyboard Extension
@@ -116,6 +133,13 @@ occur.
 
 In general, note that Desktop+ is using APIs which require Windows 8 or newer.
 Using Graphics Capture overlays requires at least Windows 10 1803 for basic support, Windows 10 2004 or newer for full support.
+
+
+No first-time setup message / Desktop+ not auto-launching (Steam version):
+-
+The Steam version detects the need of first time setup by checking if an user configuration existed on launch. If you previously
+had Desktop+ installed or the configuration was synced from another machine via Steam Cloud, you may need to enable auto-launch
+manually in SteamVR's "Startup / Shutdown" settings or delete config.ini to start fresh.
 
 
 Black screen with question mark display icon instead of desktop mirror:
@@ -194,16 +218,22 @@ overlays.
 
 "Desktop+ is running with administrative privileges!":
 -
+This message serves as a reminder about Desktop+ being elevated.
+Using Desktop+'s elevated mode is recommended over running all of Desktop+ with administrative privileges.
+
+
+"Warning: Elevated mode is active!":
+-
 This message serves as a reminder about Desktop+ being in elevated mode.
-Please keep the security implications of that mode in mind and don't run the application like this when not needed.
+Please keep the security implications of that mode in mind and leave it once it's not needed anymore.
 
 
 "An elevated process has focus! Desktop+ is unable to simulate input right now."
 -
 User Interface Privilege Isolation (UIPI) prevents Desktop+ from simulating input when an elevated process has focus.
 This warning persists until the a window with the same or lesser privilege level has gained focus again.
-Clicking on this warning also offers the option to have Desktop+ try to change the focus to another window itself or to restart
-in elevated mode (only if the scheduled task is configured).
+Clicking on this warning also offers the option to have Desktop+ try to change the focus to another window itself or to enter
+elevated mode (only if the scheduled task is configured).
 
 
 "An overlay creation failed!":

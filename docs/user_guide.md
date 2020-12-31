@@ -292,6 +292,11 @@ Displays version information of the running build of Desktop+.
   - **[Reset Hidden Warnings]**:  
   Resets all hidden warnings, causing them to show up again when their condition is fulfilled.
   
+- **Steam** (Steam Version)
+  - **Disable Steam Integration**:  
+  Restarts Desktop+ without Steam when it was launched by it. This disables the permanent in-app status, usage time statistics and other Steam features.  
+  There will still be a brief in-app status and notification from Desktop+ being launched by Steam even if this is active. Steam Cloud functionality may not work as expected.
+  
 - **Troubleshooting**  
 These buttons let you quickly restart components of Desktop+ in case it starts behaving unexpected in some way. 
 Settings are saved before restarting and are typically restored without loss afterwards.
@@ -300,8 +305,8 @@ Settings are saved before restarting and are typically restored without loss aft
   These buttons apply to the main Desktop+ process, responsible for the mirror overlays and most interaction with them.
     - **[Restart]**:  
 	Restart Desktop+.
-    - **[Restart Elevated]**:  
-	Restart Desktop+ with administrator privileges using the "DesktopPlus Elevated" scheduled task. This button is only visible if elevated mode has been set up.
+    - **[Enter Elevated mode]**:  
+	Enters elevated mode by launching a secondary Desktop+ process with administrator privileges using the "DesktopPlus Elevated" scheduled task. This button is only visible if elevated mode has been set up.
 	
   - **Desktop+ UI**:  
   These buttons apply to the Desktop+ UI process, responsible for displaying UI elements and modifying settings.
@@ -420,7 +425,7 @@ If unsure, load the "Default" multi-overlay profile as a clean starting point be
 1. Select the newly created Action from the bottom of the list and click *[Ok]* to apply the change.
 1. Open the controller binding application list by either going into the SteamVR settings' **Controller** page and clicking **Show old Binding UI**, or go to http://localhost:27062/dashboard/controllerbinding.html with a web browser while SteamVR is running.  
    SteamVR will *not* list Desktop+ in the pop-up that appears by pressing the **Manage Controller Bindings** button, so make sure to not accidentally click that button instead.
-1. Find **Desktop+** in the list. It will typically appear near the bottom of it.  
+1. Find **Desktop+** in the list. With the GitHub version, it will typically appear near the bottom of it.  
    SteamVR may not list Desktop+ right after its first launch. Try restarting SteamVR in that case.
 1. Click [*Edit*] to edit the current input bindings for Desktop+. These are empty by default.
 1. Configure the input bindings as desired. Desktop+ bindings are all boolean actions, meaning you'll find them when configuring digital input types such as *"Button"* or *"Toggle Button"*.
