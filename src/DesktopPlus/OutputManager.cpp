@@ -3951,7 +3951,15 @@ void OutputManager::ApplySettingTransform()
     //Dashboard dummy still needs correct width/height set for the top dashboard bar above it to be visible
     if (overlay.GetID() == k_ulOverlayID_Dashboard)
     {
-        vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, std::max(height + 0.20f, 1.525f)); //Enforce minimum height to fit open settings UI
+        float dummy_height = std::max(height + 0.20f, 1.525f); //Enforce minimum height to fit open settings UI
+
+        //Sanity check. Things like inf can make the entire interface disappear
+        if (dummy_height > 20.0f)
+        {
+            dummy_height = 1.525f;
+        }
+
+        vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, dummy_height);
     }
 }
 

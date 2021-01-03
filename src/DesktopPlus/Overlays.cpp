@@ -271,8 +271,8 @@ void Overlay::UpdateValidatedCropRect()
     y              = std::min( std::max(0, data.ConfigInt[configid_int_overlay_crop_y]), data.ConfigInt[configid_int_overlay_state_content_height]);
     width          = data.ConfigInt[configid_int_overlay_crop_width];
     height         = data.ConfigInt[configid_int_overlay_crop_height];
-    int width_max  = data.ConfigInt[configid_int_overlay_state_content_width]  - x;
-    int height_max = data.ConfigInt[configid_int_overlay_state_content_height] - y;
+    int width_max  = std::max(data.ConfigInt[configid_int_overlay_state_content_width]  - x, 1);
+    int height_max = std::max(data.ConfigInt[configid_int_overlay_state_content_height] - y, 1);
 
     if (width == -1)
         width = width_max;
