@@ -32,6 +32,10 @@ namespace ImGui
     void ComboWithInputTextActivationCheck(bool& persist_input_visible); //Always call after BeginComboWithInputText(), outside the if statement
     bool ChoiceTest();
 
+    //Right-alinged Text(). Use offset_x if it's not supposed to take all of the available space. Note that text may not always be pixel-perfectly aligned with this
+    void TextRight(float offset_x, const char* fmt, ...)           IM_FMTARGS(2);
+    void TextRightV(float offset_x, const char* fmt, va_list args) IM_FMTLIST(2);
+
     //ImGuiItemFlags_Disabled is not exposed public API yet and has no styling, so here's something that does the job
     void PushItemDisabled();
     void PopItemDisabled();

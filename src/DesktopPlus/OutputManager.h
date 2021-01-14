@@ -92,7 +92,7 @@ class OutputManager
         void ResetMouseLastLaserPointerPos();
         void CropToActiveWindow();
         void CropToDisplay(int display_id, bool do_not_apply_setting = false);
-        void AddOverlay(unsigned int base_id);
+        void AddOverlay(unsigned int base_id, bool is_ui_overlay = false);
 
         void ApplySettingCaptureSource();
         void ApplySetting3DMode();

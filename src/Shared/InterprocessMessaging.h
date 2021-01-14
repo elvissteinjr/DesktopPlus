@@ -31,7 +31,7 @@ enum IPCActionID
 {
     ipcact_nop,
     ipcact_mirror_reset,            //Sent by dashboard application to itself when WndProc needs to trigger a mirror reset
-    ipcact_resolution_update,       //Sent by dashboard application when a resolution change occured. UI gets the resolution itself from OpenVR, so no data in lParam
+    ipcact_overlays_reset,          //Sent by dashboard application when all overlays were reset. No data in lParam
     ipcact_overlay_position_reset,  //Sent by UI application to reset the detached overlay position. No data in lParam
     ipcact_overlay_position_adjust, //Sent by UI application to adjust detached overlay position. lParam = IPCActionOverlayPosAdjustValue
     ipcact_action_delete,           //Sent by UI application to delete an Action. lParam is Custom(!) Action ID
@@ -43,6 +43,7 @@ enum IPCActionID
     ipcact_overlay_profile_load,    //Sent by UI application when loading a profile. lParam is IPCActionOverlayProfileLoadArg, profile name is stored in configid_str_state_profile_name_load beforehand
     ipcact_crop_to_active_window,   //Sent by UI application to adjust crop values to the active window. No data in lParam
     ipcact_overlay_new,             //Sent by UI application to add a new overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
+    ipcact_overlay_new_ui,          //Sent by UI application to add a new Ui overlay, also making it the active one. No data in lParam
     ipcact_overlay_remove,          //Sent by UI application to remove a overlay. lParam is ID of overlay to remove (typically the active ID)
     ipcact_overlay_creation_error,  //Sent by dashboard application when an error occured during overlay creation. lParam is EVROverlayError
     ipcact_overlay_position_sync,   //Sent by the UI application to request a sync of all overlay's transforms. No data in lParam
@@ -108,6 +109,8 @@ class IPCManager
         static bool IsDashboardAppRunning();
         static bool IsUIAppRunning();
         static bool IsElevatedModeProcessRunning();
+        static DWORD GetDashboardAppProcessID();
+        static DWORD GetUIAppProcessID();
 
 		void PostMessageToDashboardApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
 		void PostMessageToUIApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;

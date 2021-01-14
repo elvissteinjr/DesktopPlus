@@ -6,12 +6,14 @@
 
 #define NOMINMAX
 #include <windows.h>
+#include <d3d11.h>
 
 #include "openvr.h"
 #include "Matrices.h"
 
 #include "DashboardUI.h"
 #include "FloatingUI.h"
+#include "WindowPerformance.h"
 
 //Screen/Overlay definitions used to cram the several overlays on the same render space
 #define TEXSPACE_VERTICAL_SPACING 2             //Space kept blank between render spaces so interpolation doesn't bleed in pixels
@@ -19,8 +21,11 @@
 #define TEXSPACE_FLOATING_UI_HEIGHT 440         //This will break when changing the icon size, but whatever
 #define TEXSPACE_KEYBOARD_HELPER_HEIGHT 128
 #define TEXSPACE_KEYBOARD_HELPER_SCALE 0.35f
+#define TEXSPACE_PERFORMANCE_MONITOR_WIDTH 850
+#define TEXSPACE_PERFORMANCE_MONITOR_HEIGHT 550
 #define TEXSPACE_TOTAL_WIDTH 1920
-#define TEXSPACE_TOTAL_HEIGHT (TEXSPACE_DASHBOARD_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_FLOATING_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_KEYBOARD_HELPER_HEIGHT)
+#define TEXSPACE_TOTAL_HEIGHT (TEXSPACE_DASHBOARD_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_FLOATING_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_KEYBOARD_HELPER_HEIGHT +\
+                               TEXSPACE_VERTICAL_SPACING + TEXSPACE_PERFORMANCE_MONITOR_HEIGHT)
 #define OVERLAY_WIDTH_METERS_DASHBOARD_UI 2.75f
 
 class WindowKeyboardHelper;
@@ -30,8 +35,10 @@ class UIManager
     private:
         DashboardUI m_DashboardUI;
         FloatingUI m_FloatingUI;
+        WindowPerformance m_WindowPerformance;
 
         HWND m_WindowHandle;
+        ID3D11Resource* m_SharedTextureRef; //Pointer to render target texture, should only be used for calls to SetSharedOverlayTexture()
         int m_RepeatFrame;
 
         bool m_DesktopMode;
@@ -72,9 +79,12 @@ class UIManager
 
         DashboardUI& GetDashboardUI();
         FloatingUI& GetFloatingUI();
+        WindowPerformance& GetPerformanceWindow();
 
         void SetWindowHandle(HWND handle);
         HWND GetWindowHandle() const;
+        void SetSharedTextureRef(ID3D11Resource* ref);
+        ID3D11Resource* GetSharedTextureRef() const;
 
         vr::VROverlayHandle_t GetOverlayHandle() const;
         vr::VROverlayHandle_t GetOverlayHandleFloatingUI() const;

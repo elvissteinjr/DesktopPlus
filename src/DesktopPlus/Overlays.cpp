@@ -294,8 +294,8 @@ const DPRect& Overlay::GetValidatedCropRect() const
 
 void Overlay::SetTextureSource(OverlayTextureSource tex_source)
 {
-    //Skip if nothing changed
-    if (m_TextureSource == tex_source)
+    //Skip if nothing changed (except texsource_ui which is always re-applied)
+    if ( (m_TextureSource == tex_source) && (tex_source != ovrl_texsource_ui) )
         return;
 
     //Cleanup old sources if needed
@@ -303,6 +303,14 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
     {
         case ovrl_texsource_desktop_duplication_3dou_converted: m_OUtoSBSConverter.CleanRefs();    break;
         case ovrl_texsource_winrt_capture:                      DPWinRT_StopCapture(m_OvrlHandle); break;
+        case ovrl_texsource_ui:
+        {
+            if (tex_source != ovrl_texsource_ui)
+            {
+                vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, ::GetCurrentProcessId());
+            }
+            break;
+        }
         default: break;
     }
 
@@ -318,6 +326,10 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
     else if (m_TextureSource == ovrl_texsource_desktop_duplication)
     {
         AssignDesktopDuplicationTexture();
+    }
+    else if (m_TextureSource == ovrl_texsource_ui)
+    {
+        vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, IPCManager::GetUIAppProcessID());
     }
 }
 

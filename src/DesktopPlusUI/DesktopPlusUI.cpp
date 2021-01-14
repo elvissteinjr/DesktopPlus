@@ -5,7 +5,9 @@
 #include "imgui.h"
 #include "imgui_impl_win32_openvr.h"
 #include "imgui_impl_dx11_openvr.h"
+#include "implot.h"
 #include <d3d11.h>
+#include <wrl/client.h>
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
 #include <tchar.h>
@@ -38,7 +40,7 @@ bool CreateDeviceD3D(HWND hWnd, bool desktop_mode);
 void CleanupDeviceD3D();
 void CreateRenderTarget(bool desktop_mode);
 void CleanupRenderTarget();
-void InitOverlayTextureSharing();
+void RefreshOverlayTextureSharing();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void InitImGui(HWND hwnd);
 void ProcessCmdline(bool& force_desktop_mode);
@@ -58,10 +60,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     //Make sure only one instance is running
     StopProcessByWindowClass(g_WindowClassNameUIApp);
 
-    UIManager ui_manager(desktop_mode);
-    ConfigManager::Get().LoadConfigFromFile();
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_sync_config_state);
-
     //Enable basic DPI support for desktop mode
     ::SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 
@@ -78,6 +76,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     else
         hwnd = ::CreateWindow(wc.lpszClassName, L"Desktop+ UI", 0, 0, 0, 1, 1, HWND_MESSAGE, nullptr, wc.hInstance, nullptr);
 
+    //Init UIManager and load config
+    UIManager ui_manager(desktop_mode);
+    ConfigManager::Get().LoadConfigFromFile();
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_sync_config_state);
     ui_manager.SetWindowHandle(hwnd);
 
     //Init OpenVR
@@ -99,12 +101,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         return 1;
     }
 
-    //Initialize overlay texture sharing if needed
-    if (ui_manager.IsOpenVRLoaded())
-    {
-        InitOverlayTextureSharing();
-    }
-    
     InitImGui(hwnd);
     ImGuiIO& io = ImGui::GetIO();
 
@@ -195,6 +191,24 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                         }
                         break;
                     }
+                    case vr::VREvent_TrackedDeviceActivated:
+                    case vr::VREvent_TrackedDeviceDeactivated:
+                    {
+                        ui_manager.GetPerformanceWindow().RefreshTrackerBatteryList();
+                        break;
+                    }
+                    case vr::VREvent_LeaveStandbyMode:
+                    {
+                        //Reset performance stats when leaving standby since it adds to the dropped frame count during that
+                        ui_manager.GetPerformanceWindow().ResetCumulativeValues();
+                        break;
+                    }
+                    case vr::VREvent_OverlaySharedTextureChanged:
+                    {
+                        //This should only happen during startup since the texture size never changes, but it has happened seemingly randomly before, so handle it
+                        RefreshOverlayTextureSharing();
+                        break;
+                    }
                     case vr::VREvent_Quit:
                     {
                         do_quit = true;
@@ -232,7 +246,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             ui_manager.PositionOverlay(window_kbdhelper);
             ui_manager.GetFloatingUI().UpdateUITargetState();
 
-            do_idle = ( (!ui_manager.IsOverlayVisible()) && (!ui_manager.IsOverlayKeyboardHelperVisible()) && (!ui_manager.GetFloatingUI().IsVisible()) );
+            do_idle = ( (!ui_manager.IsOverlayVisible()) && (!ui_manager.IsOverlayKeyboardHelperVisible()) && (!ui_manager.GetFloatingUI().IsVisible()) && 
+                        (!ui_manager.GetPerformanceWindow().IsVisible()) );
 
             if (do_quit)
             {
@@ -275,14 +290,19 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             ui_manager.GetDashboardUI().Update();
 
             //Once again for the floating surface
-            io.DisplaySize.y = (TEXSPACE_DASHBOARD_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_FLOATING_UI_HEIGHT) * ui_manager.GetUIScale();
+            io.DisplaySize.y += (TEXSPACE_VERTICAL_SPACING + TEXSPACE_FLOATING_UI_HEIGHT) * ui_manager.GetUIScale();
 
             ui_manager.GetFloatingUI().Update();
 
-            //Reset/full size for the keyboard helper
-            io.DisplaySize.y = TEXSPACE_TOTAL_HEIGHT * ui_manager.GetUIScale();
+            //And again for the keyboard helper
+            io.DisplaySize.y += (TEXSPACE_VERTICAL_SPACING + TEXSPACE_KEYBOARD_HELPER_HEIGHT) * ui_manager.GetUIScale();
 
             window_kbdhelper.Update();
+
+            //Reset/full size for the performance monitor
+            io.DisplaySize.y = TEXSPACE_TOTAL_HEIGHT * ui_manager.GetUIScale();
+
+            ui_manager.GetPerformanceWindow().Update();
         }
         else
         {
@@ -364,6 +384,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     ui_manager.OnExit();
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
     CleanupDeviceD3D();
@@ -377,6 +398,47 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 bool CreateDeviceD3D(HWND hWnd, bool desktop_mode)
 {   
+    //Get the adapter recommended by OpenVR if it's loaded (needed for Performance Monitor even in desktop mode)
+    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_vr;
+
+    if (UIManager::Get()->IsOpenVRLoaded())
+    {
+        Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
+        int32_t vr_gpu_id;
+        vr::VRSystem()->GetDXGIOutputInfo(&vr_gpu_id);
+
+        HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
+        if (!FAILED(hr))
+        {
+            Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
+            UINT i = 0;
+
+            while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
+            {
+                if (i == vr_gpu_id)
+                {
+                    adapter_ptr_vr = adapter_ptr;
+                    break;
+                }
+
+                ++i;
+            }
+        }
+
+        if (adapter_ptr_vr != nullptr)
+        {
+            //Set target GPU and total VRAM for Performance Monitor
+            DXGI_ADAPTER_DESC adapter_desc;
+            if (adapter_ptr_vr->GetDesc(&adapter_desc) == S_OK)
+            {
+                UIManager::Get()->GetPerformanceWindow().GetPerformanceData().SetTargetGPU(adapter_desc.AdapterLuid, adapter_desc.DedicatedVideoMemory);
+            }
+        }
+    }
+
+    D3D_FEATURE_LEVEL featureLevel;
+    const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
+
     if (desktop_mode)
     {
         // Setup swap chain
@@ -396,50 +458,16 @@ bool CreateDeviceD3D(HWND hWnd, bool desktop_mode)
         sd.Windowed = TRUE;
         sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
-        D3D_FEATURE_LEVEL featureLevel;
-        const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
         if (D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
             return false;
     }
-    else //No swap chain needed for VR
+    else 
     {
-        D3D_FEATURE_LEVEL featureLevel;
-        const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
-
-        //Get the adapter recommended by OpenVR
-        IDXGIFactory1* factory_ptr;
-        IDXGIAdapter* adapter_ptr_vr = nullptr;
-        int32_t vr_gpu_id;
-        vr::VRSystem()->GetDXGIOutputInfo(&vr_gpu_id);  
-
-        HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
-        if (!FAILED(hr))
-        {
-            IDXGIAdapter* adapter_ptr = nullptr;
-            UINT i = 0;
-
-            while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
-            {
-                if (i == vr_gpu_id)
-                {
-                    adapter_ptr_vr = adapter_ptr;
-                    adapter_ptr_vr->AddRef();
-
-                    adapter_ptr->Release();
-                    break;
-                }
-
-                adapter_ptr->Release();
-                ++i;
-            }
-
-            factory_ptr->Release();
-            factory_ptr = nullptr;
-        }
+        //No swap chain needed for VR
 
         if (adapter_ptr_vr != nullptr)
         {
-            if (D3D11CreateDevice(adapter_ptr_vr, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, featureLevelArray, 2, D3D11_SDK_VERSION, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
+            if (D3D11CreateDevice(adapter_ptr_vr.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, featureLevelArray, 2, D3D11_SDK_VERSION, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
             {
                 return false;
             }
@@ -506,6 +534,8 @@ void CreateRenderTarget(bool desktop_mode)
         return;
     }
 
+    UIManager::Get()->SetSharedTextureRef(g_vrTex);
+
     // Create render target view for overlay texture
     D3D11_RENDER_TARGET_VIEW_DESC tex_rtv_desc;
 
@@ -519,8 +549,12 @@ void CreateRenderTarget(bool desktop_mode)
     {
         ID3D11Texture2D* pBackBuffer;
         g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
-        g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &g_desktopRenderTargetView);
-        pBackBuffer->Release();
+
+        if (pBackBuffer != nullptr)
+        {
+            g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &g_desktopRenderTargetView);
+            pBackBuffer->Release();
+        }
     }
 }
 
@@ -545,21 +579,13 @@ void CleanupRenderTarget()
     }
 }
 
-void InitOverlayTextureSharing()
+void RefreshOverlayTextureSharing()
 {
     //Set up advanced texture sharing between the overlays
-
-    //Set texture to g_vrTex for the main overlay
-    vr::Texture_t vrtex;
-    vrtex.handle = g_vrTex;
-    vrtex.eType = vr::TextureType_DirectX;
-    vrtex.eColorSpace = vr::ColorSpace_Gamma;
-
-    vr::VROverlay()->SetOverlayTexture(UIManager::Get()->GetOverlayHandle(), &vrtex);
-
-    //Share this with the other UI overlays
     SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandle(), UIManager::Get()->GetOverlayHandleFloatingUI(),     g_vrTex);
     SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandle(), UIManager::Get()->GetOverlayHandleKeyboardHelper(), g_vrTex);
+    //Also schedule for performance overlays, in case there are any
+    UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
 }
 
 
@@ -568,7 +594,7 @@ void InitOverlayTextureSharing()
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if ( (UIManager::Get()->IsInDesktopMode()) && (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) )
+    if ( (UIManager::Get()) && (UIManager::Get()->IsInDesktopMode()) && (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) )
         return true;
 
     switch (msg)
@@ -626,6 +652,7 @@ void InitImGui(HWND hwnd)
     //Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); //(void)io;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -652,6 +679,13 @@ void InitImGui(HWND hwnd)
     Style_ImGuiCol_TextError                = ImVec4(0.97f, 0.33f, 0.33f, 1.00f);
     Style_ImGuiCol_ButtonPassiveToggled     = ImVec4(0.180f, 0.349f, 0.580f, 0.404f);
 
+    //Setup ImPlot style
+    ImPlotStyle& plot_style = ImPlot::GetStyle();
+    plot_style.PlotPadding      = {0.0f, 0.0f};
+    plot_style.AntiAliasedLines = true;
+    plot_style.FillAlpha        = 0.25f;
+    plot_style.Colors[ImPlotCol_FrameBg] = ImVec4(0.06f, 0.06f, 0.06f, 0.25f);
+    plot_style.Colors[ImPlotCol_PlotBg]  = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
 
     //Setup Platform/Renderer bindings
     ImGui_ImplWin32_Init(hwnd);

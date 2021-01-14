@@ -73,6 +73,30 @@ bool IPCManager::IsElevatedModeProcessRunning()
     return (::FindWindow(g_WindowClassNameElevatedMode, nullptr) != 0);
 }
 
+DWORD IPCManager::GetDashboardAppProcessID()
+{
+    DWORD pid = 0;
+
+    if (HWND window = ::FindWindow(g_WindowClassNameDashboardApp, nullptr))
+    {
+        ::GetWindowThreadProcessId(window, &pid);
+    }
+
+    return pid;
+}
+
+DWORD IPCManager::GetUIAppProcessID()
+{
+    DWORD pid = 0;
+
+    if (HWND window = ::FindWindow(g_WindowClassNameUIApp, nullptr))
+    {
+        ::GetWindowThreadProcessId(window, &pid);
+    }
+
+    return pid;
+}
+
 void IPCManager::PostMessageToDashboardApp(IPCMsgID IPC_id, WPARAM w_param, LPARAM l_param) const
 {
 	//We take the cost of finding the window for every message (which isn't frequent anyways) so we don't have to worry about the process going anywhere

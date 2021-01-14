@@ -10,6 +10,9 @@
     <Filter Include="Shared">
       <UniqueIdentifier>{2fac41b3-89b4-4cdf-9924-e4d9ae01e9e3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ImPlot">
+      <UniqueIdentifier>{accae70c-9225-413f-823d-dd068cbb1b5f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="imgui\imgui_widgets.cpp">
@@ -63,6 +66,14 @@
     <ClCompile Include="DashboardUI.cpp" />
     <ClCompile Include="..\Shared\WindowList.cpp">
       <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="WindowPerformance.cpp" />
+    <ClCompile Include="implot\implot_items.cpp">
+      <Filter>ImPlot</Filter>
+    </ClCompile>
+    <ClCompile Include="Win32PerformanceData.cpp" />
+    <ClCompile Include="implot\implot_stripped.cpp">
+      <Filter>ImPlot</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -133,6 +144,14 @@
     <ClInclude Include="..\Shared\WindowList.h">
       <Filter>Shared</Filter>
     </ClInclude>
+    <ClInclude Include="WindowPerformance.h" />
+    <ClInclude Include="implot\implot.h">
+      <Filter>ImPlot</Filter>
+    </ClInclude>
+    <ClInclude Include="implot\implot_internal.h">
+      <Filter>ImPlot</Filter>
+    </ClInclude>
+    <ClInclude Include="Win32PerformanceData.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="imgui_win32_dx11_openvr\PixelShaderImGui.hlsl">

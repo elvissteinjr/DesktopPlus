@@ -398,9 +398,12 @@ void WindowSettings::UpdateCatOverlay()
         UpdateCatOverlayTabGeneral();
     }
 
-    if (ImGui::BeginTabItem("Capture"))
+    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) != ovrl_capsource_ui)
     {
-        UpdateCatOverlayTabCapture();
+        if (ImGui::BeginTabItem("Capture"))
+        {
+            UpdateCatOverlayTabCapture();
+        }
     }
 
     if (ImGui::BeginTabItem("Advanced"))
@@ -1126,7 +1129,6 @@ void WindowSettings::UpdateCatOverlayTabCapture()
         int crop_height_ui  = (crop_height == -1) ? crop_height_max + 1 : crop_height;
 
         const bool disable_sliders = ((ovrl_width == -1) && (ovrl_height == -1));
-        //const bool is_crop_invalid = ((crop_x > ovrl_width - 1) || (crop_y > ovrl_height - 1) || (crop_width_ui > crop_width_max  + 1) || (crop_height_ui > crop_height_max + 1));
         const bool is_crop_invalid = ((crop_x > ovrl_width - 1) || (crop_y > ovrl_height - 1) || (crop_width_max < 1) || (crop_height_max < 1));
 
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Cropping Rectangle");
@@ -1267,6 +1269,7 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
 {
     const float column_width_0 = ImGui::GetFontSize() * 10.0f;
     bool detached = ConfigManager::Get().GetConfigBool(configid_bool_overlay_detached);
+    int capture_source = ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source);
 
     ImGui::BeginChild("ViewOverlayTabAdvanced");
 
@@ -1274,6 +1277,7 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
         UIManager::Get()->RepeatFrame();
 
     //3D
+    if (capture_source != ovrl_capsource_ui)
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "3D");
         ImGui::Columns(2, "Column3D", false);
@@ -1360,6 +1364,7 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
     }
 
     //Update Limiter Override
+    if (capture_source != ovrl_capsource_ui)
     {
         UpdateLimiterSetting(column_width_0, true);
     }
@@ -2122,6 +2127,180 @@ void WindowSettings::UpdateCatPerformance()
         ImGui::Columns(1);
     }
 
+    //Performance Monitor
+    {
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Performance Monitor");
+
+        ImGui::Columns(2, "ColumnPerformancePerformanceMonitor", false);
+        ImGui::SetColumnWidth(0, column_width_0);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Style");
+        ImGui::NextColumn();
+
+        bool& use_large_style = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_large_style);
+
+        if (ImGui::RadioButton("Compact", !use_large_style))
+        {
+            use_large_style = false;
+            UIManager::Get()->RepeatFrame();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::RadioButton("Large", use_large_style))
+        {
+            use_large_style = true;
+            UIManager::Get()->RepeatFrame();
+        }
+
+        //Monitor items
+        ImGui::Columns(1);
+        ImGui::Columns( (m_IsStyleScaled) ? 2 : 3, "ColumnPerformancePerformanceMonitorItems", false);    //Use 2 columns when using large UI since 3 won't fit
+        ImGui::SetColumnWidth(0, column_width_0);
+        ImGui::SetColumnWidth(1, column_width_0);
+
+        bool& show_cpu           = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_cpu);
+        bool& show_gpu           = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_gpu);
+        bool& show_graphs        = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_graphs);
+        bool& show_fps           = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_fps);
+        bool& show_battery       = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_battery);
+        bool& show_time          = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_time);
+        bool& show_trackers      = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_trackers);
+        bool& show_vive_wireless = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_vive_wireless);
+
+        //Keep unavailable options as enabled but show the check boxes as unticked to avoid confusion
+        bool show_graphs_visual        = ( ((!show_cpu) && (!show_gpu))     || (!use_large_style) ) ? false : show_graphs;
+        bool show_time_visual          = ( ((!show_fps) && (!show_battery)) || (!use_large_style) ) ? false : show_time;
+        bool show_trackers_visual      = (!show_battery) ? false : show_trackers;
+        bool show_vive_wireless_visual = (!show_battery) ? false : show_vive_wireless;
+
+        if (ImGui::Checkbox("Show CPU Stats", &show_cpu))
+        {
+            UIManager::Get()->RepeatFrame();
+        }
+
+        ImGui::NextColumn();
+
+        if (ImGui::Checkbox("Show GPU Stats", &show_gpu))
+        {
+            UIManager::Get()->RepeatFrame();
+        }
+
+        ImGui::NextColumn();
+
+        if ( ((!show_cpu) && (!show_gpu)) || (!use_large_style) )
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Checkbox("Show Graphs", &show_graphs_visual))
+        {
+            show_graphs = show_graphs_visual;
+            UIManager::Get()->RepeatFrame();
+        }
+
+        if ( ((!show_cpu) && (!show_gpu)) || (!use_large_style) )
+            ImGui::PopItemDisabled();
+
+        ImGui::NextColumn();
+
+        if (ImGui::Checkbox("Show Frame Stats", &show_fps))
+        {
+            UIManager::Get()->RepeatFrame();
+        }
+
+        ImGui::NextColumn();
+
+        if ( ((!show_fps) && (!show_battery)) || (!use_large_style) )
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Checkbox("Show Time", &show_time_visual))
+        {
+            show_time = show_time_visual;
+            UIManager::Get()->RepeatFrame();
+        }
+
+        if ( ((!show_fps) && (!show_battery)) || (!use_large_style) )
+            ImGui::PopItemDisabled();
+
+        ImGui::NextColumn();
+
+        if (!m_IsStyleScaled)
+            ImGui::NextColumn();
+
+        if (ImGui::Checkbox("Show Battery Stats", &show_battery))
+        {
+            UIManager::Get()->RepeatFrame();
+        }
+
+        ImGui::NextColumn();
+
+        if (!show_battery)
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Checkbox("Show Tracker Battery Levels", &show_trackers_visual))
+        {
+            show_trackers = show_trackers_visual;
+            UIManager::Get()->RepeatFrame();
+        }
+
+        ImGui::NextColumn();
+
+        if (UIManager::Get()->GetPerformanceWindow().IsViveWirelessInstalled())
+        {
+            if (ImGui::Checkbox("Show Vive Wireless Temperature", &show_vive_wireless_visual))
+            {
+                show_vive_wireless = show_vive_wireless_visual;
+                UIManager::Get()->RepeatFrame();
+            }
+        }
+
+        if (!show_battery)
+            ImGui::PopItemDisabled();
+
+        ImGui::Columns(1);
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
+
+        if (UIManager::Get()->IsOpenVRLoaded()) //Only show when OpenVR is loaded since many of the monitor items don't work at all
+        {
+            if (ImGui::Button("View as Popup"))
+            {
+                ImGui::OpenPopup("PopupPerformanceMonitor");
+            }
+
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        }
+
+
+        if (ImGui::Button("Add as Overlay"))
+        {
+            unsigned int new_id = OverlayManager::Get().AddUIOverlay();
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new_ui);
+
+            OverlayManager::Get().SetCurrentOverlayID(new_id);
+            OverlayManager::Get().GetCurrentConfigData().ConfigNameStr = "Performance Monitor";
+            ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, (int)new_id);
+
+            UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
+            m_OverlayNameBufferNeedsUpdate = true;
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset Cumulative Values"))
+        {
+            UIManager::Get()->GetPerformanceWindow().ResetCumulativeValues();
+        }
+
+    }
+
+    if (ImGui::IsPopupOpen("PopupPerformanceMonitor"))
+    {
+        //PerformanceMonitor does not work with the large interface scale, so pop it temporarily
+        PopInterfaceScale();
+        UIManager::Get()->GetPerformanceWindow().Update(true);
+        PushInterfaceScale();
+    }
+
     //Stats
     if (UIManager::Get()->IsOpenVRLoaded())
     {
@@ -2195,7 +2374,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.3.3");
+        ImGui::Text("Desktop+ Version 2.3.4 Beta");
 
         ImGui::Columns(1);
     }
@@ -3120,12 +3299,12 @@ bool WindowSettings::PopupCurrentOverlayManage()
         float viewbuttons_height = ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing();
         static float extra_buttons_width = 0.0f;
 
-        ImGui::Columns(2, "ColumnActionButtons", false);
+        ImGui::Columns(2, "ColumnOverlayList", false);
         ImGui::SetColumnWidth(0, column_0_width);
         ImGui::SetColumnWidth(1, arrows_width + ImGui::GetStyle().ItemSpacing.x);
 
-        //ActionButton list
-        ImGui::BeginChild("ViewActionButtons", ImVec2(0.0f, viewbuttons_height), true);
+        //Overlay list
+        ImGui::BeginChild("ViewOverlayList", ImVec2(0.0f, viewbuttons_height), true);
 
         //List overlays
         int index = 0;
@@ -3269,6 +3448,11 @@ bool WindowSettings::PopupCurrentOverlayManage()
             current_overlay = (int)OverlayManager::Get().GetOverlayCount() - 1;
             OverlayManager::Get().SetCurrentOverlayID(current_overlay);
             //No need to sync current overlay here
+
+            if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
+            {
+                UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
+            }
         }
 
         extra_buttons_width = ImGui::GetItemRectSize().x;
@@ -3832,36 +4016,8 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
 
         if (!UIManager::Get()->IsInDesktopMode())
         {
-            bool dragging_enabled = true;
-            //Adding another shared setting state would more efficient, but this should be alright as it's just this popup
-            vr::VROverlayHandle_t ovrl_handle_dplus;    
-            vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlus", &ovrl_handle_dplus);
-
-            if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
-            {
-                vr::VROverlayInputMethod method = vr::VROverlayInputMethod_None;
-                vr::VROverlay()->GetOverlayInputMethod(ovrl_handle_dplus, &method);
-
-                dragging_enabled = (method != vr::VROverlayInputMethod_None);
-
-                //Allow restoring drag mode with right click anywhere on the UI overlay
-                if ( (!dragging_enabled) && (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) )
-                {
-                    vr::VROverlay()->SetOverlayInputMethod(ovrl_handle_dplus, vr::VROverlayInputMethod_Mouse);
-                }
-            }
-
-        
-            if (dragging_enabled)
-            {
-                ImGui::Text("Drag the overlay around to change its position.");
-                ImGui::Text("Hold right-click for two-handed gesture transform.");
-            }
-            else
-            {
-                ImGui::Text("Dragging has been disabled.");
-                ImGui::Text("Right-click here to re-enable it.");
-            }
+            ImGui::Text("Drag the overlay around to change its position.");
+            ImGui::Text("Hold right-click for two-handed gesture transform.");
         }
         else
         {
@@ -4351,7 +4507,7 @@ void WindowSettings::Update()
 
     //Toggle performance stats based on the active page
     bool& performance_stats_active = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_performance_stats_active);
-    if ((selected == 4) && (!performance_stats_active))
+    if ((selected == 4) && (m_Visible) && (!performance_stats_active))
     {
         performance_stats_active = true;
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_performance_stats_active), true);

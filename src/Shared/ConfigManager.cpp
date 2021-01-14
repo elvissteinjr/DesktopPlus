@@ -9,7 +9,9 @@
 #include "WindowList.h"
 #include "DesktopPlusWinRT.h"
 
-#ifndef DPLUS_UI
+#ifdef DPLUS_UI
+    #include "UIManager.h"
+#else
     #include "WindowManager.h"
 #endif
 
@@ -244,6 +246,18 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     {
         data.ConfigFloat[configid_float_overlay_curvature] = 0.17f; //17% is about what the default dashboard curvature is at the default width
     }
+
+    #ifdef DPLUS_UI
+    //When loading an UI overlay, send config state over to ensure the correct process has rendering access even if the UI was restarted at some point
+    if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
+    {
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_capture_source), ovrl_capsource_ui);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+
+        UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
+    }
+    #endif
 }
 
 void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
@@ -412,6 +426,16 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_performance_update_limit_fps]              = config.ReadInt( "Performance", "UpdateLimitFPS", update_limit_fps_30);
     m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates] = config.ReadBool("Performance", "RapidLaserPointerUpdates", false);
     m_ConfigBool[configid_bool_performance_single_desktop_mirroring]    = config.ReadBool("Performance", "SingleDesktopMirroring", false);
+    m_ConfigBool[configid_bool_performance_monitor_large_style]         = config.ReadBool("Performance", "PerformanceMonitorStyleLarge", true);
+    m_ConfigBool[configid_bool_performance_monitor_show_graphs]         = config.ReadBool("Performance", "PerformanceMonitorShowGraphs", true);
+    m_ConfigBool[configid_bool_performance_monitor_show_time]           = config.ReadBool("Performance", "PerformanceMonitorShowTime", false);
+    m_ConfigBool[configid_bool_performance_monitor_show_cpu]            = config.ReadBool("Performance", "PerformanceMonitorShowCPU", true);
+    m_ConfigBool[configid_bool_performance_monitor_show_gpu]            = config.ReadBool("Performance", "PerformanceMonitorShowGPU", true);
+    m_ConfigBool[configid_bool_performance_monitor_show_fps]            = config.ReadBool("Performance", "PerformanceMonitorShowFPS", true);
+    m_ConfigBool[configid_bool_performance_monitor_show_battery]        = config.ReadBool("Performance", "PerformanceMonitorShowBattery", true);
+    m_ConfigBool[configid_bool_performance_monitor_show_trackers]       = config.ReadBool("Performance", "PerformanceMonitorShowTrackers", true);
+    m_ConfigBool[configid_bool_performance_monitor_show_vive_wireless]  = config.ReadBool("Performance", "PerformanceMonitorShowViveWireless", false);
+
 
     m_ConfigBool[configid_bool_misc_no_steam]                           = config.ReadBool("Misc", "NoSteam", false);
 
@@ -685,11 +709,20 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Windows", "WinRTAutoSizeOverlay",         m_ConfigBool[configid_bool_windows_winrt_auto_size_overlay]);
     config.WriteBool("Windows", "WinRTAutoFocusSceneApp",       m_ConfigBool[configid_bool_windows_winrt_auto_focus_scene_app]);
     
-    config.WriteInt( "Performance", "UpdateLimitMode",          m_ConfigInt[configid_int_performance_update_limit_mode]);
-    config.WriteInt( "Performance", "UpdateLimitMS",        int(m_ConfigFloat[configid_float_performance_update_limit_ms] * 100.0f));
-    config.WriteInt( "Performance", "UpdateLimitFPS",           m_ConfigInt[configid_int_performance_update_limit_fps]);
-    config.WriteBool("Performance", "RapidLaserPointerUpdates", m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]);
-    config.WriteBool("Performance", "SingleDesktopMirroring",   m_ConfigBool[configid_bool_performance_single_desktop_mirroring]);
+    config.WriteInt( "Performance", "UpdateLimitMode",                    m_ConfigInt[configid_int_performance_update_limit_mode]);
+    config.WriteInt( "Performance", "UpdateLimitMS",                  int(m_ConfigFloat[configid_float_performance_update_limit_ms] * 100.0f));
+    config.WriteInt( "Performance", "UpdateLimitFPS",                     m_ConfigInt[configid_int_performance_update_limit_fps]);
+    config.WriteBool("Performance", "RapidLaserPointerUpdates",           m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]);
+    config.WriteBool("Performance", "SingleDesktopMirroring",             m_ConfigBool[configid_bool_performance_single_desktop_mirroring]);
+    config.WriteBool("Performance", "PerformanceMonitorStyleLarge",       m_ConfigBool[configid_bool_performance_monitor_large_style]);
+    config.WriteBool("Performance", "PerformanceMonitorShowGraphs",       m_ConfigBool[configid_bool_performance_monitor_show_graphs]);
+    config.WriteBool("Performance", "PerformanceMonitorShowTime",         m_ConfigBool[configid_bool_performance_monitor_show_time]);
+    config.WriteBool("Performance", "PerformanceMonitorShowCPU",          m_ConfigBool[configid_bool_performance_monitor_show_cpu]);
+    config.WriteBool("Performance", "PerformanceMonitorShowGPU",          m_ConfigBool[configid_bool_performance_monitor_show_gpu]);
+    config.WriteBool("Performance", "PerformanceMonitorShowFPS",          m_ConfigBool[configid_bool_performance_monitor_show_fps]);
+    config.WriteBool("Performance", "PerformanceMonitorShowBattery",      m_ConfigBool[configid_bool_performance_monitor_show_battery]);
+    config.WriteBool("Performance", "PerformanceMonitorShowTrackers",     m_ConfigBool[configid_bool_performance_monitor_show_trackers]);
+    config.WriteBool("Performance", "PerformanceMonitorShowViveWireless", m_ConfigBool[configid_bool_performance_monitor_show_vive_wireless]);
 
     config.WriteBool("Misc", "NoSteam",                         m_ConfigBool[configid_bool_misc_no_steam]);
 

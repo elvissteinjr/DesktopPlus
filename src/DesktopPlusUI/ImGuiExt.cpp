@@ -351,8 +351,6 @@ namespace ImGui
                 ret = true;
             }
 
-           
-            //ImGui::SetFocusID(, ImGui::GetCurrentWindow());
             if (!is_input_text_activated)
             {
                 ImGui::ActivateItem(ImGui::GetItemID());
@@ -404,6 +402,29 @@ namespace ImGui
         }
 
         return ret;
+    }
+
+    void TextRight(float offset_x, const char* fmt, ...)
+    {
+        va_list args;
+        va_start(args, fmt);
+        TextRightV(offset_x, fmt, args);
+        va_end(args);
+    }
+
+    void TextRightV(float offset_x, const char* fmt, va_list args)
+    {
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems)
+            return;
+
+        ImGuiContext& g = *GImGui;
+        const char* text_end = g.TempBuffer + ImFormatStringV(g.TempBuffer, IM_ARRAYSIZE(g.TempBuffer), fmt, args);
+
+        ImVec2 size = ImGui::CalcTextSize(g.TempBuffer, text_end);
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x - size.x - offset_x));
+
+        TextEx(g.TempBuffer, text_end, ImGuiTextFlags_NoWidthForLargeClippedText);
     }
 
     //ImGuiItemFlags_Disabled is not exposed public API yet and has no styling, so here's something that does the job

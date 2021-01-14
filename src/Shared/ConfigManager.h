@@ -39,6 +39,15 @@ enum ConfigID_Bool
     configid_bool_interface_warning_elevated_mode_hidden,
     configid_bool_performance_rapid_laser_pointer_updates,
     configid_bool_performance_single_desktop_mirroring,
+    configid_bool_performance_monitor_large_style,
+    configid_bool_performance_monitor_show_graphs,
+    configid_bool_performance_monitor_show_time,
+    configid_bool_performance_monitor_show_cpu,
+    configid_bool_performance_monitor_show_gpu,
+    configid_bool_performance_monitor_show_fps,
+    configid_bool_performance_monitor_show_battery,
+    configid_bool_performance_monitor_show_trackers,
+    configid_bool_performance_monitor_show_vive_wireless,
     configid_bool_input_mouse_render_cursor,
     configid_bool_input_mouse_render_intersection_blob,
     configid_bool_input_mouse_hmd_pointer_override,
@@ -143,7 +152,8 @@ enum ConfigID_String
 enum OverlayCaptureSource
 {
     ovrl_capsource_desktop_duplication,
-    ovrl_capsource_winrt_capture
+    ovrl_capsource_winrt_capture,
+    ovrl_capsource_ui
 };
 
 enum Overlay3DMode

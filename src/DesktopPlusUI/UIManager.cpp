@@ -50,6 +50,7 @@ UIManager* UIManager::Get()
 }
 
 UIManager::UIManager(bool desktop_mode) : m_WindowHandle(nullptr),
+                                          m_SharedTextureRef(nullptr),
                                           m_RepeatFrame(false),
                                           m_DesktopMode(desktop_mode),
                                           m_OpenVRLoaded(false),
@@ -195,7 +196,7 @@ vr::EVRInitError UIManager::InitOverlay()
             bounds.vMax = bounds.vMax + spacing_size + ((float)TEXSPACE_FLOATING_UI_HEIGHT / TEXSPACE_TOTAL_HEIGHT);
             vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleFloatingUI, &bounds);
             bounds.vMin = bounds.vMax + spacing_size;
-            bounds.vMax = 1.0f;
+            bounds.vMax = bounds.vMax + spacing_size + ((float)TEXSPACE_KEYBOARD_HELPER_HEIGHT / TEXSPACE_TOTAL_HEIGHT);
             bounds.uMax = TEXSPACE_KEYBOARD_HELPER_SCALE;
             vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleKeyboardHelper, &bounds);
         }
@@ -205,6 +206,8 @@ vr::EVRInitError UIManager::InitOverlay()
     m_LowCompositorRes = (vr::VRSettings()->GetFloat("GpuSpeed", "gpuSpeedRenderTargetScale") < 1.0f);
 
     UpdateDesktopOverlayPixelSize();
+    m_WindowPerformance.ResetCumulativeValues();
+    m_WindowPerformance.RefreshTrackerBatteryList();
 
     //Check if it's a WMR system and set up for that if needed
     SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens));
@@ -276,9 +279,10 @@ void UIManager::HandleIPCMessage(const MSG& msg)
         {
             switch (msg.wParam)
             {
-                case ipcact_resolution_update:
+                case ipcact_overlays_reset:
                 {
                     UpdateDesktopOverlayPixelSize();
+                    m_WindowPerformance.ScheduleOverlaySharedTextureUpdate();
                     break;
                 }
                 case ipcact_vrkeyboard_closed:
@@ -393,6 +397,11 @@ FloatingUI& UIManager::GetFloatingUI()
     return m_FloatingUI;
 }
 
+WindowPerformance& UIManager::GetPerformanceWindow()
+{
+    return m_WindowPerformance;
+}
+
 void UIManager::SetWindowHandle(HWND handle)
 {
     m_WindowHandle = handle;
@@ -401,6 +410,16 @@ void UIManager::SetWindowHandle(HWND handle)
 HWND UIManager::GetWindowHandle() const
 {
     return m_WindowHandle;
+}
+
+void UIManager::SetSharedTextureRef(ID3D11Resource* ref)
+{
+   m_SharedTextureRef = ref;
+}
+
+ID3D11Resource* UIManager::GetSharedTextureRef() const
+{
+    return m_SharedTextureRef;
 }
 
 vr::VROverlayHandle_t UIManager::GetOverlayHandle() const
@@ -507,6 +526,8 @@ void UIManager::RestartDashboardApp(bool force_steam)
         ::CloseHandle(pi.hProcess);
         ::CloseHandle(pi.hThread);
     }
+
+    m_WindowPerformance.ScheduleOverlaySharedTextureUpdate();
 }
 
 void UIManager::ElevatedModeEnter()
@@ -665,7 +686,8 @@ void UIManager::UpdateDesktopOverlayPixelSize()
     //If OpenVR was loaded, get it from the overlay
     if (m_OpenVRLoaded)
     {
-        vr::VROverlayHandle_t ovrl_handle_dplus = OverlayManager::Get().FindOverlayHandle(k_ulOverlayID_Dashboard);
+        vr::VROverlayHandle_t ovrl_handle_dplus = vr::k_ulOverlayHandleInvalid;
+        vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDesktopTexture", &ovrl_handle_dplus);
 
         if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
         {
@@ -685,7 +707,7 @@ void UIManager::UpdateDesktopOverlayPixelSize()
         else if (desktop_id == -2)  //-2 tell the dashboard application to crop it to desktop 0 and the value changes afterwards, though that doesn't happen when it's not running
             desktop_id = 0;
 
-        if (desktop_id == -1)   //All desktops, get virtual screen dimensions
+        if ( (desktop_id == -1) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )   //All desktops, get virtual screen dimensions
         {
             m_OvrlPixelWidth  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
             m_OvrlPixelHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);

@@ -19,7 +19,8 @@ enum OverlayTextureSource
     ovrl_texsource_none,                                //Used with capture sources other than desktop duplication while capture is not active
     ovrl_texsource_desktop_duplication,
     ovrl_texsource_desktop_duplication_3dou_converted,
-    ovrl_texsource_winrt_capture
+    ovrl_texsource_winrt_capture,
+    ovrl_texsource_ui
 };
 
 class Overlay

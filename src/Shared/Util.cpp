@@ -196,7 +196,7 @@ vr::EVROverlayError SetSharedOverlayTexture(vr::VROverlayHandle_t ovrl_handle_so
             Microsoft::WRL::ComPtr<IDXGIResource> ovrl_dxgi_resource;
             ovrl_shader_res->GetResource(&ovrl_tex);
 
-            HRESULT hr = ovrl_tex.As(&ovrl_dxgi_resource);//ovrl_tex->QueryInterface(__uuidof(IDXGIResource), (void**)&ovrl_dxgi_resource);
+            HRESULT hr = ovrl_tex.As(&ovrl_dxgi_resource);
 
             if (!FAILED(hr))
             {
@@ -417,6 +417,13 @@ bool FileExists(LPCTSTR path)
     DWORD attrib = GetFileAttributes(path);
 
     return ((attrib != INVALID_FILE_ATTRIBUTES) && !(attrib & FILE_ATTRIBUTE_DIRECTORY));
+}
+
+bool DirectoryExists(LPCTSTR path)
+{
+    DWORD attrib = GetFileAttributes(path);
+
+    return ((attrib != INVALID_FILE_ATTRIBUTES) && (attrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
 void StopProcessByWindowClass(LPCTSTR class_name)

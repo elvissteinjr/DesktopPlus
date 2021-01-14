@@ -3,6 +3,8 @@
 #ifndef DPLUS_UI
     #include "OutputManager.h"
     #include "DesktopPlusWinRT.h"
+#else
+    #include "UIManager.h"
 #endif
 
 #include <sstream>
@@ -40,6 +42,49 @@ unsigned int OverlayManager::AddOverlay(const OverlayConfigData& data, bool is_b
             m_OverlayConfigData.back().ConfigBool[configid_bool_overlay_floatingui_desktops_enabled] = false;
         }
     }
+
+    return id;
+}
+
+unsigned int OverlayManager::AddUIOverlay()
+{
+    unsigned int id = AddOverlay(OverlayConfigData());
+
+    //Load general default values from the default profile
+    unsigned int current_id_old = m_CurrentOverlayID;
+    m_CurrentOverlayID = id;
+    ConfigManager::Get().LoadOverlayProfileDefault();
+    m_CurrentOverlayID = current_id_old;
+
+    //Apply additional defaults
+    OverlayConfigData& data = m_OverlayConfigData.back();
+    data.ConfigBool[configid_bool_overlay_detached]      = true;
+    data.ConfigInt[configid_int_overlay_detached_origin] = ovrl_origin_left_hand;
+    data.ConfigInt[configid_int_overlay_capture_source]  = ovrl_capsource_ui;
+    data.ConfigFloat[configid_float_overlay_width]       = 0.3f;
+    data.ConfigFloat[configid_float_overlay_curvature]   = 0.0f;
+
+    //Put the overlay on the left hand controller if possible, otherwise on right or just in the room
+    #ifdef DPLUS_UI
+    if ( (UIManager::Get()) && (UIManager::Get()->IsOpenVRLoaded()) )
+    {
+    #endif
+        if (vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand) != vr::k_unTrackedDeviceIndexInvalid)
+        {
+            data.ConfigInt[configid_int_overlay_detached_origin] = ovrl_origin_left_hand;
+        }
+        else if (vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand) != vr::k_unTrackedDeviceIndexInvalid)
+        {
+            data.ConfigInt[configid_int_overlay_detached_origin] = ovrl_origin_right_hand;
+        }
+        else
+        {
+            data.ConfigInt[configid_int_overlay_detached_origin] = ovrl_origin_room;
+            data.ConfigFloat[configid_float_overlay_width] = 1.5f;
+        }
+    #ifdef DPLUS_UI
+    }
+    #endif
 
     return id;
 }
@@ -142,6 +187,14 @@ void OverlayManager::SwapOverlays(unsigned int id, unsigned int id2)
             SetCurrentOverlayID(id2);
             outmgr->ResetCurrentOverlay();
             SetCurrentOverlayID(current_overlay_old);
+        }
+    #else
+        const OverlayConfigData& data   = GetConfigData(id);
+        const OverlayConfigData& data_2 = GetConfigData(id2);
+
+        if ((data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui) || (data_2.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui))
+        {
+            UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
         }
     #endif
 }
