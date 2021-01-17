@@ -105,12 +105,7 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
             ImGui::PopItemDisabled();
     }
 
-    int monitor_count = ::GetSystemMetrics(SM_CMONITORS);
-
-    if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1)
-    {
-        monitor_count = std::max(1, monitor_count - 3); //If the 3 screen assumption doesn't hold up, at least have one button
-    }
+    int desktop_count = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
 
     if (disable_normal)
         ImGui::PushItemDisabled();
@@ -122,7 +117,7 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
             ImGui::PushID("DesktopButtons");
 
             char tooltip_str[16];
-            for (int i = 0; i < monitor_count; ++i)
+            for (int i = 0; i < desktop_count; ++i)
             {
                 ImGui::PushID(tmtex_icon_desktop_1 + i);
 
@@ -172,7 +167,7 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
                 current_desktop--;
 
                 if (current_desktop == -1)
-                    current_desktop = monitor_count - 1;
+                    current_desktop = desktop_count - 1;
 
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), current_desktop);
@@ -189,7 +184,7 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
             {
                 current_desktop++;
 
-                if (current_desktop == monitor_count)
+                if (current_desktop == desktop_count)
                     current_desktop = 0;
 
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);

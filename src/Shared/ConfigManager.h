@@ -107,6 +107,7 @@ enum ConfigID_Int
     configid_int_state_mouse_dbl_click_assist_duration_ms,  //Internally used value, which will replace -1 with the current double-click delay automatically
     configid_int_state_keyboard_visible_for_overlay_id,     //-1 = None
     configid_int_state_performance_duplication_fps,
+    configid_int_state_interface_desktop_count,             //Count of desktops after optionally filtering virtual WMR displays
 	configid_int_MAX
 };
 
@@ -244,7 +245,6 @@ class ConfigManager
 		float m_ConfigFloat[configid_float_MAX];
         //No m_ConfigIntPtr as so far it only contains overlay-specific data
 		std::string m_ConfigString[configid_str_MAX];
-        Matrix4 m_ConfigOverlayDetachedTransform[ovrl_origin_MAX];
 
         ActionManager m_ActionManager;
 

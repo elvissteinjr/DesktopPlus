@@ -70,6 +70,8 @@ class OutputManager
 
         void UpdatePerformanceStates();
         const LARGE_INTEGER& GetUpdateLimiterDelay();
+        //This updates the cached desktop rects and count and optionally chooses the adapters/desktop for desktop duplication (previously part of InitOutput())
+        int EnumerateOutputs(int target_desktop_id = -1, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_preferred = nullptr, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_vr = nullptr);
 
         void ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter);
 

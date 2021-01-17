@@ -390,7 +390,7 @@ bool OutputManager::IsOutputInvalid() const
 //
 DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds)
 {
-    HRESULT hr;
+    HRESULT hr = S_OK;
 
     m_OutputInvalid = false;
 
@@ -407,64 +407,15 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     m_WindowHandle = Window;
 
     //Get preferred adapter if there is any, this detects which GPU the target desktop is on
-    Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
     Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_preferred;
     Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_vr;
     int output_id_adapter = SingleOutput;           //Output ID on the adapter actually used. Only different from initial SingleOutput if there's desktops across multiple GPUs
+
     std::vector<DPRect> desktop_rects_prev = m_DesktopRects;
     int desktop_x_prev = m_DesktopX;
     int desktop_y_prev = m_DesktopY;
-    m_DesktopRects.clear();
 
-    hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
-    if (!FAILED(hr))
-    {
-        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
-        UINT i = 0;
-        int output_count = 0;
-
-        //Also look for the device the HMD is connected to
-        int32_t vr_gpu_id;
-        vr::VRSystem()->GetDXGIOutputInfo(&vr_gpu_id);  
-
-        while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
-        {
-            int first_output_adapter = output_count;
-
-            if (i == vr_gpu_id)
-            {
-                adapter_ptr_vr = adapter_ptr;
-            }
-
-            //Count the available outputs
-            IDXGIOutput* output_ptr;
-            while (adapter_ptr->EnumOutputs(output_count, &output_ptr) != DXGI_ERROR_NOT_FOUND)
-            {
-                //Check if this happens to be the output we're looking for (or for combined desktop, set the first adapter with available output)
-                if ( (adapter_ptr_preferred == nullptr) && ( (SingleOutput == output_count) || (SingleOutput == -1) ) )
-                {
-                    adapter_ptr_preferred = adapter_ptr;
-
-                    if (SingleOutput != -1)
-                    {
-                        output_id_adapter = output_count - first_output_adapter;
-                    }
-                }
-
-                //Cache rect of the output
-                DXGI_OUTPUT_DESC output_desc;
-                output_ptr->GetDesc(&output_desc);
-                m_DesktopRects.emplace_back(output_desc.DesktopCoordinates.left,  output_desc.DesktopCoordinates.top, 
-                                            output_desc.DesktopCoordinates.right, output_desc.DesktopCoordinates.bottom);
-
-                ++output_count;
-            }
-
-            ++i;
-        }
-    }
-
-    SingleOutput = output_id_adapter;
+    SingleOutput = EnumerateOutputs(SingleOutput, &adapter_ptr_preferred, &adapter_ptr_vr);
 
     //If they're the same, we don't need to do any multi-gpu handling
     if (adapter_ptr_vr == adapter_ptr_preferred)
@@ -711,22 +662,25 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
         for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
         {
             OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
-            int desktop_id = data.ConfigInt[configid_int_overlay_desktop_id];
 
-            if ((desktop_id >= 0) && (desktop_id < desktop_rects_prev.size()) && (desktop_id < m_DesktopRects.size()))
+            if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
             {
-                int crop_x = data.ConfigInt[configid_int_overlay_crop_x];
-                int crop_y = data.ConfigInt[configid_int_overlay_crop_y];
-                int crop_width = data.ConfigInt[configid_int_overlay_crop_width];
-                int crop_height = data.ConfigInt[configid_int_overlay_crop_height];
-                DPRect crop_rect(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
-                DPRect desktop_rect = desktop_rects_prev[desktop_id];
-                desktop_rect.Translate({-desktop_x_prev, -desktop_y_prev});
-
-                if (crop_rect == desktop_rect)
+                int desktop_id = data.ConfigInt[configid_int_overlay_desktop_id];
+                if ((desktop_id >= 0) && (desktop_id < desktop_rects_prev.size()) && (desktop_id < m_DesktopRects.size()))
                 {
-                    OverlayManager::Get().SetCurrentOverlayID(i);
-                    CropToDisplay(desktop_id, true);
+                    int crop_x = data.ConfigInt[configid_int_overlay_crop_x];
+                    int crop_y = data.ConfigInt[configid_int_overlay_crop_y];
+                    int crop_width = data.ConfigInt[configid_int_overlay_crop_width];
+                    int crop_height = data.ConfigInt[configid_int_overlay_crop_height];
+                    DPRect crop_rect(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
+                    DPRect desktop_rect = desktop_rects_prev[desktop_id];
+                    desktop_rect.Translate({-desktop_x_prev, -desktop_y_prev});
+
+                    if (crop_rect == desktop_rect)
+                    {
+                        OverlayManager::Get().SetCurrentOverlayID(i);
+                        CropToDisplay(desktop_id, true);
+                    }
                 }
             }
         }
@@ -734,9 +688,6 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
         OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
     }
 
-    m_InputSim.RefreshScreenOffsets();
-
-    ResetMouseLastLaserPointerPos();
     ResetOverlays();
 
     return Return;
@@ -952,21 +903,15 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
     UINT OutputCount;
     if (SingleOutput < 0)
     {
-        int monitor_count = ::GetSystemMetrics(SM_CMONITORS);
-        bool wmr_ignore_vscreens = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1);
-
-        if (wmr_ignore_vscreens)
-        {
-            monitor_count = std::max(1, monitor_count - 3); //If the 3 screen assumption doesn't hold up, at least have one button
-        }
+        int desktop_count = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
 
         hr = S_OK;
         for (OutputCount = 0; SUCCEEDED(hr); ++OutputCount)
         {
-            //Break early if the WMR setting says to ignore extra desktops
-            if ( (wmr_ignore_vscreens) && (OutputCount >= monitor_count) )
+            //Break early if used desktop count is lower than actual output count
+            if (OutputCount >= desktop_count)
             {
-                OutputCount++;
+                ++OutputCount;
                 break;
             }
 
@@ -1539,6 +1484,8 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
 
                     //Global config state
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_interface_desktop_count),
+                                                         ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count));
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_window_focused_process_elevated), 
                                                          ConfigManager::Get().GetConfigBool(configid_bool_state_window_focused_process_elevated));
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_elevated), 
@@ -5107,6 +5054,99 @@ void OutputManager::UpdatePerformanceStates()
 const LARGE_INTEGER& OutputManager::GetUpdateLimiterDelay()
 {
     return m_PerformanceUpdateLimiterDelay;
+}
+
+int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_preferred, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_vr)
+{
+    Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
+    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_preferred;
+    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_vr;
+    int output_id_adapter = target_desktop_id;           //Output ID on the adapter actually used. Only different from initial SingleOutput if there's desktops across multiple GPUs
+    
+    m_DesktopRects.clear();
+
+    HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
+    if (!FAILED(hr))
+    {
+        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
+        UINT i = 0;
+        int output_count = 0;
+        bool wmr_ignore_vscreens = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1);
+
+        //Also look for the device the HMD is connected to
+        int32_t vr_gpu_id;
+        vr::VRSystem()->GetDXGIOutputInfo(&vr_gpu_id);
+
+        while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
+        {
+            int first_output_adapter = output_count;
+
+            if (i == vr_gpu_id)
+            {
+                adapter_ptr_vr = adapter_ptr;
+            }
+
+            //Check if this a WMR virtual display adapter and skip it when the option is enabled
+            //This is still only works correctly when they have the last desktops in the system, but that should pretty much be always the case
+            if (wmr_ignore_vscreens)
+            {
+                DXGI_ADAPTER_DESC adapter_desc;
+                adapter_ptr->GetDesc(&adapter_desc);
+
+                if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
+                {
+                    continue;
+                }
+            }
+
+            //Count the available outputs
+            IDXGIOutput* output_ptr;
+            UINT output_index = 0;
+            while (adapter_ptr->EnumOutputs(output_index, &output_ptr) != DXGI_ERROR_NOT_FOUND)
+            {
+                //Check if this happens to be the output we're looking for (or for combined desktop, set the first adapter with available output)
+                if ( (adapter_ptr_preferred == nullptr) && ( (target_desktop_id == output_count) || (target_desktop_id == -1) ) )
+                {
+                    adapter_ptr_preferred = adapter_ptr;
+
+                    if (target_desktop_id != -1)
+                    {
+                        output_id_adapter = output_index;
+                    }
+                }
+
+                //Cache rect of the output
+                DXGI_OUTPUT_DESC output_desc;
+                output_ptr->GetDesc(&output_desc);
+                m_DesktopRects.emplace_back(output_desc.DesktopCoordinates.left,  output_desc.DesktopCoordinates.top, 
+                                            output_desc.DesktopCoordinates.right, output_desc.DesktopCoordinates.bottom);
+
+                ++output_count;
+                ++output_index;
+            }
+
+            ++i;
+        }
+
+        //Store output/desktop count and send it over to UI
+        ConfigManager::Get().SetConfigInt(configid_int_state_interface_desktop_count, output_count);
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_interface_desktop_count), output_count);
+    }
+
+    if (out_adapter_preferred != nullptr)
+    {
+        *out_adapter_preferred = adapter_ptr_preferred;
+    }
+
+    if (out_adapter_vr != nullptr)
+    {
+        *out_adapter_vr = adapter_ptr_vr;
+    }
+
+    m_InputSim.RefreshScreenOffsets();
+    ResetMouseLastLaserPointerPos();
+
+    return output_id_adapter;
 }
 
 void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter)

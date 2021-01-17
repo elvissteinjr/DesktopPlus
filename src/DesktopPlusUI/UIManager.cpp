@@ -332,6 +332,11 @@ void UIManager::HandleIPCMessage(const MSG& msg)
                         current_overlay_old = (unsigned int)msg.lParam;
                         break;
                     }
+                    case configid_int_state_interface_desktop_count:
+                    {
+                        RepeatFrame();
+                        break;
+                    }
                     default: break;
                 }
             }
@@ -707,7 +712,7 @@ void UIManager::UpdateDesktopOverlayPixelSize()
     {
         int& desktop_id = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_desktop_id);
 
-        if (desktop_id >= GetSystemMetrics(SM_CMONITORS))
+        if (desktop_id >= ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count))
             desktop_id = -1;
         else if (desktop_id == -2)  //-2 tell the dashboard application to crop it to desktop 0 and the value changes afterwards, though that doesn't happen when it's not running
             desktop_id = 0;

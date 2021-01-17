@@ -37,10 +37,8 @@ ConfigManager::ConfigManager() : m_IsSteamInstall(false)
     std::fill(std::begin(m_ConfigFloat), std::end(m_ConfigFloat), 0.0f);
     //We don't need to initialize m_ConfigString
 
-    //Default the transform matrices to zero as an indicator to reset them when possible later
-    float matrix_zero[16] = { 0.0f };
-    std::fill(std::begin(m_ConfigOverlayDetachedTransform), std::end(m_ConfigOverlayDetachedTransform), matrix_zero);
-    
+    //Init desktop count to the system metric, which already correct for most users
+    m_ConfigInt[configid_int_state_interface_desktop_count] = ::GetSystemMetrics(SM_CMONITORS);
 
     //Init application path
     int buffer_size = 1024;
@@ -184,7 +182,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
 
     //Default the transform matrices to zero
     float matrix_zero[16] = { 0.0f };
-    std::fill(std::begin(m_ConfigOverlayDetachedTransform), std::end(m_ConfigOverlayDetachedTransform), matrix_zero);
+    std::fill(std::begin(data.ConfigDetachedTransform), std::end(data.ConfigDetachedTransform), matrix_zero);
 
     std::string transform_str; //Only set these when it's really present in the file, or else it defaults to identity instead of zero
     transform_str = config.ReadString(section.c_str(), "DetachedTransformPlaySpace");
@@ -983,8 +981,9 @@ intptr_t& ConfigManager::GetConfigIntPtrRef(ConfigID_IntPtr id)
 
 void ConfigManager::ResetConfigStateValues()
 {
-    std::fill(std::begin(m_ConfigBool) + configid_bool_state_overlay_dragmode,           std::begin(m_ConfigBool) + configid_bool_state_misc_process_elevated,      false);
+    std::fill(std::begin(m_ConfigBool) + configid_bool_state_overlay_dragmode,           std::begin(m_ConfigBool) + configid_bool_state_misc_process_started_by_steam, false);
     std::fill(std::begin(m_ConfigInt)  + configid_int_state_overlay_current_id_override, std::begin(m_ConfigInt)  + configid_int_state_performance_duplication_fps,    -1);
+    //configid_int_state_interface_desktop_count is not reset
 }
 
 ActionManager& ConfigManager::GetActionManager()

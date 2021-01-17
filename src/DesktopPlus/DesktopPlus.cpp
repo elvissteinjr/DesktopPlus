@@ -251,7 +251,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                                    0,
                                    0, 0,
                                    1, 1,
-                                   HWND_MESSAGE, nullptr, hInstance, nullptr);
+                                   HWND_DESKTOP, nullptr, hInstance, nullptr);
     if (!WindowHandle)
     {
         ProcessFailure(nullptr, L"Window creation failed", L"Error", E_FAIL);
@@ -551,6 +551,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 {
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_mirror_reset);
                 }
+            }
+            break;
+        }
+        case WM_DISPLAYCHANGE:
+        {
+            //Update desktop count and rects
+            if (OutputManager::Get())
+            {
+                OutputManager::Get()->EnumerateOutputs();
             }
             break;
         }

@@ -850,12 +850,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
             ImGui::Text("Source");
             ImGui::NextColumn();
 
-            int monitor_count = ::GetSystemMetrics(SM_CMONITORS);
-
-            if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1)
-            {
-                monitor_count = std::max(1, monitor_count - 3); //If the 3 screen assumption doesn't hold up, at least have one
-            }
+            int desktop_count = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
 
             ImGui::SetNextItemWidth(-1);
 
@@ -912,7 +907,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                 }
 
                 //List desktops
-                for (int i = 0; i < monitor_count; ++i)
+                for (int i = 0; i < desktop_count; ++i)
                 {
                     ImGui::PushID(i);
 
@@ -1046,12 +1041,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
 
             ImGui::SetNextItemWidth(-1);
 
-            int monitor_count = ::GetSystemMetrics(SM_CMONITORS);
-
-            if (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1)
-            {
-                monitor_count = std::max(1, monitor_count - 3); //If the 3 screen assumption doesn't hold up, at least have one
-            }
+            int desktop_count = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
 
             char desktop_str[16];
             snprintf(desktop_str, 16, "Desktop %d", list_selected_desktop + 1);
@@ -1063,7 +1053,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                     list_selected_desktop = -1;
                 }
 
-                for (int i = 0; i < monitor_count; ++i)
+                for (int i = 0; i < desktop_count; ++i)
                 {
                     ImGui::PushID(i);
 
