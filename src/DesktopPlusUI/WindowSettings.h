@@ -48,6 +48,7 @@ class WindowSettings
         void PopupActionEdit(CustomAction& action, int id);
         void PopupOverlayDetachedPositionChange();
         bool PopupIconSelect(std::string& filename);
+        void PopupSettingsReset();
 
         void HighlightOverlay(int overlay_id);
 

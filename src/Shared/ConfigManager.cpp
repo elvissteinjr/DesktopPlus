@@ -777,6 +777,15 @@ void ConfigManager::SaveConfigToFile()
     config.Save();
 }
 
+void ConfigManager::RestoreConfigFromDefault()
+{
+    //Basically delete the config file and then load it again which will fall back to config_default.ini
+    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config.ini").c_str() );
+    ::DeleteFileW(wpath.c_str());
+
+    LoadConfigFromFile();
+}
+
 void ConfigManager::LoadOverlayProfileDefault(bool multi_overlay)
 {
     //Multi-Overlay "default" config is removing all overlays except dashboard and defaulting that

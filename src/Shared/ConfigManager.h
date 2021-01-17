@@ -260,9 +260,10 @@ class ConfigManager
 	public:
 		ConfigManager();
 		static ConfigManager& Get();
-        
+
         bool LoadConfigFromFile();
         void SaveConfigToFile();
+        void RestoreConfigFromDefault();
 
         void LoadOverlayProfileDefault(bool multi_overlay = false);
         bool LoadOverlayProfileFromFile(const std::string filename);

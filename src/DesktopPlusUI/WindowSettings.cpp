@@ -2508,6 +2508,15 @@ void WindowSettings::UpdateCatMisc()
         }
 
         ImGui::Columns(1);
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
+
+        if (ImGui::Button("Restore Default Settings"))
+        {
+            ImGui::OpenPopup("SettingsResetPopup");
+        }
+
+        PopupSettingsReset();
     }
 
     ImGui::EndChild();
@@ -4309,6 +4318,48 @@ bool WindowSettings::PopupIconSelect(std::string& filename)
     }
 
     return ret;
+}
+
+void WindowSettings::PopupSettingsReset()
+{
+    //Set popup rounding to the same as a normal window
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, ImGui::GetStyle().WindowRounding);
+
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+
+    if (ImGui::BeginPopup("SettingsResetPopup", ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    {
+        ImGui::SetWindowSize(ImVec2(GetSize().x * 0.5f, -1.0f));
+
+        ImGui::Text("This will reset all settings to their default values, including the current overlay setup.\nSaved profiles are not affected. Continue?");
+
+        ImGui::Separator();
+
+        if (ImGui::Button("Yes, Restore Default Settings")) 
+        {
+            //Do the reset
+            ConfigManager::Get().RestoreConfigFromDefault();
+
+            UIManager::Get()->Restart(UIManager::Get()->IsInDesktopMode()); //This shouldn't be necessary, but let's still do it to really ensure clean state
+
+            //We restart this after the UI since the new UI process needs to detect the dashboard app running first so it doesn't launch in desktop mode
+            if (IPCManager::IsDashboardAppRunning())
+            {
+                UIManager::Get()->RestartDashboardApp();
+            }
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel")) 
+        {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::PopStyleVar(); //ImGuiStyleVar_PopupRounding
 }
 
 void WindowSettings::HighlightOverlay(int overlay_id)
