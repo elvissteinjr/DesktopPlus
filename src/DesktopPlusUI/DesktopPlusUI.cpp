@@ -23,6 +23,7 @@
 #include "WindowSettings.h"
 #include "WindowKeyboardHelper.h"
 #include "Util.h"
+#include "ImGuiExt.h"
 
 #include "DesktopPlusWinRT.h"
 
@@ -44,8 +45,6 @@ void RefreshOverlayTextureSharing();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void InitImGui(HWND hwnd);
 void ProcessCmdline(bool& force_desktop_mode);
-
-#include "ImGuiExt.h"
 
 // Main code
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ INT nCmdShow)
@@ -129,6 +128,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     //Init WinRT DLL
     DPWinRT_Init();
+
+    //Init notification icon if OpenVR is running (no need for it in pure desktop mode without switching back)
+    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_interface_no_notification_icon)) && (ui_manager.IsOpenVRLoaded()) )
+    {
+        ui_manager.GetNotificationIcon().Init(hInstance);
+    }
 
     //Main loop
     MSG msg;
@@ -594,8 +599,10 @@ void RefreshOverlayTextureSharing()
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if ( (UIManager::Get()) && (UIManager::Get()->IsInDesktopMode()) && (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) )
-        return true;
+    if ((UIManager::Get()) && (UIManager::Get()->IsInDesktopMode()))
+    {
+        ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam);
+    }
 
     switch (msg)
     {
@@ -628,7 +635,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
                 UIManager::Get()->HandleIPCMessage(wmsg);
             }
-            break;
+            return 0;
         }
         case WM_SYSCOMMAND:
         {

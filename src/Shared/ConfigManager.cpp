@@ -367,6 +367,7 @@ bool ConfigManager::LoadConfigFromFile()
     Ini config(wpath.c_str());
 
     m_ConfigBool[configid_bool_interface_no_ui]                              = config.ReadBool("Interface", "NoUIAutoLaunch", false);
+    m_ConfigBool[configid_bool_interface_no_notification_icon]               = config.ReadBool("Interface", "NoNotificationIcon", false);
     m_ConfigBool[configid_bool_interface_large_style]                        = config.ReadBool("Interface", "DisplaySizeLarge", false);
     m_ConfigInt[configid_int_interface_overlay_current_id]                   = config.ReadInt( "Interface", "OverlayCurrentID", 0);
     m_ConfigInt[configid_int_interface_mainbar_desktop_listing]              = config.ReadInt( "Interface", "DesktopButtonCyclingMode", mainbar_desktop_listing_individual);

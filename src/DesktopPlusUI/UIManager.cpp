@@ -412,6 +412,11 @@ HWND UIManager::GetWindowHandle() const
     return m_WindowHandle;
 }
 
+NotificationIcon& UIManager::GetNotificationIcon()
+{
+    return m_NotificationIcon;
+}
+
 void UIManager::SetSharedTextureRef(ID3D11Resource* ref)
 {
    m_SharedTextureRef = ref;

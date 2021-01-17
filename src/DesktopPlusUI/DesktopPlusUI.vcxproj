@@ -203,6 +203,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="NotificationIcon.cpp" />
     <ClCompile Include="Win32PerformanceData.cpp" />
     <ClCompile Include="UIManager.cpp" />
     <ClCompile Include="WindowKeyboardHelper.cpp" />
@@ -229,6 +230,7 @@
     <ClInclude Include="ImGuiExt.h" />
     <ClInclude Include="implot\implot.h" />
     <ClInclude Include="implot\implot_internal.h" />
+    <ClInclude Include="NotificationIcon.h" />
     <ClInclude Include="Win32PerformanceData.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="UIManager.h" />

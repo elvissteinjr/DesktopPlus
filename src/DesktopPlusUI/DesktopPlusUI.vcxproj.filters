@@ -75,6 +75,7 @@
     <ClCompile Include="implot\implot_stripped.cpp">
       <Filter>ImPlot</Filter>
     </ClCompile>
+    <ClCompile Include="NotificationIcon.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imstb_truetype.h">
@@ -152,6 +153,7 @@
       <Filter>ImPlot</Filter>
     </ClInclude>
     <ClInclude Include="Win32PerformanceData.h" />
+    <ClInclude Include="NotificationIcon.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="imgui_win32_dx11_openvr\PixelShaderImGui.hlsl">

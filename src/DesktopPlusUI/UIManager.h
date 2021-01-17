@@ -11,6 +11,7 @@
 #include "openvr.h"
 #include "Matrices.h"
 
+#include "NotificationIcon.h"
 #include "DashboardUI.h"
 #include "FloatingUI.h"
 #include "WindowPerformance.h"
@@ -38,6 +39,7 @@ class UIManager
         WindowPerformance m_WindowPerformance;
 
         HWND m_WindowHandle;
+        NotificationIcon m_NotificationIcon;
         ID3D11Resource* m_SharedTextureRef; //Pointer to render target texture, should only be used for calls to SetSharedOverlayTexture()
         int m_RepeatFrame;
 
@@ -83,6 +85,7 @@ class UIManager
 
         void SetWindowHandle(HWND handle);
         HWND GetWindowHandle() const;
+        NotificationIcon& GetNotificationIcon();
         void SetSharedTextureRef(ID3D11Resource* ref);
         ID3D11Resource* GetSharedTextureRef() const;
 
