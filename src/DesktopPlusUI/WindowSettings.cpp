@@ -3458,6 +3458,15 @@ bool WindowSettings::PopupCurrentOverlayManage()
 
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
+        if (ImGui::Button("Rename"))
+        {
+            ImGui::OpenPopup("RenameOverlayPopup");
+        }
+
+        extra_buttons_width += ImGui::GetItemRectSize().x + ImGui::GetStyle().ItemInnerSpacing.x;
+
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
         bool current_overlay_is_dashboard = (current_overlay == k_ulOverlayID_Dashboard);
 
         if (current_overlay_is_dashboard)
@@ -3476,6 +3485,11 @@ bool WindowSettings::PopupCurrentOverlayManage()
             ImGui::PopItemDisabled();
 
         extra_buttons_width += ImGui::GetItemRectSize().x;
+
+        if (PopupCurrentOverlayRename()) //Overlay got renamed
+        {
+            has_list_changed = true;
+        }
 
         ImGui::EndPopup();
     }
@@ -3496,10 +3510,95 @@ bool WindowSettings::PopupCurrentOverlayManage()
     return false;
 }
 
-void WindowSettings::PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id, bool multi_overlay)
+bool WindowSettings::PopupCurrentOverlayRename()
 {
     bool ret = false;
 
+    if (ImGui::BeginPopupModal("RenameOverlayPopup", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    {
+        ImGui::SetWindowSize(ImVec2(GetSize().x * 0.45f, -1.0f));
+
+        static char buf_name[1024] = "";
+        static int popup_framecount = 0;
+
+        if (ImGui::IsWindowAppearing())
+        {
+            popup_framecount = ImGui::GetFrameCount();
+
+            size_t copied_length = OverlayManager::Get().GetCurrentConfigData().ConfigNameStr.copy(buf_name, 1023);
+            buf_name[copied_length] = '\0';
+        }
+
+        ImGui::Text("Enter new Overlay Name");
+
+        bool do_save = false;
+        bool buffer_changed = false;
+
+        ImGui::SetNextItemWidth(-1.0f);
+        //The idea is to have ImGui treat this as a new widget every time the popup is open, so the cursor position isn't remembered between popups
+        ImGui::PushID(popup_framecount);
+        if (ImGui::InputText("", buf_name, 1024, ImGuiInputTextFlags_EnterReturnsTrue))
+        {
+            do_save = true;
+        }
+        ImGui::PopID();
+
+        //Focus text input when the window is appearing
+        if (ImGui::IsWindowAppearing())
+        {
+            ImGui::SetKeyboardFocusHere();
+        }
+
+        if (ImGui::IsItemEdited())
+        {
+            buffer_changed = true;
+        }
+
+        if (ImGui::PopupContextMenuInputText(nullptr, buf_name, 1024))
+        {
+            buffer_changed = true;
+        }
+
+        if (buffer_changed)
+        {
+            if (ImGui::StringContainsUnmappedCharacter(buf_name))
+            {
+                TextureManager::Get().AddFontBuilderString(buf_name);
+                TextureManager::Get().ReloadAllTexturesLater();
+            }
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::Button("Ok")) 
+        {
+            do_save = true;
+        }
+
+        if (do_save)
+        {
+            OverlayManager::Get().GetCurrentConfigData().ConfigNameStr = buf_name;
+            m_OverlayNameBufferNeedsUpdate = true;
+            ret = true;
+
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel")) 
+        {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    return ret;
+}
+
+void WindowSettings::PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id, bool multi_overlay)
+{
     if (ImGui::BeginPopupModal("NewOverlayProfilePopup", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
         ImGui::SetWindowSize(ImVec2(GetSize().x * 0.5f, -1.0f));
