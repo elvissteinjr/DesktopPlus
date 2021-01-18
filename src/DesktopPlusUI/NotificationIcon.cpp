@@ -95,6 +95,7 @@ void NotificationIcon::OnCallbackMessage(WPARAM wparam, LPARAM lparam)
     switch (LOWORD(lparam))
     {
         case NIN_SELECT:
+        case NIN_KEYSELECT:
         case WM_CONTEXTMENU:
         { 
             POINT const pt = { GET_X_LPARAM(wparam), GET_Y_LPARAM(wparam) };

@@ -440,6 +440,7 @@ bool ConfigManager::LoadConfigFromFile()
 
     //Load custom actions (this is where using ini feels dumb, but it still kinda works)
     auto& custom_actions = m_ActionManager.GetCustomActions();
+    custom_actions.clear();
     int custom_action_count = config.ReadInt("CustomActions", "Count", 0);
 
     for (int i = 0; i < custom_action_count; ++i)

@@ -813,9 +813,19 @@ vr::EVRInitError OutputManager::InitOverlay()
         if (app_error == vr::VRApplicationError_None)
         {
             //Check if the user is currently using the HMD and display the initial setup message as a VR notification instead then
+            bool use_vr_notification = false;
             vr::EDeviceActivityLevel activity_level = vr::VRSystem()->GetTrackedDeviceActivityLevel(vr::k_unTrackedDeviceIndex_Hmd);
 
             if ((activity_level == vr::k_EDeviceActivityLevel_UserInteraction) || (activity_level == vr::k_EDeviceActivityLevel_UserInteraction_Timeout))
+            {
+                //Also check if the HMD is tracking properly right now so the notification can actually be seen (fresh SteamVR start is active but not tracking for example)
+                vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+                vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+                use_vr_notification = (poses[vr::k_unTrackedDeviceIndex_Hmd].eTrackingResult == vr::TrackingResult_Running_OK);
+            }
+
+            if (use_vr_notification)
             {
                 //Documentation says CreateNotification() would take the icon from the overlay, but it doesn't. So let's do it ourselves then!
                 vr::NotificationBitmap_t* icon_bmp_ptr = nullptr;
@@ -853,6 +863,9 @@ vr::EVRInitError OutputManager::InitOverlay()
             {
                 DisplayMsg(L"Desktop+ has been successfully added to SteamVR.\nIt will now automatically launch when SteamVR is run.", L"Desktop+ Initial Setup", S_OK);
             }
+
+            //Show the dashboard overlay as well to make it easier to find when first using the app
+            vr::VROverlay()->ShowDashboard("elvissteinjr.DesktopPlusDashboard");
         }
     }
 

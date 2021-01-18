@@ -1245,7 +1245,7 @@ void WindowPerformance::RefreshTrackerBatteryList()
 
     for (vr::TrackedDeviceIndex_t i = 0; i < vr::k_unMaxTrackedDeviceCount; ++i)
     {
-        if (vr::VRSystem()->GetTrackedDeviceClass(i) == vr::TrackedDeviceClass_GenericTracker)
+        if ( (vr::VRSystem()->GetTrackedDeviceClass(i) == vr::TrackedDeviceClass_GenericTracker) && (vr::VRSystem()->IsTrackedDeviceConnected(i)) )
         {
             m_BatteryTrackers.emplace_back(i, vr::VRSystem()->GetFloatTrackedDeviceProperty(i, vr::Prop_DeviceBatteryPercentage_Float) * 100.0f);
         }
