@@ -6,6 +6,7 @@
 #include "imgui.h"
 
 //More colors
+extern ImVec4 Style_ImGuiCol_TextNotification;
 extern ImVec4 Style_ImGuiCol_TextWarning;
 extern ImVec4 Style_ImGuiCol_TextError;
 extern ImVec4 Style_ImGuiCol_ButtonPassiveToggled; //Toggled state for a button indicating a passive state, rather a full-on eye-catching active state

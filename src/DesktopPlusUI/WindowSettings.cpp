@@ -242,6 +242,48 @@ void WindowSettings::UpdateWarnings()
         }
     }
 
+    //Welcome "warning"
+    {
+        bool& hide_welcome_warning = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_welcome_hidden);
+
+        if (!hide_welcome_warning)
+        {
+            //Use selectable stretching over the text area to make it clickable
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f); //Make the selectable invisible though
+            if (ImGui::Selectable("##WarningWelcome"))
+            {
+                ImGui::OpenPopup("DontShowAgain5");
+            }
+            ImGui::PopStyleVar();
+            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::TextColored(Style_ImGuiCol_TextNotification, "Welcome to Desktop+! Click here to see some tips on getting started with the application.");
+
+            bool open_popup = false;
+
+            if (ImGui::BeginPopup("DontShowAgain5"))
+            {
+                if (ImGui::Selectable("Show Quick Start Guide"))
+                {
+                    open_popup = true;
+                }
+                else if (ImGui::Selectable("Don't show this again"))
+                {
+                    hide_welcome_warning = true;
+                }
+                ImGui::EndPopup();
+            }
+
+            if (open_popup)
+            {
+                ImGui::OpenPopup("QuickStartGuidePopup");
+            }
+
+            PopupQuickStartGuide();
+
+            warning_displayed = true;
+        }
+    }
+
     //Separate from the main content if a warning was actually displayed
     if (warning_displayed)
     {
@@ -2386,8 +2428,10 @@ void WindowSettings::UpdateCatMisc()
             warning_hidden_count++;
         if (ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_elevated_mode_hidden))
             warning_hidden_count++;
+        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_welcome_hidden))
+            warning_hidden_count++;
 
-        ImGui::Text("Warnings Hidden: %i", warning_hidden_count);
+        ImGui::Text("Warnings/Notifications Hidden: %i", warning_hidden_count);
 
         if (ImGui::Button("Reset Hidden Warnings"))
         {
@@ -2395,6 +2439,7 @@ void WindowSettings::UpdateCatMisc()
             ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_compositor_res_hidden,     false);
             ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_process_elevation_hidden,  false);
             ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_elevated_mode_hidden,      false);
+            ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_welcome_hidden,            false);
         }
 
         ImGui::Columns(1);
@@ -3229,6 +3274,139 @@ bool WindowSettings::ActionButtonRow(ActionID action_id, int list_pos, int& list
     ImGui::Columns(1);
 
     return delete_pressed;
+}
+
+void WindowSettings::PopupQuickStartGuide()
+{
+    static int current_page = 0;
+
+    //Set popup rounding to the same as a normal window
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, ImGui::GetStyle().WindowRounding);
+
+    //Use larger window with large interface style
+    float size_mul = (ConfigManager::Get().GetConfigBool(configid_bool_interface_large_style)) ? 1.25f : 1.0f;
+
+    ImGui::SetWindowSize(ImVec2(GetSize().x * 0.5f * size_mul, -1));
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+
+    if (ImGui::BeginPopup("QuickStartGuidePopup", ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    {
+        ImGui::BeginChild("ChildPageContent", ImVec2(GetSize().x * 0.5f * size_mul, ImGui::GetIO().DisplaySize.y * 0.5f * size_mul));
+
+        //This would've used highlighting and such if it didn't break with wrapped text... oh well.
+        switch (current_page)
+        {
+            case 0:
+            {
+                ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Welcome to Desktop+!");
+
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(ImGui::GetStyle().ItemSpacing.x, 0.0f) );
+
+                ImGui::TextWrapped("This short guide will introduce you to the very basics of the application.\n"
+                                   "For more detailed information see the ReadMe and User Guide.");
+
+                break;
+
+            }
+            case 1:
+            {
+                ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Overlays");
+
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(ImGui::GetStyle().ItemSpacing.x, 0.0f) );
+
+                ImGui::TextWrapped("Desktop+ allows you to create overlays mirroring your desktops or individual windows.\n"
+                                   "Each created overlay can be customized in the Overlays settings page.\n"
+                                   "\n"
+                                   "The first overlay is special. It's only visible in and fixed to the Desktop+ dashboard tab.\n"
+                                   "If you wish to bring an desktop into the game world for example, you need to add another overlay.\n"
+                                   "Additional overlays can be created in the overlay management popup.");
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text("You can get there by clicking on ");
+                ImGui::SameLine(0.0f, 0.0f);
+                ImGui::Button("Manage");
+                ImGui::SameLine(0.0f, 0.0f);
+                ImGui::Text(".\n\n");
+
+                ImGui::TextWrapped("Individual overlays or complete layouts can be saved to profiles. Desktop+ comes with a few sample profiles you can check out.\n"
+                                   "The current overlay setup will automatically be remembered between sessions.");
+                break;
+            }
+            case 2:
+            {
+                ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Actions");
+
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(ImGui::GetStyle().ItemSpacing.x, 0.0f) );
+
+                ImGui::TextWrapped("Actions in Desktop+ are functions which can be bound to controller inputs, added to the Action Bar at the bottom as buttons and more.\n\n"
+                                   "There are built-in and user-defined custom actions. Custom actions can do things like pressing keyboard shortcuts, text input, execute applications, and control overlay state.\n"
+                                   "\n"
+                                   "\"Switch Task\", \"Open ReadMe\" and \"Middle/Back Mouse Button\" are examples of custom actions.\n"
+                                   "You may change or even remove them entirely if you want to.");
+                break;
+            }
+            case 3:
+            {
+                ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Further Reading");
+
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(ImGui::GetStyle().ItemSpacing.x, 0.0f) );
+
+                ImGui::TextWrapped("This should already be enough to get you started with Desktop+. There are a lot of options, but don't be afraid to just try them out.\n"
+                                   "If you run into any trouble or get stuck, make sure to check out the ReadMe as well.\n"
+                                   "The button in the Action Bar will open it for you.\n"
+                                   "\n"
+                                   "Detailed explanations of each option and step-by-step guides for common usage scenarios can be found the in the User Guide linked in the ReadMe.\n"
+                                   "\n"
+                                   "To remove the welcome notification, click on it and choose \"Do not show this again\".");
+                break;
+            }
+        }
+
+        ImGui::PopStyleVar(); //ImGuiStyleVar_ItemSpacing
+
+        ImGui::EndChild();
+
+        ImGui::Separator();
+
+        int current_page_prev = current_page;
+
+        if (current_page_prev == 0)
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Button("Previous Page")) 
+        {
+            current_page--;
+            UIManager::Get()->RepeatFrame();
+        }
+
+        if (current_page_prev == 0)
+            ImGui::PopItemDisabled();
+
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+        if (current_page_prev == 3)
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Button("Next Page")) 
+        {
+            current_page++;
+            UIManager::Get()->RepeatFrame();
+        }
+
+        if (current_page_prev == 3)
+            ImGui::PopItemDisabled();
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Close")) 
+        {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::PopStyleVar(); //ImGuiStyleVar_PopupRounding
 }
 
 bool WindowSettings::PopupCurrentOverlayManage()

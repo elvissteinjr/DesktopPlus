@@ -8,6 +8,7 @@
 #include "imgui_internal.h"
 #include "UIManager.h"
 
+ImVec4 Style_ImGuiCol_TextNotification;
 ImVec4 Style_ImGuiCol_TextWarning;
 ImVec4 Style_ImGuiCol_TextError;
 ImVec4 Style_ImGuiCol_ButtonPassiveToggled;

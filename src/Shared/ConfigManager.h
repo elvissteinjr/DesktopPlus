@@ -38,6 +38,7 @@ enum ConfigID_Bool
     configid_bool_interface_warning_compositor_quality_hidden,
     configid_bool_interface_warning_process_elevation_hidden,
     configid_bool_interface_warning_elevated_mode_hidden,
+    configid_bool_interface_warning_welcome_hidden,
     configid_bool_performance_rapid_laser_pointer_updates,
     configid_bool_performance_single_desktop_mirroring,
     configid_bool_performance_monitor_large_style,

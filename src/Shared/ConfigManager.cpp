@@ -375,6 +375,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]  = config.ReadBool("Interface", "WarningCompositorQualityHidden", false);
     m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]   = config.ReadBool("Interface", "WarningProcessElevationHidden", false);
     m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]       = config.ReadBool("Interface", "WarningElevatedModeHidden", false);
+    m_ConfigBool[configid_bool_interface_warning_welcome_hidden]             = config.ReadBool("Interface", "WarningWelcomeHidden", false);
     m_ConfigInt[configid_int_interface_wmr_ignore_vscreens]                  = config.ReadInt( "Interface", "WMRIgnoreVScreens", -1);
 
     OverlayManager::Get().SetCurrentOverlayID(m_ConfigInt[configid_int_interface_overlay_current_id]);
@@ -672,6 +673,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Interface", "WarningCompositorQualityHidden",    m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]);
     config.WriteBool("Interface", "WarningProcessElevationHidden",     m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]);
     config.WriteBool("Interface", "WarningElevatedModeHidden",         m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]);
+    config.WriteBool("Interface", "WarningWelcomeHidden",              m_ConfigBool[configid_bool_interface_warning_welcome_hidden]);
 
     //Only write WMR settings when they're not -1 since they get set to that when using a non-WMR system. We want to preserve them for HMD-switching users
     if (m_ConfigInt[configid_int_interface_wmr_ignore_vscreens] != -1)
