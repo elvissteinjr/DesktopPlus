@@ -682,10 +682,12 @@ void InitImGui(HWND hwnd)
     colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
     colors[ImGuiCol_CheckMark]              = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
     colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    Style_ImGuiCol_TextNotification         = ImVec4(0.66f, 0.97f, 0.66f, 1.00f);
+    Style_ImGuiCol_TextNotification         = ImVec4(0.64f, 0.97f, 0.26f, 1.00f);
     Style_ImGuiCol_TextWarning              = ImVec4(0.98f, 0.81f, 0.26f, 1.00f);
     Style_ImGuiCol_TextError                = ImVec4(0.97f, 0.33f, 0.33f, 1.00f);
     Style_ImGuiCol_ButtonPassiveToggled     = ImVec4(0.180f, 0.349f, 0.580f, 0.404f);
+
+    ImGui::GetStyle().WindowRounding = 7.0f;
 
     //Setup ImPlot style
     ImPlotStyle& plot_style = ImPlot::GetStyle();

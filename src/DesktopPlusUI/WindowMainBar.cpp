@@ -13,41 +13,43 @@ void WindowMainBar::DisplayTooltipIfHovered(const char* text)
 {
     if (ImGui::IsItemHovered())
     {
-        static ImVec2 pos_last; //Remember last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
+        static ImVec2 button_pos_last; //Remember last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
         ImVec2 pos = ImGui::GetItemRectMin();
         float button_width = ImGui::GetItemRectSize().x;
 
         //Default tooltips are not suited for this as there's too much trouble with resize flickering and stuff
-        ImGui::SetNextWindowPos(pos_last);
         ImGui::Begin(text, NULL, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | 
                                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
 
         ImGui::Text(text);
 
-        ImVec2 window_size = ImGui::GetWindowSize();
+        //Not using GetWindowSize() here since it's delayed and plays odd when switching between buttons with the same label
+        ImVec2 window_size = ImGui::GetItemRectSize();
+        window_size.x += ImGui::GetStyle().WindowPadding.x * 2.0f;
+        window_size.y += ImGui::GetStyle().WindowPadding.y * 2.0f;
 
         //Repeat frame when the window is appearing as it will not have the right position (either from being first time or still having old pos)
-        if (ImGui::IsWindowAppearing())
+        if ( (ImGui::IsWindowAppearing()) || (pos.x != button_pos_last.x) )
         {
             UIManager::Get()->RepeatFrame();
         }
+
+        button_pos_last = pos;
+
+        pos.x += (button_width / 2.0f) - (window_size.x / 2.0f);
+        pos.y -= window_size.y + ImGui::GetStyle().WindowPadding.y;
+
+        //Clamp x so the tooltip does not get cut off
+        if (m_WndSettingsPtr == nullptr)                //if floating UI mode
+        {
+            pos.x = clamp(pos.x, 0.0f, m_Pos.x + m_Size.x - window_size.x);             //Clamp right side to right end of bar
+        }
         else
         {
-            pos.x += (button_width / 2.0f) - (window_size.x / 2.0f);
-            pos.y -= window_size.y + ImGui::GetStyle().WindowPadding.y;
-
-            //Clamp x so the tooltip does not get cut off
-            if (m_WndSettingsPtr == nullptr)                //if floating UI mode
-            {
-                pos.x = clamp(pos.x, 0.0f, m_Pos.x + m_Size.x - window_size.x);             //Clamp right side to right end of bar
-            }
-            else
-            {
-                pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);   //Clamp right side to texture end
-            }
+            pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);   //Clamp right side to texture end
         }
 
-        pos_last = pos;
+        ImGui::SetWindowPos(pos);
 
         ImGui::End();
     }

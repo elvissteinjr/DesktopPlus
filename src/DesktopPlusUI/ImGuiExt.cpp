@@ -184,11 +184,13 @@ namespace ImGui
             static float last_y_offset = FLT_MIN;       //Try to avoid getting the tooltip off-screen... the way it's done here is a bit messy to be fair
 
             float pos_y = ImGui::GetItemRectMin().y;
+            bool is_invisible = false;
 
             if (last_y_offset == FLT_MIN) //Same as IsWindowAppearing except the former doesn't work before beginning the window which is too late for the position...
             {
-                //We need to create the tooltip window for size calculations to happen but also don't want to see it... is there really not a better way?
-                ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y));
+                //We need to create the tooltip window for size calculations to happen but also don't want to see it... so alpha 0, even if wasteful
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f);
+                is_invisible = true;
             }
             else
             {
@@ -220,6 +222,9 @@ namespace ImGui
             }
 
             ImGui::EndTooltip();
+
+            if (is_invisible)
+                ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
 
         }
     }

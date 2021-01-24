@@ -187,6 +187,7 @@
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
+    <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="imgui_win32_dx11_openvr\imgui_impl_dx11_openvr.cpp" />
     <ClCompile Include="imgui_win32_dx11_openvr\imgui_impl_win32_openvr.cpp" />

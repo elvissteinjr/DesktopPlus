@@ -15,32 +15,34 @@ void WindowSideBar::DisplayTooltipIfHovered(const char* text)
     //Compared to WindowMainBar's function, this one puts the tooltip to the left of the button
     if (ImGui::IsItemHovered())
     {
-        static ImVec2 pos_last; //Remeber last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
+        static ImVec2 button_pos_last; //Remeber last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
         ImVec2 pos = ImGui::GetItemRectMin();
         float button_width  = ImGui::GetItemRectSize().x;
         float button_height = ImGui::GetItemRectSize().y;
 
         //Default tooltips are not suited for this as there's too much trouble with resize flickering and stuff
-        ImGui::SetNextWindowPos(pos_last);
         ImGui::Begin(text, NULL, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | 
                                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
 
         ImGui::Text(text);
 
-        ImVec2 window_size = ImGui::GetWindowSize();
+        //Not using GetWindowSize() here since it's delayed and plays odd when switching between buttons with the same label
+        ImVec2 window_size = ImGui::GetItemRectSize();
+        window_size.x += ImGui::GetStyle().WindowPadding.x * 2.0f;
+        window_size.y += ImGui::GetStyle().WindowPadding.y * 2.0f;
 
         //Repeat frame when the window is appearing as it will not have the right position (either from being first time or still having old pos)
-        if (ImGui::IsWindowAppearing())
+        if ( (ImGui::IsWindowAppearing()) || (pos.y != button_pos_last.y) )
         {
             UIManager::Get()->RepeatFrame();
         }
-        else
-        {
-            pos.x -= window_size.x + ImGui::GetStyle().WindowPadding.x;
-            pos.y += (button_height / 2.0f) - (window_size.y / 2.0f);
-        }
 
-        pos_last = pos;
+        button_pos_last = pos;
+
+        pos.x -= window_size.x + ImGui::GetStyle().WindowPadding.x;
+        pos.y += (button_height / 2.0f) - (window_size.y / 2.0f);
+
+        ImGui::SetWindowPos(pos);
 
         ImGui::End();
     }

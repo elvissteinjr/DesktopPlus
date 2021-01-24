@@ -76,6 +76,9 @@
       <Filter>ImPlot</Filter>
     </ClCompile>
     <ClCompile Include="NotificationIcon.cpp" />
+    <ClCompile Include="imgui\imgui_tables.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imstb_truetype.h">

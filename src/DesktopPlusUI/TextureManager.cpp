@@ -104,8 +104,8 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
 
     ImFontConfig config_compact;
     ImFontConfig config_large;
-    config_compact.MergeMode = true;
-    config_large.MergeMode = true;
+    config_compact.GlyphOffset.y = -1; //Set offset to make it not look so bad
+    config_large.GlyphOffset.y   = -1;
     ImFontConfig* config = &config_compact;
 
     //Try to load fonts
@@ -121,12 +121,12 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         //AddFontFromFileTTF asserts when failing to load, so check for existence, though it's not really an issue in release mode
         if (FileExists(L"C:\\Windows\\Fonts\\segoeui.ttf"))
         {
-            font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", font_base_size * UIManager::Get()->GetUIScale(), nullptr, ranges.Data);
+            font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);
         }
 
         if (font != nullptr)
         {
-            font->DisplayOffset.y = -1; //Set offset to make it not look so bad
+            config->MergeMode = true;
 
             //Segoe UI doesn't have any CJK, use some fallbacks (loading this is actually pretty fast)
             if (FileExists(L"C:\\Windows\\Fonts\\msgothic.ttc"))

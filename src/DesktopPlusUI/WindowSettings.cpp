@@ -1686,7 +1686,7 @@ void WindowSettings::UpdateCatInput()
 
             if (ImGui::BeginPopup("PopupOpenControllerBindingsDesktopPlus"))
             {
-                if (ImGui::Selectable("Desktop+ Controller Bindings"))
+                if (ImGui::Selectable("Open Desktop+ Controller Bindings"))
                 {
                     //See comment on the active controller buttons
                     vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
@@ -3266,8 +3266,6 @@ bool WindowSettings::ActionButtonRow(ActionID action_id, int list_pos, int& list
         list_selected_pos = list_pos;
     }
 
-    ImGui::NextColumn();
-
     ImGui::PopID();
     ImGui::PopID();
 
@@ -4734,7 +4732,10 @@ void WindowSettings::Update()
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_Alpha);
 
     if (UIManager::Get()->IsInDesktopMode())    //Act as a "fullscreen" window if in desktop mode
+    {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    }
 
     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
     ImGui::SetNextWindowSize(m_Size);
@@ -4756,7 +4757,10 @@ void WindowSettings::Update()
 
     //Early pop as we have popups which should have a normal border
     if (UIManager::Get()->IsInDesktopMode())
+    {
         ImGui::PopStyleVar(); //ImGuiStyleVar_WindowBorderSize
+        ImGui::PopStyleVar(); //ImGuiStyleVar_WindowRounding
+    }
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, ImGui::GetStyle().ItemSpacing.y});
 
