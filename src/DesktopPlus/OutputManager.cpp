@@ -118,271 +118,163 @@ OutputManager::~OutputManager()
     g_OutputManager = nullptr;
 }
 
-bool OutputManager::GetOverlayActive() const
+//
+// Releases all references
+//
+void OutputManager::CleanRefs()
 {
-    return (m_OvrlActiveCount != 0);
-}
-
-bool OutputManager::GetOverlayInputActive() const
-{
-    return m_OvrlInputActive;
-}
-
-DWORD OutputManager::GetMaxRefreshDelay() const
-{
-    if ( (m_OvrlActiveCount != 0) || (m_OvrlDashboardActive) )
+    if (m_VertexShader)
     {
-        //Actually causes extreme load while not really being necessary (looks nice tho)
-        if ( (m_OvrlInputActive) && (ConfigManager::Get().GetConfigBool(configid_bool_performance_rapid_laser_pointer_updates)) )
-        {
-            return 0;
-        }
-        else
-        {
-            return m_MaxActiveRefreshDelay;
-        }
-    }
-    else if ( (m_VRInput.IsAnyActionBound()) || IsAnyOverlayUsingGazeFade() )
-    {
-        return m_MaxActiveRefreshDelay * 2;
-    }
-    else
-    {
-        return 300;
-    }
-}
-
-float OutputManager::GetHMDFrameRate() const
-{
-    return vr::VRSystem()->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DisplayFrequency_Float);
-}
-
-float OutputManager::GetTimeNowToPhotons() const
-{
-    float seconds_since_last_vsync;
-    vr::VRSystem()->GetTimeSinceLastVsync(&seconds_since_last_vsync, nullptr);
-
-    float vsync_to_photons = vr::VRSystem()->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SecondsFromVsyncToPhotons_Float);
-
-    return (1.0f / GetHMDFrameRate()) - seconds_since_last_vsync + vsync_to_photons;
-}
-
-int OutputManager::GetDesktopWidth() const
-{
-    return m_DesktopWidth;
-}
-
-int OutputManager::GetDesktopHeight() const
-{
-    return m_DesktopHeight;
-}
-
-void OutputManager::ShowOverlay(unsigned int id)
-{
-    Overlay& overlay = OverlayManager::Get().GetOverlay(id);
-
-    if (overlay.IsVisible()) //Already visible? Abort.
-    {
-        return;
+        m_VertexShader->Release();
+        m_VertexShader = nullptr;
     }
 
-    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-    OverlayManager::Get().SetCurrentOverlayID(id);
-    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
-    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(id);
-
-    if (m_OvrlActiveCount == 0) //First overlay to become active
+    if (m_PixelShader)
     {
-        ::timeBeginPeriod(1);   //This is somewhat frowned upon, but we want to hit the polling rate, it's only when active and we're in a high performance situation anyways
-
-        //Set last pointer values to current to not trip the movement detection up
-        ResetMouseLastLaserPointerPos();
-        m_MouseIgnoreMoveEvent = false;
-
-        WindowManager::Get().SetActive(true);
+        m_PixelShader->Release();
+        m_PixelShader = nullptr;
     }
 
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) && (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
-         (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
+    if (m_PixelShaderCursor)
     {
-        vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
+        m_PixelShaderCursor->Release();
+        m_PixelShaderCursor = nullptr;
     }
 
-    m_OvrlActiveCount++;
-
-    if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+    if (m_InputLayout)
     {
-        if (m_OvrlDesktopDuplActiveCount == 0) //First Desktop Duplication overlay to become active
-        {
-            //Signal duplication threads to resume in case they're paused
-            ::ResetEvent(m_PauseDuplicationEvent);
-            ::SetEvent(m_ResumeDuplicationEvent);
-
-            ForceScreenRefresh();
-        }
-
-        m_OvrlDesktopDuplActiveCount++;
-    }
-    else if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
-    {
-        //Unpause capture
-        DPWinRT_PauseCapture(ovrl_handle, false);
+        m_InputLayout->Release();
+        m_InputLayout = nullptr;
     }
 
-    overlay.SetVisible(true);
-
-    ApplySettingTransform();
-
-    //Overlay could affect update limiter, so apply setting
-    if (data.ConfigInt[configid_int_overlay_update_limit_override_mode] != update_limit_mode_off)
+    if (m_Sampler)
     {
-        ApplySettingUpdateLimiter();
+        m_Sampler->Release();
+        m_Sampler = nullptr;
     }
 
-    //If the last clipping rect doesn't fully contain the overlay's crop rect, the desktop texture overlay is probably outdated there, so force a full refresh
-    if ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) && (!m_OutputLastClippingRect.Contains(overlay.GetValidatedCropRect())) )
+    if (m_BlendState)
     {
-        RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
+        m_BlendState->Release();
+        m_BlendState = nullptr;
     }
 
-    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
-}
-
-void OutputManager::HideOverlay(unsigned int id)
-{
-    Overlay& overlay = OverlayManager::Get().GetOverlay(id);
-
-    if (!overlay.IsVisible()) //Already hidden? Abort.
+    if (m_RasterizerState)
     {
-        return;
+        m_RasterizerState->Release();
+        m_RasterizerState = nullptr;
     }
 
-    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-    OverlayManager::Get().SetCurrentOverlayID(id);
-    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
-    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(id);
-
-    overlay.SetVisible(false);
-
-    if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) == id) //Don't leave the keyboard open when hiding
+    if (m_DeviceContext)
     {
-        vr::VROverlay()->HideKeyboard();
+        m_DeviceContext->Release();
+        m_DeviceContext = nullptr;
     }
 
-    //Overlay could've affected update limiter, so apply setting
-    if (data.ConfigInt[configid_int_overlay_update_limit_override_mode] != update_limit_mode_off)
+    if (m_Device)
     {
-        ApplySettingUpdateLimiter();
+        m_Device->Release();
+        m_Device = nullptr;
     }
 
-    m_OvrlActiveCount--;
-
-    if (m_OvrlActiveCount == 0) //Last overlay to become inactive
+    if (m_SharedSurf)
     {
-        ::timeEndPeriod(1);
-        WindowManager::Get().SetActive(false);
+        m_SharedSurf->Release();
+        m_SharedSurf = nullptr;
     }
 
-    if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+    if (m_VertexBuffer)
     {
-        m_OvrlDesktopDuplActiveCount--;
-
-        if (m_OvrlDesktopDuplActiveCount == 0) //Last Desktop Duplication overlay to become inactive
-        {
-            //Signal duplication threads to pause since we don't need them to do needless work
-            ::ResetEvent(m_ResumeDuplicationEvent);
-            ::SetEvent(m_PauseDuplicationEvent);
-        }
-    }
-    else if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
-    {
-        //Pause capture
-        DPWinRT_PauseCapture(ovrl_handle, true);
+        m_VertexBuffer->Release();
+        m_VertexBuffer = nullptr;
     }
 
-    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
-}
-
-void OutputManager::ResetOverlayActiveCount()
-{
-    bool desktop_duplication_was_paused = (m_OvrlDesktopDuplActiveCount == 0);
-
-    m_OvrlActiveCount = 0;
-    m_OvrlDesktopDuplActiveCount = 0;
-
-    //Check every existing overlay for visibility and count them as active
-    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    if (m_ShaderResource)
     {
-        Overlay& overlay = OverlayManager::Get().GetOverlay(i);
-        OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
-
-        if (overlay.IsVisible())
-        {
-            m_OvrlActiveCount++;
-
-            if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
-            {
-                m_OvrlDesktopDuplActiveCount++;
-            }
-        }
+        m_ShaderResource->Release();
+        m_ShaderResource = nullptr;
     }
 
-    //Fixup desktop duplication state
-    if ( (desktop_duplication_was_paused) && (m_OvrlDesktopDuplActiveCount > 0) )
+    if (m_OvrlTex)
     {
-        //Signal duplication threads to resume
-        ::ResetEvent(m_PauseDuplicationEvent);
-        ::SetEvent(m_ResumeDuplicationEvent);
-
-        ForceScreenRefresh();
-    }
-    else if ( (!desktop_duplication_was_paused) && (m_OvrlDesktopDuplActiveCount == 0) )
-    {
-        //Signal duplication threads to pause
-        ::ResetEvent(m_ResumeDuplicationEvent);
-        ::SetEvent(m_PauseDuplicationEvent);
+        m_OvrlTex->Release();
+        m_OvrlTex = nullptr;
     }
 
-    //Fixup WindowManager state
-    WindowManager::Get().SetActive( (m_OvrlActiveCount > 0) );
-}
+    if (m_OvrlRTV)
+    {
+        m_OvrlRTV->Release();
+        m_OvrlRTV = nullptr;
+    }
 
-bool OutputManager::HasDashboardBeenActivatedOnce() const
-{
-    return m_DashboardActivatedOnce;
-}
+    if (m_OvrlShaderResView)
+    {
+        m_OvrlShaderResView->Release();
+        m_OvrlShaderResView = nullptr;
+    }
 
-bool OutputManager::IsDashboardTabActive() const
-{
-    return m_OvrlDashboardActive;
-}
+    if (m_MouseTex)
+    {
+        m_MouseTex->Release();
+        m_MouseTex = nullptr;
+    }
 
-void OutputManager::SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle)
-{
-    vr::EVROverlayError vr_error = vr::VROverlay()->SetOverlayFromFile(overlay_handle, (ConfigManager::Get().GetApplicationPath() + "images/output_error.png").c_str());    
+    if (m_MouseShaderRes)
+    {
+        m_MouseShaderRes->Release();
+        m_MouseShaderRes = nullptr;
+    }
 
-    vr::VRTextureBounds_t tex_bounds;
-    tex_bounds.uMin = 0.0f;
-    tex_bounds.vMin = 0.0f;
-    tex_bounds.uMax = 1.0f;
-    tex_bounds.vMax = 1.0f;
+    //Reset mouse state variables too
+    m_MouseLastClickTick = 0;
+    m_MouseIgnoreMoveEvent = false;
+    m_MouseLastInfo = {0};
+    m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
+    m_MouseLastLaserPointerX = -1;
+    m_MouseLastLaserPointerY = -1;
+    m_MouseDefaultHotspotX = 0;
+    m_MouseDefaultHotspotY = 0;
 
-    vr::VROverlay()->SetOverlayTextureBounds(overlay_handle, &tex_bounds);
-}
+    if (m_KeyMutex)
+    {
+        m_KeyMutex->Release();
+        m_KeyMutex = nullptr;
+    }
 
-void OutputManager::SetOutputInvalid()
-{
-    m_OutputInvalid = true;
-    SetOutputErrorTexture(m_OvrlHandleDesktopTexture);
-    m_DesktopWidth  = k_lOverlayOutputErrorTextureWidth;
-    m_DesktopHeight = k_lOverlayOutputErrorTextureHeight;
+    if (m_Factory)
+    {
+        m_Factory->Release();
+        m_Factory = nullptr;
+    }
 
-    ResetOverlays();
-}
+    if (m_ComInitDone)
+    {
+        ::CoUninitialize();
+    }
 
-bool OutputManager::IsOutputInvalid() const
-{
-    return m_OutputInvalid;
+    if (m_MultiGPUTargetDevice)
+    {
+        m_MultiGPUTargetDevice->Release();
+        m_MultiGPUTargetDevice = nullptr;
+    }
+
+    if (m_MultiGPUTargetDeviceContext)
+    {
+        m_MultiGPUTargetDeviceContext->Release();
+        m_MultiGPUTargetDeviceContext = nullptr;
+    }
+
+    if (m_MultiGPUTexStaging)
+    {
+        m_MultiGPUTexStaging->Release();
+        m_MultiGPUTexStaging = nullptr;
+    }
+
+    if (m_MultiGPUTexTarget)
+    {
+        m_MultiGPUTexTarget->Release();
+        m_MultiGPUTexTarget = nullptr;
+    }
 }
 
 //
@@ -878,223 +770,6 @@ vr::EVRInitError OutputManager::InitOverlay()
         return vr::VRInitError_None;
     else
         return vr::VRInitError_Compositor_OverlayInitFailed;
-}
-
-//
-// Recreate textures
-//
-DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds)
-{
-    HRESULT hr;
-
-    // Get DXGI resources
-    IDXGIDevice* DxgiDevice = nullptr;
-    hr = m_Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DxgiDevice));
-    if (FAILED(hr))
-    {
-        return ProcessFailure(nullptr, L"Failed to QI for DXGI device", L"Error", hr);
-    }
-
-    IDXGIAdapter* DxgiAdapter = nullptr;
-    hr = DxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&DxgiAdapter));
-    DxgiDevice->Release();
-    DxgiDevice = nullptr;
-    if (FAILED(hr))
-    {
-        return ProcessFailure(m_Device, L"Failed to get parent DXGI adapter", L"Error", hr, SystemTransitionsExpectedErrors);
-    }
-
-    // Set initial values so that we always catch the right coordinates
-    DeskBounds->left = INT_MAX;
-    DeskBounds->right = INT_MIN;
-    DeskBounds->top = INT_MAX;
-    DeskBounds->bottom = INT_MIN;
-
-    IDXGIOutput* DxgiOutput = nullptr;
-
-    // Figure out right dimensions for full size desktop texture and # of outputs to duplicate
-    UINT OutputCount;
-    if (SingleOutput < 0)
-    {
-        int desktop_count = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
-
-        hr = S_OK;
-        for (OutputCount = 0; SUCCEEDED(hr); ++OutputCount)
-        {
-            //Break early if used desktop count is lower than actual output count
-            if (OutputCount >= desktop_count)
-            {
-                ++OutputCount;
-                break;
-            }
-
-            if (DxgiOutput)
-            {
-                DxgiOutput->Release();
-                DxgiOutput = nullptr;
-            }
-            hr = DxgiAdapter->EnumOutputs(OutputCount, &DxgiOutput);
-            if (DxgiOutput && (hr != DXGI_ERROR_NOT_FOUND))
-            {
-                DXGI_OUTPUT_DESC DesktopDesc;
-                DxgiOutput->GetDesc(&DesktopDesc);
-
-                DeskBounds->left = std::min(DesktopDesc.DesktopCoordinates.left, DeskBounds->left);
-                DeskBounds->top = std::min(DesktopDesc.DesktopCoordinates.top, DeskBounds->top);
-                DeskBounds->right = std::max(DesktopDesc.DesktopCoordinates.right, DeskBounds->right);
-                DeskBounds->bottom = std::max(DesktopDesc.DesktopCoordinates.bottom, DeskBounds->bottom);
-            }
-        }
-
-        --OutputCount;
-    }
-    else
-    {
-        hr = DxgiAdapter->EnumOutputs(SingleOutput, &DxgiOutput);
-        if (FAILED(hr)) //Output doesn't exist. This will result in a soft-error invalid output state
-        {
-            DxgiAdapter->Release();
-            DxgiAdapter = nullptr;
-
-            m_DesktopX = 0;
-            m_DesktopY = 0;
-            m_DesktopWidth = -1;
-            m_DesktopHeight = -1;
-
-            *OutCount = 0;
-
-            return DUPL_RETURN_ERROR_EXPECTED;
-        }
-
-        DXGI_OUTPUT_DESC DesktopDesc;
-        DxgiOutput->GetDesc(&DesktopDesc);
-        *DeskBounds = DesktopDesc.DesktopCoordinates;
-
-        DxgiOutput->Release();
-        DxgiOutput = nullptr;
-
-        OutputCount = 1;
-    }
-
-    DxgiAdapter->Release();
-    DxgiAdapter = nullptr;
-
-    // Set passed in output count variable
-    *OutCount = OutputCount;
-
-    if (OutputCount == 0) //This state can only be entered on the combined desktop setting now... oops?
-    {
-        // We could not find any outputs, the system must be in a transition so return expected error
-        // so we will attempt to recreate
-        return DUPL_RETURN_ERROR_EXPECTED;
-    }
-
-    //Store size and position
-    m_DesktopX = DeskBounds->left;
-    m_DesktopY = DeskBounds->top;
-    m_DesktopWidth  = DeskBounds->right - DeskBounds->left;
-    m_DesktopHeight = DeskBounds->bottom - DeskBounds->top;
-
-    //Set it as mouse scale on the desktop texture overlay for the UI to read the resolution from there
-    vr::HmdVector2_t mouse_scale;
-    mouse_scale.v[0] = m_DesktopWidth;
-    mouse_scale.v[1] = m_DesktopHeight;
-    vr::VROverlay()->SetOverlayMouseScale(m_OvrlHandleDesktopTexture, &mouse_scale);
-
-    // Create shared texture for all duplication threads to draw into
-    D3D11_TEXTURE2D_DESC TexD;
-    RtlZeroMemory(&TexD, sizeof(D3D11_TEXTURE2D_DESC));
-    TexD.Width = m_DesktopWidth;
-    TexD.Height = m_DesktopHeight;
-    TexD.MipLevels = 1;
-    TexD.ArraySize = 1;
-    TexD.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    TexD.SampleDesc.Count = 1;
-    TexD.Usage = D3D11_USAGE_DEFAULT;
-    TexD.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-    TexD.CPUAccessFlags = 0;
-    TexD.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
-    
-    hr = m_Device->CreateTexture2D(&TexD, nullptr, &m_SharedSurf);
-
-    if (!FAILED(hr))
-    {
-        TexD.MiscFlags = 0;
-        hr = m_Device->CreateTexture2D(&TexD, nullptr, &m_OvrlTex);
-    }
-
-    if (FAILED(hr))
-    {
-        if (OutputCount != 1)
-        {
-            // If we are duplicating the complete desktop we try to create a single texture to hold the
-            // complete desktop image and blit updates from the per output DDA interface.  The GPU can
-            // always support a texture size of the maximum resolution of any single output but there is no
-            // guarantee that it can support a texture size of the desktop.
-            return ProcessFailure(m_Device, L"Failed to create shared texture. Combined desktop texture size may be larger than the maximum supported supported size of the GPU", L"Error", hr, SystemTransitionsExpectedErrors);
-        }
-        else
-        {
-            return ProcessFailure(m_Device, L"Failed to create shared texture", L"Error", hr, SystemTransitionsExpectedErrors);
-        }
-    }
-
-    // Get keyed mutex
-    hr = m_SharedSurf->QueryInterface(__uuidof(IDXGIKeyedMutex), reinterpret_cast<void**>(&m_KeyMutex));
-
-    if (FAILED(hr))
-    {
-        return ProcessFailure(m_Device, L"Failed to query for keyed mutex", L"Error", hr);
-    }
-
-    //Create shader resource for shared texture
-    D3D11_TEXTURE2D_DESC FrameDesc;
-    m_SharedSurf->GetDesc(&FrameDesc);
-
-    D3D11_SHADER_RESOURCE_VIEW_DESC ShaderDesc;
-    ShaderDesc.Format = FrameDesc.Format;
-    ShaderDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    ShaderDesc.Texture2D.MostDetailedMip = FrameDesc.MipLevels - 1;
-    ShaderDesc.Texture2D.MipLevels = FrameDesc.MipLevels;
-
-    // Create new shader resource view
-    hr = m_Device->CreateShaderResourceView(m_SharedSurf, &ShaderDesc, &m_ShaderResource);
-    if (FAILED(hr))
-    {
-        return ProcessFailure(m_Device, L"Failed to create shader resource", L"Error", hr, SystemTransitionsExpectedErrors);
-    }
-
-    //Create textures for multi GPU handling if needed
-    if (m_MultiGPUTargetDevice != nullptr)
-    {
-        //Staging texture
-        TexD.Usage = D3D11_USAGE_STAGING;
-        TexD.BindFlags = 0;
-        TexD.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-        TexD.MiscFlags = 0;
-
-        hr = m_Device->CreateTexture2D(&TexD, nullptr, &m_MultiGPUTexStaging);
-
-        if (FAILED(hr))
-        {
-            return ProcessFailure(m_Device, L"Failed to create staging texture", L"Error", hr);
-        }
-
-        //Copy-target texture
-        TexD.Usage = D3D11_USAGE_DYNAMIC;
-        TexD.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        TexD.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-        TexD.MiscFlags = 0;
-
-        hr = m_MultiGPUTargetDevice->CreateTexture2D(&TexD, nullptr, &m_MultiGPUTexTarget);
-
-        if (FAILED(hr))
-        {
-            return ProcessFailure(m_MultiGPUTargetDevice, L"Failed to create copy-target texture", L"Error", hr);
-        }
-    }
-
-    return DUPL_RETURN_SUCCESS;
 }
 
 //
@@ -2023,31 +1698,594 @@ vr::VROverlayHandle_t OutputManager::GetDesktopTextureOverlay() const
     return m_OvrlHandleDesktopTexture;
 }
 
-void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
+bool OutputManager::GetOverlayActive() const
 {
-    // Set resources
-    UINT Stride = sizeof(VERTEX);
-    UINT Offset = 0;
-    const FLOAT blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    m_DeviceContext->OMSetBlendState(nullptr, blendFactor, 0xffffffff);
-    m_DeviceContext->OMSetRenderTargets(1, &m_OvrlRTV, nullptr);
-    m_DeviceContext->VSSetShader(m_VertexShader, nullptr, 0);
-    m_DeviceContext->PSSetShader(m_PixelShader, nullptr, 0);
-    m_DeviceContext->PSSetShaderResources(0, 1, &m_ShaderResource);
-    m_DeviceContext->PSSetSamplers(0, 1, &m_Sampler);
-    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    return (m_OvrlActiveCount != 0);
+}
 
-    m_DeviceContext->IASetVertexBuffers(0, 1, &m_VertexBuffer, &Stride, &Offset);
+bool OutputManager::GetOverlayInputActive() const
+{
+    return m_OvrlInputActive;
+}
 
-    // Draw textured quad onto render target
-    if (clear_rtv)
+DWORD OutputManager::GetMaxRefreshDelay() const
+{
+    if ( (m_OvrlActiveCount != 0) || (m_OvrlDashboardActive) )
     {
-        const float bgColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        m_DeviceContext->ClearRenderTargetView(m_OvrlRTV, bgColor);
+        //Actually causes extreme load while not really being necessary (looks nice tho)
+        if ( (m_OvrlInputActive) && (ConfigManager::Get().GetConfigBool(configid_bool_performance_rapid_laser_pointer_updates)) )
+        {
+            return 0;
+        }
+        else
+        {
+            return m_MaxActiveRefreshDelay;
+        }
+    }
+    else if ( (m_VRInput.IsAnyActionBound()) || IsAnyOverlayUsingGazeFade() )
+    {
+        return m_MaxActiveRefreshDelay * 2;
+    }
+    else
+    {
+        return 300;
+    }
+}
+
+float OutputManager::GetHMDFrameRate() const
+{
+    return vr::VRSystem()->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DisplayFrequency_Float);
+}
+
+float OutputManager::GetTimeNowToPhotons() const
+{
+    float seconds_since_last_vsync;
+    vr::VRSystem()->GetTimeSinceLastVsync(&seconds_since_last_vsync, nullptr);
+
+    float vsync_to_photons = vr::VRSystem()->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SecondsFromVsyncToPhotons_Float);
+
+    return (1.0f / GetHMDFrameRate()) - seconds_since_last_vsync + vsync_to_photons;
+}
+
+int OutputManager::GetDesktopWidth() const
+{
+    return m_DesktopWidth;
+}
+
+int OutputManager::GetDesktopHeight() const
+{
+    return m_DesktopHeight;
+}
+
+void OutputManager::ShowOverlay(unsigned int id)
+{
+    Overlay& overlay = OverlayManager::Get().GetOverlay(id);
+
+    if (overlay.IsVisible()) //Already visible? Abort.
+    {
+        return;
     }
 
-    m_DeviceContext->Draw(NUMVERTICES, 0);
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    OverlayManager::Get().SetCurrentOverlayID(id);
+    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(id);
+
+    if (m_OvrlActiveCount == 0) //First overlay to become active
+    {
+        ::timeBeginPeriod(1);   //This is somewhat frowned upon, but we want to hit the polling rate, it's only when active and we're in a high performance situation anyways
+
+        //Set last pointer values to current to not trip the movement detection up
+        ResetMouseLastLaserPointerPos();
+        m_MouseIgnoreMoveEvent = false;
+
+        WindowManager::Get().SetActive(true);
+    }
+
+    if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) && (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
+        (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
+    {
+        vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
+    }
+
+    m_OvrlActiveCount++;
+
+    if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+    {
+        if (m_OvrlDesktopDuplActiveCount == 0) //First Desktop Duplication overlay to become active
+        {
+            //Signal duplication threads to resume in case they're paused
+            ::ResetEvent(m_PauseDuplicationEvent);
+            ::SetEvent(m_ResumeDuplicationEvent);
+
+            ForceScreenRefresh();
+        }
+
+        m_OvrlDesktopDuplActiveCount++;
+    }
+    else if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
+    {
+        //Unpause capture
+        DPWinRT_PauseCapture(ovrl_handle, false);
+    }
+
+    overlay.SetVisible(true);
+
+    ApplySettingTransform();
+
+    //Overlay could affect update limiter, so apply setting
+    if (data.ConfigInt[configid_int_overlay_update_limit_override_mode] != update_limit_mode_off)
+    {
+        ApplySettingUpdateLimiter();
+    }
+
+    //If the last clipping rect doesn't fully contain the overlay's crop rect, the desktop texture overlay is probably outdated there, so force a full refresh
+    if ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) && (!m_OutputLastClippingRect.Contains(overlay.GetValidatedCropRect())) )
+    {
+        RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
+    }
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
+
+void OutputManager::HideOverlay(unsigned int id)
+{
+    Overlay& overlay = OverlayManager::Get().GetOverlay(id);
+
+    if (!overlay.IsVisible()) //Already hidden? Abort.
+    {
+        return;
+    }
+
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    OverlayManager::Get().SetCurrentOverlayID(id);
+    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(id);
+
+    overlay.SetVisible(false);
+
+    if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) == id) //Don't leave the keyboard open when hiding
+    {
+        vr::VROverlay()->HideKeyboard();
+    }
+
+    //Overlay could've affected update limiter, so apply setting
+    if (data.ConfigInt[configid_int_overlay_update_limit_override_mode] != update_limit_mode_off)
+    {
+        ApplySettingUpdateLimiter();
+    }
+
+    m_OvrlActiveCount--;
+
+    if (m_OvrlActiveCount == 0) //Last overlay to become inactive
+    {
+        ::timeEndPeriod(1);
+        WindowManager::Get().SetActive(false);
+    }
+
+    if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+    {
+        m_OvrlDesktopDuplActiveCount--;
+
+        if (m_OvrlDesktopDuplActiveCount == 0) //Last Desktop Duplication overlay to become inactive
+        {
+            //Signal duplication threads to pause since we don't need them to do needless work
+            ::ResetEvent(m_ResumeDuplicationEvent);
+            ::SetEvent(m_PauseDuplicationEvent);
+        }
+    }
+    else if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
+    {
+        //Pause capture
+        DPWinRT_PauseCapture(ovrl_handle, true);
+    }
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+}
+
+void OutputManager::ResetOverlayActiveCount()
+{
+    bool desktop_duplication_was_paused = (m_OvrlDesktopDuplActiveCount == 0);
+
+    m_OvrlActiveCount = 0;
+    m_OvrlDesktopDuplActiveCount = 0;
+
+    //Check every existing overlay for visibility and count them as active
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        Overlay& overlay = OverlayManager::Get().GetOverlay(i);
+        OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+        if (overlay.IsVisible())
+        {
+            m_OvrlActiveCount++;
+
+            if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+            {
+                m_OvrlDesktopDuplActiveCount++;
+            }
+        }
+    }
+
+    //Fixup desktop duplication state
+    if ( (desktop_duplication_was_paused) && (m_OvrlDesktopDuplActiveCount > 0) )
+    {
+        //Signal duplication threads to resume
+        ::ResetEvent(m_PauseDuplicationEvent);
+        ::SetEvent(m_ResumeDuplicationEvent);
+
+        ForceScreenRefresh();
+    }
+    else if ( (!desktop_duplication_was_paused) && (m_OvrlDesktopDuplActiveCount == 0) )
+    {
+        //Signal duplication threads to pause
+        ::ResetEvent(m_ResumeDuplicationEvent);
+        ::SetEvent(m_PauseDuplicationEvent);
+    }
+
+    //Fixup WindowManager state
+    WindowManager::Get().SetActive( (m_OvrlActiveCount > 0) );
+}
+
+bool OutputManager::HasDashboardBeenActivatedOnce() const
+{
+    return m_DashboardActivatedOnce;
+}
+
+bool OutputManager::IsDashboardTabActive() const
+{
+    return m_OvrlDashboardActive;
+}
+void OutputManager::SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle)
+{
+    vr::EVROverlayError vr_error = vr::VROverlay()->SetOverlayFromFile(overlay_handle, (ConfigManager::Get().GetApplicationPath() + "images/output_error.png").c_str());    
+
+    vr::VRTextureBounds_t tex_bounds;
+    tex_bounds.uMin = 0.0f;
+    tex_bounds.vMin = 0.0f;
+    tex_bounds.uMax = 1.0f;
+    tex_bounds.vMax = 1.0f;
+
+    vr::VROverlay()->SetOverlayTextureBounds(overlay_handle, &tex_bounds);
+}
+
+void OutputManager::SetOutputInvalid()
+{
+    m_OutputInvalid = true;
+    SetOutputErrorTexture(m_OvrlHandleDesktopTexture);
+    m_DesktopWidth  = k_lOverlayOutputErrorTextureWidth;
+    m_DesktopHeight = k_lOverlayOutputErrorTextureHeight;
+
+    ResetOverlays();
+}
+
+bool OutputManager::IsOutputInvalid() const
+{
+    return m_OutputInvalid;
+}
+
+void OutputManager::DoAction(ActionID action_id)
+{
+    if (action_id >= action_custom)
+    {
+        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
+
+        if (actions.size() + action_custom > action_id)
+        {
+            CustomAction& action = actions[action_id - action_custom];
+
+            switch (action.FunctionType)
+            {
+                case caction_press_keys:
+                {
+                    m_InputSim.KeyboardSetDown(action.KeyCodes);
+                    m_InputSim.KeyboardSetUp(action.KeyCodes);
+                    break;
+                }
+                case caction_type_string:
+                {
+                    m_InputSim.KeyboardText(action.StrMain.c_str(), true);
+                    m_InputSim.KeyboardTextFinish();
+                    break;
+                }
+                case caction_launch_application:
+                {
+                    LaunchApplication(action.StrMain.c_str(), action.StrArg.c_str());
+                    break;
+                }
+                case caction_toggle_overlay_enabled_state:
+                {
+                    if (OverlayManager::Get().GetOverlayCount() > (unsigned int)action.IntID)
+                    {
+                        OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)action.IntID);
+                        data.ConfigBool[configid_bool_overlay_enabled] = !data.ConfigBool[configid_bool_overlay_enabled];
+
+                        unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+                        OverlayManager::Get().SetCurrentOverlayID((unsigned int)action.IntID);
+                        ApplySettingTransform();
+                        OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
+                        //Sync change
+                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)action.IntID);
+                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), data.ConfigBool[configid_bool_overlay_enabled]);
+                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                    }
+                }
+            }
+            return;
+        }
+    }
+    else
+    {
+        switch (action_id)
+        {
+            case action_show_keyboard:
+            {
+                const Overlay& ovrl_current = OverlayManager::Get().GetCurrentOverlay();
+
+                if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1)
+                {
+                    //If it's already displayed for an overlay, hide it instead
+                    vr::VROverlay()->HideKeyboard();
+
+                    //Config state is set from the event
+                }
+                else
+                {
+                    vr::VROverlayHandle_t ovrl_keyboard_target = ovrl_current.GetHandle();
+                    int ovrl_keyboard_id = ovrl_current.GetID();
+
+                    //If dashboard overlay or using dashboard origin, show it for the dummy so it gets treated like a dashboard keyboard
+                    if ( (ovrl_current.GetID() == k_ulOverlayID_Dashboard) || (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_dashboard) )
+                    {
+                        ovrl_keyboard_target = m_OvrlHandleDashboardDummy;
+                        ovrl_keyboard_id = 0;
+                    }
+
+                    vr::EVROverlayError keyboard_error = vr::VROverlay()->ShowKeyboardForOverlay(ovrl_keyboard_target, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
+                        vr::KeyboardFlag_Minimal, "Desktop+", 1024, "", m_OvrlHandleMain);
+
+                    if (keyboard_error == vr::VROverlayError_None)
+                    {
+                        //Covers whole overlay
+                        vr::HmdRect2_t keyrect;
+                        keyrect.vTopLeft     = {0.0f, 1.0f};
+                        keyrect.vBottomRight = {1.0f, 0.0f};
+
+                        vr::VROverlay()->SetKeyboardPositionForOverlay(ovrl_keyboard_target, keyrect);  //Avoid covering the overlay with the keyboard
+
+                        ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, ovrl_keyboard_id);
+
+                        ApplySettingKeyboardScale(1.0f);    //Apply detached keyboard scale if necessary
+
+                                                            //Tell UI that the keyboard helper can be displayed
+                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), ovrl_keyboard_id);
+                    }
+                }
+                break;
+            }
+            case action_crop_active_window_toggle:
+            {
+                //If the action is used with one of the controller buttons, the events will fire another time if the new cropping values happen to have the laser pointer leave and
+                //re-enter the overlay for a split second while the button is still down during the dimension change. 
+                //This would immediately undo the action, which we want to prevent, so a 100 ms pause between toggles is enforced 
+                static ULONGLONG last_toggle_tick = 0;
+
+                if (::GetTickCount64() <= last_toggle_tick + 100)
+                    break;
+
+                last_toggle_tick = ::GetTickCount64();
+
+                int& crop_x      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
+                int& crop_y      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
+                int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
+                int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
+
+                //Check if crop is just exactly the current desktop
+                bool crop_equals_current_desktop = false;
+                int desktop_id = ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id);
+
+                if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) )
+                {
+                    DPRect crop_rect(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
+
+                    crop_equals_current_desktop = (crop_rect == m_DesktopRects[desktop_id]);
+                }
+
+                //If uncropped, crop to active window
+                if ( (crop_equals_current_desktop) || ((crop_x == 0) && (crop_y == 0) && (crop_width == -1) && (crop_height == -1)) )
+                {
+                    CropToActiveWindow();
+                }
+                else //If cropped in some way, active window or not, reset it
+                {
+                    CropToDisplay(desktop_id);
+                }
+                break;
+            }
+            default: break;
+        }
+    }
+}
+
+//This is like DoAction, but split between start and stop
+//Currently only used for input actions. The UI will send a start message already when pressing down on the button and an stop one only after releasing for these kind of actions.
+//Also used for global shortcuts, where non-input actions simply get forwarded to DoAction()
+void OutputManager::DoStartAction(ActionID action_id) 
+{
+    if (action_id >= action_custom)
+    {
+        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
+
+        if (actions.size() + action_custom > action_id)
+        {
+            CustomAction& action = actions[action_id - action_custom];
+
+            if (action.FunctionType == caction_press_keys)
+            {
+                m_InputSim.KeyboardSetDown(action.KeyCodes);
+            }
+            else
+            {
+                DoAction(action_id);
+            }
+        }
+    }
+}
+
+void OutputManager::DoStopAction(ActionID action_id)
+{
+    if (action_id >= action_custom)
+    {
+        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
+
+        if (actions.size() + action_custom > action_id)
+        {
+            CustomAction& action = actions[action_id - action_custom];
+
+            if (action.FunctionType == caction_press_keys)
+            {
+                m_InputSim.KeyboardSetUp(action.KeyCodes);
+            }
+        }
+    }
+}
+
+void OutputManager::UpdatePerformanceStates()
+{
+    //Frame counter, the frames themselves are counted in Update()
+    if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_performance_stats_active)) && (::GetTickCount64() >= m_PerformanceFrameCountStartTick + 1000) )
+    {
+        //A second has passed, reset the value
+        ConfigManager::Get().SetConfigInt(configid_int_state_performance_duplication_fps, m_PerformanceFrameCount);
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_performance_duplication_fps), m_PerformanceFrameCount);
+
+        m_PerformanceFrameCountStartTick = ::GetTickCount64();
+        m_PerformanceFrameCount = 0;
+    }
+}
+
+const LARGE_INTEGER& OutputManager::GetUpdateLimiterDelay()
+{
+    return m_PerformanceUpdateLimiterDelay;
+}
+
+int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_preferred, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_vr)
+{
+    Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
+    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_preferred;
+    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_vr;
+    int output_id_adapter = target_desktop_id;           //Output ID on the adapter actually used. Only different from initial SingleOutput if there's desktops across multiple GPUs
+
+    m_DesktopRects.clear();
+
+    HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
+    if (!FAILED(hr))
+    {
+        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
+        UINT i = 0;
+        int output_count = 0;
+        bool wmr_ignore_vscreens = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1);
+
+        //Also look for the device the HMD is connected to
+        int32_t vr_gpu_id;
+        vr::VRSystem()->GetDXGIOutputInfo(&vr_gpu_id);
+
+        while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
+        {
+            int first_output_adapter = output_count;
+
+            if (i == vr_gpu_id)
+            {
+                adapter_ptr_vr = adapter_ptr;
+            }
+
+            //Check if this a WMR virtual display adapter and skip it when the option is enabled
+            //This is still only works correctly when they have the last desktops in the system, but that should pretty much be always the case
+            if (wmr_ignore_vscreens)
+            {
+                DXGI_ADAPTER_DESC adapter_desc;
+                adapter_ptr->GetDesc(&adapter_desc);
+
+                if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
+                {
+                    continue;
+                }
+            }
+
+            //Count the available outputs
+            IDXGIOutput* output_ptr;
+            UINT output_index = 0;
+            while (adapter_ptr->EnumOutputs(output_index, &output_ptr) != DXGI_ERROR_NOT_FOUND)
+            {
+                //Check if this happens to be the output we're looking for (or for combined desktop, set the first adapter with available output)
+                if ( (adapter_ptr_preferred == nullptr) && ( (target_desktop_id == output_count) || (target_desktop_id == -1) ) )
+                {
+                    adapter_ptr_preferred = adapter_ptr;
+
+                    if (target_desktop_id != -1)
+                    {
+                        output_id_adapter = output_index;
+                    }
+                }
+
+                //Cache rect of the output
+                DXGI_OUTPUT_DESC output_desc;
+                output_ptr->GetDesc(&output_desc);
+                m_DesktopRects.emplace_back(output_desc.DesktopCoordinates.left,  output_desc.DesktopCoordinates.top, 
+                                            output_desc.DesktopCoordinates.right, output_desc.DesktopCoordinates.bottom);
+
+                ++output_count;
+                ++output_index;
+            }
+
+            ++i;
+        }
+
+        //Store output/desktop count and send it over to UI
+        ConfigManager::Get().SetConfigInt(configid_int_state_interface_desktop_count, output_count);
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_interface_desktop_count), output_count);
+    }
+
+    if (out_adapter_preferred != nullptr)
+    {
+        *out_adapter_preferred = adapter_ptr_preferred;
+    }
+
+    if (out_adapter_vr != nullptr)
+    {
+        *out_adapter_vr = adapter_ptr_vr;
+    }
+
+    m_InputSim.RefreshScreenOffsets();
+    ResetMouseLastLaserPointerPos();
+
+    return output_id_adapter;
+}
+
+void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter)
+{
+    //Convert()'s arguments are almost all stuff from OutputManager, so we take this roundabout way of calling it
+    const DPRect& crop_rect = overlay.GetValidatedCropRect();
+
+    HRESULT hr = converter.Convert(m_Device, m_DeviceContext, m_MultiGPUTargetDevice, m_MultiGPUTargetDeviceContext, m_OvrlTex,
+                                   m_DesktopWidth, m_DesktopHeight, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
+
+    if (hr == S_OK)
+    {
+        vr::Texture_t vrtex;
+        vrtex.eType = vr::TextureType_DirectX;
+        vrtex.eColorSpace = vr::ColorSpace_Gamma;
+        vrtex.handle = converter.GetTexture(); //OUtoSBSConverter takes care of multi-gpu support automatically, so no further processing needed
+
+        vr::VROverlay()->SetOverlayTexture(overlay.GetHandle(), &vrtex);
+    }
+    else
+    {
+        ProcessFailure(m_Device, L"Failed to convert OU texture to SBS", L"Error", hr, SystemTransitionsExpectedErrors);
+    }
+}
+
 
 //
 // Process both masked and monochrome pointers
@@ -2056,17 +2294,17 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInf
 {
     //PtrShapeBuffer can sometimes be nullptr when the secure desktop is active, skip
     if (PtrInfo->PtrShapeBuffer == nullptr)
-       return DUPL_RETURN_SUCCESS;
+        return DUPL_RETURN_SUCCESS;
 
     // Desktop dimensions
     D3D11_TEXTURE2D_DESC FullDesc;
     m_SharedSurf->GetDesc(&FullDesc);
-    INT DesktopWidth = FullDesc.Width;
+    INT DesktopWidth  = FullDesc.Width;
     INT DesktopHeight = FullDesc.Height;
 
     // Pointer position
     INT GivenLeft = PtrInfo->Position.x;
-    INT GivenTop = PtrInfo->Position.y;
+    INT GivenTop  = PtrInfo->Position.y;
 
     // Figure out if any adjustment is needed for out of bound positions
     if (GivenLeft < 0)
@@ -2106,21 +2344,21 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInf
     }
 
     *PtrLeft = (GivenLeft < 0) ? 0 : GivenLeft;
-    *PtrTop = (GivenTop < 0) ? 0 : GivenTop;
+    *PtrTop  = (GivenTop < 0)  ? 0 : GivenTop;
 
     // Staging buffer/texture
     D3D11_TEXTURE2D_DESC CopyBufferDesc;
-    CopyBufferDesc.Width = *PtrWidth;
-    CopyBufferDesc.Height = *PtrHeight;
-    CopyBufferDesc.MipLevels = 1;
-    CopyBufferDesc.ArraySize = 1;
-    CopyBufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    CopyBufferDesc.SampleDesc.Count = 1;
+    CopyBufferDesc.Width              = *PtrWidth;
+    CopyBufferDesc.Height             = *PtrHeight;
+    CopyBufferDesc.MipLevels          = 1;
+    CopyBufferDesc.ArraySize          = 1;
+    CopyBufferDesc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM;
+    CopyBufferDesc.SampleDesc.Count   = 1;
     CopyBufferDesc.SampleDesc.Quality = 0;
-    CopyBufferDesc.Usage = D3D11_USAGE_STAGING;
-    CopyBufferDesc.BindFlags = 0;
-    CopyBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    CopyBufferDesc.MiscFlags = 0;
+    CopyBufferDesc.Usage              = D3D11_USAGE_STAGING;
+    CopyBufferDesc.BindFlags          = 0;
+    CopyBufferDesc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
+    CopyBufferDesc.MiscFlags          = 0;
 
     ID3D11Texture2D* CopyBuffer = nullptr;
     HRESULT hr = m_Device->CreateTexture2D(&CopyBufferDesc, nullptr, &CopyBuffer);
@@ -2130,9 +2368,9 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInf
     }
 
     // Copy needed part of desktop image
-    Box->left = *PtrLeft;
-    Box->top = *PtrTop;
-    Box->right = *PtrLeft + *PtrWidth;
+    Box->left   = *PtrLeft;
+    Box->top    = *PtrTop;
+    Box->right  = *PtrLeft + *PtrWidth;
     Box->bottom = *PtrTop + *PtrHeight;
     m_DeviceContext->CopySubresourceRegion(CopyBuffer, 0, 0, 0, 0, m_SharedSurf, 0, Box);
 
@@ -2169,7 +2407,7 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInf
 
     // What to skip (pixel offset)
     UINT SkipX = (GivenLeft < 0) ? (-1 * GivenLeft) : (0);
-    UINT SkipY = (GivenTop < 0) ? (-1 * GivenTop) : (0);
+    UINT SkipY = (GivenTop < 0)  ? (-1 * GivenTop)  : (0);
 
     if (IsMono)
     {
@@ -2239,6 +2477,319 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInf
 }
 
 //
+// Reset render target view
+//
+DUPL_RETURN OutputManager::MakeRTV()
+{
+    // Create render target for overlay texture
+    D3D11_RENDER_TARGET_VIEW_DESC ovrl_tex_rtv_desc;
+    D3D11_SHADER_RESOURCE_VIEW_DESC ovrl_tex_shader_res_view_desc;
+
+    ovrl_tex_rtv_desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    ovrl_tex_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+    ovrl_tex_rtv_desc.Texture2D.MipSlice = 0;
+
+    m_Device->CreateRenderTargetView(m_OvrlTex, &ovrl_tex_rtv_desc, &m_OvrlRTV);
+
+    // Create the shader resource view for overlay texture while we're at it
+    ovrl_tex_shader_res_view_desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    ovrl_tex_shader_res_view_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    ovrl_tex_shader_res_view_desc.Texture2D.MostDetailedMip = 0;
+    ovrl_tex_shader_res_view_desc.Texture2D.MipLevels = 1;
+
+    m_Device->CreateShaderResourceView(m_OvrlTex, &ovrl_tex_shader_res_view_desc, &m_OvrlShaderResView);
+
+    return DUPL_RETURN_SUCCESS;
+}
+
+//
+// Initialize shaders for drawing
+//
+DUPL_RETURN OutputManager::InitShaders()
+{
+    HRESULT hr;
+
+    UINT Size = ARRAYSIZE(g_VS);
+    hr = m_Device->CreateVertexShader(g_VS, Size, nullptr, &m_VertexShader);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to create vertex shader", L"Error", hr, SystemTransitionsExpectedErrors);
+    }
+
+    D3D11_INPUT_ELEMENT_DESC Layout[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+    };
+    UINT NumElements = ARRAYSIZE(Layout);
+    hr = m_Device->CreateInputLayout(Layout, NumElements, g_VS, Size, &m_InputLayout);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to create input layout", L"Error", hr, SystemTransitionsExpectedErrors);
+    }
+    m_DeviceContext->IASetInputLayout(m_InputLayout);
+
+    Size = ARRAYSIZE(g_PS);
+    hr = m_Device->CreatePixelShader(g_PS, Size, nullptr, &m_PixelShader);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to create pixel shader", L"Error", hr, SystemTransitionsExpectedErrors);
+    }
+    Size = ARRAYSIZE(g_PSCURSOR);
+    hr = m_Device->CreatePixelShader(g_PSCURSOR, Size, nullptr, &m_PixelShaderCursor);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to create cursor pixel shader", L"Error", hr, SystemTransitionsExpectedErrors);
+    }
+
+    return DUPL_RETURN_SUCCESS;
+}
+
+
+//
+// Recreate textures
+//
+DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds)
+{
+    HRESULT hr;
+
+    // Get DXGI resources
+    IDXGIDevice* DxgiDevice = nullptr;
+    hr = m_Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DxgiDevice));
+    if (FAILED(hr))
+    {
+        return ProcessFailure(nullptr, L"Failed to QI for DXGI device", L"Error", hr);
+    }
+
+    IDXGIAdapter* DxgiAdapter = nullptr;
+    hr = DxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&DxgiAdapter));
+    DxgiDevice->Release();
+    DxgiDevice = nullptr;
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to get parent DXGI adapter", L"Error", hr, SystemTransitionsExpectedErrors);
+    }
+
+    // Set initial values so that we always catch the right coordinates
+    DeskBounds->left   = INT_MAX;
+    DeskBounds->right  = INT_MIN;
+    DeskBounds->top    = INT_MAX;
+    DeskBounds->bottom = INT_MIN;
+
+    IDXGIOutput* DxgiOutput = nullptr;
+
+    // Figure out right dimensions for full size desktop texture and # of outputs to duplicate
+    UINT OutputCount;
+    if (SingleOutput < 0)
+    {
+        int desktop_count = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
+
+        hr = S_OK;
+        for (OutputCount = 0; SUCCEEDED(hr); ++OutputCount)
+        {
+            //Break early if used desktop count is lower than actual output count
+            if (OutputCount >= desktop_count)
+            {
+                ++OutputCount;
+                break;
+            }
+
+            if (DxgiOutput)
+            {
+                DxgiOutput->Release();
+                DxgiOutput = nullptr;
+            }
+            hr = DxgiAdapter->EnumOutputs(OutputCount, &DxgiOutput);
+            if (DxgiOutput && (hr != DXGI_ERROR_NOT_FOUND))
+            {
+                DXGI_OUTPUT_DESC DesktopDesc;
+                DxgiOutput->GetDesc(&DesktopDesc);
+
+                DeskBounds->left   = std::min(DesktopDesc.DesktopCoordinates.left, DeskBounds->left);
+                DeskBounds->top    = std::min(DesktopDesc.DesktopCoordinates.top, DeskBounds->top);
+                DeskBounds->right  = std::max(DesktopDesc.DesktopCoordinates.right, DeskBounds->right);
+                DeskBounds->bottom = std::max(DesktopDesc.DesktopCoordinates.bottom, DeskBounds->bottom);
+            }
+        }
+
+        --OutputCount;
+    }
+    else
+    {
+        hr = DxgiAdapter->EnumOutputs(SingleOutput, &DxgiOutput);
+        if (FAILED(hr)) //Output doesn't exist. This will result in a soft-error invalid output state
+        {
+            DxgiAdapter->Release();
+            DxgiAdapter = nullptr;
+
+            m_DesktopX      = 0;
+            m_DesktopY      = 0;
+            m_DesktopWidth  = -1;
+            m_DesktopHeight = -1;
+
+            *OutCount = 0;
+
+            return DUPL_RETURN_ERROR_EXPECTED;
+        }
+
+        DXGI_OUTPUT_DESC DesktopDesc;
+        DxgiOutput->GetDesc(&DesktopDesc);
+        *DeskBounds = DesktopDesc.DesktopCoordinates;
+
+        DxgiOutput->Release();
+        DxgiOutput = nullptr;
+
+        OutputCount = 1;
+    }
+
+    DxgiAdapter->Release();
+    DxgiAdapter = nullptr;
+
+    // Set passed in output count variable
+    *OutCount = OutputCount;
+
+    if (OutputCount == 0) //This state can only be entered on the combined desktop setting now... oops?
+    {
+        // We could not find any outputs, the system must be in a transition so return expected error
+        // so we will attempt to recreate
+        return DUPL_RETURN_ERROR_EXPECTED;
+    }
+
+    //Store size and position
+    m_DesktopX      = DeskBounds->left;
+    m_DesktopY      = DeskBounds->top;
+    m_DesktopWidth  = DeskBounds->right - DeskBounds->left;
+    m_DesktopHeight = DeskBounds->bottom - DeskBounds->top;
+
+    //Set it as mouse scale on the desktop texture overlay for the UI to read the resolution from there
+    vr::HmdVector2_t mouse_scale;
+    mouse_scale.v[0] = m_DesktopWidth;
+    mouse_scale.v[1] = m_DesktopHeight;
+    vr::VROverlay()->SetOverlayMouseScale(m_OvrlHandleDesktopTexture, &mouse_scale);
+
+    // Create shared texture for all duplication threads to draw into
+    D3D11_TEXTURE2D_DESC TexD;
+    RtlZeroMemory(&TexD, sizeof(D3D11_TEXTURE2D_DESC));
+    TexD.Width            = m_DesktopWidth;
+    TexD.Height           = m_DesktopHeight;
+    TexD.MipLevels        = 1;
+    TexD.ArraySize        = 1;
+    TexD.Format           = DXGI_FORMAT_B8G8R8A8_UNORM;
+    TexD.SampleDesc.Count = 1;
+    TexD.Usage            = D3D11_USAGE_DEFAULT;
+    TexD.BindFlags        = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    TexD.CPUAccessFlags   = 0;
+    TexD.MiscFlags        = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+
+    hr = m_Device->CreateTexture2D(&TexD, nullptr, &m_SharedSurf);
+
+    if (!FAILED(hr))
+    {
+        TexD.MiscFlags = 0;
+        hr = m_Device->CreateTexture2D(&TexD, nullptr, &m_OvrlTex);
+    }
+
+    if (FAILED(hr))
+    {
+        if (OutputCount != 1)
+        {
+            // If we are duplicating the complete desktop we try to create a single texture to hold the
+            // complete desktop image and blit updates from the per output DDA interface.  The GPU can
+            // always support a texture size of the maximum resolution of any single output but there is no
+            // guarantee that it can support a texture size of the desktop.
+            return ProcessFailure(m_Device, L"Failed to create shared texture. Combined desktop texture size may be larger than the maximum supported supported size of the GPU", L"Error", hr, SystemTransitionsExpectedErrors);
+        }
+        else
+        {
+            return ProcessFailure(m_Device, L"Failed to create shared texture", L"Error", hr, SystemTransitionsExpectedErrors);
+        }
+    }
+
+    // Get keyed mutex
+    hr = m_SharedSurf->QueryInterface(__uuidof(IDXGIKeyedMutex), reinterpret_cast<void**>(&m_KeyMutex));
+
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to query for keyed mutex", L"Error", hr);
+    }
+
+    //Create shader resource for shared texture
+    D3D11_TEXTURE2D_DESC FrameDesc;
+    m_SharedSurf->GetDesc(&FrameDesc);
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC ShaderDesc;
+    ShaderDesc.Format = FrameDesc.Format;
+    ShaderDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    ShaderDesc.Texture2D.MostDetailedMip = FrameDesc.MipLevels - 1;
+    ShaderDesc.Texture2D.MipLevels = FrameDesc.MipLevels;
+
+    // Create new shader resource view
+    hr = m_Device->CreateShaderResourceView(m_SharedSurf, &ShaderDesc, &m_ShaderResource);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to create shader resource", L"Error", hr, SystemTransitionsExpectedErrors);
+    }
+
+    //Create textures for multi GPU handling if needed
+    if (m_MultiGPUTargetDevice != nullptr)
+    {
+        //Staging texture
+        TexD.Usage          = D3D11_USAGE_STAGING;
+        TexD.BindFlags      = 0;
+        TexD.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        TexD.MiscFlags      = 0;
+
+        hr = m_Device->CreateTexture2D(&TexD, nullptr, &m_MultiGPUTexStaging);
+
+        if (FAILED(hr))
+        {
+            return ProcessFailure(m_Device, L"Failed to create staging texture", L"Error", hr);
+        }
+
+        //Copy-target texture
+        TexD.Usage          = D3D11_USAGE_DYNAMIC;
+        TexD.BindFlags      = D3D11_BIND_SHADER_RESOURCE;
+        TexD.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        TexD.MiscFlags      = 0;
+
+        hr = m_MultiGPUTargetDevice->CreateTexture2D(&TexD, nullptr, &m_MultiGPUTexTarget);
+
+        if (FAILED(hr))
+        {
+            return ProcessFailure(m_MultiGPUTargetDevice, L"Failed to create copy-target texture", L"Error", hr);
+        }
+    }
+
+    return DUPL_RETURN_SUCCESS;
+}
+
+void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
+{
+    // Set resources
+    UINT Stride = sizeof(VERTEX);
+    UINT Offset = 0;
+    const FLOAT blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    m_DeviceContext->OMSetBlendState(nullptr, blendFactor, 0xffffffff);
+    m_DeviceContext->OMSetRenderTargets(1, &m_OvrlRTV, nullptr);
+    m_DeviceContext->VSSetShader(m_VertexShader, nullptr, 0);
+    m_DeviceContext->PSSetShader(m_PixelShader, nullptr, 0);
+    m_DeviceContext->PSSetShaderResources(0, 1, &m_ShaderResource);
+    m_DeviceContext->PSSetSamplers(0, 1, &m_Sampler);
+    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    m_DeviceContext->IASetVertexBuffers(0, 1, &m_VertexBuffer, &Stride, &Offset);
+
+    // Draw textured quad onto render target
+    if (clear_rtv)
+    {
+        const float bgColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        m_DeviceContext->ClearRenderTargetView(m_OvrlRTV, bgColor);
+    }
+
+    m_DeviceContext->Draw(NUMVERTICES, 0);
+}
+
+//
 // Draw mouse provided in buffer to overlay texture
 //
 DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
@@ -2272,10 +2823,10 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     FLOAT CenterY = (m_DesktopHeight / 2.0f);
 
     // Clipping adjusted coordinates / dimensions
-    INT PtrWidth = 0;
+    INT PtrWidth  = 0;
     INT PtrHeight = 0;
-    INT PtrLeft = 0;
-    INT PtrTop = 0;
+    INT PtrLeft   = 0;
+    INT PtrTop    = 0;
 
     // Buffer used if necessary (in case of monochrome or masked pointer)
     BYTE* InitBuffer = nullptr;
@@ -2283,7 +2834,7 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     // Used for copying pixels if necessary
     D3D11_BOX Box;
     Box.front = 0;
-    Box.back = 1;
+    Box.back  = 1;
 
     //Process shape (or just get position when not new cursor)
     switch (PtrInfo->ShapeInfo.Type)
@@ -2291,9 +2842,9 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
         case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR:
         {
             PtrLeft = PtrInfo->Position.x;
-            PtrTop = PtrInfo->Position.y;
+            PtrTop  = PtrInfo->Position.y;
 
-            PtrWidth = static_cast<INT>(PtrInfo->ShapeInfo.Width);
+            PtrWidth  = static_cast<INT>(PtrInfo->ShapeInfo.Width);
             PtrHeight = static_cast<INT>(PtrInfo->ShapeInfo.Height);
 
             break;
@@ -2381,29 +2932,29 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
             m_MouseShaderRes = nullptr;
         }
 
-        Desc.MipLevels = 1;
-        Desc.ArraySize = 1;
-        Desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-        Desc.SampleDesc.Count = 1;
+        Desc.MipLevels          = 1;
+        Desc.ArraySize          = 1;
+        Desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM;
+        Desc.SampleDesc.Count   = 1;
         Desc.SampleDesc.Quality = 0;
-        Desc.Usage = D3D11_USAGE_DEFAULT;
-        Desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        Desc.CPUAccessFlags = 0;
-        Desc.MiscFlags = 0;
+        Desc.Usage              = D3D11_USAGE_DEFAULT;
+        Desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
+        Desc.CPUAccessFlags     = 0;
+        Desc.MiscFlags          = 0;
 
         // Set shader resource properties
-        SDesc.Format = Desc.Format;
-        SDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        SDesc.Format                    = Desc.Format;
+        SDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
         SDesc.Texture2D.MostDetailedMip = Desc.MipLevels - 1;
-        SDesc.Texture2D.MipLevels = Desc.MipLevels;
+        SDesc.Texture2D.MipLevels       = Desc.MipLevels;
 
         // Set texture properties
-        Desc.Width = PtrWidth;
+        Desc.Width  = PtrWidth;
         Desc.Height = PtrHeight;
 
         // Set up init data
-        InitData.pSysMem = (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR) ? PtrInfo->PtrShapeBuffer : InitBuffer;
-        InitData.SysMemPitch = (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR) ? PtrInfo->ShapeInfo.Pitch : PtrWidth * BPP;
+        InitData.pSysMem          = (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR) ? PtrInfo->PtrShapeBuffer  : InitBuffer;
+        InitData.SysMemPitch      = (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR) ? PtrInfo->ShapeInfo.Pitch : PtrWidth * BPP;
         InitData.SysMemSlicePitch = 0;
 
         // Create mouseshape as texture
@@ -2462,9 +3013,9 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
     if ((m_OvrlHandleDesktopTexture != vr::k_ulOverlayHandleInvalid) && (m_OvrlTex))
     {
         vr::Texture_t vrtex;
-        vrtex.eType = vr::TextureType_DirectX;
+        vrtex.eType       = vr::TextureType_DirectX;
         vrtex.eColorSpace = vr::ColorSpace_Gamma;
-        vrtex.handle = m_OvrlTex;
+        vrtex.handle      = m_OvrlTex;
 
         //The intermediate texture can be assumed to be not complete when a full copy is forced, so redraw that
         if (force_full_copy)
@@ -2559,12 +3110,12 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
                 ovrl_shader_res->GetResource(&ovrl_tex);
 
                 D3D11_BOX box;
-                box.left = DirtyRectTotal.GetTL().x;
-                box.top = DirtyRectTotal.GetTL().y;
-                box.front = 0;
-                box.right = DirtyRectTotal.GetBR().x;
+                box.left   = DirtyRectTotal.GetTL().x;
+                box.top    = DirtyRectTotal.GetTL().y;
+                box.front  = 0;
+                box.right  = DirtyRectTotal.GetBR().x;
                 box.bottom = DirtyRectTotal.GetBR().y;
-                box.back = 1;
+                box.back   = 1;
 
                 device_context->CopySubresourceRegion(ovrl_tex, 0, box.left, box.top, 0, (ID3D11Texture2D*)vrtex.handle, 0, &box);
 
@@ -2604,75 +3155,6 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
     }
 
     return DUPL_RETURN_UPD_SUCCESS;
-}
-
-//
-// Initialize shaders for drawing
-//
-DUPL_RETURN OutputManager::InitShaders()
-{
-    HRESULT hr;
-
-    UINT Size = ARRAYSIZE(g_VS);
-    hr = m_Device->CreateVertexShader(g_VS, Size, nullptr, &m_VertexShader);
-    if (FAILED(hr))
-    {
-        return ProcessFailure(m_Device, L"Failed to create vertex shader", L"Error", hr, SystemTransitionsExpectedErrors);
-    }
-
-    D3D11_INPUT_ELEMENT_DESC Layout[] =
-    {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-    };
-    UINT NumElements = ARRAYSIZE(Layout);
-    hr = m_Device->CreateInputLayout(Layout, NumElements, g_VS, Size, &m_InputLayout);
-    if (FAILED(hr))
-    {
-        return ProcessFailure(m_Device, L"Failed to create input layout", L"Error", hr, SystemTransitionsExpectedErrors);
-    }
-    m_DeviceContext->IASetInputLayout(m_InputLayout);
-
-    Size = ARRAYSIZE(g_PS);
-    hr = m_Device->CreatePixelShader(g_PS, Size, nullptr, &m_PixelShader);
-    if (FAILED(hr))
-    {
-        return ProcessFailure(m_Device, L"Failed to create pixel shader", L"Error", hr, SystemTransitionsExpectedErrors);
-    }
-    Size = ARRAYSIZE(g_PSCURSOR);
-    hr = m_Device->CreatePixelShader(g_PSCURSOR, Size, nullptr, &m_PixelShaderCursor);
-    if (FAILED(hr))
-    {
-        return ProcessFailure(m_Device, L"Failed to create cursor pixel shader", L"Error", hr, SystemTransitionsExpectedErrors);
-    }
-
-    return DUPL_RETURN_SUCCESS;
-}
-
-//
-// Reset render target view
-//
-DUPL_RETURN OutputManager::MakeRTV()
-{
-    // Create render target for overlay texture
-    D3D11_RENDER_TARGET_VIEW_DESC ovrl_tex_rtv_desc;
-    D3D11_SHADER_RESOURCE_VIEW_DESC ovrl_tex_shader_res_view_desc;
-
-    ovrl_tex_rtv_desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    ovrl_tex_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-    ovrl_tex_rtv_desc.Texture2D.MipSlice = 0;
-
-    m_Device->CreateRenderTargetView(m_OvrlTex, &ovrl_tex_rtv_desc, &m_OvrlRTV);
-
-    // Create the shader resource view for overlay texture while we're at it
-    ovrl_tex_shader_res_view_desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    ovrl_tex_shader_res_view_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    ovrl_tex_shader_res_view_desc.Texture2D.MostDetailedMip = 0;
-    ovrl_tex_shader_res_view_desc.Texture2D.MipLevels = 1;
-
-    m_Device->CreateShaderResourceView(m_OvrlTex, &ovrl_tex_shader_res_view_desc, &m_OvrlShaderResView);
-
-    return DUPL_RETURN_SUCCESS;
 }
 
 bool OutputManager::HandleOpenVREvents()
@@ -2978,6 +3460,7 @@ bool OutputManager::HandleOpenVREvents()
     }
 
     m_VRInput.HandleGlobalActionShortcuts(*this);
+    m_VRInput.HandleGlobalOverlayGroupShortcuts(*this);
 
     //Finish up pending keyboard input collected into the queue
     m_InputSim.KeyboardTextFinish();
@@ -3481,9 +3964,9 @@ void OutputManager::CropToActiveWindow()
                 int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
                 int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
 
-                crop_x = crop_rect.GetTL().x;
-                crop_y = crop_rect.GetTL().y;
-                crop_width = crop_rect.GetWidth();
+                crop_x      = crop_rect.GetTL().x;
+                crop_y      = crop_rect.GetTL().y;
+                crop_width  = crop_rect.GetWidth();
                 crop_height = crop_rect.GetHeight();
 
                 //Send them over to UI
@@ -5048,485 +5531,4 @@ bool OutputManager::IsAnyOverlayUsingGazeFade() const
     }
 
     return false;
-}
-
-void OutputManager::UpdatePerformanceStates()
-{
-    //Frame counter, the frames themselves are counted in Update()
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_performance_stats_active)) && (::GetTickCount64() >= m_PerformanceFrameCountStartTick + 1000) )
-    {
-        //A second has passed, reset the value
-        ConfigManager::Get().SetConfigInt(configid_int_state_performance_duplication_fps, m_PerformanceFrameCount);
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_performance_duplication_fps), m_PerformanceFrameCount);
-
-        m_PerformanceFrameCountStartTick = ::GetTickCount64();
-        m_PerformanceFrameCount = 0;
-    }
-}
-
-const LARGE_INTEGER& OutputManager::GetUpdateLimiterDelay()
-{
-    return m_PerformanceUpdateLimiterDelay;
-}
-
-int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_preferred, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_vr)
-{
-    Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
-    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_preferred;
-    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_vr;
-    int output_id_adapter = target_desktop_id;           //Output ID on the adapter actually used. Only different from initial SingleOutput if there's desktops across multiple GPUs
-    
-    m_DesktopRects.clear();
-
-    HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
-    if (!FAILED(hr))
-    {
-        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
-        UINT i = 0;
-        int output_count = 0;
-        bool wmr_ignore_vscreens = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1);
-
-        //Also look for the device the HMD is connected to
-        int32_t vr_gpu_id;
-        vr::VRSystem()->GetDXGIOutputInfo(&vr_gpu_id);
-
-        while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
-        {
-            int first_output_adapter = output_count;
-
-            if (i == vr_gpu_id)
-            {
-                adapter_ptr_vr = adapter_ptr;
-            }
-
-            //Check if this a WMR virtual display adapter and skip it when the option is enabled
-            //This is still only works correctly when they have the last desktops in the system, but that should pretty much be always the case
-            if (wmr_ignore_vscreens)
-            {
-                DXGI_ADAPTER_DESC adapter_desc;
-                adapter_ptr->GetDesc(&adapter_desc);
-
-                if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
-                {
-                    continue;
-                }
-            }
-
-            //Count the available outputs
-            IDXGIOutput* output_ptr;
-            UINT output_index = 0;
-            while (adapter_ptr->EnumOutputs(output_index, &output_ptr) != DXGI_ERROR_NOT_FOUND)
-            {
-                //Check if this happens to be the output we're looking for (or for combined desktop, set the first adapter with available output)
-                if ( (adapter_ptr_preferred == nullptr) && ( (target_desktop_id == output_count) || (target_desktop_id == -1) ) )
-                {
-                    adapter_ptr_preferred = adapter_ptr;
-
-                    if (target_desktop_id != -1)
-                    {
-                        output_id_adapter = output_index;
-                    }
-                }
-
-                //Cache rect of the output
-                DXGI_OUTPUT_DESC output_desc;
-                output_ptr->GetDesc(&output_desc);
-                m_DesktopRects.emplace_back(output_desc.DesktopCoordinates.left,  output_desc.DesktopCoordinates.top, 
-                                            output_desc.DesktopCoordinates.right, output_desc.DesktopCoordinates.bottom);
-
-                ++output_count;
-                ++output_index;
-            }
-
-            ++i;
-        }
-
-        //Store output/desktop count and send it over to UI
-        ConfigManager::Get().SetConfigInt(configid_int_state_interface_desktop_count, output_count);
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_interface_desktop_count), output_count);
-    }
-
-    if (out_adapter_preferred != nullptr)
-    {
-        *out_adapter_preferred = adapter_ptr_preferred;
-    }
-
-    if (out_adapter_vr != nullptr)
-    {
-        *out_adapter_vr = adapter_ptr_vr;
-    }
-
-    m_InputSim.RefreshScreenOffsets();
-    ResetMouseLastLaserPointerPos();
-
-    return output_id_adapter;
-}
-
-void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter)
-{
-    //Convert()'s arguments are almost all stuff from OutputManager, so we take this roundabout way of calling it
-    const DPRect& crop_rect = overlay.GetValidatedCropRect();
-
-    HRESULT hr = converter.Convert(m_Device, m_DeviceContext, m_MultiGPUTargetDevice, m_MultiGPUTargetDeviceContext, m_OvrlTex,
-                                   m_DesktopWidth, m_DesktopHeight, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
-
-    if (hr == S_OK)
-    {
-        vr::Texture_t vrtex;
-        vrtex.eType = vr::TextureType_DirectX;
-        vrtex.eColorSpace = vr::ColorSpace_Gamma;
-        vrtex.handle = converter.GetTexture(); //OUtoSBSConverter takes care of multi-gpu support automatically, so no further processing needed
-
-        vr::VROverlay()->SetOverlayTexture(overlay.GetHandle(), &vrtex);
-    }
-    else
-    {
-        ProcessFailure(m_Device, L"Failed to convert OU texture to SBS", L"Error", hr, SystemTransitionsExpectedErrors);
-    }
-}
-
-void OutputManager::DoAction(ActionID action_id)
-{
-    if (action_id >= action_custom)
-    {
-        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
-
-        if (actions.size() + action_custom > action_id)
-        {
-            CustomAction& action = actions[action_id - action_custom];
-
-            switch (action.FunctionType)
-            {
-                case caction_press_keys:
-                {
-                    m_InputSim.KeyboardSetDown(action.KeyCodes);
-                    m_InputSim.KeyboardSetUp(action.KeyCodes);
-                    break;
-                }
-                case caction_type_string:
-                {
-                    m_InputSim.KeyboardText(action.StrMain.c_str(), true);
-                    m_InputSim.KeyboardTextFinish();
-                    break;
-                }
-                case caction_launch_application:
-                {
-                    LaunchApplication(action.StrMain.c_str(), action.StrArg.c_str());
-                    break;
-                }
-                case caction_toggle_overlay_enabled_state:
-                {
-                    if (OverlayManager::Get().GetOverlayCount() > (unsigned int)action.IntID)
-                    {
-                        OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)action.IntID);
-                        data.ConfigBool[configid_bool_overlay_enabled] = !data.ConfigBool[configid_bool_overlay_enabled];
-
-                        unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-                        OverlayManager::Get().SetCurrentOverlayID((unsigned int)action.IntID);
-                        ApplySettingTransform();
-                        OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
-
-                        //Sync change
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)action.IntID);
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), data.ConfigBool[configid_bool_overlay_enabled]);
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
-                    }
-                }
-            }
-            return;
-        }
-    }
-    else
-    {
-        switch (action_id)
-        {
-            case action_show_keyboard:
-            {
-                const Overlay& ovrl_current = OverlayManager::Get().GetCurrentOverlay();
-
-                if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1)
-                {
-                    //If it's already displayed for an overlay, hide it instead
-                    vr::VROverlay()->HideKeyboard();
-
-                    //Config state is set from the event
-                }
-                else
-                {
-                    vr::VROverlayHandle_t ovrl_keyboard_target = ovrl_current.GetHandle();
-                    int ovrl_keyboard_id = ovrl_current.GetID();
-                    
-                    //If dashboard overlay or using dashboard origin, show it for the dummy so it gets treated like a dashboard keyboard
-                    if ( (ovrl_current.GetID() == k_ulOverlayID_Dashboard) || (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_dashboard) )
-                    {
-                        ovrl_keyboard_target = m_OvrlHandleDashboardDummy;
-                        ovrl_keyboard_id = 0;
-                    }
-
-                    vr::EVROverlayError keyboard_error = vr::VROverlay()->ShowKeyboardForOverlay(ovrl_keyboard_target, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
-                                                                                                 vr::KeyboardFlag_Minimal, "Desktop+", 1024, "", m_OvrlHandleMain);
-
-                    if (keyboard_error == vr::VROverlayError_None)
-                    {
-                        //Covers whole overlay
-                        vr::HmdRect2_t keyrect;
-                        keyrect.vTopLeft = {0.0f, 1.0f};
-                        keyrect.vBottomRight = {1.0f, 0.0f};
-
-                        vr::VROverlay()->SetKeyboardPositionForOverlay(ovrl_keyboard_target, keyrect);  //Avoid covering the overlay with the keyboard
-
-                        ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, ovrl_keyboard_id);
-
-                        ApplySettingKeyboardScale(1.0f);    //Apply detached keyboard scale if necessary
-
-                        //Tell UI that the keyboard helper can be displayed
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), ovrl_keyboard_id);
-                    }
-                }
-                break;
-            }
-            case action_crop_active_window_toggle:
-            {
-                //If the action is used with one of the controller buttons, the events will fire another time if the new cropping values happen to have the laser pointer leave and
-                //re-enter the overlay for a split second while the button is still down during the dimension change. 
-                //This would immediately undo the action, which we want to prevent, so a 100 ms pause between toggles is enforced 
-                static ULONGLONG last_toggle_tick = 0;
-
-                if (::GetTickCount64() <= last_toggle_tick + 100)
-                    break;
-
-                last_toggle_tick = ::GetTickCount64();
-
-                int& crop_x      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
-                int& crop_y      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
-                int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
-                int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
-
-                //Check if crop is just exactly the current desktop
-                bool crop_equals_current_desktop = false;
-                int desktop_id = ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id);
-
-                if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) )
-                {
-                    DPRect crop_rect(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
-
-                    crop_equals_current_desktop = (crop_rect == m_DesktopRects[desktop_id]);
-                }
-
-                //If uncropped, crop to active window
-                if ( (crop_equals_current_desktop) || ((crop_x == 0) && (crop_y == 0) && (crop_width == -1) && (crop_height == -1)) )
-                {
-                    CropToActiveWindow();
-                }
-                else //If cropped in some way, active window or not, reset it
-                {
-                    CropToDisplay(desktop_id);
-                }
-                break;
-            }
-            default: break;
-        }
-    }
-}
-
-//This is like DoAction, but split between start and stop
-//Currently only used for input actions. The UI will send a start message already when pressing down on the button and an stop one only after releasing for these kind of actions.
-//Also used for global shortcuts, where non-input actions simply get forwarded to DoAction()
-void OutputManager::DoStartAction(ActionID action_id) 
-{
-    if (action_id >= action_custom)
-    {
-        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
-
-        if (actions.size() + action_custom > action_id)
-        {
-            CustomAction& action = actions[action_id - action_custom];
-
-            if (action.FunctionType == caction_press_keys)
-            {
-                m_InputSim.KeyboardSetDown(action.KeyCodes);
-            }
-            else
-            {
-                DoAction(action_id);
-            }
-        }
-    }
-}
-
-void OutputManager::DoStopAction(ActionID action_id)
-{
-    if (action_id >= action_custom)
-    {
-        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
-
-        if (actions.size() + action_custom > action_id)
-        {
-            CustomAction& action = actions[action_id - action_custom];
-
-            if (action.FunctionType == caction_press_keys)
-            {
-                m_InputSim.KeyboardSetUp(action.KeyCodes);
-            }
-        }
-    }
-}
-
-//
-// Releases all references
-//
-void OutputManager::CleanRefs()
-{
-    if (m_VertexShader)
-    {
-        m_VertexShader->Release();
-        m_VertexShader = nullptr;
-    }
-
-    if (m_PixelShader)
-    {
-        m_PixelShader->Release();
-        m_PixelShader = nullptr;
-    }
-
-    if (m_PixelShaderCursor)
-    {
-        m_PixelShaderCursor->Release();
-        m_PixelShaderCursor = nullptr;
-    }
-
-    if (m_InputLayout)
-    {
-        m_InputLayout->Release();
-        m_InputLayout = nullptr;
-    }
-
-    if (m_Sampler)
-    {
-        m_Sampler->Release();
-        m_Sampler = nullptr;
-    }
-
-    if (m_BlendState)
-    {
-        m_BlendState->Release();
-        m_BlendState = nullptr;
-    }
-
-    if (m_RasterizerState)
-    {
-        m_RasterizerState->Release();
-        m_RasterizerState = nullptr;
-    }
-
-    if (m_DeviceContext)
-    {
-        m_DeviceContext->Release();
-        m_DeviceContext = nullptr;
-    }
-
-    if (m_Device)
-    {
-        m_Device->Release();
-        m_Device = nullptr;
-    }
-
-    if (m_SharedSurf)
-    {
-        m_SharedSurf->Release();
-        m_SharedSurf = nullptr;
-    }
-
-    if (m_VertexBuffer)
-    {
-        m_VertexBuffer->Release();
-        m_VertexBuffer = nullptr;
-    }
-
-    if (m_ShaderResource)
-    {
-        m_ShaderResource->Release();
-        m_ShaderResource = nullptr;
-    }
-
-    if (m_OvrlTex)
-    {
-        m_OvrlTex->Release();
-        m_OvrlTex = nullptr;
-    }
-
-    if (m_OvrlRTV)
-    {
-        m_OvrlRTV->Release();
-        m_OvrlRTV = nullptr;
-    }
-
-    if (m_OvrlShaderResView)
-    {
-        m_OvrlShaderResView->Release();
-        m_OvrlShaderResView = nullptr;
-    }
-
-    if (m_MouseTex)
-    {
-        m_MouseTex->Release();
-        m_MouseTex = nullptr;
-    }
-
-    if (m_MouseShaderRes)
-    {
-        m_MouseShaderRes->Release();
-        m_MouseShaderRes = nullptr;
-    }
-
-    //Reset mouse state variables too
-    m_MouseLastClickTick = 0;
-    m_MouseIgnoreMoveEvent = false;
-    m_MouseLastInfo = {0};
-    m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
-    m_MouseLastLaserPointerX = -1;
-    m_MouseLastLaserPointerY = -1;
-    m_MouseDefaultHotspotX = 0;
-    m_MouseDefaultHotspotY = 0;
-    
-    if (m_KeyMutex)
-    {
-        m_KeyMutex->Release();
-        m_KeyMutex = nullptr;
-    }
-
-    if (m_Factory)
-    {
-        m_Factory->Release();
-        m_Factory = nullptr;
-    }
-
-    if (m_ComInitDone)
-    {
-        ::CoUninitialize();
-    }
-
-    if (m_MultiGPUTargetDevice)
-    {
-        m_MultiGPUTargetDevice->Release();
-        m_MultiGPUTargetDevice = nullptr;
-    }
-
-    if (m_MultiGPUTargetDeviceContext)
-    {
-        m_MultiGPUTargetDeviceContext->Release();
-        m_MultiGPUTargetDeviceContext = nullptr;
-    }
-
-    if (m_MultiGPUTexStaging)
-    {
-        m_MultiGPUTexStaging->Release();
-        m_MultiGPUTexStaging = nullptr;
-    }
-
-    if (m_MultiGPUTexTarget)
-    {
-        m_MultiGPUTexTarget->Release();
-        m_MultiGPUTexTarget = nullptr;
-    }
 }
