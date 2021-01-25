@@ -14,6 +14,9 @@ class VRInput
         vr::VRActionHandle_t m_HandleActionDoGlobalShortcut01;
         vr::VRActionHandle_t m_HandleActionDoGlobalShortcut02;
         vr::VRActionHandle_t m_HandleActionDoGlobalShortcut03;
+        vr::VRActionHandle_t m_HandleActionToggleOverlayGroupEnabled01;
+        vr::VRActionHandle_t m_HandleActionToggleOverlayGroupEnabled02;
+        vr::VRActionHandle_t m_HandleActionToggleOverlayGroupEnabled03;
 
         bool m_IsAnyActionBound;            //"Bound" meaning assigned and the device is actually active
         bool m_IsAnyActionBoundStateValid;
@@ -24,6 +27,7 @@ class VRInput
         void Update();
         void RefreshAnyActionBound();
         void HandleGlobalActionShortcuts(OutputManager& outmgr);
+        void HandleGlobalOverlayGroupShortcuts(OutputManager& outmgr);
 
         bool GetSetDetachedInteractiveDown() const;
         bool IsAnyActionBound() const;

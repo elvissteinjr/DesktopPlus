@@ -44,7 +44,6 @@ struct ScrollingBufferFrameTime
     }
 };
 
-//The side bar visible on the bottom right of floating overlays when pointing at them
 class WindowPerformance
 {
     private:
@@ -116,6 +115,7 @@ class WindowPerformance
         WindowPerformance();
 
         void Update(bool show_as_popup = false);
+        void UpdateVisibleState();
         void RefreshTrackerBatteryList();
         void ResetCumulativeValues();
         void ScheduleOverlaySharedTextureUpdate();

@@ -1413,6 +1413,25 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_input_enabled), enable_input);
         }
 
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Overlay Group");
+
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("Overlay groups are used to target overlays in actions and input bindings");
+
+        ImGui::NextColumn();
+
+        ImGui::SetNextItemWidth(-1);
+        const char* items[] = { "None", "Group 1", "Group 2", "Group 3" };
+        int& group_id = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_group_id);
+        if (ImGui::Combo("##ComboGroupID", &group_id, items, IM_ARRAYSIZE(items)))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_group_id), group_id);
+        }
+
         ImGui::Columns(1);
     }
 

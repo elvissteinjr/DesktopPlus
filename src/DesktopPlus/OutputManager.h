@@ -68,6 +68,8 @@ class OutputManager
         void DoStartAction(ActionID action_id);
         void DoStopAction(ActionID action_id);
 
+        void ToggleOverlayGroupEnabled(int group_id);
+
         void UpdatePerformanceStates();
         const LARGE_INTEGER& GetUpdateLimiterDelay();
         //This updates the cached desktop rects and count and optionally chooses the adapters/desktop for desktop duplication (previously part of InitOutput())

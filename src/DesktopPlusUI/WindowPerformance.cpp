@@ -101,8 +101,6 @@ void WindowPerformance::Update(bool show_as_popup)
     }
     else
     {
-        m_Visible = IsAnyOverlayUsingPerformanceMonitor();
-
         if (!m_Visible)
             return;
 
@@ -141,6 +139,11 @@ void WindowPerformance::Update(bool show_as_popup)
 
         ImGui::End();
     }
+}
+
+void WindowPerformance::UpdateVisibleState()
+{
+    m_Visible = IsAnyOverlayUsingPerformanceMonitor();
 }
 
 void WindowPerformance::DisplayStatsLarge()

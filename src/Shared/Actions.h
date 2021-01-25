@@ -15,6 +15,9 @@ enum ActionID: int
     action_none,
     action_show_keyboard,
     action_crop_active_window_toggle,
+    action_toggle_overlay_enabled_group_1,
+    action_toggle_overlay_enabled_group_2,
+    action_toggle_overlay_enabled_group_3,
     action_built_in_MAX,
     //Leaving some room here, as we don't want to mess with user order later
     action_custom = 1000          //+ Custom Action ID
@@ -68,7 +71,8 @@ class ActionManager
         std::vector<ActionMainBarOrderData>& GetActionMainBarOrder();
 
         bool IsActionIDValid(ActionID action_id) const;
-        const char* GetActionName(ActionID action_id);
+        const char* GetActionName(ActionID action_id) const;
+        const char* GetActionButtonLabel(ActionID action_id) const;
         void EraseCustomAction(int custom_action_id);
 
         static CustomActionFunctionID ParseCustomActionFunctionString(const std::string& str);

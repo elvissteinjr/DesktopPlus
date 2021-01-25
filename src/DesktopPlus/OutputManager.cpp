@@ -2103,6 +2103,13 @@ void OutputManager::DoAction(ActionID action_id)
                 }
                 break;
             }
+            case action_toggle_overlay_enabled_group_1:
+            case action_toggle_overlay_enabled_group_2:
+            case action_toggle_overlay_enabled_group_3:
+            {
+                ToggleOverlayGroupEnabled(1 + ((int)action_id - action_toggle_overlay_enabled_group_1) );
+                break;
+            }
             default: break;
         }
     }
@@ -2131,6 +2138,10 @@ void OutputManager::DoStartAction(ActionID action_id)
             }
         }
     }
+    else
+    {
+        DoAction(action_id);
+    }
 }
 
 void OutputManager::DoStopAction(ActionID action_id)
@@ -2147,6 +2158,29 @@ void OutputManager::DoStopAction(ActionID action_id)
             {
                 m_InputSim.KeyboardSetUp(action.KeyCodes);
             }
+        }
+    }
+}
+
+void OutputManager::ToggleOverlayGroupEnabled(int group_id)
+{
+    for (unsigned int i = k_ulOverlayID_Dashboard; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+        if ( (data.ConfigInt[configid_int_overlay_group_id] == group_id) )
+        {
+            data.ConfigBool[configid_bool_overlay_enabled] = !data.ConfigBool[configid_bool_overlay_enabled];
+
+            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+            OverlayManager::Get().SetCurrentOverlayID(i);
+            ApplySettingTransform();
+            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
+            //Sync change
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), i);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), data.ConfigBool[configid_bool_overlay_enabled]);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
         }
     }
 }

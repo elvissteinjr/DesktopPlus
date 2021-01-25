@@ -19,6 +19,21 @@
       "name": "/actions/shortcuts/in/GlobalShortcut03",
       "requirement": "optional",
       "type": "boolean"
+    },
+	{
+      "name": "/actions/shortcuts/in/ToggleOverlayGroupEnabled01",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+	{
+      "name": "/actions/shortcuts/in/ToggleOverlayGroupEnabled02",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+	{
+      "name": "/actions/shortcuts/in/ToggleOverlayGroupEnabled03",
+      "requirement": "optional",
+      "type": "boolean"
     }
   ],
   "action_sets": [
@@ -36,7 +51,10 @@
 		"/actions/shortcuts/in/SetDetachedInteractive" : "Enable Floating Overlay Interaction",
 		"/actions/shortcuts/in/GlobalShortcut01" : "Do Global Shortcut 1",
 		"/actions/shortcuts/in/GlobalShortcut02" : "Do Global Shortcut 2",
-		"/actions/shortcuts/in/GlobalShortcut03" : "Do Global Shortcut 3"
+		"/actions/shortcuts/in/GlobalShortcut03" : "Do Global Shortcut 3",
+		"/actions/shortcuts/in/ToggleOverlayGroupEnabled01" : "Toggle Overlay Group 1 Enabled State",
+		"/actions/shortcuts/in/ToggleOverlayGroupEnabled02" : "Toggle Overlay Group 2 Enabled State",
+		"/actions/shortcuts/in/ToggleOverlayGroupEnabled03" : "Toggle Overlay Group 3 Enabled State"
     }
   ]
 }

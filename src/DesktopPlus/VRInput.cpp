@@ -13,6 +13,9 @@ VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionDoGlobalShortcut01(vr::k_ulInvalidActionHandle),
                      m_HandleActionDoGlobalShortcut02(vr::k_ulInvalidActionHandle),
                      m_HandleActionDoGlobalShortcut03(vr::k_ulInvalidActionHandle),
+                     m_HandleActionToggleOverlayGroupEnabled01(vr::k_ulInvalidActionHandle),
+                     m_HandleActionToggleOverlayGroupEnabled02(vr::k_ulInvalidActionHandle),
+                     m_HandleActionToggleOverlayGroupEnabled03(vr::k_ulInvalidActionHandle),
                      m_IsAnyActionBound(false),
                      m_IsAnyActionBoundStateValid(false)
 {
@@ -33,10 +36,13 @@ bool VRInput::Init()
             return false;
 
         //Load actions (we assume that the files are not messed with and skip some error checking)
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/SetDetachedInteractive", &m_HandleActionSetDetachedInteractive);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut01",       &m_HandleActionDoGlobalShortcut01);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut02",       &m_HandleActionDoGlobalShortcut02);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut03",       &m_HandleActionDoGlobalShortcut03);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/SetDetachedInteractive",      &m_HandleActionSetDetachedInteractive);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut01",            &m_HandleActionDoGlobalShortcut01);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut02",            &m_HandleActionDoGlobalShortcut02);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut03",            &m_HandleActionDoGlobalShortcut03);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/ToggleOverlayGroupEnabled01", &m_HandleActionToggleOverlayGroupEnabled01);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/ToggleOverlayGroupEnabled02", &m_HandleActionToggleOverlayGroupEnabled02);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/ToggleOverlayGroupEnabled03", &m_HandleActionToggleOverlayGroupEnabled03);
 
         ret = true;
     }
@@ -72,7 +78,10 @@ void VRInput::RefreshAnyActionBound()
         m_HandleActionSetDetachedInteractive,
         m_HandleActionDoGlobalShortcut01,
         m_HandleActionDoGlobalShortcut02,
-        m_HandleActionDoGlobalShortcut03
+        m_HandleActionDoGlobalShortcut03,
+        m_HandleActionToggleOverlayGroupEnabled01,
+        m_HandleActionToggleOverlayGroupEnabled02,
+        m_HandleActionToggleOverlayGroupEnabled03
     };
 
     vr::VRInputValueHandle_t action_origin = vr::k_ulInvalidInputValueHandle;
@@ -146,6 +155,35 @@ void VRInput::HandleGlobalActionShortcuts(OutputManager& outmgr)
             outmgr.DoStopAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_shortcut03_action_id));
         }
     }
+}
+
+void VRInput::HandleGlobalOverlayGroupShortcuts(OutputManager& outmgr)
+{
+    vr::InputDigitalActionData_t data;
+    vr::EVRInputError input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionToggleOverlayGroupEnabled01, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
+
+    //This only toggles only when it changes to true
+    //Reason behind that is that toggle input actions are not viable for this since SteamVR toggles them off when the dashboard is opened with no way to catch this
+    //And well, the resulting toggle flicker from that is not something anyone wants
+    if ((input_error == vr::VRInputError_None) && (data.bChanged) && (data.bState) )
+    {
+        outmgr.ToggleOverlayGroupEnabled(1);
+    }
+
+    input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionToggleOverlayGroupEnabled02, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
+
+    if ((input_error == vr::VRInputError_None) && (data.bChanged) && (data.bState))
+    {
+        outmgr.ToggleOverlayGroupEnabled(2);
+    }
+
+    input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionToggleOverlayGroupEnabled03, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
+
+    if ((input_error == vr::VRInputError_None) && (data.bChanged) && (data.bState))
+    {
+        outmgr.ToggleOverlayGroupEnabled(3);
+    }
+
 }
 
 bool VRInput::GetSetDetachedInteractiveDown() const

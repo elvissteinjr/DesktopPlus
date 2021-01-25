@@ -86,6 +86,7 @@ enum ConfigID_Int
     configid_int_overlay_detached_origin,
     configid_int_overlay_update_limit_override_mode,
     configid_int_overlay_update_limit_override_fps,
+    configid_int_overlay_group_id,
     configid_int_overlay_state_content_width,
     configid_int_overlay_state_content_height,
     configid_int_overlay_MAX,

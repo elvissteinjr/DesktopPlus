@@ -9,6 +9,21 @@ const char* g_ActionNames[] =
     "[None]",
     "Show Keyboard",
     "Crop to Active Window",
+    "Toggle Overlay Group 1 Enabled State",
+    "Toggle Overlay Group 2 Enabled State",
+    "Toggle Overlay Group 3 Enabled State",
+    //Custom
+};
+
+//Blank labels use g_ActionNames entry
+const char* g_ActionButtonLabel[] =
+{
+    "",
+    "",
+    "",
+    "Toggle Overlay Group 1",
+    "Toggle Overlay Group 2",
+    "Toggle Overlay Group 3 ",
     //Custom
 };
 
@@ -147,7 +162,7 @@ bool ActionManager::IsActionIDValid(ActionID action_id) const
     }
 }
 
-const char* ActionManager::GetActionName(ActionID action_id)
+const char* ActionManager::GetActionName(ActionID action_id) const
 {
     if (action_id >= action_custom)
     {
@@ -164,6 +179,27 @@ const char* ActionManager::GetActionName(ActionID action_id)
     }
     else if (action_id < action_built_in_MAX)
     {
+        return g_ActionNames[action_id];
+    }
+    else
+    {
+        return g_ActionNames[action_none];
+    }
+}
+
+const char* ActionManager::GetActionButtonLabel(ActionID action_id) const
+{
+    if (action_id >= action_custom)
+    {
+        return GetActionName(action_id);
+    }
+    else if (action_id < action_built_in_MAX)
+    {
+        if (g_ActionButtonLabel[action_id][0] != '\0')
+        {
+            return g_ActionButtonLabel[action_id];
+        }
+        
         return g_ActionNames[action_id];
     }
     else
