@@ -177,7 +177,7 @@ const char* ActionManager::GetActionName(ActionID action_id) const
             return g_ActionNames[action_none];
         }
     }
-    else if (action_id < action_built_in_MAX)
+    else if ( (action_id >= action_none) && (action_id < action_built_in_MAX) )
     {
         return g_ActionNames[action_id];
     }
@@ -193,7 +193,7 @@ const char* ActionManager::GetActionButtonLabel(ActionID action_id) const
     {
         return GetActionName(action_id);
     }
-    else if (action_id < action_built_in_MAX)
+    else if ( (action_id >= action_none) && (action_id < action_built_in_MAX) )
     {
         if (g_ActionButtonLabel[action_id][0] != '\0')
         {

@@ -32,8 +32,9 @@ class OutputManager
         DUPL_RETURN InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
         vr::EVRInitError InitOverlay();
         DUPL_RETURN_UPD Update(_In_ PTR_INFO* PointerInfo, _In_ DPRect& DirtyRegionTotal, bool NewFrame, bool SkipFrame);
-        bool HandleIPCMessage(const MSG& msg);   //Returns true if message caused a duplication reset (i.e. desktop switch)
-        void HandleWinRTMessage(const MSG& msg); //Messages sent by the Desktop+ WinRT library
+        bool HandleIPCMessage(const MSG& msg);    //Returns true if message caused a duplication reset (i.e. desktop switch)
+        void HandleWinRTMessage(const MSG& msg);  //Messages sent by the Desktop+ WinRT library
+        void HandleHotkeyMessage(const MSG& msg);
 
         HWND GetWindowHandle();
         HANDLE GetSharedHandle();
@@ -129,6 +130,8 @@ class OutputManager
         bool HasDashboardMoved();
         bool IsAnyOverlayUsingGazeFade() const;
 
+        void UpdateHotkeys();
+
     // ClassVars
         InputSimulator m_InputSim;
         VRInput m_VRInput;
@@ -221,6 +224,8 @@ class OutputManager
         int m_PerformanceFrameCount;
         ULONGLONG m_PerformanceFrameCountStartTick;
         LARGE_INTEGER m_PerformanceUpdateLimiterDelay;
+
+        bool m_IsAnyHotkeyActive;
 };
 
 #endif

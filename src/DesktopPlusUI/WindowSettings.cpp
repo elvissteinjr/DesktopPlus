@@ -1764,6 +1764,92 @@ void WindowSettings::UpdateCatInput()
         ImGui::Columns(1);
     }
 
+    //Global Hotkeys
+    {
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Global Hotkeys");
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("System-wide keyboard shortcuts.\nHotkeys block other applications from receiving that input and will not work if the same combination has already been registered elsewhere.");
+
+        ActionID actionid_hotkey_01 = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_action_id);
+        ActionID actionid_hotkey_02 = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_action_id);
+        ActionID actionid_hotkey_03 = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_action_id);
+
+        //Adjust column width automatically if there's a stupidly long hotkey button/name
+        static float hotkey_button_width = 0.0f;
+
+        ImGui::Columns(2, "ColumnHotkeyActions", false);
+        ImGui::SetColumnWidth(0, std::max(column_width_0, hotkey_button_width));
+
+        float hotkey_button_width_temp = 0.0f;  //Collect longest hotkey button width first
+
+        //Hotkey 1
+        ImGui::AlignTextToFramePadding();
+        ButtonHotkey(0);
+
+        ImGui::SameLine();
+        ImGui::Text("Action");
+        ImGui::SameLine();
+
+        if (ImGui::GetCursorPosX() > hotkey_button_width_temp)
+            hotkey_button_width_temp = ImGui::GetCursorPosX();
+
+        ImGui::NextColumn();
+
+        if (ButtonAction(actionid_hotkey_01))
+        {
+            ConfigManager::Get().SetConfigInt(configid_int_input_hotkey01_action_id, actionid_hotkey_01);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey01_action_id), actionid_hotkey_01);
+        }
+
+        ImGui::NextColumn();
+
+        //Hotkey 2
+        ImGui::AlignTextToFramePadding();
+        ButtonHotkey(1);
+
+        ImGui::SameLine();
+        ImGui::Text("Action");
+        ImGui::SameLine();
+
+        if (ImGui::GetCursorPosX() > hotkey_button_width_temp)
+            hotkey_button_width_temp = ImGui::GetCursorPosX();
+
+        ImGui::NextColumn();
+
+        if (ButtonAction(actionid_hotkey_02))
+        {
+            ConfigManager::Get().SetConfigInt(configid_int_input_hotkey02_action_id, actionid_hotkey_02);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey02_action_id), actionid_hotkey_02);
+        }
+
+        ImGui::NextColumn();
+
+        //Hotkey 3
+        ImGui::AlignTextToFramePadding();
+        ButtonHotkey(2);
+
+        ImGui::SameLine();
+        ImGui::Text("Action");
+        ImGui::SameLine();
+
+        if (ImGui::GetCursorPosX() > hotkey_button_width_temp)
+            hotkey_button_width_temp = ImGui::GetCursorPosX();
+
+        ImGui::NextColumn();
+
+        if (ButtonAction(actionid_hotkey_03))
+        {
+            ConfigManager::Get().SetConfigInt(configid_int_input_hotkey03_action_id, actionid_hotkey_03);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey03_action_id), actionid_hotkey_03);
+        }
+
+        ImGui::NextColumn();
+
+        hotkey_button_width = hotkey_button_width_temp;
+
+        ImGui::Columns(1);
+    }
+
     //Custom Actions
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Custom Actions");
@@ -2603,7 +2689,7 @@ void WindowSettings::PopInterfaceScale()
     }
 }
 
-bool WindowSettings::ButtonKeybind(unsigned char* key_code)
+bool WindowSettings::ButtonKeybind(unsigned char* key_code, bool no_mouse)
 {
     //ID hierarchy prevents properly opening the popups directly from within the button popup, so this is a workaround
     static bool open_bind_popup = false, open_list_popup = false;
@@ -2658,24 +2744,27 @@ bool WindowSettings::ButtonKeybind(unsigned char* key_code)
 
     if (ImGui::BeginPopupModal("Bind Key", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
-        ImGui::Text("Press any key or mouse button...");
+        ImGui::Text((no_mouse) ? "Press any key..." : "Press any key or mouse button...");
 
         ImGuiIO& io = ImGui::GetIO();
 
-        for (int i = 0; i < 5; ++i)
+        if (!no_mouse)
         {
-            if (ImGui::IsMouseClicked(i, false)) //Checking io.MouseClicked would do the same, but let's use the thing that is not marked [Internal] here
+            for (int i = 0; i < 5; ++i)
             {
-                switch (i) //Virtual key code for mouse is unfortunately not just VK_LBUTTON + i
+                if (ImGui::IsMouseClicked(i, false)) //Checking io.MouseClicked would do the same, but let's use the thing that is not marked [Internal] here
                 {
-                    case 0: *key_code = VK_LBUTTON;  break;
-                    case 1: *key_code = VK_RBUTTON;  break;
-                    case 2: *key_code = VK_MBUTTON;  break;
-                    case 3: *key_code = VK_XBUTTON1; break;
-                    case 4: *key_code = VK_XBUTTON2; break;
+                    switch (i) //Virtual key code for mouse is unfortunately not just VK_LBUTTON + i
+                    {
+                        case 0: *key_code = VK_LBUTTON;  break;
+                        case 1: *key_code = VK_RBUTTON;  break;
+                        case 2: *key_code = VK_MBUTTON;  break;
+                        case 3: *key_code = VK_XBUTTON1; break;
+                        case 4: *key_code = VK_XBUTTON2; break;
+                    }
+                    ImGui::CloseCurrentPopup();
+                    break;
                 }
-                ImGui::CloseCurrentPopup();
-                break;
             }
         }
 
@@ -2723,11 +2812,16 @@ bool WindowSettings::ButtonKeybind(unsigned char* key_code)
 
         ImGui::BeginChild("KeyList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing()), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
+        unsigned char list_keycode;
         for (int i = 0; i < 256; i++)
         {
-            if (filter.PassFilter( GetStringForKeyCode(GetKeyCodeForListID(i))) )
+            list_keycode = GetKeyCodeForListID(i);
+            if (filter.PassFilter( GetStringForKeyCode(list_keycode) ))
             {
-                if (ImGui::Selectable( GetStringForKeyCode(GetKeyCodeForListID(i)), (i == list_id)))
+                if ( (no_mouse) && (list_keycode >= VK_LBUTTON) && (list_keycode <= VK_XBUTTON2) && (list_keycode != VK_CANCEL) )    //Skip mouse buttons if turned off
+                    continue;
+
+                if (ImGui::Selectable( GetStringForKeyCode(list_keycode), (i == list_id)))
                 {
                     list_id = i;
                 }
@@ -2817,7 +2911,192 @@ bool WindowSettings::ButtonAction(ActionID& action_id)
             ImGui::CloseCurrentPopup();
             result = true;
         }
-            
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel")) 
+        {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::PopID();
+
+    return result;
+}
+
+bool WindowSettings::ButtonHotkey(unsigned int hotkey_id)
+{
+    static std::string hotkey_name[3];
+
+    hotkey_id = std::min(hotkey_id, 2u);
+
+    unsigned int  flags   = 0;
+    unsigned char keycode = 0;
+
+    switch (hotkey_id)
+    {
+        case 0:
+        {
+            flags   = (unsigned int) ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_modifiers);
+            keycode = (unsigned char)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_keycode);
+            break;
+        }
+        case 1:
+        {
+            flags   = (unsigned int) ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_modifiers);
+            keycode = (unsigned char)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_keycode);
+            break;
+        }
+        case 2:
+        {
+            flags   = (unsigned int) ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_modifiers);
+            keycode = (unsigned char)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_keycode);
+            break;
+        }
+    }
+
+    //Update cached hotkey name if window is just appearing or the name is empty
+    if ( (ImGui::IsWindowAppearing()) || (hotkey_name[hotkey_id].empty()) )
+    {
+        hotkey_name[hotkey_id] = "";
+
+        if (keycode != 0)
+        {
+            if (flags & MOD_CONTROL)
+                hotkey_name[hotkey_id] += "Ctrl+";
+            if (flags & MOD_ALT)
+                hotkey_name[hotkey_id] += "Alt+";
+            if (flags & MOD_SHIFT)
+                hotkey_name[hotkey_id] += "Shift+";
+            if (flags & MOD_WIN)
+                hotkey_name[hotkey_id] += "Win+";
+        }
+
+        hotkey_name[hotkey_id] += GetStringForKeyCode(keycode);
+    }
+
+
+    bool result = false;
+
+    ImGui::PushID(hotkey_id);
+
+    if (ImGui::Button(hotkey_name[hotkey_id].c_str()))
+    {
+        ImGui::OpenPopup("HotkeyEditPopup");
+    }
+
+    ImGui::SetNextWindowSizeConstraints(ImVec2(GetSize().x * 0.5f, -1),  ImVec2(GetSize().x * 0.5f, -1));
+    if (ImGui::BeginPopupModal("HotkeyEditPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    {
+        static bool mod_ctrl  = false;
+        static bool mod_alt   = false;
+        static bool mod_shift = false;
+        static bool mod_win   = false;
+        static unsigned char keycode_edit = 0;
+
+        if (ImGui::IsWindowAppearing())
+        {
+            mod_ctrl  = (flags & MOD_CONTROL);
+            mod_alt   = (flags & MOD_ALT);
+            mod_shift = (flags & MOD_SHIFT);
+            mod_win   = (flags & MOD_WIN);
+            keycode_edit = keycode;
+        }
+
+        bool do_save = false;
+
+        const float column_width_0 = ImGui::GetFontSize() * 10.0f;
+
+        ImGui::Columns(2, "ColumnHotkey", false);
+        ImGui::SetColumnWidth(0, column_width_0);
+
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Modifiers");
+        ImGui::NextColumn();
+
+        ImGui::SetNextItemWidth(-1.0f);
+
+        ImGui::Checkbox("Ctrl",  &mod_ctrl);
+        ImGui::SameLine();
+        ImGui::Checkbox("Alt",   &mod_alt);
+        ImGui::SameLine();
+        ImGui::Checkbox("Shift", &mod_shift);
+        ImGui::SameLine();
+        ImGui::Checkbox("Win",   &mod_win);
+
+        ImGui::NextColumn();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Key Code");
+        ImGui::NextColumn();
+
+        ButtonKeybind(&keycode_edit, true);
+        ImGui::NextColumn();
+
+        ImGui::Columns(1);
+
+        ImGui::Separator();
+
+        if (ImGui::Button("Ok"))
+        {
+            do_save = true;
+        }
+
+        if (do_save)
+        {
+            flags = 0;
+
+            if (mod_ctrl)
+                flags |= MOD_CONTROL;
+            if (mod_alt)
+                flags |= MOD_ALT;
+            if (mod_shift)
+                flags |= MOD_SHIFT;
+            if (mod_win)
+                flags |= MOD_WIN;
+
+            //Set cached hotkey name to blank so it'll get updated next frame
+            hotkey_name[hotkey_id] = "";
+
+            //Store hotkey modifier and keycode and send it over to the dashboard app
+            switch (hotkey_id)
+            {
+                case 0: 
+                {
+                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey01_modifiers, (int)flags);
+                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey01_keycode,   keycode_edit);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey01_modifiers), (int)flags);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey01_keycode),   keycode_edit);
+                    break;
+                }
+                case 1: 
+                {
+                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey02_modifiers, (int)flags);
+                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey02_keycode, keycode_edit);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey02_modifiers), (int)flags);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey02_keycode),   keycode_edit);
+                    break;
+                }
+                case 2: 
+                {
+                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey03_modifiers, (int)flags);
+                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey03_keycode, keycode_edit);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey03_modifiers), (int)flags);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey03_keycode),   keycode_edit);
+                    break;
+                }
+            }
+
+            UIManager::Get()->RepeatFrame();
+            ImGui::CloseCurrentPopup();
+
+            result = true;
+        }
+
         ImGui::SameLine();
 
         if (ImGui::Button("Cancel")) 

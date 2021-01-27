@@ -309,6 +309,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             {
                 OutMgr.HandleWinRTMessage(msg);
             }
+            else if (msg.message == WM_HOTKEY)
+            {
+                OutMgr.HandleHotkeyMessage(msg);
+            }
             else
             {
                 TranslateMessage(&msg);

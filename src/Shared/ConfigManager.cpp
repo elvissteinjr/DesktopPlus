@@ -406,6 +406,17 @@ bool ConfigManager::LoadConfigFromFile()
 	m_ConfigInt[configid_int_input_shortcut01_action_id]                    = config.ReadInt( "Input", "GlobalShortcut01ActionID", 0);
 	m_ConfigInt[configid_int_input_shortcut02_action_id]                    = config.ReadInt( "Input", "GlobalShortcut02ActionID", 0);
 	m_ConfigInt[configid_int_input_shortcut03_action_id]                    = config.ReadInt( "Input", "GlobalShortcut03ActionID", 0);
+
+	m_ConfigInt[configid_int_input_hotkey01_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey01Modifiers", 0);
+	m_ConfigInt[configid_int_input_hotkey01_keycode]                        = config.ReadInt( "Input", "GlobalHotkey01KeyCode",   0);
+	m_ConfigInt[configid_int_input_hotkey01_action_id]                      = config.ReadInt( "Input", "GlobalHotkey01ActionID",  0);
+	m_ConfigInt[configid_int_input_hotkey02_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey02Modifiers", 0);
+	m_ConfigInt[configid_int_input_hotkey02_keycode]                        = config.ReadInt( "Input", "GlobalHotkey02KeyCode",   0);
+	m_ConfigInt[configid_int_input_hotkey02_action_id]                      = config.ReadInt( "Input", "GlobalHotkey02ActionID",  0);
+	m_ConfigInt[configid_int_input_hotkey03_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey03Modifiers", 0);
+	m_ConfigInt[configid_int_input_hotkey03_keycode]                        = config.ReadInt( "Input", "GlobalHotkey03KeyCode",   0);
+	m_ConfigInt[configid_int_input_hotkey03_action_id]                      = config.ReadInt( "Input", "GlobalHotkey03ActionID",  0);
+
     m_ConfigFloat[configid_float_input_detached_interaction_max_distance]   = config.ReadInt( "Input", "DetachedInteractionMaxDistance", 0) / 100.0f;
 
     m_ConfigBool[configid_bool_input_mouse_render_cursor]              = config.ReadBool("Mouse", "RenderCursor", true);
@@ -696,6 +707,17 @@ void ConfigManager::SaveConfigToFile()
     config.WriteInt( "Input",  "GlobalShortcut01ActionID",           m_ConfigInt[configid_int_input_shortcut01_action_id]);
     config.WriteInt( "Input",  "GlobalShortcut02ActionID",           m_ConfigInt[configid_int_input_shortcut02_action_id]);
     config.WriteInt( "Input",  "GlobalShortcut03ActionID",           m_ConfigInt[configid_int_input_shortcut03_action_id]);
+
+    config.WriteInt( "Input",  "GlobalHotkey01Modifiers",            m_ConfigInt[configid_int_input_hotkey01_modifiers]);
+    config.WriteInt( "Input",  "GlobalHotkey01KeyCode",              m_ConfigInt[configid_int_input_hotkey01_keycode]);
+    config.WriteInt( "Input",  "GlobalHotkey01ActionID",             m_ConfigInt[configid_int_input_hotkey01_action_id]);
+    config.WriteInt( "Input",  "GlobalHotkey02Modifiers",            m_ConfigInt[configid_int_input_hotkey02_modifiers]);
+    config.WriteInt( "Input",  "GlobalHotkey02KeyCode",              m_ConfigInt[configid_int_input_hotkey02_keycode]);
+    config.WriteInt( "Input",  "GlobalHotkey02ActionID",             m_ConfigInt[configid_int_input_hotkey02_action_id]);
+    config.WriteInt( "Input",  "GlobalHotkey03Modifiers",            m_ConfigInt[configid_int_input_hotkey03_modifiers]);
+    config.WriteInt( "Input",  "GlobalHotkey03KeyCode",              m_ConfigInt[configid_int_input_hotkey03_keycode]);
+    config.WriteInt( "Input",  "GlobalHotkey03ActionID",             m_ConfigInt[configid_int_input_hotkey03_action_id]);
+
     config.WriteInt( "Input",  "DetachedInteractionMaxDistance", int(m_ConfigFloat[configid_float_input_detached_interaction_max_distance] * 100.0f));
 
     config.WriteBool("Mouse", "RenderCursor",              m_ConfigBool[configid_bool_input_mouse_render_cursor]);

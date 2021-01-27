@@ -36,8 +36,9 @@ class WindowSettings
         void PushInterfaceScale();
         void PopInterfaceScale();
 
-        bool ButtonKeybind(unsigned char* key_code);
+        bool ButtonKeybind(unsigned char* key_code, bool no_mouse = false);
         bool ButtonAction(ActionID& action_id);
+        bool ButtonHotkey(unsigned int hotkey_id);
         void ProfileSelector(bool multi_overlay);
         void UpdateWindowList(std::vector<WindowInfo>& window_list, HWND selected_window, std::string& selected_window_str);
         void ActionOrderSetting(unsigned int overlay_id = UINT_MAX);

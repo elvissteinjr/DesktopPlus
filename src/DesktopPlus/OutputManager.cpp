@@ -98,13 +98,16 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MultiGPUTexTarget(nullptr),
     m_PerformanceFrameCount(0),
     m_PerformanceFrameCountStartTick(0),
-    m_PerformanceUpdateLimiterDelay{0}
+    m_PerformanceUpdateLimiterDelay{0},
+    m_IsAnyHotkeyActive(false)
 {
     m_MouseLastInfo = {0};
     m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
 
     //Initialize ConfigManager and set first launch state based on existence of config file (used to detect first launch in Steam version)
     m_IsFirstLaunch = !ConfigManager::Get().LoadConfigFromFile();
+
+    UpdateHotkeys();
 
     g_OutputManager = this;
 }
@@ -1314,6 +1317,17 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         ApplySettingTransform();
                         break;
                     }
+                    case configid_int_input_hotkey01_keycode:
+                    case configid_int_input_hotkey02_keycode:
+                    case configid_int_input_hotkey03_keycode:
+                    case configid_int_input_hotkey01_action_id:
+                    case configid_int_input_hotkey02_action_id:
+                    case configid_int_input_hotkey03_action_id:
+                    {
+                        //*_keycode always follows after *_modifiers, so we only catch the keycode ones
+                        UpdateHotkeys();
+                        break;
+                    }
                     case configid_int_state_action_value_int:
                     {
                         std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
@@ -1581,6 +1595,16 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
     }
 }
 
+void OutputManager::HandleHotkeyMessage(const MSG& msg)
+{
+    switch (msg.wParam)
+    {
+        case 0: DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_action_id)); break;
+        case 1: DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_action_id)); break;
+        case 2: DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_action_id)); break;
+    }
+}
+
 HWND OutputManager::GetWindowHandle()
 {
     return m_WindowHandle;
@@ -1722,7 +1746,7 @@ DWORD OutputManager::GetMaxRefreshDelay() const
             return m_MaxActiveRefreshDelay;
         }
     }
-    else if ( (m_VRInput.IsAnyActionBound()) || IsAnyOverlayUsingGazeFade() )
+    else if ( (m_VRInput.IsAnyActionBound()) || (IsAnyOverlayUsingGazeFade()) || (m_IsAnyHotkeyActive) )
     {
         return m_MaxActiveRefreshDelay * 2;
     }
@@ -5565,4 +5589,41 @@ bool OutputManager::IsAnyOverlayUsingGazeFade() const
     }
 
     return false;
+}
+
+void OutputManager::UpdateHotkeys()
+{
+    //Just unregister all we have when updating any
+    ::UnregisterHotKey(nullptr, 0);
+    ::UnregisterHotKey(nullptr, 1);
+    ::UnregisterHotKey(nullptr, 2);
+    m_IsAnyHotkeyActive = false;
+
+    //...and register them again if there's an action assigned
+    UINT flags   = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_modifiers);
+    UINT keycode = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_keycode);
+
+    if (ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_action_id) != action_none)
+    {
+        ::RegisterHotKey(nullptr, 0, flags | MOD_NOREPEAT, keycode);
+        m_IsAnyHotkeyActive = true;
+    }
+
+    flags   = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_modifiers);
+    keycode = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_keycode);
+
+    if (ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_action_id) != action_none)
+    {
+        ::RegisterHotKey(nullptr, 1, flags | MOD_NOREPEAT, keycode);
+        m_IsAnyHotkeyActive = true;
+    }
+
+    flags   = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_modifiers);
+    keycode = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_keycode);
+
+    if (ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_action_id) != action_none)
+    {
+        ::RegisterHotKey(nullptr, 2, flags | MOD_NOREPEAT, keycode);
+        m_IsAnyHotkeyActive = true;
+    }
 }
