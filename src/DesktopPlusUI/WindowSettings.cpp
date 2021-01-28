@@ -1608,17 +1608,17 @@ void WindowSettings::UpdateCatInterface()
     ImGui::EndChild();
 }
 
-void WindowSettings::UpdateCatInput()
+void WindowSettings::UpdateCatActions()
 {
-    ImGui::Text("Input");
-            
+    ImGui::Text("Actions");
+
     //Horizontal separator
     ImGui::PushStyleColor(ImGuiCol_Border, ImGui::GetStyleColorVec4(ImGuiCol_Separator));
     ImGui::BeginChild("hsep", ImVec2(0.0f, 1.0f), true);
     ImGui::EndChild();
     ImGui::PopStyleColor();
 
-    ImGui::BeginChild("ViewInputSettings");
+    ImGui::BeginChild("ViewActionsSettings");
 
     if (ImGui::IsWindowAppearing())
         UIManager::Get()->RepeatFrame();
@@ -1991,7 +1991,6 @@ void WindowSettings::UpdateCatInput()
         if (buttons_disabled)
             ImGui::PopItemDisabled();
 
-        //
         if ( (list_selected_index != -1) && (actions.size() > list_selected_index) ) //If actually exists
         {
             PopupActionEdit(actions[list_selected_index], list_selected_index);
@@ -2001,8 +2000,27 @@ void WindowSettings::UpdateCatInput()
                 list_selected_index = -1;
             }
         }
-
     }
+
+    ImGui::EndChild();
+}
+
+void WindowSettings::UpdateCatInput()
+{
+    ImGui::Text("Input");
+
+    //Horizontal separator
+    ImGui::PushStyleColor(ImGuiCol_Border, ImGui::GetStyleColorVec4(ImGuiCol_Separator));
+    ImGui::BeginChild("hsep", ImVec2(0.0f, 1.0f), true);
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
+
+    ImGui::BeginChild("ViewInputSettings");
+
+    if (ImGui::IsWindowAppearing())
+        UIManager::Get()->RepeatFrame();
+
+    const float column_width_0 = ImGui::GetFontSize() * 15.0f;
 
     //Mouse
     {
@@ -5067,22 +5085,24 @@ void WindowSettings::Update()
         static float selectable_height = 0.0f;
 
         //Dummy sets pane width and pushes the selectables down so they're middle aligned
-        ImGui::Dummy({ pane_left_width, ((ImGui::GetWindowSize().y - ImGui::GetStyle().ItemSpacing.y) / 2.0f) - (selectable_height * 3.0f) });
+        ImGui::Dummy({ pane_left_width, ((ImGui::GetWindowSize().y - ImGui::GetStyle().ItemSpacing.y) / 2.0f) - (selectable_height * 3.5f) });
 
         ImGui::PushClipRect({0.0f, 0.0f}, {FLT_MAX, FLT_MAX}, true); //Push another clip rect as BeginChild() adds its own in-between
 
-        if (ImGui::Selectable("  Overlay", selected == 0))
+        if (ImGui::Selectable("  Overlay",     selected == 0))
             selected = 0;
-        if (ImGui::Selectable("  Interface", selected == 1))
+        if (ImGui::Selectable("  Interface",   selected == 1))
             selected = 1;
-        if (ImGui::Selectable("  Input", selected == 2))
+        if (ImGui::Selectable("  Actions",     selected == 2))
             selected = 2;
-        if (ImGui::Selectable("  Windows", selected == 3))
+        if (ImGui::Selectable("  Input",       selected == 3))
             selected = 3;
-        if (ImGui::Selectable("  Performance", selected == 4))
+        if (ImGui::Selectable("  Windows",     selected == 4))
             selected = 4;
-        if (ImGui::Selectable("  Misc", selected == 5))
+        if (ImGui::Selectable("  Performance", selected == 5))
             selected = 5;
+        if (ImGui::Selectable("  Misc",        selected == 6))
+            selected = 6;
 
         selectable_height = ImGui::GetItemRectSize().y;
         ImGui::PopClipRect();
@@ -5112,10 +5132,11 @@ void WindowSettings::Update()
         {
             case 0: UpdateCatOverlay();     break;
             case 1: UpdateCatInterface();   break;
-            case 2: UpdateCatInput();       break;
-            case 3: UpdateCatWindows();     break;
-            case 4: UpdateCatPerformance(); break;
-            case 5: UpdateCatMisc();        break;
+            case 2: UpdateCatActions();     break;
+            case 3: UpdateCatInput();       break;
+            case 4: UpdateCatWindows();     break;
+            case 5: UpdateCatPerformance(); break;
+            case 6: UpdateCatMisc();        break;
         }
 
     ImGui::EndGroup();
@@ -5127,12 +5148,12 @@ void WindowSettings::Update()
 
     //Toggle performance stats based on the active page
     bool& performance_stats_active = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_performance_stats_active);
-    if ((selected == 4) && (m_Visible) && (!performance_stats_active))
+    if ((selected == 5) && (m_Visible) && (!performance_stats_active))
     {
         performance_stats_active = true;
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_performance_stats_active), true);
     }
-    else if (( (selected != 4) || (!m_Visible) ) && (performance_stats_active))
+    else if (( (selected != 5) || (!m_Visible) ) && (performance_stats_active))
     {
         performance_stats_active = false;
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_performance_stats_active), false);
