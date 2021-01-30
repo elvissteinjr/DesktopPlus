@@ -737,8 +737,8 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
 
         ImGui::NextColumn();
 
-        if (!UIManager::Get()->IsOpenVRLoaded())
-            ImGui::PushItemDisabled();
+        //if (!UIManager::Get()->IsOpenVRLoaded())
+        //    ImGui::PushItemDisabled();
 
         bool& is_changing_position = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_overlay_dragmode);
 
@@ -768,8 +768,8 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
         }
 
-        if (!UIManager::Get()->IsOpenVRLoaded())
-            ImGui::PopItemDisabled();
+        //if (!UIManager::Get()->IsOpenVRLoaded())
+        //    ImGui::PopItemDisabled();
 
         ImGui::Columns(1);
 
@@ -4581,13 +4581,15 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
 {
     ImGuiStyle& style = ImGui::GetStyle();
     const ImVec2 button_size(ImGui::GetFrameHeight(), ImGui::GetFrameHeight());
-    const float column_width_0 = ImGui::GetFontSize() * 10.0f;
-    const float column_width_1 = ImGui::GetFrameHeightWithSpacing() * 2.0f + style.ItemInnerSpacing.x;
-    const float column_width_2 = column_width_0 * 0.5f;
-    const float popup_width = column_width_0 + (column_width_1 * 2.0f) + column_width_2 + (ImGui::GetStyle().ItemSpacing.x * 2.0f);
 
-    
     static bool popup_was_open = false;
+    static float button_backward_width = 0.0f;
+
+    const float column_width_0 = ImGui::GetFontSize() * 3.0f;
+    const float column_width_1 = ImGui::GetFrameHeightWithSpacing() * 3.0f + style.ItemInnerSpacing.x;
+    const float column_width_2 = button_backward_width + (style.ItemInnerSpacing.x * 2.0f);
+    const float column_width_3 = column_width_0;
+    const float popup_width = column_width_0 + (column_width_1 * 2.0f) + (column_width_2 * 2.0f) + column_width_3 + (ImGui::GetStyle().ItemSpacing.x * 1.0f) - 1.0f;
 
     //Set popup rounding to the same as a normal window
     ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, ImGui::GetStyle().WindowRounding);
@@ -4604,6 +4606,14 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
         ImGui::PopStyleVar(); //ImGuiStyleVar_PopupRounding
         is_popup_rounding_pushed = false;
 
+        static int active_capture_type = 0; //0 = off, 1 = Move, 2 = Rotate
+        static ImVec2 active_capture_pos;
+
+        if (ImGui::IsWindowAppearing())
+        {
+            UIManager::Get()->RepeatFrame();
+        }
+
         if (!UIManager::Get()->IsInDesktopMode())
         {
             ImGui::Text("Drag the overlay around to change its position.");
@@ -4611,7 +4621,7 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
         }
         else
         {
-            ImGui::Text("Dragging is not available in desktop mode.");
+            ImGui::TextWrapped("Hold down the drag buttons (\"D\") to move or rotate the overlay with the mouse.");
         }
 
         ImGui::Separator();
@@ -4627,31 +4637,25 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
             HighlightOverlay(-1);
         }
 
-        ImGui::Columns(4, "ColumnManualAdjust", false);
+        ImGui::Columns(6, "ColumnManualAdjust", false);
 
         ImGuiStyle& style = ImGui::GetStyle();
         const ImVec2 button_size(ImGui::GetFrameHeight(), ImGui::GetFrameHeight());
         ImGui::SetColumnWidth(0, column_width_0);
         ImGui::SetColumnWidth(1, column_width_1);
         ImGui::SetColumnWidth(2, column_width_2);
-        ImGui::SetColumnWidth(3, column_width_1);
+        ImGui::SetColumnWidth(3, column_width_3);
+        ImGui::SetColumnWidth(4, column_width_1);
+        ImGui::SetColumnWidth(5, column_width_2);
 
         ImGui::PushButtonRepeat(true);
 
-        ImGui::PushID("Up/Down");
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Move Up/Down");
+        //Row 1
         ImGui::NextColumn();
 
-        if (ImGui::Button("-", button_size))
-        {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_updown);
-        }
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetFrameHeightWithSpacing());
 
-        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
-
-        if (ImGui::Button("+", button_size))
+        if (ImGui::ArrowButton("MoveUp", ImGuiDir_Up))
         {
             //Do some packing
             unsigned int packed_value = ipcactv_ovrl_pos_adjust_increase;  //Increase bit
@@ -4660,95 +4664,9 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
         }
 
-        ImGui::PopID();
         ImGui::NextColumn();
 
-                        
-        ImGui::PushID("RotX");
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Rotate X");
-        ImGui::NextColumn();
-
-        if (ImGui::Button("-", button_size))
-        {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_rotx);
-        }
-
-        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
-
-        if (ImGui::Button("+", button_size))
-        {
-            unsigned int packed_value = ipcactv_ovrl_pos_adjust_increase;
-            packed_value |= ipcactv_ovrl_pos_adjust_rotx;
-
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
-        }
-
-        ImGui::PopID();
-        ImGui::NextColumn();
-
-        ImGui::PushID("Right/Left");
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Move Right/Left");
-        ImGui::NextColumn();
-
-        if (ImGui::Button("-", button_size))
-        {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_rightleft);
-        }
-
-        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
-
-        if (ImGui::Button("+", button_size))
-        {
-            unsigned int packed_value = ipcactv_ovrl_pos_adjust_increase;
-            packed_value |= ipcactv_ovrl_pos_adjust_rightleft;
-
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
-        }
-
-        ImGui::PopID();
-        ImGui::NextColumn();
-
-                        
-        ImGui::PushID("RotY");
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Rotate Y");
-        ImGui::NextColumn();
-
-        if (ImGui::Button("-", button_size))
-        {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_roty);
-        }
-
-        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
-
-        if (ImGui::Button("+", button_size))
-        {
-            unsigned int packed_value = ipcactv_ovrl_pos_adjust_increase;
-            packed_value |= ipcactv_ovrl_pos_adjust_roty;
-
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
-        }
-
-        ImGui::PopID();
-        ImGui::NextColumn();
-
-        ImGui::PushID("Forward/Backward");
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Move Forward/Backward");
-        ImGui::NextColumn();
-
-        if (ImGui::Button("-", button_size))
-        {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_forwback);
-        }
-
-        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
-
-        if (ImGui::Button("+", button_size))
+        if (ImGui::Button("Forward", {button_backward_width, 0.0f}))
         {
             unsigned int packed_value = ipcactv_ovrl_pos_adjust_increase;
             packed_value |= ipcactv_ovrl_pos_adjust_forwback;
@@ -4756,23 +4674,130 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
         }
 
-        ImGui::PopID();
+        ImGui::NextColumn();
         ImGui::NextColumn();
 
-                        
-        ImGui::PushID("RotZ");
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Rotate Z");
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetFrameHeightWithSpacing());
+
+        if (ImGui::ArrowButton("RotUp", ImGuiDir_Up))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_rotx);
+        }
+
         ImGui::NextColumn();
 
-        if (ImGui::Button("-", button_size))
+        if (ImGui::Button("Roll CW", {button_backward_width, 0.0f}))
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_rotz);
         }
 
+        ImGui::NextColumn();
+
+        //Row 2
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Move");
+        ImGui::NextColumn();
+
+        if (ImGui::ArrowButton("MoveLeft", ImGuiDir_Left))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_rightleft);
+        }
+
         ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
-        if (ImGui::Button("+", button_size))
+        if (UIManager::Get()->IsInDesktopMode())
+        {
+            bool is_active = (active_capture_type == 1);
+
+            if (is_active)
+                ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
+
+            ImGui::Button("D##Move", button_size);
+
+            //Activate on mouse down instead of normal button behavior, which is on mouse up
+            if ((active_capture_type == 0) && (ImGui::IsItemHovered()) && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                active_capture_type = 1;
+                active_capture_pos = ImGui::GetIO().MousePos;
+            }
+
+            if (is_active)
+                ImGui::PopStyleColor();
+        }
+        else
+        {
+            ImGui::Dummy(button_size);
+        }
+
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+
+        if (ImGui::ArrowButton("MoveRight", ImGuiDir_Right))
+        {
+            unsigned int packed_value = ipcactv_ovrl_pos_adjust_increase;
+            packed_value |= ipcactv_ovrl_pos_adjust_rightleft;
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
+        }
+
+        ImGui::NextColumn();
+
+        if (ImGui::Button("Backward"))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_forwback);
+        }
+        button_backward_width = ImGui::GetItemRectSize().x;
+
+        ImGui::NextColumn();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Rotate");
+        ImGui::NextColumn();
+
+        if (ImGui::ArrowButton("RotLeft", ImGuiDir_Left))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_roty);
+        }
+
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+
+        if (UIManager::Get()->IsInDesktopMode())
+        {
+            bool is_active = (active_capture_type == 2);
+
+            if (is_active)
+                ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
+
+            ImGui::Button("D##Rot", button_size);
+
+            //Activate on mouse down instead of normal button behavior, which is on mouse up
+            if ((active_capture_type == 0) && (ImGui::IsItemHovered()) && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                active_capture_type = 2;
+                active_capture_pos = ImGui::GetIO().MousePos;
+            }
+
+            if (is_active)
+                ImGui::PopStyleColor();
+        }
+        else
+        {
+            ImGui::Dummy(button_size);
+        }
+
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+
+        if (ImGui::ArrowButton("RotRight", ImGuiDir_Right))
+        {
+            unsigned int packed_value = ipcactv_ovrl_pos_adjust_increase;
+            packed_value |= ipcactv_ovrl_pos_adjust_roty;
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
+        }
+
+        ImGui::NextColumn();
+
+        if (ImGui::Button("Roll CCW", {button_backward_width, 0.0f}))
         {
             unsigned int packed_value = ipcactv_ovrl_pos_adjust_increase;
             packed_value |= ipcactv_ovrl_pos_adjust_rotz;
@@ -4780,9 +4805,41 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
         }
 
-        ImGui::PopID();
+        ImGui::NextColumn();
+
+        //Row 3
+        ImGui::NextColumn();
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetFrameHeightWithSpacing());
+
+        if (ImGui::ArrowButton("MoveDown", ImGuiDir_Down))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_updown);
+        }
+
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetFrameHeightWithSpacing());
+
+        if (ImGui::ArrowButton("RotDown", ImGuiDir_Down))
+        {
+            unsigned int packed_value = ipcactv_ovrl_pos_adjust_increase;
+            packed_value |= ipcactv_ovrl_pos_adjust_rotx;
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
+        }
+
         ImGui::PopButtonRepeat();
-                        
+
+        ImGui::NextColumn();
+
+        if (ImGui::Button("To HMD", {button_backward_width, 0.0f}))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, ipcactv_ovrl_pos_adjust_lookat);
+        }
+
         ImGui::Columns(1);
 
         ImGui::Separator();
@@ -4790,6 +4847,137 @@ void WindowSettings::PopupOverlayDetachedPositionChange()
         if (ImGui::Button("Done"))
         {
             ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        static float button_reset_width = 0.0f;
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - button_reset_width);
+
+        if (ImGui::Button("Reset"))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
+        }
+
+        button_reset_width = ImGui::GetItemRectSize().x;
+
+        //Mouse Dragging
+        if (active_capture_type != 0)
+        {
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+            {
+                active_capture_type = 0;
+                ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
+            }
+            else
+            {
+                ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+
+                const float delta_step = 5.0f;
+                ImVec2 mouse_delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+
+                if (active_capture_type == 1)
+                {
+                    //X -> Right/Left
+                    if (fabs(mouse_delta.x) > delta_step)
+                    {
+                        unsigned int packed_value = (mouse_delta.x > 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
+                        packed_value |= ipcactv_ovrl_pos_adjust_rightleft;
+
+                        //Using the existing position adjust message a few times might be cheap, but it also results in actually useful grid-snapped adjustments
+                        int steps = (int)(fabs(mouse_delta.x) / delta_step);
+                        for (int i = 0; i < steps; ++i)
+                        {
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
+                        }
+                    }
+
+                    //Y -> Up/Down
+                    if (fabs(mouse_delta.y) > delta_step)
+                    {
+                        unsigned int packed_value = (mouse_delta.y < 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
+                        packed_value |= ipcactv_ovrl_pos_adjust_updown;
+
+                        int steps = (int)(fabs(mouse_delta.y) / delta_step);
+                        for (int i = 0; i < steps; ++i)
+                        {
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
+                        }
+                    }
+
+                    //Wheel -> Forward/Backward
+                    if (fabs(ImGui::GetIO().MouseWheel) > 0.0f)
+                    {
+                        unsigned int packed_value = (ImGui::GetIO().MouseWheel < 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
+                        packed_value |= ipcactv_ovrl_pos_adjust_forwback;
+
+                        int steps = (int)(fabs(ImGui::GetIO().MouseWheel) * delta_step);
+                        for (int i = 0; i < steps; ++i)
+                        {
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
+                        }
+                    }
+                }
+                else //active_capture_type == 2
+                {
+                    //X -> Rotate Y+-
+                    if (fabs(mouse_delta.x) > delta_step)
+                    {
+                        unsigned int packed_value = (mouse_delta.x > 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
+                        packed_value |= ipcactv_ovrl_pos_adjust_roty;
+
+                        int steps = (int)(fabs(mouse_delta.x) / delta_step);
+                        for (int i = 0; i < steps; ++i)
+                        {
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
+                        }
+                    }
+
+                    //Y -> Rotate X+-
+                    if (fabs(mouse_delta.y) > delta_step)
+                    {
+                        unsigned int packed_value = (mouse_delta.y > 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
+                        packed_value |= ipcactv_ovrl_pos_adjust_rotx;
+
+                        int steps = (int)(fabs(mouse_delta.y) / delta_step);
+                        for (int i = 0; i < steps; ++i)
+                        {
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
+                        }
+                    }
+
+                    //Wheel -> Rotate Z+-
+                    if (fabs(ImGui::GetIO().MouseWheel) > 0.0f)
+                    {
+                        unsigned int packed_value = (ImGui::GetIO().MouseWheel > 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
+                        packed_value |= ipcactv_ovrl_pos_adjust_rotz;
+
+                        int steps = (int)(fabs(ImGui::GetIO().MouseWheel) * delta_step);
+                        for (int i = 0; i < steps; ++i)
+                        {
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
+                        }
+                    }
+                }
+
+                //Reset mouse cursor if needed
+                ImGuiIO& io = ImGui::GetIO();
+
+                if (fabs(mouse_delta.x) > delta_step)
+                {
+                    io.WantSetMousePos = true;
+                    io.MousePos.x = active_capture_pos.x;
+                    io.MouseClickedPos[0].x = io.MousePos.x;    //for drag delta
+                }
+
+                if (fabs(mouse_delta.y) > delta_step)
+                {
+                    io.WantSetMousePos = true;
+                    io.MousePos.y = active_capture_pos.y;
+                    io.MouseClickedPos[0].y = io.MousePos.y;
+                }
+            }
         }
 
         ImGui::EndPopup();

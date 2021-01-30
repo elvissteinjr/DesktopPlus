@@ -5390,9 +5390,43 @@ void OutputManager::DetachedTransformAdjust(unsigned int packed_value)
     IPCActionOverlayPosAdjustTarget target = (IPCActionOverlayPosAdjustTarget)(packed_value & 0xF);
     bool increase = (packed_value >> 4);
 
+    //"To HMD" / LookAt button, seperate code path entirely
+    if (target == ipcactv_ovrl_pos_adjust_lookat)
+    {
+        //Get HMD pose
+        vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+        vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+        if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+        {
+            //Preserve scaling from transform, which can be present in matrices originating from the dashboard
+            Vector3 row_1(transform[0], transform[1], transform[2]);
+            float scale_x = row_1.length(); //Scaling is always uniform so we just check the x-axis
+
+            //Rotate towards HMD position
+            Matrix4 mat_hmd(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
+            Matrix4 mat_lookat = transform;
+
+            TransformLookAt(mat_lookat, mat_hmd.getTranslation());
+
+            //Restore scale factor
+            mat_lookat.setTranslation({0.0f, 0.0f, 0.0f});
+            mat_lookat.scale(scale_x);
+            mat_lookat.setTranslation(transform.getTranslation());
+
+            transform = mat_lookat;
+            ApplySettingTransform();
+        }
+        return;
+    }
+
+    Matrix4 mat_back;
     if (target >= ipcactv_ovrl_pos_adjust_rotx)
     {
-        transform.setTranslation(Vector3(0.0f, 0.0f, 0.0f));
+        //Perform rotation locally
+        mat_back = transform;
+        transform.identity();
     }
 
     if (!increase)
@@ -5413,7 +5447,7 @@ void OutputManager::DetachedTransformAdjust(unsigned int packed_value)
 
     if (target >= ipcactv_ovrl_pos_adjust_rotx)
     {
-        transform.setTranslation(translation);
+        transform = mat_back * transform;
     }
 
     ApplySettingTransform();

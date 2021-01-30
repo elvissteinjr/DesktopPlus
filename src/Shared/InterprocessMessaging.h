@@ -64,6 +64,7 @@ enum IPCActionOverlayPosAdjustTarget
     ipcactv_ovrl_pos_adjust_rotx,
     ipcactv_ovrl_pos_adjust_roty,
     ipcactv_ovrl_pos_adjust_rotz,
+    ipcactv_ovrl_pos_adjust_lookat,
     ipcactv_ovrl_pos_adjust_increase = 0x10
 };
 
