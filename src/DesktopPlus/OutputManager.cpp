@@ -4629,6 +4629,8 @@ void OutputManager::ApplySettingMouseInput()
         ConfigManager::Get().SetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms, ConfigManager::Get().GetConfigInt(configid_int_input_mouse_dbl_click_assist_duration_ms));
     }
 
+    bool drag_mode_enabled   = ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode);
+    bool select_mode_enabled = ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode);
     //Always applies to all overlays
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
@@ -4651,7 +4653,8 @@ void OutputManager::ApplySettingMouseInput()
 
         //Set intersection blob state
         bool hide_intersection = false;
-        if ( (overlay.GetTextureSource() != ovrl_texsource_none) && (overlay.GetTextureSource() != ovrl_texsource_ui) )
+        if ( (overlay.GetTextureSource() != ovrl_texsource_none) && (overlay.GetTextureSource() != ovrl_texsource_ui) && 
+             ( (!drag_mode_enabled) || (i == k_ulOverlayID_Dashboard) ) && (!select_mode_enabled) )
         {
             hide_intersection = !ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_intersection_blob);
         }
