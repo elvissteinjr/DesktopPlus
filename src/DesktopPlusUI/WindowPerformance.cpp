@@ -62,13 +62,16 @@ void WindowPerformance::Update(bool show_as_popup)
         ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, ImGui::GetStyle().WindowRounding);
         bool is_popup_rounding_pushed = true;
 
-        const bool ui_large_style = false;//((ConfigManager::Get().GetConfigBool(configid_bool_interface_large_style)) && (!UIManager::Get()->IsInDesktopMode()));
+        const bool ui_large_style = ((ConfigManager::Get().GetConfigBool(configid_bool_interface_large_style)) && (!UIManager::Get()->IsInDesktopMode()));
 
         if (ui_large_style)
         {
             ImGui::PushFont(UIManager::Get()->GetFontCompact());
         }
 
+        //Setting the window size here is a workaround for an invalid clipping assert raised when switching columns in the compact layout
+        //Came with ImGui 1.80, but has quite a few variables involved, so I'm not even sure who's at fault here. This works, though.
+        ImGui::SetNextWindowSize({1.0f, -1.0f}, ImGuiCond_Appearing);
         ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 
         if (ImGui::BeginPopup("PopupPerformanceMonitor", ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize |
@@ -76,6 +79,11 @@ void WindowPerformance::Update(bool show_as_popup)
         {
             ImGui::PopStyleVar(); //ImGuiStyleVar_PopupRounding
             is_popup_rounding_pushed = false;
+
+            if (ImGui::IsWindowAppearing())
+            {
+                UIManager::Get()->RepeatFrame();
+            }
 
             if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_large_style))
             {

@@ -737,8 +737,8 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
 
         ImGui::NextColumn();
 
-        //if (!UIManager::Get()->IsOpenVRLoaded())
-        //    ImGui::PushItemDisabled();
+        if (!UIManager::Get()->IsOpenVRLoaded())
+            ImGui::PushItemDisabled();
 
         bool& is_changing_position = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_overlay_dragmode);
 
@@ -768,8 +768,8 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
         }
 
-        //if (!UIManager::Get()->IsOpenVRLoaded())
-        //    ImGui::PopItemDisabled();
+        if (!UIManager::Get()->IsOpenVRLoaded())
+            ImGui::PopItemDisabled();
 
         ImGui::Columns(1);
 
@@ -2417,7 +2417,7 @@ void WindowSettings::UpdateCatPerformance()
 
         if (UIManager::Get()->IsOpenVRLoaded()) //Only show when OpenVR is loaded since many of the monitor items don't work at all
         {
-            if (ImGui::Button("View as Popup"))
+            if (ImGui::Button("View as Pop-Up"))
             {
                 ImGui::OpenPopup("PopupPerformanceMonitor");
             }
