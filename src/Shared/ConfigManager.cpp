@@ -468,9 +468,10 @@ bool ConfigManager::LoadConfigFromFile()
         {
             case caction_press_keys:
             {
-                action.KeyCodes[0] = config.ReadInt("CustomActions", (action_ini_name + "KeyCode1").c_str(), 0);
-                action.KeyCodes[1] = config.ReadInt("CustomActions", (action_ini_name + "KeyCode2").c_str(), 0);
-                action.KeyCodes[2] = config.ReadInt("CustomActions", (action_ini_name + "KeyCode3").c_str(), 0);
+                action.KeyCodes[0] = config.ReadInt( "CustomActions", (action_ini_name + "KeyCode1").c_str(),   0);
+                action.KeyCodes[1] = config.ReadInt( "CustomActions", (action_ini_name + "KeyCode2").c_str(),   0);
+                action.KeyCodes[2] = config.ReadInt( "CustomActions", (action_ini_name + "KeyCode3").c_str(),   0);
+                action.IntID       = config.ReadBool("CustomActions", (action_ini_name + "ToggleKeys").c_str(), false);
                 break;
             }
             case caction_type_string:
@@ -771,9 +772,10 @@ void ConfigManager::SaveConfigToFile()
         {
             case caction_press_keys:
             {
-                config.WriteInt("CustomActions", (action_ini_name + "KeyCode1").c_str(), action.KeyCodes[0]);
-                config.WriteInt("CustomActions", (action_ini_name + "KeyCode2").c_str(), action.KeyCodes[1]);
-                config.WriteInt("CustomActions", (action_ini_name + "KeyCode3").c_str(), action.KeyCodes[2]);
+                config.WriteInt( "CustomActions", (action_ini_name + "KeyCode1").c_str(),    action.KeyCodes[0]);
+                config.WriteInt( "CustomActions", (action_ini_name + "KeyCode2").c_str(),    action.KeyCodes[1]);
+                config.WriteInt( "CustomActions", (action_ini_name + "KeyCode3").c_str(),    action.KeyCodes[2]);
+                config.WriteBool("CustomActions", (action_ini_name + "ToggleKeys").c_str(), (action.IntID == 1));
                 break;
             }
             case caction_type_string:
@@ -784,7 +786,7 @@ void ConfigManager::SaveConfigToFile()
             case caction_launch_application:
             {
                 config.WriteString("CustomActions", (action_ini_name + "ExecutablePath").c_str(), action.StrMain.c_str());
-                config.WriteString("CustomActions", (action_ini_name + "ExecutableArg").c_str(), action.StrArg.c_str());
+                config.WriteString("CustomActions", (action_ini_name + "ExecutableArg").c_str(),  action.StrArg.c_str());
                 break;
             }
             case caction_toggle_overlay_enabled_state:

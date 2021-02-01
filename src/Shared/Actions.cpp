@@ -47,6 +47,10 @@ void CustomAction::ApplyIntFromConfig()
                 {
                     KeyCodes[sub - 2] = (unsigned char)value;
                 }
+                else if (sub == 5)
+                {
+                    IntID = value;
+                }
                 break;
             }
             case caction_toggle_overlay_enabled_state:
@@ -111,6 +115,8 @@ void CustomAction::SendUpdateToDashboardApp(int id, HWND window_handle) const
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), KeyCodes[1]);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 4);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), KeyCodes[2]);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 5);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), IntID);
 
             break;
         }

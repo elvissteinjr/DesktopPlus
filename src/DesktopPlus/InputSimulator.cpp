@@ -272,6 +272,72 @@ void InputSimulator::KeyboardSetUp(unsigned char keycodes[3])
     }
 }
 
+void InputSimulator::KeyboardToggleState(unsigned char keycode)
+{
+    if (keycode == 0)
+        return;
+
+    //GetAsyncKeyState is subject to UIPI, so always forward it
+    if (m_ForwardToElevatedModeProcess)
+    {
+        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
+        elevated_keycodes[0] = keycode;
+
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_toggle, *(LPARAM*)&elevated_keycodes);
+        return;
+    }
+
+    if (GetAsyncKeyState(keycode) < 0)  //If already pressed, release key
+    {
+        KeyboardSetUp(keycode);
+    }
+    else
+    {
+        KeyboardSetDown(keycode);
+    }
+}
+
+void InputSimulator::KeyboardToggleState(unsigned char keycodes[3])
+{
+    if (m_ForwardToElevatedModeProcess)
+    {
+        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
+        std::copy(keycodes, keycodes + 3, elevated_keycodes);
+
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_toggle, *(LPARAM*)&elevated_keycodes);
+        return;
+    }
+
+    INPUT input_event[3] = { 0 };
+
+    int used_event_count = 0;
+    for (int i = 0; i < 3; ++i)
+    {
+        if (keycodes[i] == 0)
+            continue; //Nothing to be done, skip
+
+        bool already_down = (GetAsyncKeyState(keycodes[i]) < 0);    //Most significant bit set, meaning pressed
+
+        if ((keycodes[i] <= 6) && (keycodes[i] != VK_CANCEL)) //Mouse buttons need to be handled differently
+        {
+            SetEventForMouseKeyCode(input_event[used_event_count], keycodes[i], !already_down);
+        }
+        else
+        {
+            input_event[used_event_count].type = INPUT_KEYBOARD;
+            input_event[used_event_count].ki.dwFlags = (already_down) ? KEYEVENTF_KEYUP : 0;
+            input_event[used_event_count].ki.wVk = keycodes[i];
+        }
+
+        used_event_count++;
+    }
+
+    if (used_event_count != 0)
+    {
+        ::SendInput(used_event_count, input_event, sizeof(INPUT));
+    }
+}
+
 void InputSimulator::KeyboardPressAndRelease(unsigned char keycode)
 {
     if (m_ForwardToElevatedModeProcess)

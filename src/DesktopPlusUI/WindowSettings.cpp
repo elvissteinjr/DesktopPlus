@@ -4256,12 +4256,13 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
         static char buf_name[1024] = "";
         static std::string str_icon_file;
         static bool use_action_icon = true;   //Icon to use for the preview button. Switches to tmtex_icon_temp when the icon was changed
-        static int action_function = caction_press_keys;
+        static int action_function  = caction_press_keys;
         static unsigned char keycodes[3] = {0};
-        static int int_id = 0;
+        static bool bool_id = false;          //Loaded from and written to int_id when saving
+        static int int_id   = 0;
         static char buf_type_str[1024] = "";
         static char buf_exe_path[1024] = "";
-        static char buf_exe_arg[1024] = "";
+        static char buf_exe_arg[1024]  = "";
 
         if (ImGui::IsWindowAppearing())
         {
@@ -4273,10 +4274,11 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
             keycodes[0] = 0;
             keycodes[1] = 0;
             keycodes[2] = 0;
-            int_id = 0;
+            bool_id = false;
+            int_id  = 0;
             buf_type_str[0] = '\0';
             buf_exe_path[0] = '\0';
-            buf_exe_arg[0] = '\0';
+            buf_exe_arg[0]  = '\0';
 
             switch (action_function)
             {
@@ -4285,6 +4287,7 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
                     keycodes[0] = action.KeyCodes[0];
                     keycodes[1] = action.KeyCodes[1];
                     keycodes[2] = action.KeyCodes[2];
+                    bool_id     = (action.IntID == 1);
                     break;
                 }
                 case caction_type_string:
@@ -4417,19 +4420,25 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
 
             ButtonKeybind(&keycodes[0]);
             ImGui::NextColumn();
-            
+
             ImGui::AlignTextToFramePadding();
             ImGui::Text("Key Code 2");
             ImGui::NextColumn();
 
             ButtonKeybind(&keycodes[1]);
             ImGui::NextColumn();
-            
+
             ImGui::AlignTextToFramePadding();
             ImGui::Text("Key Code 3");
             ImGui::NextColumn();
 
             ButtonKeybind(&keycodes[2]);
+            ImGui::NextColumn();
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Checkbox("Toggle Keys", &bool_id);
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::FixedHelpMarker("The keys' pressed states are inverted when the action is executed.\nDesktop+ will not release the keys until the action is executed again.");
         }
         else if (action_function == caction_type_string)
         {
@@ -4524,6 +4533,7 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
                     action.KeyCodes[0] = keycodes[0];
                     action.KeyCodes[1] = keycodes[1];
                     action.KeyCodes[2] = keycodes[2];
+                    action.IntID       = bool_id;
                     break;
                 }
                 case caction_type_string:

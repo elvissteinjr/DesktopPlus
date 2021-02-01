@@ -44,7 +44,7 @@ struct CustomAction
     unsigned char KeyCodes[3] = { 0 };
     std::string StrMain;     //Type String / Executable Path
     std::string StrArg;
-    int IntID = 0;           //Overlay ID
+    int IntID = 0;           //Overlay ID / Key Toggle bool
 
     #ifdef DPLUS_UI
         std::string IconFilename;

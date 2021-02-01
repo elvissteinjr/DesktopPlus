@@ -2002,8 +2002,16 @@ void OutputManager::DoAction(ActionID action_id)
             {
                 case caction_press_keys:
                 {
-                    m_InputSim.KeyboardSetDown(action.KeyCodes);
-                    m_InputSim.KeyboardSetUp(action.KeyCodes);
+                    if (action.IntID == 1 /*ToggleKeys*/)
+                    {
+                        m_InputSim.KeyboardToggleState(action.KeyCodes);
+                    }
+                    else
+                    {
+                        m_InputSim.KeyboardSetDown(action.KeyCodes);
+                        m_InputSim.KeyboardSetUp(action.KeyCodes);
+                    }
+                    
                     break;
                 }
                 case caction_type_string:
@@ -2154,7 +2162,7 @@ void OutputManager::DoStartAction(ActionID action_id)
 
             if (action.FunctionType == caction_press_keys)
             {
-                m_InputSim.KeyboardSetDown(action.KeyCodes);
+                (action.IntID == 1 /*ToggleKeys*/) ? m_InputSim.KeyboardToggleState(action.KeyCodes) : m_InputSim.KeyboardSetDown(action.KeyCodes);
             }
             else
             {
@@ -2180,7 +2188,10 @@ void OutputManager::DoStopAction(ActionID action_id)
 
             if (action.FunctionType == caction_press_keys)
             {
-                m_InputSim.KeyboardSetUp(action.KeyCodes);
+                if (action.IntID != 1 /*ToggleKeys*/)
+                {
+                    m_InputSim.KeyboardSetUp(action.KeyCodes);
+                }
             }
         }
     }
@@ -2259,7 +2270,7 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
             }
 
             //Check if this a WMR virtual display adapter and skip it when the option is enabled
-            //This is still only works correctly when they have the last desktops in the system, but that should pretty much be always the case
+            //This still only works correctly when they have the last desktops in the system, but that should pretty much be always the case
             if (wmr_ignore_vscreens)
             {
                 DXGI_ADAPTER_DESC adapter_desc;

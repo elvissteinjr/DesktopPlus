@@ -38,6 +38,8 @@ class InputSimulator
         void KeyboardSetUp(unsigned char keycode);
         void KeyboardSetDown(unsigned char keycodes[3]);
         void KeyboardSetUp(unsigned char keycodes[3]);
+        void KeyboardToggleState(unsigned char keycode);
+        void KeyboardToggleState(unsigned char keycodes[3]);
         void KeyboardPressAndRelease(unsigned char keycode);
         void KeyboardText(const char* str_utf8, bool always_use_unicode_event = false);
         void KeyboardTextFinish();

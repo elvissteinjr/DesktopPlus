@@ -197,6 +197,15 @@ bool HandleIPCMessage(MSG msg)
                     input_sim.KeyboardSetUp(keycodes);
                     break;
                 };
+                case ipceact_key_toggle:
+                {
+                    //Copy 3 keycodes from lparam
+                    unsigned char keycodes[3];
+                    memcpy(keycodes, &msg.lParam, 3);
+
+                    input_sim.KeyboardToggleState(keycodes);
+                    break;
+                };
                 case ipceact_key_press_and_release:
                 {
                     input_sim.KeyboardPressAndRelease(msg.lParam);
