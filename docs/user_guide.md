@@ -13,11 +13,12 @@ This guide does not touch upon all topics covered by the [readme file](../assets
       * [Capture](#capture)
       * [Advanced](#advanced)
       * [Interface](#interface-1)
-	* [Interface](#interface-2)
-	* [Input](#input)
-	* [Windows](#windows)
-	* [Performance](#performance)
-	* [Misc](#misc)
+    * [Interface](#interface-2)
+    * [Actions](#actions)
+    * [Input](#input)
+    * [Windows](#windows)
+    * [Performance](#performance)
+    * [Misc](#misc)
 
 * [Performance Considerations](#performance-considerations)
   * [Desktop Duplication](#desktop-duplication)
@@ -27,7 +28,7 @@ This guide does not touch upon all topics covered by the [readme file](../assets
   * [Desktop Duplication](#desktop-duplication-1)
   * [Graphics Capture](#graphics-capture)
     * [Graphics Capture Feature Support](#graphics-capture-feature-support)
-	
+    
 * [Usage Examples](#usage-examples)
 
 ## Interface
@@ -88,9 +89,9 @@ Configures the state of the current overlay. Changes made here do not apply to o
   Click on the drop-down list to select the position origin of the overlay. This can be used to attach an overlay to controllers or the HMD.
   - **Position**:
     - **[Change]**:  
-	Opens the overlay position change pop-up and activates overlay drag-mode. You can use the buttons to do manual position adjustments or simply drag the overlay in the VR space to reposition them. Using right-click to drag triggers a gesture drag, allowing you to rotate and scale overlays based on the motions of both hand-controllers.
-	- **[Reset]**:  
-	Reset the position of the overlay. Depending on the origin the new position will be near the zero point of it or next to the dashboard overlay.
+    Opens the overlay position change pop-up and activates overlay drag-mode. You can use the buttons to do manual position adjustments or simply drag the overlay in the VR space to reposition them. Using right-click to drag triggers a gesture drag, allowing you to rotate and scale overlays based on the motions of both hand-controllers.
+    - **[Reset]**:  
+    Reset the position of the overlay. Depending on the origin the new position will be near the zero point of it or next to the dashboard overlay.
     
 ##### Capture
 
@@ -102,15 +103,15 @@ Configures the state of the current overlay. Changes made here do not apply to o
   - **Source** (Graphics Capture):  
   Click on the drop-down list to select the capture source for the overlay. The list contains available capturable desktops and windows.
     - **[Use Active Window]**:  
-	Select the current foreground window as the capture source.
+    Select the current foreground window as the capture source.
     - **[Use Picker Window]**:  
-	Use the Graphics Capture picker window to select the capture source. This is a fallback option and not present when using Windows 10 version 2004 or newer.
+    Use the Graphics Capture picker window to select the capture source. This is a fallback option and not present when using Windows 10 version 2004 or newer.
     
 - **Desktop Cropping** (Desktop Duplication)
     - **Desktop**:  
-	Click on the drop-down list to select a desktop to crop the combined desktop mirror to. This selection is also used when resetting the cropping rectangle.
+    Click on the drop-down list to select a desktop to crop the combined desktop mirror to. This selection is also used when resetting the cropping rectangle.
     - **[Crop to Desktop]**:  
-	Change the cropping rectangle to match the selected desktop.
+    Change the cropping rectangle to match the selected desktop.
 
 - **Cropping Rectangle**  
 Rectangle the overlay content is cropped to. If the cropping rectangle is larger than the overlay content, it's clamped to the maximum possible area.  
@@ -151,6 +152,9 @@ Gaze Fade gradually fades the overlay to 0% opacity when not looking at it. When
 - **Input**
   - **Enable Input**:  
   Allows input on the overlay. When this is off, the overlay will not react to any laser pointer activity or button inputs. Its Floating UI will also be unavailable.
+  - **Overlay Group**:  
+  Sets the group the overlay belongs to. Overlay groups are used to target overlays in actions and input bindings.  
+  This is currently only used to change the enablement state of multiple overlays at once.
   
 ##### Interface
 
@@ -185,13 +189,13 @@ Gaze Fade gradually fades the overlay to 0% opacity when not looking at it. When
 - **Action Buttons**
   - **(Action Button List)**:  
   Global order and visibility of action buttons on the Action Bar can be customized here. This list can be expanded by creating custom actions.
-  
-#### Input
 
-![Input Settings Page](images/settings_input.png)
+#### Actions
+
+![Actions Settings Page](images/settings_actions.png)
 
 - **Active Controller Buttons**  
-Controller bindings when pointing at a Desktop+ overlay. The actual buttons used for these are defined in the VR Compositor SteamVR input bindings. These bindings do not support being held down, meaning a "Press Keys" Action is pressed and released instantly.
+Controller bindings when pointing at a Desktop+ overlay. The actual buttons used for these are defined in the VR Compositor SteamVR input bindings. These bindings do not support being held down, meaning a "Press Keys" action is pressed and released instantly unless "Toggle Keys" is active for said action.
   - **"Go Home/Back" Action**:  
   Action triggered when pressing the "Go Home" or "Go Back" button. This is typically one of the face buttons on the controller by default. Click the button to change the action.
   
@@ -200,11 +204,22 @@ Controller bindings when the dashboard is closed and not pointing at any overlay
   - **"Global Shortcut 1/2/3" Action**:  
   Action triggered when pressing the respective bound button. These inputs are not bound to anything by default. Click the button to change the action.
   
+- **Global Hotkeys**:  
+System-wide keyboard shortcuts. Hotkeys block other applications from receiving that input and will not work if the same combination has already been registered elsewhere.  
+Desktop+ will not register a hotkey if no action is assigned to it.
+  - **[(Keyboard Shortcut)] Action**:  
+  Action triggered when pressing the respective keyboard shortcut. Click on the left button to change the keyboard shortcut for the hotkey.
+
+  
 - **Custom Actions**  
 Custom actions are user-definable actions which can be bound to controller buttons, the Action Bar or just executed directly from the list. These Actions can press keys, type strings, launch applications or toggle an overlay's enabled state.  
 Custom icons for these actions can be added by putting PNG files in the "images/icons" folder. Recommended size is 96x96 pixels.
   - **(Custom Action List)**:  
   Lists currently configured custom actions. The buttons below the list can be used to manage them.
+  
+#### Input
+
+![Input Settings Page](images/settings_input.png)
   
 - **Mouse**
   - **Render Cursor**:  
@@ -269,6 +284,22 @@ These settings allow tweaking the performance characteristics of Desktop+. Howev
   Mirrors individual desktops instead of cropping from the combined desktop. All Desktop Duplication overlays will be showing the same desktop when this is active.
   There can be a noticeable performance impact when multiple desktops update constantly. This setting can be used to mitigate it.
   
+- **Peformance Monitor**  
+The Performance Monitor lets you quickly check the current state of your system from within VR in real time. Once added as an overlay, it can be customized and positioned like any of the desktop/window ones.  
+While it's possible to create as many overlays of it as desired, they will all be showing the same content. Performance Monitor settings are global.
+  - **Style**:  
+  Switches between a large and compact style of the Performance Monitor. The compact style does not allow displaying frame time graphs and the current time.
+  - **Show (Item)**:  
+  Allows to customize which performance characteristics and states are displayed on the Performance Monitor.
+  - **[View as Pop-Up]**:  
+  Displays the Performance Monitor as a pop-up. This usually only serves as a preview since the VR scene applications will pause and reduce rendering load while the dashboard is open.
+  - **[Add as Overlay]**:  
+  Adds a new Performance Monitor overlay. The overlay will appear on the left hand-controller by default if connected.
+  - **[Reset Cumulative Values]**:  
+  Resets statistics that build up over time, such as average FPS, dropped frames, and reprojection ratio.  
+  These values are also reset automatically when the scene application changes or SteamVR goes into standby mode.
+  
+
 - **Statistics**
   - **VR Compositor CPU Frame Time**:  
   CPU time spent by the VR Compositor on the last rendered VR frame. This is a global SteamVR frame timing value.
@@ -304,16 +335,16 @@ Settings are saved before restarting and are typically restored without loss aft
   - **Desktop+**:  
   These buttons apply to the main Desktop+ process, responsible for the mirror overlays and most interaction with them.
     - **[Restart]**:  
-	Restart Desktop+.
+    Restart Desktop+.
     - **[Enter Elevated mode]**:  
-	Enters elevated mode by launching a secondary Desktop+ process with administrator privileges using the "DesktopPlus Elevated" scheduled task. This button is only visible if elevated mode has been set up.
-	
+    Enters elevated mode by launching a secondary Desktop+ process with administrator privileges using the "DesktopPlus Elevated" scheduled task. This button is only visible if elevated mode has been set up.
+    
   - **Desktop+ UI**:  
   These buttons apply to the Desktop+ UI process, responsible for displaying UI elements and modifying settings.
     - **[Restart]**:  
-	Restart Desktop+ UI.
-	- **[Restart in Desktop Mode]**:  
-	Restart Desktop+ UI in desktop mode. The settings window will display on the desktop and all VR interface elements will be unavailable.
+    Restart Desktop+ UI.
+    - **[Restart in Desktop Mode]**:  
+    Restart Desktop+ UI in desktop mode. The settings window will display on the desktop and all VR interface elements will be unavailable.
 
 ## Performance Considerations
 
