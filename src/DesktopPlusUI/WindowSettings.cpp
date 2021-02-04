@@ -1668,7 +1668,7 @@ void WindowSettings::UpdateCatActions()
         ImGui::Text("\"Go Home\" Action");
         ImGui::NextColumn();
 
-        if (ButtonAction(actionid_home))
+        if (ButtonAction("ActionGoHome", actionid_home))
         {
             ConfigManager::Get().SetConfigInt(configid_int_input_go_home_action_id, actionid_home);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_go_home_action_id), actionid_home);
@@ -1680,7 +1680,7 @@ void WindowSettings::UpdateCatActions()
         ImGui::Text("\"Go Back\" Action");
         ImGui::NextColumn();
             
-        if (ButtonAction(actionid_back))
+        if (ButtonAction("ActionGoBack", actionid_back))
         {
             ConfigManager::Get().SetConfigInt(configid_int_input_go_back_action_id, actionid_back);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_go_back_action_id), actionid_back);
@@ -1731,7 +1731,7 @@ void WindowSettings::UpdateCatActions()
         ImGui::Text("\"Global Shortcut 1\" Action");
         ImGui::NextColumn();
 
-        if (ButtonAction(actionid_global_01))
+        if (ButtonAction("ActionGlobalShortcut1", actionid_global_01))
         {
             ConfigManager::Get().SetConfigInt(configid_int_input_shortcut01_action_id, actionid_global_01);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_shortcut01_action_id), actionid_global_01);
@@ -1743,7 +1743,7 @@ void WindowSettings::UpdateCatActions()
         ImGui::Text("\"Global Shortcut 2\" Action");
         ImGui::NextColumn();
 
-        if (ButtonAction(actionid_global_02))
+        if (ButtonAction("ActionGlobalShortcut2", actionid_global_02))
         {
             ConfigManager::Get().SetConfigInt(configid_int_input_shortcut02_action_id, actionid_global_02);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_shortcut02_action_id), actionid_global_02);
@@ -1755,7 +1755,7 @@ void WindowSettings::UpdateCatActions()
         ImGui::Text("\"Global Shortcut 3\" Action");
         ImGui::NextColumn();
 
-        if (ButtonAction(actionid_global_03))
+        if (ButtonAction("ActionGlobalShortcut3", actionid_global_03))
         {
             ConfigManager::Get().SetConfigInt(configid_int_input_shortcut03_action_id, actionid_global_03);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_shortcut03_action_id), actionid_global_03);
@@ -1795,7 +1795,7 @@ void WindowSettings::UpdateCatActions()
 
         ImGui::NextColumn();
 
-        if (ButtonAction(actionid_hotkey_01))
+        if (ButtonAction("ActionHotkey1", actionid_hotkey_01))
         {
             ConfigManager::Get().SetConfigInt(configid_int_input_hotkey01_action_id, actionid_hotkey_01);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey01_action_id), actionid_hotkey_01);
@@ -1816,7 +1816,7 @@ void WindowSettings::UpdateCatActions()
 
         ImGui::NextColumn();
 
-        if (ButtonAction(actionid_hotkey_02))
+        if (ButtonAction("ActionHotkey2", actionid_hotkey_02))
         {
             ConfigManager::Get().SetConfigInt(configid_int_input_hotkey02_action_id, actionid_hotkey_02);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey02_action_id), actionid_hotkey_02);
@@ -1837,7 +1837,7 @@ void WindowSettings::UpdateCatActions()
 
         ImGui::NextColumn();
 
-        if (ButtonAction(actionid_hotkey_03))
+        if (ButtonAction("ActionHotkey3", actionid_hotkey_03))
         {
             ConfigManager::Get().SetConfigInt(configid_int_input_hotkey03_action_id, actionid_hotkey_03);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey03_action_id), actionid_hotkey_03);
@@ -2869,11 +2869,11 @@ bool WindowSettings::ButtonKeybind(unsigned char* key_code, bool no_mouse)
     return false;
 }
 
-bool WindowSettings::ButtonAction(ActionID& action_id)
+bool WindowSettings::ButtonAction(const char* str_id, ActionID& action_id)
 {
     bool result = false;
 
-    ImGui::PushID(&action_id);
+    ImGui::PushID(str_id);
 
     if (ImGui::Button(ActionManager::Get().GetActionName(action_id)))
     {
