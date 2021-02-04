@@ -5313,6 +5313,26 @@ void OutputManager::DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref
             vr::VROverlay()->SetOverlayAlpha(ovrl_handle_ref, ref_overlay_alpha_orig);
         }
 
+        //If the reference overlay appears to be below ground we assume it has an invalid origin (i.e. dashboard tab never opened for dashboard overlay) and try to provide a better default
+        if (transform.getTranslation().y < 0.0f)
+        {
+            //Get HMD pose
+            vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+            vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
+            vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+            if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+            {
+                //Set to HMD position and offset 2m away
+                Matrix4 mat_hmd(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
+                transform = mat_hmd;
+                OffsetTransformFromSelf(transform, 0.0f, 0.0f, -2.0f);
+
+                //Rotate towards HMD position
+                TransformLookAt(transform, mat_hmd.getTranslation());
+            }
+        }
+
         //Adapt to base offset for non-room origins
         if (overlay_origin != ovrl_origin_room)
         {
