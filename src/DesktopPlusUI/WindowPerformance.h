@@ -107,6 +107,8 @@ class WindowPerformance
         void UpdateStatValues();
         void UpdateStatValuesSteamVR();
         void UpdateStatValuesViveWireless();
+        void DrawFrameTimeGraphCPU(const ImVec2& graph_size, double plot_xmin, double plot_xmax, double plot_ymax);
+        void DrawFrameTimeGraphGPU(const ImVec2& graph_size, double plot_xmin, double plot_xmax, double plot_ymax);
 
         void CheckScheduledOverlaySharedTextureUpdate();
         void OnWindowBoundsChanged();

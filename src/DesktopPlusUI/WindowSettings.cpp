@@ -2325,7 +2325,7 @@ void WindowSettings::UpdateCatPerformance()
         bool& show_vive_wireless = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_vive_wireless);
 
         //Keep unavailable options as enabled but show the check boxes as unticked to avoid confusion
-        bool show_graphs_visual        = ( ((!show_cpu) && (!show_gpu))     || (!use_large_style) ) ? false : show_graphs;
+        bool show_graphs_visual        = ( (use_large_style) && ((!show_cpu) && (!show_gpu)) ) ? false : show_graphs;
         bool show_time_visual          = ( ((!show_fps) && (!show_battery)) || (!use_large_style) ) ? false : show_time;
         bool show_trackers_visual      = (!show_battery) ? false : show_trackers;
         bool show_vive_wireless_visual = (!show_battery) ? false : show_vive_wireless;
@@ -2344,7 +2344,7 @@ void WindowSettings::UpdateCatPerformance()
 
         ImGui::NextColumn();
 
-        if ( ((!show_cpu) && (!show_gpu)) || (!use_large_style) )
+        if ( (use_large_style) && ((!show_cpu) && (!show_gpu)) )
             ImGui::PushItemDisabled();
 
         if (ImGui::Checkbox("Show Graphs", &show_graphs_visual))
@@ -2353,7 +2353,7 @@ void WindowSettings::UpdateCatPerformance()
             UIManager::Get()->RepeatFrame();
         }
 
-        if ( ((!show_cpu) && (!show_gpu)) || (!use_large_style) )
+        if ( (use_large_style) && ((!show_cpu) && (!show_gpu)) )
             ImGui::PopItemDisabled();
 
         ImGui::NextColumn();

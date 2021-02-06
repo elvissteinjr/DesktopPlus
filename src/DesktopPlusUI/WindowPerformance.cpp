@@ -164,11 +164,10 @@ void WindowPerformance::DisplayStatsLarge()
     static float row_gpu_y = 0.0f;
 
     //Both graphs are being created outside of the normal widget flow, due to how they span multiple rows and columns, which isn't exactly supported by ImGui's columns
-    
+
     //Shared offsets
     ImVec2 cursor_pos_prev = ImGui::GetCursorPos();
     float graph_pos_x  = cursor_pos_prev.x + column_width_0 + column_width_1 - ImGui::GetStyle().FramePadding.x;
-    float frame_offset = 1.0f + ImGui::GetStyle().FrameBorderSize;
 
     double plot_xmin = (m_FrameTimeLastIndex > (uint32_t)m_FrameTimeCPUHistory.MaxSize) ? m_FrameTimeLastIndex - m_FrameTimeCPUHistory.MaxSize + 0.5f : 0.5f;
     double plot_xmax = m_FrameTimeLastIndex - 0.5f;
@@ -176,7 +175,6 @@ void WindowPerformance::DisplayStatsLarge()
 
     //Set fixed window width from graph cursor pos even if all graphs are disabled since columns don't increase the window size
     ImGui::SetCursorPos({graph_pos_x, cursor_pos_prev.y + ImGui::GetStyle().FramePadding.y});
-    ImVec2 cursor_screen_pos_graph = ImGui::GetCursorScreenPos();
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, 0.0f});
     ImGui::Dummy({graph_size.x, 0.0f});
@@ -188,87 +186,15 @@ void WindowPerformance::DisplayStatsLarge()
         //-CPU Frame Time Graph
         if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu))
         {
-            ImPlot::SetNextPlotLimits(plot_xmin, plot_xmax, 0.0, plot_ymax, ImGuiCond_Always);
-
-            if (ImPlot::BeginPlot("##PlotCPU", nullptr, nullptr, graph_size, ImPlotFlags_CanvasOnly, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_LockMin))
-            {
-                const ImVector<ImVec2>& plot_data      = m_FrameTimeCPUHistory.Data;
-                const ImVector<ImVec2>& plot_data_warn = m_FrameTimeCPUHistoryWarning.Data;
-
-                if (!plot_data.empty())
-                {
-                    ImGui::PushClipRect({cursor_screen_pos_graph.x + frame_offset, cursor_screen_pos_graph.y + frame_offset}, 
-                                        {(cursor_screen_pos_graph.x + graph_size.x) - frame_offset, cursor_screen_pos_graph.y + graph_size.y - frame_offset},
-                                        false);
-
-
-                    ImPlot::SetNextFillStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
-                    ImPlot::PlotShaded("##DataShaded", &plot_data[0].x, &plot_data[0].y, plot_data.size(), 0.0, m_FrameTimeCPUHistory.Offset, 2 * sizeof(float));
-
-                    ImPlot::SetNextLineStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
-                    ImPlot::PlotLine("##DataLine", &plot_data[0].x, &plot_data[0].y, plot_data.size(), m_FrameTimeCPUHistory.Offset, 2 * sizeof(float));
-
-                    ImPlot::SetNextFillStyle(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-                    ImPlot::SetNextLineStyle(ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-                    ImPlot::PlotBars("##DataWarn", &plot_data_warn[0].x, &plot_data_warn[0].y, plot_data_warn.size(), 1.0, m_FrameTimeCPUHistoryWarning.Offset, 2 * sizeof(float));
-
-                    ImVec2 rmin = ImPlot::PlotToPixels(ImPlotPoint(plot_xmin, m_FrameTimeVsyncLimit));
-                    ImVec2 rmax = ImPlot::PlotToPixels(ImPlotPoint(plot_xmax, m_FrameTimeVsyncLimit));
-                    ImPlot::PushPlotClipRect();
-                    ImPlot::GetPlotDrawList()->AddLine(rmin, rmax, ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_Border)) ); 
-                    ImPlot::PopPlotClipRect();
-
-
-                    ImGui::PopClipRect();
-                }
-        
-                ImPlot::EndPlot();
-            }
+            DrawFrameTimeGraphCPU(graph_size, plot_xmin, plot_xmax, plot_ymax);
         }
-
 
         //-GPU Frame Time Graph
         if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu))
         {
             ImGui::SetCursorPos({graph_pos_x, row_gpu_y + ImGui::GetStyle().FramePadding.y});
-            cursor_screen_pos_graph = ImGui::GetCursorScreenPos();
 
-            ImPlot::SetNextPlotLimits(plot_xmin, plot_xmax, 0.0, plot_ymax, ImGuiCond_Always);
-
-            if (ImPlot::BeginPlot("##PlotGPU", nullptr, nullptr, graph_size, ImPlotFlags_CanvasOnly, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_LockMin))
-            {
-                const ImVector<ImVec2>& plot_data      = m_FrameTimeGPUHistory.Data;
-                const ImVector<ImVec2>& plot_data_warn = m_FrameTimeGPUHistoryWarning.Data;
-
-                if (!plot_data.empty())
-                {
-                    ImGui::PushClipRect({cursor_screen_pos_graph.x + frame_offset, cursor_screen_pos_graph.y + frame_offset}, 
-                                        {(cursor_screen_pos_graph.x + graph_size.x) - frame_offset, cursor_screen_pos_graph.y + graph_size.y - frame_offset},
-                                        false);
-
-
-                    ImPlot::SetNextFillStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
-                    ImPlot::PlotShaded("##DataShaded", &plot_data[0].x, &plot_data[0].y, plot_data.size(), 0.0, m_FrameTimeGPUHistory.Offset, 2 * sizeof(float));
-
-                    ImPlot::SetNextLineStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
-                    ImPlot::PlotLine("##DataLine", &plot_data[0].x, &plot_data[0].y, plot_data.size(), m_FrameTimeGPUHistory.Offset, 2 * sizeof(float));
-
-                    ImPlot::SetNextFillStyle(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-                    ImPlot::SetNextLineStyle(ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-                    ImPlot::PlotBars("##DataWarn", &plot_data_warn[0].x, &plot_data_warn[0].y, plot_data_warn.size(), 1.0, m_FrameTimeGPUHistoryWarning.Offset, 2 * sizeof(float));
-
-                    ImVec2 rmin = ImPlot::PlotToPixels(ImPlotPoint(plot_xmin, m_FrameTimeVsyncLimit));
-                    ImVec2 rmax = ImPlot::PlotToPixels(ImPlotPoint(plot_xmax, m_FrameTimeVsyncLimit));
-                    ImPlot::PushPlotClipRect();
-                    ImPlot::GetPlotDrawList()->AddLine(rmin, rmax, ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_Border)) ); 
-                    ImPlot::PopPlotClipRect();
-
-
-                    ImGui::PopClipRect();
-                }
-        
-                ImPlot::EndPlot();
-            }
+            DrawFrameTimeGraphGPU(graph_size, plot_xmin, plot_xmax, plot_ymax);
         }
     }
 
@@ -373,7 +299,7 @@ void WindowPerformance::DisplayStatsLarge()
         //-GPU Load
         ImGui::Text("Load:");
         ImGui::NextColumn();
-    
+
         ImGui::TextRight(text_percent_width, "%.2f", m_PerfData.GetGPULoadPrecentage());
         ImGui::SameLine(0.0f, 0.0f);
         ImGui::TextUnformatted("%");
@@ -583,8 +509,10 @@ void WindowPerformance::DisplayStatsLarge()
 
 void WindowPerformance::DisplayStatsCompact()
 {
+    const float item_spacing_prev = ImGui::GetStyle().ItemSpacing.x;
+
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, ImGui::GetStyle().ItemSpacing.y});
-    
+
     static const float column_width_0     = ImGui::GetFontSize() * 1.5f;
     float column_width_cpu_1              = ImGui::CalcTextSize(" 000.00 ms ").x;
     float column_width_cpu_2              = ImGui::CalcTextSize(" 000.00% ").x;
@@ -616,7 +544,7 @@ void WindowPerformance::DisplayStatsCompact()
 
     padding = (width_total_fps - width_total_bat) / 4.0f;
     column_width_bat += padding;
-    
+
     //Pad window content to fps row width since columns don't increase the window size
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, 0.0f});
     ImGui::Dummy({width_total_fps, 0.0f});
@@ -626,6 +554,37 @@ void WindowPerformance::DisplayStatsCompact()
     static float text_ram_total_width  = 0.0f;
     static float text_vram_total_width = 0.0f;
     float text_ram_padding = std::max(text_ram_total_width, text_vram_total_width);
+
+    //--CPU/GPU Frame Time Graphs
+
+    //Shared offsets
+    //Show both graphs if showing CPU and GPU stats or none of them (if graphs themselves are still active)
+    bool show_both_graphs = (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu) == ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu));
+    const ImVec2 graph_size = {(show_both_graphs) ? floorf( (width_total_fps - item_spacing_prev) / 2.0f) : width_total_fps, ImGui::GetFontSize() * 2.0f};
+
+    double plot_xmin = (m_FrameTimeLastIndex > (uint32_t)m_FrameTimeCPUHistory.MaxSize) ? m_FrameTimeLastIndex - m_FrameTimeCPUHistory.MaxSize + 0.5f : 0.5f;
+    double plot_xmax = m_FrameTimeLastIndex - 0.5f;
+    double plot_ymax = ceilf(m_FrameTimeVsyncLimit * 1.4f); 
+
+    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_graphs))
+    {
+        //-CPU Frame Time Graph
+        if ( (show_both_graphs) || (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu)) )
+        {
+            DrawFrameTimeGraphCPU(graph_size, plot_xmin, plot_xmax, plot_ymax);
+
+            if (show_both_graphs)
+            {
+                ImGui::SameLine(0.0f, item_spacing_prev);
+            }
+        }
+
+        //-GPU Frame Time Graph
+        if ( (show_both_graphs) || (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu)) )
+        {
+            DrawFrameTimeGraphGPU(graph_size, plot_xmin, plot_xmax, plot_ymax);
+        }
+    }
 
     //CPU/GPU columns
     if ( (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu)) || (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu)) )
@@ -966,7 +925,7 @@ void WindowPerformance::UpdateStatValuesSteamVR()
         m_FrameTimeCPU = 0.0f;
         m_FrameTimeGPU = 0.0f;
     }
-    
+
     //Update cumulative stats
     vr::Compositor_CumulativeStats frame_stats = {0};
     vr::VRCompositor()->GetCumulativeStats(&frame_stats, sizeof(vr::Compositor_CumulativeStats));
@@ -1010,11 +969,11 @@ void WindowPerformance::UpdateStatValuesSteamVR()
                     m_FPS_Average = m_FrameCountTotal / (float)m_FrameCountTotalCount;
             }
         }
-        
+
         m_FPS_TickLast   = ::GetTickCount64();
         m_FrameCountLast = frame_count;
     }  
-    
+
     //Reprojection ratio and dropped frames
     m_ReprojectionRatio = (frame_presents != 0) ? ((float)reprojected_frames / frame_presents) * 100.f : 0.0f;
     m_DroppedFrames     = frame_stats.m_nNumDroppedFrames - m_OffsetDroppedFrames;
@@ -1143,6 +1102,92 @@ void WindowPerformance::UpdateStatValuesViveWireless()
                 }
             }
         }
+    }
+}
+
+void WindowPerformance::DrawFrameTimeGraphCPU(const ImVec2& graph_size, double plot_xmin, double plot_xmax, double plot_ymax)
+{
+    float frame_offset = 1.0f + ImGui::GetStyle().FrameBorderSize;
+    ImVec2 cursor_screen_pos_graph = ImGui::GetCursorScreenPos();
+
+    ImPlot::SetNextPlotLimits(plot_xmin, plot_xmax, 0.0, plot_ymax, ImGuiCond_Always);
+
+    if (ImPlot::BeginPlot("##PlotCPU", nullptr, nullptr, graph_size, ImPlotFlags_CanvasOnly, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_LockMin))
+    {
+        const ImVector<ImVec2>& plot_data      = m_FrameTimeCPUHistory.Data;
+        const ImVector<ImVec2>& plot_data_warn = m_FrameTimeCPUHistoryWarning.Data;
+
+        if (!plot_data.empty())
+        {
+            ImGui::PushClipRect({cursor_screen_pos_graph.x + frame_offset, cursor_screen_pos_graph.y + frame_offset}, 
+                                {(cursor_screen_pos_graph.x + graph_size.x) - frame_offset, cursor_screen_pos_graph.y + graph_size.y - frame_offset},
+                                false);
+
+
+            ImPlot::SetNextFillStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
+            ImPlot::PlotShaded("##DataShaded", &plot_data[0].x, &plot_data[0].y, plot_data.size(), 0.0, m_FrameTimeCPUHistory.Offset, 2 * sizeof(float));
+
+            ImPlot::SetNextLineStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
+            ImPlot::PlotLine("##DataLine", &plot_data[0].x, &plot_data[0].y, plot_data.size(), m_FrameTimeCPUHistory.Offset, 2 * sizeof(float));
+
+            ImPlot::SetNextFillStyle(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+            ImPlot::SetNextLineStyle(ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+            ImPlot::PlotBars("##DataWarn", &plot_data_warn[0].x, &plot_data_warn[0].y, plot_data_warn.size(), 1.0, m_FrameTimeCPUHistoryWarning.Offset, 2 * sizeof(float));
+
+            ImVec2 rmin = ImPlot::PlotToPixels(ImPlotPoint(plot_xmin, m_FrameTimeVsyncLimit));
+            ImVec2 rmax = ImPlot::PlotToPixels(ImPlotPoint(plot_xmax, m_FrameTimeVsyncLimit));
+            ImPlot::PushPlotClipRect();
+            ImPlot::GetPlotDrawList()->AddLine(rmin, rmax, ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_Border)) ); 
+            ImPlot::PopPlotClipRect();
+
+
+            ImGui::PopClipRect();
+        }
+
+        ImPlot::EndPlot();
+    }
+}
+
+void WindowPerformance::DrawFrameTimeGraphGPU(const ImVec2& graph_size, double plot_xmin, double plot_xmax, double plot_ymax)
+{
+    float frame_offset = 1.0f + ImGui::GetStyle().FrameBorderSize;
+    ImVec2 cursor_screen_pos_graph = ImGui::GetCursorScreenPos();
+
+    ImPlot::SetNextPlotLimits(plot_xmin, plot_xmax, 0.0, plot_ymax, ImGuiCond_Always);
+
+    if (ImPlot::BeginPlot("##PlotGPU", nullptr, nullptr, graph_size, ImPlotFlags_CanvasOnly, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_LockMin))
+    {
+        const ImVector<ImVec2>& plot_data      = m_FrameTimeGPUHistory.Data;
+        const ImVector<ImVec2>& plot_data_warn = m_FrameTimeGPUHistoryWarning.Data;
+
+        if (!plot_data.empty())
+        {
+            ImGui::PushClipRect({cursor_screen_pos_graph.x + frame_offset, cursor_screen_pos_graph.y + frame_offset}, 
+                                {(cursor_screen_pos_graph.x + graph_size.x) - frame_offset, cursor_screen_pos_graph.y + graph_size.y - frame_offset},
+                                false);
+
+
+            ImPlot::SetNextFillStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
+            ImPlot::PlotShaded("##DataShaded", &plot_data[0].x, &plot_data[0].y, plot_data.size(), 0.0, m_FrameTimeGPUHistory.Offset, 2 * sizeof(float));
+
+            ImPlot::SetNextLineStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
+            ImPlot::PlotLine("##DataLine", &plot_data[0].x, &plot_data[0].y, plot_data.size(), m_FrameTimeGPUHistory.Offset, 2 * sizeof(float));
+
+            ImPlot::SetNextFillStyle(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+            ImPlot::SetNextLineStyle(ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+            ImPlot::PlotBars("##DataWarn", &plot_data_warn[0].x, &plot_data_warn[0].y, plot_data_warn.size(), 1.0, m_FrameTimeGPUHistoryWarning.Offset, 2 * sizeof(float));
+
+            ImVec2 rmin = ImPlot::PlotToPixels(ImPlotPoint(plot_xmin, m_FrameTimeVsyncLimit));
+            ImVec2 rmax = ImPlot::PlotToPixels(ImPlotPoint(plot_xmax, m_FrameTimeVsyncLimit));
+            ImPlot::PushPlotClipRect();
+            ImPlot::GetPlotDrawList()->AddLine(rmin, rmax, ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_Border)) ); 
+            ImPlot::PopPlotClipRect();
+
+
+            ImGui::PopClipRect();
+        }
+
+        ImPlot::EndPlot();
     }
 }
 
