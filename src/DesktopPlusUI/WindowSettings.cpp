@@ -1768,7 +1768,7 @@ void WindowSettings::UpdateCatActions()
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Global Hotkeys");
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-        ImGui::FixedHelpMarker("System-wide keyboard shortcuts.\nHotkeys block other applications from receiving that input and will not work if the same combination has already been registered elsewhere.");
+        ImGui::FixedHelpMarker("System-wide keyboard shortcuts.\nHotkeys block other applications from receiving that input and may not work if the same combination has already been registered elsewhere.");
 
         ActionID actionid_hotkey_01 = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_action_id);
         ActionID actionid_hotkey_02 = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_action_id);

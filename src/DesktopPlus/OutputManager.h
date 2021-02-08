@@ -130,7 +130,8 @@ class OutputManager
         bool HasDashboardMoved();
         bool IsAnyOverlayUsingGazeFade() const;
 
-        void UpdateHotkeys();
+        void RegisterHotkeys();
+        void HandleHotkeys();
 
     // ClassVars
         InputSimulator m_InputSim;
@@ -226,6 +227,7 @@ class OutputManager
         LARGE_INTEGER m_PerformanceUpdateLimiterDelay;
 
         bool m_IsAnyHotkeyActive;
+        bool m_IsHotkeyDown[3];
 };
 
 #endif
