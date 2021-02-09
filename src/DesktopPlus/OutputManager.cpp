@@ -108,8 +108,6 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     //Initialize ConfigManager and set first launch state based on existence of config file (used to detect first launch in Steam version)
     m_IsFirstLaunch = !ConfigManager::Get().LoadConfigFromFile();
 
-    RegisterHotkeys();
-
     g_OutputManager = this;
 }
 
@@ -775,6 +773,9 @@ vr::EVRInitError OutputManager::InitOverlay()
 
     //Init background overlay if needed
     m_BackgroundOverlay.Update();
+
+    //Hotkeys can trigger actions requiring OpenVR, so only register after OpenVR init
+    RegisterHotkeys();
 
     if ((ovrl_error == vr::VROverlayError_None) && (input_res))
         return vr::VRInitError_None;
