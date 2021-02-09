@@ -33,6 +33,7 @@ enum ConfigID_Bool
     configid_bool_interface_no_ui,
     configid_bool_interface_no_notification_icon,
     configid_bool_interface_large_style,
+    configid_bool_interface_dim_ui,
     configid_bool_interface_mainbar_desktop_include_all,
     configid_bool_interface_warning_compositor_res_hidden,
     configid_bool_interface_warning_compositor_quality_hidden,
@@ -91,7 +92,9 @@ enum ConfigID_Int
     configid_int_overlay_state_content_height,
     configid_int_overlay_MAX,
     configid_int_interface_overlay_current_id,
-    configid_int_interface_mainbar_desktop_listing,    
+    configid_int_interface_mainbar_desktop_listing,
+    configid_int_interface_background_color,
+    configid_int_interface_background_color_display_mode,
     configid_int_interface_wmr_ignore_vscreens,             //This assumes the WMR virtual screens are the 3 last ones... (-1 means auto/unset which is the value non-WMR users get)
     configid_int_input_go_home_action_id,
     configid_int_input_go_back_action_id,
@@ -203,6 +206,13 @@ enum MainbarDesktopListing
     mainbar_desktop_listing_none,
     mainbar_desktop_listing_individual,
     mainbar_desktop_listing_cycle
+};
+
+enum InterfaceBGColorDisplayMode
+{
+    ui_bgcolor_dispmode_never,
+    ui_bgcolor_dispmode_dplustab,
+    ui_bgcolor_dispmode_always
 };
 
 enum UpdateLimitMode

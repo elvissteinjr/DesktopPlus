@@ -433,6 +433,121 @@ namespace ImGui
         TextEx(g.TempBuffer, text_end, ImGuiTextFlags_NoWidthForLargeClippedText);
     }
 
+    bool ColorEdit4Simple(const char* label, float col[4], ImGuiColorEditFlags flags)
+    {
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems)
+            return false;
+
+        //Hacky solution to make right mouse enable text input on the slider while not touching ImGui code or generalizing it as ctrl press
+        ImGuiIO& io = ImGui::GetIO();
+        const bool mouse_left_clicked_old = io.MouseClicked[ImGuiMouseButton_Left];
+        const bool key_ctrl_old = io.KeyCtrl;
+
+        if (io.MouseDown[ImGuiMouseButton_Right])
+        {
+            io.MouseClicked[ImGuiMouseButton_Left] = true;
+            io.KeyCtrl = true;
+            io.KeyMods |= ImGuiKeyModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
+        }
+
+        ImGuiContext& g = *GImGui;
+        const ImGuiStyle& style = g.Style;
+        const float square_sz = GetFrameHeight();
+        const float w_full = CalcItemWidth();
+        const float w_button = (flags & ImGuiColorEditFlags_NoSmallPreview) ? 0.0f : (square_sz + style.ItemInnerSpacing.x);
+        const float w_inputs = w_full - w_button;
+        const char* label_display_end = FindRenderedTextEnd(label);
+        g.NextItemData.ClearFlags();
+
+        BeginGroup();
+        PushID(label);
+
+        const bool alpha = (flags & ImGuiColorEditFlags_NoAlpha) == 0;
+
+        bool value_changed = false;
+        bool value_changed_as_float = false;
+
+        const ImVec2 pos = window->DC.CursorPos;
+        const float inputs_offset_x = (style.ColorButtonPosition == ImGuiDir_Left) ? w_button : 0.0f;
+        window->DC.CursorPos.x = pos.x + inputs_offset_x;
+
+        ImGuiWindow* picker_active_window = NULL;
+        if (!(flags & ImGuiColorEditFlags_NoSmallPreview))
+        {
+            window->DC.CursorPos = ImVec2(pos.x, pos.y);
+
+            const ImVec4 col_v4(col[0], col[1], col[2], alpha ? col[3] : 1.0f);
+            if (ColorButton("##ColorButton", col_v4, flags))
+            {
+                if (!(flags & ImGuiColorEditFlags_NoPicker))
+                {
+                    // Store current color and open a picker
+                    g.ColorPickerRef = col_v4;
+                    OpenPopup("picker");
+                    SetNextWindowPos(window->DC.LastItemRect.GetBL() + ImVec2(-1, style.ItemSpacing.y));
+                }
+            }
+
+            //Centered and no move is better for the VR use-case
+            ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, ImGui::GetStyle().WindowRounding);
+
+            ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+            if (BeginPopup("picker", ImGuiWindowFlags_NoMove))
+            {
+                picker_active_window = g.CurrentWindow;
+                if (label != label_display_end)
+                {
+                    TextEx(label, label_display_end);
+                    Spacing();
+                }
+                ImGuiColorEditFlags picker_flags_to_forward = ImGuiColorEditFlags__DataTypeMask | ImGuiColorEditFlags__PickerMask | ImGuiColorEditFlags__InputMask | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
+                ImGuiColorEditFlags picker_flags = (flags & picker_flags_to_forward) | ImGuiColorEditFlags__DisplayMask | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaPreview;
+                SetNextItemWidth(square_sz * 12.0f); // Use 256 + bar sizes?
+                value_changed |= ColorPicker4("##picker", col, picker_flags, &g.ColorPickerRef.x);
+
+                //Hack: Catch active drag&drop and cancel in to disable that feature
+                //ImGuiColorEditFlags_NoDragDrop does not get forwarded in ColorPicker4() but we don't want to copy the whole function for a small change
+                if (g.DragDropActive)
+                {
+                    ImGui::ClearDragDrop();
+                    ImGui::ClearActiveID();
+                }
+
+                EndPopup();
+            }
+
+            ImGui::PopStyleVar();
+        }
+
+        if (label != label_display_end && !(flags & ImGuiColorEditFlags_NoLabel))
+        {
+            const float text_offset_x = (flags & ImGuiColorEditFlags_NoInputs) ? w_button : w_full + style.ItemInnerSpacing.x;
+            window->DC.CursorPos = ImVec2(pos.x + text_offset_x, pos.y + style.FramePadding.y);
+            TextEx(label, label_display_end);
+        }
+
+        PopID();
+        EndGroup();
+
+        // When picker is being actively used, use its active id so IsItemActive() will function on ColorEdit4().
+        if (picker_active_window && g.ActiveId != 0 && g.ActiveIdWindow == picker_active_window)
+            window->DC.LastItemId = g.ActiveId;
+
+        if (value_changed)
+            MarkItemEdited(window->DC.LastItemId);
+
+        //Restore hack
+        io.MouseClicked[ImGuiMouseButton_Left] = mouse_left_clicked_old;
+        io.KeyCtrl = key_ctrl_old;
+        if (!io.KeyCtrl)
+        {
+            io.KeyMods &= ~ImGuiKeyModFlags_Ctrl;
+        }
+
+        return value_changed;
+    }
+
     //ImGuiItemFlags_Disabled is not exposed public API yet and has no styling, so here's something that does the job
     void PushItemDisabled()
     {

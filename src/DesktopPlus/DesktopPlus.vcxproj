@@ -195,6 +195,7 @@
     <ClCompile Include="..\Shared\OverlayManager.cpp" />
     <ClCompile Include="..\Shared\Util.cpp" />
     <ClCompile Include="..\Shared\WindowList.cpp" />
+    <ClCompile Include="BackgroundOverlay.cpp" />
     <ClCompile Include="DesktopPlus.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -224,6 +225,7 @@
     <ClInclude Include="..\Shared\Util.h" />
     <ClInclude Include="..\Shared\Vectors.h" />
     <ClInclude Include="..\Shared\WindowList.h" />
+    <ClInclude Include="BackgroundOverlay.h" />
     <ClInclude Include="CommonTypes.h" />
     <ClInclude Include="DisplayManager.h" />
     <ClInclude Include="DuplicationManager.h" />

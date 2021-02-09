@@ -733,6 +733,9 @@ void InitImGui(HWND hwnd)
         io.DisplaySize.y = TEXSPACE_DASHBOARD_UI_HEIGHT;
 
         style.ScrollbarSize = (float)int(32.0f * dpi_scale);
+
+        //UpdateOverlayDimming() relies on loaded ImGui/style, so do the initial call to that here
+        UIManager::Get()->UpdateOverlayDimming();
     }
 }
 

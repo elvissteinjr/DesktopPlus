@@ -120,6 +120,9 @@ OutputManager::~OutputManager()
 {
     CleanRefs();
     g_OutputManager = nullptr;
+
+    //Undo dimmed dashboard on exit
+    DimDashboard(false);
 }
 
 //
@@ -770,6 +773,9 @@ vr::EVRInitError OutputManager::InitOverlay()
     //Check if it's a WMR system and set up for that if needed
     SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens));
 
+    //Init background overlay if needed
+    m_BackgroundOverlay.Update();
+
     if ((ovrl_error == vr::VROverlayError_None) && (input_res))
         return vr::VRInitError_None;
     else
@@ -1210,17 +1216,26 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         ApplySettingTransform();
                         break;
                     }
-                    case configid_bool_state_overlay_dragmode:
-                    case configid_bool_state_overlay_selectmode:
-                    {
-                        ApplySettingInputMode();
-                        break;
-                    }
                     case configid_bool_overlay_input_enabled:
                     case configid_bool_input_mouse_render_intersection_blob:
                     case configid_bool_input_mouse_hmd_pointer_override:
                     {
                         ApplySettingMouseInput();
+                        break;
+                    }
+                    case configid_bool_interface_dim_ui:
+                    {
+                        DimDashboard( ((m_OvrlDashboardActive) && (msg.lParam)) );
+                        break;
+                    }
+                    case configid_bool_performance_single_desktop_mirroring:
+                    {
+                        if (msg.lParam) //Unify the desktop IDs when turning the setting on
+                        {
+                            CropToDisplay(OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigInt[configid_int_overlay_desktop_id], true);
+                        }
+
+                        reset_mirroring = true;
                         break;
                     }
                     case configid_bool_input_mouse_render_cursor:
@@ -1237,14 +1252,10 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         WindowManager::Get().UpdateConfigState();
                         break;
                     }
-                    case configid_bool_performance_single_desktop_mirroring:
+                    case configid_bool_state_overlay_dragmode:
+                    case configid_bool_state_overlay_selectmode:
                     {
-                        if (msg.lParam) //Unify the desktop IDs when turning the setting on
-                        {
-                            CropToDisplay(OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigInt[configid_int_overlay_desktop_id], true);
-                        }
-
-                        reset_mirroring = true;
+                        ApplySettingInputMode();
                         break;
                     }
                     case configid_bool_state_performance_stats_active:
@@ -1276,6 +1287,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         OverlayManager::Get().SetCurrentOverlayID(msg.lParam);
                         current_overlay_old = (unsigned int)msg.lParam;
+                        break;
+                    }
+                    case configid_int_interface_background_color:
+                    case configid_int_interface_background_color_display_mode:
+                    {
+                        m_BackgroundOverlay.Update();
                         break;
                     }
                     case configid_int_overlay_desktop_id:
@@ -1329,23 +1346,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         RegisterHotkeys();
                         break;
                     }
-                    case configid_int_state_action_value_int:
-                    {
-                        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
-                        const int id = ConfigManager::Get().GetConfigInt(configid_int_state_action_current);
-
-                        //Unnecessary, but let's save us from the near endless loop in case of a coding error
-                        if (id > 10000)
-                            break;
-
-                        while (id >= actions.size())
-                        {
-                            actions.push_back(CustomAction());
-                        }
-
-                        actions[id].ApplyIntFromConfig();
-                        break;
-                    }
                     case configid_int_input_mouse_dbl_click_assist_duration_ms:
                     {
                         ApplySettingMouseInput();
@@ -1362,6 +1362,23 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_int_overlay_update_limit_override_fps:
                     {
                         ApplySettingUpdateLimiter();
+                        break;
+                    }
+                    case configid_int_state_action_value_int:
+                    {
+                        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
+                        const int id = ConfigManager::Get().GetConfigInt(configid_int_state_action_current);
+
+                        //Unnecessary, but let's save us from the near endless loop in case of a coding error
+                        if (id > 10000)
+                            break;
+
+                        while (id >= actions.size())
+                        {
+                            actions.push_back(CustomAction());
+                        }
+
+                        actions[id].ApplyIntFromConfig();
                         break;
                     }
                     default: break;
@@ -3258,6 +3275,13 @@ bool OutputManager::HandleOpenVREvents()
                             ShowOverlay(i);
                         }
                     }
+
+                    m_BackgroundOverlay.Update();
+
+                    if (ConfigManager::Get().GetConfigBool(configid_bool_interface_dim_ui))
+                    {
+                        DimDashboard(true);
+                    }
                 }
 
                 break;
@@ -3276,6 +3300,13 @@ bool OutputManager::HandleOpenVREvents()
                         {
                             HideOverlay(i);
                         }
+                    }
+
+                    m_BackgroundOverlay.Update();
+
+                    if (ConfigManager::Get().GetConfigBool(configid_bool_interface_dim_ui))
+                    {
+                        DimDashboard(false);
                     }
                 }
 
@@ -5649,6 +5680,25 @@ bool OutputManager::HasDashboardMoved()
     }
 
     return false;
+}
+
+void OutputManager::DimDashboard(bool do_dim)
+{
+    //This *could* terribly conflict with other apps messing with these settings, but I'm unaware of any that are right now, so let's just say we're the first
+    vr::VROverlayHandle_t system_dashboard;
+    vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
+
+    if (system_dashboard != vr::k_ulOverlayHandleInvalid)
+    {
+        if (do_dim)
+        {
+            vr::VROverlay()->SetOverlayColor(system_dashboard, 0.05f, 0.05f, 0.05f);
+        }
+        else
+        {
+            vr::VROverlay()->SetOverlayColor(system_dashboard, 1.0f, 1.0f, 1.0f);
+        }
+    }
 }
 
 bool OutputManager::IsAnyOverlayUsingGazeFade() const

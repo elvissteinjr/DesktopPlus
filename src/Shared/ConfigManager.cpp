@@ -372,6 +372,13 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_interface_overlay_current_id]                   = config.ReadInt( "Interface", "OverlayCurrentID", 0);
     m_ConfigInt[configid_int_interface_mainbar_desktop_listing]              = config.ReadInt( "Interface", "DesktopButtonCyclingMode", mainbar_desktop_listing_individual);
     m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]        = config.ReadBool("Interface", "DesktopButtonIncludeAll", false);
+
+    //Read color string and store it interpreted as signed int
+    unsigned int rgba = std::stoul(config.ReadString("Interface", "EnvironmentBackgroundColor", "00000080"), nullptr, 16);
+    m_ConfigInt[configid_int_interface_background_color] = *(int*)&rgba;
+
+    m_ConfigInt[configid_int_interface_background_color_display_mode]        = config.ReadInt( "Interface", "EnvironmentBackgroundColorDisplayMode", ui_bgcolor_dispmode_never);
+    m_ConfigInt[configid_bool_interface_dim_ui]                              = config.ReadBool("Interface", "DimUI", false);
     m_ConfigFloat[configid_float_interface_last_vr_ui_scale]                 = config.ReadInt( "Interface", "LastVRUIScale", 100) / 100.0f;
     m_ConfigBool[configid_bool_interface_warning_compositor_res_hidden]      = config.ReadBool("Interface", "WarningCompositorResolutionHidden", false);
     m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]  = config.ReadBool("Interface", "WarningCompositorQualityHidden", false);
@@ -678,23 +685,31 @@ void ConfigManager::SaveConfigToFile()
 
     SaveMultiOverlayProfile(config);
 
-    config.WriteInt( "Interface", "OverlayCurrentID",                  m_ConfigInt[configid_int_interface_overlay_current_id]);
-    config.WriteInt( "Interface", "DesktopButtonCyclingMode",          m_ConfigInt[configid_int_interface_mainbar_desktop_listing]);
-    config.WriteBool("Interface", "DisplaySizeLarge",                  m_ConfigBool[configid_bool_interface_large_style]);
-    config.WriteBool("Interface", "DesktopButtonIncludeAll",           m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]);
-    config.WriteInt( "Interface", "LastVRUIScale",                 int(m_ConfigFloat[configid_float_interface_last_vr_ui_scale] * 100.0f));
-    config.WriteBool("Interface", "WarningCompositorResolutionHidden", m_ConfigBool[configid_bool_interface_warning_compositor_res_hidden]);
-    config.WriteBool("Interface", "WarningCompositorQualityHidden",    m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]);
-    config.WriteBool("Interface", "WarningProcessElevationHidden",     m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]);
-    config.WriteBool("Interface", "WarningElevatedModeHidden",         m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]);
-    config.WriteBool("Interface", "WarningWelcomeHidden",              m_ConfigBool[configid_bool_interface_warning_welcome_hidden]);
+    config.WriteInt( "Interface", "OverlayCurrentID",         m_ConfigInt[configid_int_interface_overlay_current_id]);
+    config.WriteInt( "Interface", "DesktopButtonCyclingMode", m_ConfigInt[configid_int_interface_mainbar_desktop_listing]);
+    config.WriteBool("Interface", "DisplaySizeLarge",         m_ConfigBool[configid_bool_interface_large_style]);
+    config.WriteBool("Interface", "DesktopButtonIncludeAll",  m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]);
+
+    //Write color string
+    std::stringstream ss;
+    ss << std::setw(8) << std::setfill('0') << std::hex << *(unsigned int*)&m_ConfigInt[configid_int_interface_background_color];
+    config.WriteString("Interface", "EnvironmentBackgroundColor", ss.str().c_str());
+
+    config.WriteInt( "Interface", "EnvironmentBackgroundColorDisplayMode", m_ConfigInt[configid_int_interface_background_color_display_mode]);
+    config.WriteBool("Interface", "DimUI",                                 m_ConfigInt[configid_bool_interface_dim_ui]);
+    config.WriteInt( "Interface", "LastVRUIScale",                     int(m_ConfigFloat[configid_float_interface_last_vr_ui_scale] * 100.0f));
+    config.WriteBool("Interface", "WarningCompositorResolutionHidden",     m_ConfigBool[configid_bool_interface_warning_compositor_res_hidden]);
+    config.WriteBool("Interface", "WarningCompositorQualityHidden",        m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]);
+    config.WriteBool("Interface", "WarningProcessElevationHidden",         m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]);
+    config.WriteBool("Interface", "WarningElevatedModeHidden",             m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]);
+    config.WriteBool("Interface", "WarningWelcomeHidden",                  m_ConfigBool[configid_bool_interface_warning_welcome_hidden]);
 
     //Only write WMR settings when they're not -1 since they get set to that when using a non-WMR system. We want to preserve them for HMD-switching users
     if (m_ConfigInt[configid_int_interface_wmr_ignore_vscreens] != -1)
         config.WriteInt("Interface", "WMRIgnoreVScreens", m_ConfigInt[configid_int_interface_wmr_ignore_vscreens]);
 
     //Save action order
-    std::stringstream ss;
+    ss = std::stringstream();
 
     for (auto& data : m_ActionManager.GetActionMainBarOrder())
     {

@@ -594,6 +594,20 @@ ImFont* UIManager::GetFontLarge() const
     return m_FontLarge;
 }
 
+void UIManager::UpdateOverlayDimming()
+{
+    if (ConfigManager::Get().GetConfigBool(configid_bool_interface_dim_ui))
+    {
+        vr::VROverlay()->SetOverlayColor(m_OvrlHandle, 0.05f, 0.05f, 0.05f);
+        ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 1.0f; //Set window bg alpha to 100% to not have the contrast be even worse on light backgrounds
+    }
+    else
+    {
+        vr::VROverlay()->SetOverlayColor(m_OvrlHandle, 1.0f, 1.0f, 1.0f);
+        ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 0.96f;
+    }
+}
+
 bool UIManager::IsCompositorResolutionLow() const
 {
     return m_LowCompositorRes;

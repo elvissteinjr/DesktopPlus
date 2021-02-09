@@ -113,6 +113,7 @@ class UIManager
         void SetFonts(ImFont* font_compact, ImFont* font_large);
         ImFont* GetFontCompact() const;
         ImFont* GetFontLarge() const;               //May return nullptr
+        void UpdateOverlayDimming();
 
         bool IsCompositorResolutionLow() const;
         bool IsCompositorRenderQualityLow() const;

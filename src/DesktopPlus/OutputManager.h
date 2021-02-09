@@ -12,6 +12,7 @@
 #include "ConfigManager.h"
 #include "InputSimulator.h"
 #include "VRInput.h"
+#include "BackgroundOverlay.h"
 #include "OUtoSBSConverter.h"
 #include "InterprocessMessaging.h"
 
@@ -128,6 +129,7 @@ class OutputManager
 
         void UpdateDashboardHMD_Y();
         bool HasDashboardMoved();
+        void DimDashboard(bool do_dim);
         bool IsAnyOverlayUsingGazeFade() const;
 
         void RegisterHotkeys();
@@ -137,6 +139,7 @@ class OutputManager
         InputSimulator m_InputSim;
         VRInput m_VRInput;
         IPCManager m_IPCMan;
+        BackgroundOverlay m_BackgroundOverlay;
 
     // Vars
         ID3D11Device* m_Device;

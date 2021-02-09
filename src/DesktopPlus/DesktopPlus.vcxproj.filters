@@ -43,6 +43,7 @@
     </ClCompile>
     <ClCompile Include="WindowManager.cpp" />
     <ClCompile Include="ElevatedMode.cpp" />
+    <ClCompile Include="BackgroundOverlay.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -92,6 +93,7 @@
     </ClInclude>
     <ClInclude Include="WindowManager.h" />
     <ClInclude Include="ElevatedMode.h" />
+    <ClInclude Include="BackgroundOverlay.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DesktopPlus.rc" />

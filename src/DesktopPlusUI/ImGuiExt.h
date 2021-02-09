@@ -37,6 +37,8 @@ namespace ImGui
     void TextRight(float offset_x, const char* fmt, ...)           IM_FMTARGS(2);
     void TextRightV(float offset_x, const char* fmt, va_list args) IM_FMTLIST(2);
 
+    bool ColorEdit4Simple(const char* label, float col[4], ImGuiColorEditFlags flags = 0);
+
     //ImGuiItemFlags_Disabled is not exposed public API yet and has no styling, so here's something that does the job
     void PushItemDisabled();
     void PopItemDisabled();

@@ -1583,6 +1583,70 @@ void WindowSettings::UpdateCatInterface()
         ActionOrderSetting();
     }
 
+    //Environment
+    {
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Environment");
+
+        ImGui::Columns(2, "ColumnEnvironment", false);
+        ImGui::SetColumnWidth(0, column_width_0);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Background Color");
+        ImGui::NextColumn();
+
+        static ImVec4 background_color_vec4;
+
+        if (ImGui::IsWindowAppearing())
+        {
+            //Unpack color value from config
+            unsigned int rgba = *(unsigned int*)&ConfigManager::Get().GetConfigIntRef(configid_int_interface_background_color);
+            background_color_vec4.x = ((rgba & 0xFF000000) >> 24) / 255.0f; //R
+            background_color_vec4.y = ((rgba & 0x00FF0000) >> 16) / 255.0f; //B
+            background_color_vec4.z = ((rgba & 0x0000FF00) >> 8)  / 255.0f; //G
+            background_color_vec4.w =  (rgba & 0x000000FF)        / 255.0f; //A
+        }
+
+        const ImGuiColorEditFlags flags = ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreview |
+                                          ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
+        if (ImGui::ColorEdit4Simple("##BackgroundColor", (float*)&background_color_vec4, flags))
+        {
+            //Pack color values back to config (this is doing float -> int conversion the same way the ImGui picker does internally)
+            unsigned int r = (unsigned int)(background_color_vec4.x * 255.0f + 0.5f);
+            unsigned int g = (unsigned int)(background_color_vec4.y * 255.0f + 0.5f);
+            unsigned int b = (unsigned int)(background_color_vec4.z * 255.0f + 0.5f);
+            unsigned int a = (unsigned int)(background_color_vec4.w * 255.0f + 0.5f);
+            unsigned int rgba = (r << 24) | (g << 16) | (b << 8) | a;
+
+            ConfigManager::Get().SetConfigInt(configid_int_interface_background_color, *(int*)&rgba);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_background_color), *(int*)&rgba);
+        }
+
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+        ImGui::SetNextItemWidth(-1);
+        const char* items[] = { "Never Visible", "Only Visible in Desktop+ Tab", "Always Visible" };
+        int& display_mode = ConfigManager::Get().GetConfigIntRef(configid_int_interface_background_color_display_mode);
+        if (ImGui::Combo("##ComboBackgroundDisplay", &display_mode, items, IM_ARRAYSIZE(items)))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_background_color_display_mode), display_mode);
+        }
+
+        ImGui::NextColumn();
+
+        bool& dim_ui = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_dim_ui);
+        if (ImGui::Checkbox("Dim Interface", &dim_ui))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_interface_dim_ui), dim_ui);
+
+            if (UIManager::Get()->IsOpenVRLoaded())
+            {
+                UIManager::Get()->UpdateOverlayDimming();
+            }
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("Dims the SteamVR dashboard and Desktop+ UI while the Desktop+ dashboard tab is open");
+    }
+
     //Windows Mixed Reality
     {
         //This stuff is only shown to WMR systems
@@ -2701,7 +2765,11 @@ void WindowSettings::PopInterfaceScale()
         ImGui::PopFont();
 
         //Restore original style
+        float window_bg_alpha = ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w;  //Preserve changes to window bg alpha made by UIManager between the interface scale calls
+
         ImGui::GetStyle() = m_StyleOrig;
+
+        ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = window_bg_alpha;
 
         m_IsStyleScaled = false;
     }
