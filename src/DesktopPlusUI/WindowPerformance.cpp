@@ -563,7 +563,7 @@ void WindowPerformance::DisplayStatsCompact()
     const ImVec2 graph_size = {(show_both_graphs) ? floorf( (width_total_fps - item_spacing_prev) / 2.0f) : width_total_fps, ImGui::GetFontSize() * 2.0f};
 
     double plot_xmin = (m_FrameTimeLastIndex > (uint32_t)m_FrameTimeCPUHistory.MaxSize) ? m_FrameTimeLastIndex - m_FrameTimeCPUHistory.MaxSize + 0.5f : 0.5f;
-    double plot_xmax = m_FrameTimeLastIndex - 0.5f;
+    double plot_xmax = m_FrameTimeLastIndex - 0.75f;
     double plot_ymax = ceilf(m_FrameTimeVsyncLimit * 1.4f); 
 
     if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_graphs))

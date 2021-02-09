@@ -2354,6 +2354,11 @@ void WindowSettings::UpdateCatPerformance()
     //Performance Monitor
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Performance Monitor");
+        if ( (UIManager::Get()->IsOpenVRLoaded()) && (UIManager::Get()->IsInDesktopMode()) )
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::FixedHelpMarker("Performance Monitor overlays do not update in desktop mode");
+        }
 
         ImGui::Columns(2, "ColumnPerformancePerformanceMonitor", false);
         ImGui::SetColumnWidth(0, column_width_0);

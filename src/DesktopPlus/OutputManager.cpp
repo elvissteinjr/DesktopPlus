@@ -3640,7 +3640,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             if ((!data.ConfigBool[configid_bool_overlay_input_enabled]) || (m_MouseIgnoreMoveEvent) ||
                 ((ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (overlay_current.GetID() != k_ulOverlayID_Dashboard)) ||
                 (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) || (m_DragModeDeviceID != -1) ||
-                (overlay_current.GetTextureSource() == ovrl_texsource_none) )
+                (overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui) )
             {
                 break;
             }
@@ -3847,7 +3847,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 }
                 break;
             }
-            else if (overlay_current.GetTextureSource() == ovrl_texsource_none)
+            else if ((overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui))
             {
                 break;
             }
@@ -3899,7 +3899,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
                 break;
             }
-            else if (overlay_current.GetTextureSource() == ovrl_texsource_none)
+            else if ((overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui))
             {
                 break;
             }
@@ -3924,7 +3924,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
         {
             if ( ((ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (overlay_current.GetID() != k_ulOverlayID_Dashboard)) ||
                  (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) || 
-                 (overlay_current.GetTextureSource() == ovrl_texsource_none) )
+                 (overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui) )
             {
                 break;
             }
