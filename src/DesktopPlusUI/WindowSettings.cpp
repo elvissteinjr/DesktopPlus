@@ -1321,9 +1321,10 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
 
         ImGui::SetNextItemWidth(-1);
         const char* items[] = { "Off", "Half Side-by-Side", "Side-by-Side", "Half Over-Under", "Over-Under" };
-        int& mode_3D = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_3D_mode);
+        int mode_3D = clamp(ConfigManager::Get().GetConfigIntRef(configid_int_overlay_3D_mode), 0, IM_ARRAYSIZE(items) - 1);
         if (ImGui::Combo("##Combo3DMode", &mode_3D, items, IM_ARRAYSIZE(items)))
         {
+            ConfigManager::Get().SetConfigInt(configid_int_overlay_3D_mode, mode_3D);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_3D_mode), mode_3D);
         }
 
@@ -1426,9 +1427,10 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
 
         ImGui::SetNextItemWidth(-1);
         const char* items[] = { "None", "Group 1", "Group 2", "Group 3" };
-        int& group_id = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_group_id);
+        int group_id = clamp(ConfigManager::Get().GetConfigIntRef(configid_int_overlay_group_id), 0, IM_ARRAYSIZE(items) - 1);
         if (ImGui::Combo("##ComboGroupID", &group_id, items, IM_ARRAYSIZE(items)))
         {
+            ConfigManager::Get().SetConfigInt(configid_int_overlay_group_id, group_id);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_group_id), group_id);
         }
 
@@ -1561,9 +1563,10 @@ void WindowSettings::UpdateCatInterface()
 
         ImGui::SetNextItemWidth(-1);
         const char* items[] = { "None", "Individual Desktops", "Cycle Buttons" };
-        int& button_style = ConfigManager::Get().GetConfigIntRef(configid_int_interface_mainbar_desktop_listing);
+        int button_style = clamp(ConfigManager::Get().GetConfigIntRef(configid_int_interface_mainbar_desktop_listing), 0, IM_ARRAYSIZE(items) - 1);
         if (ImGui::Combo("##ComboButtonStyle", &button_style, items, IM_ARRAYSIZE(items)))
         {
+            ConfigManager::Get().SetConfigInt(configid_int_interface_mainbar_desktop_listing, button_style);
             UIManager::Get()->RepeatFrame();
         }
 
@@ -1625,9 +1628,10 @@ void WindowSettings::UpdateCatInterface()
 
         ImGui::SetNextItemWidth(-1);
         const char* items[] = { "Never Visible", "Only Visible in Desktop+ Tab", "Always Visible" };
-        int& display_mode = ConfigManager::Get().GetConfigIntRef(configid_int_interface_background_color_display_mode);
+        int display_mode = clamp(ConfigManager::Get().GetConfigInt(configid_int_interface_background_color_display_mode), 0, IM_ARRAYSIZE(items) - 1);
         if (ImGui::Combo("##ComboBackgroundDisplay", &display_mode, items, IM_ARRAYSIZE(items)))
         {
+            ConfigManager::Get().SetConfigInt(configid_int_interface_background_color_display_mode, display_mode);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_background_color_display_mode), display_mode);
         }
 
@@ -2285,9 +2289,10 @@ void WindowSettings::UpdateCatWindows()
 
         ImGui::SetNextItemWidth(-1);
         const char* items[] = { "Do Nothing", "Block Drag", "Drag Overlay" };
-        int& mode_dragging = ConfigManager::Get().GetConfigIntRef(configid_int_windows_winrt_dragging_mode);
+        int mode_dragging = clamp(ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_dragging_mode), 0, IM_ARRAYSIZE(items) - 1);
         if (ImGui::Combo("##ComboLimitMode", &mode_dragging, items, IM_ARRAYSIZE(items)))
         {
+            ConfigManager::Get().SetConfigInt(configid_int_windows_winrt_dragging_mode, mode_dragging);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_windows_winrt_dragging_mode), mode_dragging);
         }
 
@@ -3567,9 +3572,10 @@ void WindowSettings::UpdateLimiterSetting(float column_width_0, bool is_override
     ImGui::SetNextItemWidth(-1);
     const char* items[] = { "Off", "Frame Time", "Frame Rate" };
     const char* items_override[] = { "Use Global Setting", "Frame Time", "Frame Rate" };
-    int& mode_limit = ConfigManager::Get().GetConfigIntRef(configid_mode);
+    int mode_limit = clamp(ConfigManager::Get().GetConfigIntRef(configid_mode), 0, IM_ARRAYSIZE(items) - 1);
     if (ImGui::Combo("##ComboLimitMode", &mode_limit, (is_override) ? items_override : items, IM_ARRAYSIZE(items)))
     {
+        ConfigManager::Get().SetConfigInt(configid_mode, mode_limit);
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_mode), mode_limit);
     }
 
