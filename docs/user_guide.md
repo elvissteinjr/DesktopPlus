@@ -205,8 +205,8 @@ Controller bindings when the dashboard is closed and not pointing at any overlay
   Action triggered when pressing the respective bound button. These inputs are not bound to anything by default. Click the button to change the action.
   
 - **Global Hotkeys**:  
-System-wide keyboard shortcuts. Hotkeys block other applications from receiving that input and will not work if the same combination has already been registered elsewhere.  
-Desktop+ will not register a hotkey if no action is assigned to it.
+System-wide keyboard shortcuts. Hotkeys block other applications from receiving that input and may not work if the same combination has already been registered elsewhere.  
+Desktop+ will not register a hotkey if no action is assigned to it. Most hotkeys without modifiers will not work while elevated applications have focus.
   - **[(Keyboard Shortcut)] Action**:  
   Action triggered when pressing the respective keyboard shortcut. Click on the left button to change the keyboard shortcut for the hotkey.
 
