@@ -5480,10 +5480,15 @@ void OutputManager::DetachedTransformAdjust(unsigned int packed_value)
             float scale_x = row_1.length(); //Scaling is always uniform so we just check the x-axis
 
             //Rotate towards HMD position
+            Matrix4 mat_base_offset = DragGetBaseOffsetMatrix();
             Matrix4 mat_hmd(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
-            Matrix4 mat_lookat = transform;
+            Matrix4 mat_lookat = mat_base_offset * transform;   //Apply base offset for LookAt
 
             TransformLookAt(mat_lookat, mat_hmd.getTranslation());
+
+            //Remove base offset again
+            mat_base_offset.invert();
+            mat_lookat = mat_base_offset * mat_lookat;
 
             //Restore scale factor
             mat_lookat.setTranslation({0.0f, 0.0f, 0.0f});
