@@ -14,10 +14,10 @@ extern ImVec4 Style_ImGuiCol_ButtonPassiveToggled; //Toggled state for a button 
 namespace ImGui
 {
     //Like InputFloat()'s buttons but with a slider instead. Not quite as flexible, though. Always takes as much space as available.
-    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float min, float max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
-    bool SliderWithButtonsInt(const char* str_id, int& value, int step, int min, int max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
+    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float step_small, float min, float max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
+    bool SliderWithButtonsInt(const char* str_id, int& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
     // format is for int
-    bool SliderWithButtonsFloatPercentage(const char* str_id, float& value, int step, int min, int max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
+    bool SliderWithButtonsFloatPercentage(const char* str_id, float& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
 
     //Like imgui_demo's HelpMarker, but with a fixed position tooltip
     void FixedHelpMarker(const char* desc, const char* marker_str = "(?)");

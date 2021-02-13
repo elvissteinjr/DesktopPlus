@@ -16,7 +16,7 @@ ImVec4 Style_ImGuiCol_ButtonPassiveToggled;
 namespace ImGui
 {
     //Like InputFloat()'s buttons but with a slider instead. Not quite as flexible, though. Always takes as much space as available.
-    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float min, float max, const char* format, ImGuiSliderFlags flags, bool* used_button)
+    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float step_small, float min, float max, const char* format, ImGuiSliderFlags flags, bool* used_button)
     {
         //Hacky solution to make right mouse enable text input on the slider while not touching ImGui code or generalizing it as ctrl press
         ImGuiIO& io = ImGui::GetIO();
@@ -28,6 +28,12 @@ namespace ImGui
             io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
             io.KeyMods |= ImGuiKeyModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
+        }
+
+        //Use small step value when shift is down
+        if (io.KeyShift)
+        {
+            step = step_small;
         }
 
         ImGuiStyle& style = ImGui::GetStyle();
@@ -93,7 +99,7 @@ namespace ImGui
         return (value != value_old);
     }
 
-    bool SliderWithButtonsInt(const char* str_id, int& value, int step, int min, int max, const char* format, ImGuiSliderFlags flags, bool* used_button)
+    bool SliderWithButtonsInt(const char* str_id, int& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags, bool* used_button)
     {
         //Hacky solution to make right mouse enable text input on the slider while not touching ImGui code or generalizing it as ctrl press
         ImGuiIO& io = ImGui::GetIO();
@@ -105,6 +111,12 @@ namespace ImGui
             io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
             io.KeyMods |= ImGuiKeyModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
+        }
+
+        //Use small step value when shift is down
+        if (io.KeyShift)
+        {
+            step = step_small;
         }
 
         ImGuiStyle& style = ImGui::GetStyle();
@@ -156,11 +168,11 @@ namespace ImGui
         return (value != value_old);
     }
 
-    bool SliderWithButtonsFloatPercentage(const char* str_id, float& value, int step, int min, int max, const char* format, ImGuiSliderFlags flags, bool* used_button)
+    bool SliderWithButtonsFloatPercentage(const char* str_id, float& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags, bool* used_button)
     {
         int value_ui = int(value * 100.0f);
 
-        if (ImGui::SliderWithButtonsInt(str_id, value_ui, step, min, max, format, flags, used_button))
+        if (ImGui::SliderWithButtonsInt(str_id, value_ui, step, step_small, min, max, format, flags, used_button))
         {
             value = value_ui / 100.0f;
 

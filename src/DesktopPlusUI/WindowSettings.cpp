@@ -534,7 +534,7 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
             width_slider_max = (ConfigManager::Get().GetConfigIntRef(configid_int_overlay_detached_origin) >= ovrl_origin_right_hand) ? 1.5f : 10.0f;
         }
 
-        if (ImGui::SliderWithButtonsFloat("OverlayWidth", width, 0.1f, 0.05f, width_slider_max, "%.2f m", ImGuiSliderFlags_Logarithmic))
+        if (ImGui::SliderWithButtonsFloat("OverlayWidth", width, 0.1f, 0.01f, 0.025f, width_slider_max, "%.2f m", ImGuiSliderFlags_Logarithmic))
         {
             if (width < 0.05f)
                 width = 0.05f;
@@ -549,7 +549,7 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
 
         float& curve = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_curvature);
 
-        if (ImGui::SliderWithButtonsFloatPercentage("OverlayCurvature", curve, 5, 0, 100, "%d%%"))
+        if (ImGui::SliderWithButtonsFloatPercentage("OverlayCurvature", curve, 5, 1, 0, 100, "%d%%"))
         {
             curve = clamp(curve, 0.0f, 1.0f);
 
@@ -564,7 +564,7 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
 
         float& opacity = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_opacity);
 
-        if (ImGui::SliderWithButtonsFloatPercentage("OverlayOpacity", opacity, 5, 0, 100, "%d%%"))
+        if (ImGui::SliderWithButtonsFloatPercentage("OverlayOpacity", opacity, 5, 1, 0, 100, "%d%%"))
         {
             opacity = clamp(opacity, 0.0f, 1.0f);
 
@@ -587,7 +587,7 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
 
         float& up = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_up);
 
-        if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
+        if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_up), *(LPARAM*)&up);
         }
@@ -599,7 +599,7 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
 
         float& right = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_right);
 
-        if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
+        if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_right), *(LPARAM*)&right);
         }
@@ -611,7 +611,7 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
 
         float& forward = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_forward);
 
-        if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
+        if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_forward), *(LPARAM*)&forward);
         }
@@ -1181,7 +1181,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
         ImGui::Text("X");
         ImGui::NextColumn();
 
-        if (ImGui::SliderWithButtonsInt("CropX", crop_x, 1, 0, ovrl_width - 1, "%d px"))
+        if (ImGui::SliderWithButtonsInt("CropX", crop_x, 1, 1, 0, ovrl_width - 1, "%d px"))
         {
             //Note that we need to clamp the new value as neither the buttons nor the slider on direct input do so (they could, but this is in line with the rest of ImGui)
             crop_x = clamp(crop_x, 0, ovrl_width - 1);
@@ -1200,7 +1200,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
         ImGui::Text("Y");
         ImGui::NextColumn();
 
-        if (ImGui::SliderWithButtonsInt("CropY", crop_y, 1, 0, ovrl_height - 1, "%d px"))
+        if (ImGui::SliderWithButtonsInt("CropY", crop_y, 1, 1, 0, ovrl_height - 1, "%d px"))
         {
             crop_y = clamp(crop_y, 0, ovrl_height - 1);
 
@@ -1221,7 +1221,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
         ImGui::SetNextItemWidth(-1);
 
         //The way mapping max + 1 == -1 value into the slider is done is a bit convoluted, but it works
-        if (ImGui::SliderWithButtonsInt("CropWidth", crop_width_ui, 1, 1, crop_width_max + 1, (crop_width == -1) ? "Max" : "%d px"))
+        if (ImGui::SliderWithButtonsInt("CropWidth", crop_width_ui, 1, 1, 1, crop_width_max + 1, (crop_width == -1) ? "Max" : "%d px"))
         {
             crop_width = clamp(crop_width_ui, 1, crop_width_max + 1);
 
@@ -1239,7 +1239,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
         ImGui::SetNextItemWidth(-1);
 
 
-        if (ImGui::SliderWithButtonsInt("CropHeight", crop_height_ui, 1, 1, crop_height_max + 1, (crop_height == -1) ? "Max" : "%d px"))
+        if (ImGui::SliderWithButtonsInt("CropHeight", crop_height_ui, 1, 1, 1, crop_height_max + 1, (crop_height == -1) ? "Max" : "%d px"))
         {
             crop_height = clamp(crop_height_ui, 1, crop_height_max + 1);
 
@@ -1366,7 +1366,7 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
 
         //Note about the "##%.2f": ImGui sliders read the precision for rounding out of the format string. This leads to weird behavior when switching to labels without it
         //Fortunately, ImGui has string ID notations which don't get rendered so we can abuse this here
-        if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeDistance", distance, 0.05f, 0.0f, 1.5f, (distance < 0.01f) ? "Infinite##%.2f" : "%.2f m"))
+        if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeDistance", distance, 0.05f, 0.01f, 0.0f, 1.5f, (distance < 0.01f) ? "Infinite##%.2f" : "%.2f m"))
         {
             if (distance < 0.01f)
                 distance = 0.0f;
@@ -1381,7 +1381,7 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
 
         float& rate = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_rate);
 
-        if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeRate", rate, 0.1f, 0.4f, 3.0f, "%.2fx", ImGuiSliderFlags_Logarithmic))
+        if (ImGui::SliderWithButtonsFloat("OverlayFadeGazeRate", rate, 0.1f, 0.025f, 0.4f, 3.0f, "%.2fx", ImGuiSliderFlags_Logarithmic))
         {
             if (rate < 0.0f)
                 rate = 0.0f;
@@ -1423,7 +1423,7 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
 
                 ImGui::Text("Look at the center of the overlay and wait for 3 seconds...");
 
-                if ( (start_time + 3.0 < ImGui::GetTime()) || (ImGui::IsMouseClicked(ImGuiPopupFlags_MouseButtonLeft, false)) ) //Also allows to click to do skip the wait
+                if ( (start_time + 3.0 < ImGui::GetTime()) || (ImGui::IsMouseClicked(ImGuiPopupFlags_MouseButtonLeft, false)) ) //Also allows to click to skip the wait
                 {
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_gaze_fade_auto);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_gazefade_enabled), true);
@@ -2180,7 +2180,7 @@ void WindowSettings::UpdateCatInput()
         int assist_duration_max = 3000; //The "Auto" wrapping makes this the absolute maximum value even with manual input, but longer than 3 seconds is questionable either way
         int assist_duration_ui = (assist_duration == -1) ? assist_duration_max + 1 : assist_duration;
 
-        if (ImGui::SliderWithButtonsInt("DBLClickAssist", assist_duration_ui, 25, 0, assist_duration_max + 1, (assist_duration == -1) ? "Auto" : (assist_duration == 0) ? "Off" : "%d ms"))
+        if (ImGui::SliderWithButtonsInt("DBLClickAssist", assist_duration_ui, 25, 5, 0, assist_duration_max + 1, (assist_duration == -1) ? "Auto" : (assist_duration == 0) ? "Off" : "%d ms"))
         {
             assist_duration = clamp(assist_duration_ui, 0, assist_duration_max + 1);
 
@@ -2214,7 +2214,7 @@ void WindowSettings::UpdateCatInput()
 
         float& size = ConfigManager::Get().GetConfigFloatRef(configid_float_input_keyboard_detached_size);
 
-        if (ImGui::SliderWithButtonsFloatPercentage("KeyboardSize", size, 5, 10, 100, "%d%%"))
+        if (ImGui::SliderWithButtonsFloatPercentage("KeyboardSize", size, 5, 1, 10, 100, "%d%%"))
         {
             if (size < 0.10f)
                 size = 0.10f;
@@ -2240,7 +2240,7 @@ void WindowSettings::UpdateCatInput()
         ImGui::NextColumn();
 
         float& distance = ConfigManager::Get().GetConfigFloatRef(configid_float_input_detached_interaction_max_distance);
-        if (ImGui::SliderWithButtonsFloat("LaserPointerMaxDistance", distance, 0.05f, 0.0f, 3.0f, (distance < 0.01f) ? "Off##%.2f" : "%.2f m", ImGuiSliderFlags_Logarithmic))
+        if (ImGui::SliderWithButtonsFloat("LaserPointerMaxDistance", distance, 0.05f, 0.01f, 0.0f, 3.0f, (distance < 0.01f) ? "Off##%.2f" : "%.2f m", ImGuiSliderFlags_Logarithmic))
         {
             if (distance < 0.01f)
                 distance = 0.0f;
@@ -3641,7 +3641,7 @@ void WindowSettings::UpdateLimiterSetting(float column_width_0, bool is_override
         int& update_limit_fps = ConfigManager::Get().GetConfigIntRef(configid_fps);
         const char* update_limit_fps_display = (update_limit_fps >= 0 && update_limit_fps < IM_ARRAYSIZE(fps_enum_names)) ? fps_enum_names[update_limit_fps] : "?";
 
-        if (ImGui::SliderWithButtonsInt("UpdateLimitFPS", update_limit_fps, 1, 0, IM_ARRAYSIZE(fps_enum_names) - 1, update_limit_fps_display, ImGuiSliderFlags_NoInput))
+        if (ImGui::SliderWithButtonsInt("UpdateLimitFPS", update_limit_fps, 1, 1, 0, IM_ARRAYSIZE(fps_enum_names) - 1, update_limit_fps_display, ImGuiSliderFlags_NoInput))
         {
             update_limit_fps = clamp(update_limit_fps, 0, IM_ARRAYSIZE(fps_enum_names) - 1);
 
@@ -3659,7 +3659,7 @@ void WindowSettings::UpdateLimiterSetting(float column_width_0, bool is_override
 
         float& update_limit_ms = ConfigManager::Get().GetConfigFloatRef(configid_ms);
 
-        if (ImGui::SliderWithButtonsFloat("UpdateLimitMS", update_limit_ms, 0.5f, 0.0f, 100.0f, "%.2f ms", ImGuiSliderFlags_Logarithmic))
+        if (ImGui::SliderWithButtonsFloat("UpdateLimitMS", update_limit_ms, 0.5f, 0.05f, 0.0f, 100.0f, "%.2f ms", ImGuiSliderFlags_Logarithmic))
         {
             if (update_limit_ms < 0.0f)
                 update_limit_ms = 0.0f;
