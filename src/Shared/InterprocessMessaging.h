@@ -48,6 +48,7 @@ enum IPCActionID
     ipcact_overlay_creation_error,  //Sent by dashboard application when an error occured during overlay creation. lParam is EVROverlayError
     ipcact_overlay_position_sync,   //Sent by the UI application to request a sync of all overlay's transforms. No data in lParam
     ipcact_overlay_swap,            //Sent by the UI application to swap two overlays. lParam is the ID of overlay to swap with the current overlay
+    ipcact_overlay_gaze_fade_auto,  //Sent by the UI application to automatically configure gaze fade values. No data in lParam
     ipcact_winrt_show_picker,       //Sent by the UI application to open the capture picker for Graphics Capture
     ipcact_winrt_thread_error,      //Sent by dashboard application when an error occured in a Graphics Capture thread. lParam is HRESULT
     ipcact_winmanager_drag_start,   //Sent by dashboard application's WindowManager thread to main thread to start an overlay drag. lParam is ID of overlay to drag

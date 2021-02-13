@@ -126,6 +126,7 @@ class OutputManager
 
         void DetachedInteractionAutoToggle();
         void DetachedOverlayGazeFade();
+        void DetachedOverlayGazeFadeAutoConfigure();
 
         void UpdateDashboardHMD_Y();
         bool HasDashboardMoved();

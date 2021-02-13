@@ -1393,6 +1393,49 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
         if (!gazefade_enabled)
             ImGui::PopItemDisabled();
 
+        if (UIManager::Get()->IsOpenVRLoaded())
+        {
+            bool is_overlay_enabled = ConfigManager::Get().GetConfigBool(configid_bool_overlay_enabled);
+
+            //At least disable the button when the overlay surely can't be visible. Doesn't catch other cases though
+            if (!is_overlay_enabled)
+                ImGui::PushItemDisabled();
+
+            if (ImGui::Button("Set from Gaze"))
+            {
+                ImGui::OpenPopup("PopupGazeFadeAutoConfigure");
+
+                //Deactivate gaze fade during the popup so the overlay is visible to the user
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_gazefade_enabled), false);
+            }
+
+            if (!is_overlay_enabled)
+                ImGui::PopItemDisabled();
+
+            if (ImGui::BeginPopupModal("PopupGazeFadeAutoConfigure", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+            {
+                static double start_time = 0;
+
+                if (ImGui::IsWindowAppearing())
+                {
+                    start_time = ImGui::GetTime();
+                }
+
+                ImGui::Text("Look at the center of the overlay and wait for 3 seconds...");
+
+                if ( (start_time + 3.0 < ImGui::GetTime()) || (ImGui::IsMouseClicked(ImGuiPopupFlags_MouseButtonLeft, false)) ) //Also allows to click to do skip the wait
+                {
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_gaze_fade_auto);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_gazefade_enabled), true);
+                    gazefade_enabled = true;
+
+                    ImGui::CloseCurrentPopup();
+                }
+
+                ImGui::EndPopup();
+            }
+        }
+
         ImGui::Columns(1);
     }
 

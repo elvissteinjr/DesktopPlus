@@ -144,7 +144,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigInt[configid_int_overlay_3D_mode]                       = config.ReadInt(section.c_str(),  "3DMode", ovrl_3Dmode_none);
     data.ConfigBool[configid_bool_overlay_3D_swapped]                  = config.ReadBool(section.c_str(), "3DSwapped", false);
     data.ConfigBool[configid_bool_overlay_gazefade_enabled]            = config.ReadBool(section.c_str(), "GazeFade", false);
-    data.ConfigFloat[configid_float_overlay_gazefade_distance]         = config.ReadInt(section.c_str(),  "GazeFadeDistance", 40) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_gazefade_distance]         = config.ReadInt(section.c_str(),  "GazeFadeDistance", 0) / 100.0f;
     data.ConfigFloat[configid_float_overlay_gazefade_rate]             = config.ReadInt(section.c_str(),  "GazeFadeRate", 100) / 100.0f;
     data.ConfigInt[configid_int_overlay_update_limit_override_mode]    = config.ReadInt(section.c_str(),  "UpdateLimitOverrideMode", update_limit_mode_off);
     data.ConfigFloat[configid_float_overlay_update_limit_override_ms]  = config.ReadInt(section.c_str(),  "UpdateLimitMS", 0) / 100.0f;

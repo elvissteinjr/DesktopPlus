@@ -1125,6 +1125,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     OverlayManager::Get().SwapOverlays(OverlayManager::Get().GetCurrentOverlayID(), (unsigned int)msg.lParam);
                     break;
                 }
+                case ipcact_overlay_gaze_fade_auto:
+                {
+                    DetachedOverlayGazeFadeAutoConfigure();
+                    break;
+                }
                 case ipcact_winrt_show_picker:
                 {
                     const Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
@@ -5653,6 +5658,39 @@ void OutputManager::DetachedOverlayGazeFade()
             
             OverlayManager::Get().GetCurrentOverlay().SetOpacity(alpha);
         }
+    }
+}
+
+void OutputManager::DetachedOverlayGazeFadeAutoConfigure()
+{
+    vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+    if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+    {
+        OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+        Matrix4 mat_pose = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+
+        Matrix4 mat_overlay = DragGetBaseOffsetMatrix();
+        mat_overlay *= ConfigManager::Get().GetOverlayDetachedTransform();
+
+        //Match gaze distance to distance between HMD and overlay
+        float gaze_distance = mat_overlay.getTranslation().distance(mat_pose.getTranslation());
+        gaze_distance -= 0.20f;
+
+        //Set fade rate to roughly decrease when the overlay is bigger and further away
+        float fade_rate = 2.5f / data.ConfigFloat[configid_float_overlay_width] * gaze_distance;
+
+        //Don't let the math go overboard
+        gaze_distance = std::max(gaze_distance, 0.01f);
+        fade_rate     = clamp(fade_rate, 0.3f, 1.75f);
+
+        data.ConfigFloat[configid_float_overlay_gazefade_distance] = gaze_distance;
+        data.ConfigFloat[configid_float_overlay_gazefade_rate]     = fade_rate;
+
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_gazefade_distance), *(LPARAM*)&gaze_distance);
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_gazefade_rate),     *(LPARAM*)&fade_rate);
     }
 }
 
