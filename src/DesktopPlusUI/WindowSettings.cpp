@@ -549,7 +549,7 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
 
         float& curve = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_curvature);
 
-        if (ImGui::SliderWithButtonsFloatPercentage("OverlayCurvature", curve, 5, 1, 0, 100, "%d%%"))
+        if (ImGui::SliderWithButtonsFloatPercentage("OverlayCurvature", curve, 5, 1, 0, 35, "%d%%"))
         {
             curve = clamp(curve, 0.0f, 1.0f);
 
