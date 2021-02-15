@@ -153,6 +153,17 @@ Matrix4 GetControllerTipMatrix(bool right_hand)
     return Matrix4();
 }
 
+float GetTimeNowToPhotons()
+{
+    float seconds_since_last_vsync;
+    vr::VRSystem()->GetTimeSinceLastVsync(&seconds_since_last_vsync, nullptr);
+
+    const float vsync_to_photons  = vr::VRSystem()->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SecondsFromVsyncToPhotons_Float);
+    const float display_frequency = vr::VRSystem()->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DisplayFrequency_Float);
+
+    return (1.0f / display_frequency) - seconds_since_last_vsync + vsync_to_photons;
+}
+
 void SetConfigForWMR(int& wmr_ignore_vscreens)
 {
     //Check if system is WMR and set WMR-specific default values if needed

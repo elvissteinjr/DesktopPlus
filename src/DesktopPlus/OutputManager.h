@@ -51,7 +51,6 @@ class OutputManager
         bool GetOverlayInputActive() const;
         DWORD GetMaxRefreshDelay() const;
         float GetHMDFrameRate() const;
-        float GetTimeNowToPhotons() const;
         int GetDesktopWidth() const;
         int GetDesktopHeight() const;
 
@@ -61,6 +60,7 @@ class OutputManager
 
         bool HasDashboardBeenActivatedOnce() const;
         bool IsDashboardTabActive() const;
+        float GetDashboardScale() const;
 
         void SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle);
         void SetOutputInvalid(); //Handles state when there's no valid output

@@ -7,6 +7,7 @@
 
 FloatingUI::FloatingUI() : m_OvrlHandleCurrentUITarget(vr::k_ulOverlayHandleInvalid),
                            m_OvrlIDCurrentUITarget(0),
+                           m_Width(OVERLAY_WIDTH_METERS_DASHBOARD_UI),
                            m_Alpha(0.0f),
                            m_Visible(false),
                            m_IsSwitchingTarget(false),
@@ -145,6 +146,8 @@ void FloatingUI::UpdateUITargetState()
         }
     }
 
+    bool is_newly_visible = false;
+
     //Check if we're switching from another active overlay hover target, in which case we want to fade out completely first
     if ( (m_OvrlHandleCurrentUITarget != vr::k_ulOverlayHandleInvalid) && (ovrl_handle_hover_target != vr::k_ulOverlayHandleInvalid) && (ovrl_handle_hover_target != ovrl_handle_floating_ui) && (ovrl_handle_hover_target != m_OvrlHandleCurrentUITarget) )
     {
@@ -154,6 +157,11 @@ void FloatingUI::UpdateUITargetState()
     }
     else if ( (ovrl_handle_hover_target != ovrl_handle_floating_ui) && (ovrl_handle_hover_target != vr::k_ulOverlayHandleInvalid) )
     {
+        if ( (!m_Visible) && (m_Alpha == 0.0f) )
+        {
+            is_newly_visible = true;
+        }
+
         m_OvrlHandleCurrentUITarget = ovrl_handle_hover_target;
         m_OvrlIDCurrentUITarget = ovrl_id_hover_target;
         m_Visible = true;
@@ -233,11 +241,28 @@ void FloatingUI::UpdateUITargetState()
         //Y-coordinate from this function is pretty much unpredictable if not pixel_height / 2
         vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleCurrentUITarget, origin, { (float)ovrl_pixel_width, (float)ovrl_pixel_height/2.0f }, &matrix);
 
+        //If the Floating UI is just appearing, adjust overlay size based on the distance between HMD and overlay
+        if (is_newly_visible)
+        {
+            vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+            vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+            if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+            {
+                Matrix4 mat_overlay(matrix);
+                Matrix4 mat_hmd = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+                float distance = mat_overlay.getTranslation().distance(mat_hmd.getTranslation());
+
+                m_Width = 0.66 + (0.5f * distance);
+                vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle_floating_ui, m_Width);
+            }
+        }
+
         //Move to bottom first, vertically centering the floating UI overlay on the bottom end of the target overlay (previous function already got the X in a predictable spot)
         //Forward and right offsets only compensate for curvature and are 0 when curvature is 0%
         OffsetTransformFromSelf(matrix, offset_right, offset_to_bottom, offset_forward);
         //Offset further to get the desired postion at the edge of the overlay
-        OffsetTransformFromSelf(matrix, -1.235f, 0.1340f, 0.025f);
+        OffsetTransformFromSelf(matrix, -m_Width * 0.449f, m_Width * 0.0487f, clamp(m_Width * 0.005f, 0.0025f, 0.025f));
 
         vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_floating_ui, origin, &matrix);
     }

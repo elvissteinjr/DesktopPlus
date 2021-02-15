@@ -127,7 +127,8 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigInt[configid_int_overlay_winrt_desktop_id]              = config.ReadInt(section.c_str(),    "WinRTDesktopID", -2);
     data.ConfigStr[configid_str_overlay_winrt_last_window_title]       = config.ReadString(section.c_str(), "WinRTLastWindowTitle");
     data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name]    = config.ReadString(section.c_str(), "WinRTLastWindowExeName");
-    data.ConfigFloat[configid_float_overlay_width]                     = config.ReadInt(section.c_str(),    "Width", 350) / 100.0f;
+    data.ConfigBool[configid_bool_overlay_width_unscaled]              = config.ReadBool(section.c_str(),   "WidthUnscaled", false);
+    data.ConfigFloat[configid_float_overlay_width]                     = config.ReadInt(section.c_str(),    "Width", 350) / 100.0f; //165 but gets rescaled to that since WidthUnscaled is false
     data.ConfigFloat[configid_float_overlay_curvature]                 = config.ReadInt(section.c_str(),    "Curvature", 17) / 100.0f;
     data.ConfigFloat[configid_float_overlay_opacity]                   = config.ReadInt(section.c_str(),    "Opacity", 100) / 100.0f;
     data.ConfigFloat[configid_float_overlay_offset_right]              = config.ReadInt(section.c_str(),    "OffsetRight", 0) / 100.0f;
@@ -246,6 +247,25 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
         data.ConfigFloat[configid_float_overlay_curvature] = 0.17f; //17% is about what the default dashboard curvature is at the default width
     }
 
+    //If transforms still contain scale (up until v2.4.2), fix them up
+    if (!data.ConfigBool[configid_bool_overlay_width_unscaled])
+    {
+        if (current_id == k_ulOverlayID_Dashboard)
+        {
+            data.ConfigFloat[configid_float_overlay_width] *= 0.4725f; //Not exact dashboard scale (that can vary anyways), but converts old default value to new default
+        }
+        else
+        {
+            for (size_t i = ovrl_origin_room; i < ovrl_origin_MAX; ++i)
+            {
+                RemoveScaleFromTransform(data.ConfigDetachedTransform[i], 
+                                         (i == data.ConfigInt[configid_int_overlay_detached_origin]) ? &data.ConfigFloat[configid_float_overlay_width] : nullptr);
+            }
+        }
+
+        data.ConfigBool[configid_bool_overlay_width_unscaled] = true;
+    }
+
     #ifdef DPLUS_UI
     //When loading an UI overlay, send config state over to ensure the correct process has rendering access even if the UI was restarted at some point
     if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
@@ -282,6 +302,7 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteBool(section.c_str(), "Enabled",                data.ConfigBool[configid_bool_overlay_enabled]);
     config.WriteInt( section.c_str(), "DesktopID",              data.ConfigInt[configid_int_overlay_desktop_id]);
     config.WriteInt( section.c_str(), "CaptureSource",          data.ConfigInt[configid_int_overlay_capture_source]);
+    config.WriteBool(section.c_str(), "WidthUnscaled",          data.ConfigBool[configid_bool_overlay_width_unscaled]);
     config.WriteInt( section.c_str(), "Width",              int(data.ConfigFloat[configid_float_overlay_width]           * 100.0f));
     config.WriteInt( section.c_str(), "Curvature",          int(data.ConfigFloat[configid_float_overlay_curvature]       * 100.0f));
     config.WriteInt( section.c_str(), "Opacity",            int(data.ConfigFloat[configid_float_overlay_opacity]         * 100.0f));
@@ -676,6 +697,26 @@ void ConfigManager::SaveMultiOverlayProfile(Ini& config)
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+}
+
+void ConfigManager::RemoveScaleFromTransform(Matrix4& transform, float* width)
+{
+    Vector3 row_1(transform[0], transform[1], transform[2]);
+    float scale_x = row_1.length(); //Scaling is always uniform so we just check the x-axis
+
+    if (scale_x == 0.0f)
+        return;
+
+    Vector3 translation = transform.getTranslation();
+    transform.setTranslation({0.0f, 0.0f, 0.0f});
+
+    transform.scale(1.0f / scale_x);
+
+    transform.setTranslation(translation);
+
+    //Correct the width value so it gives the same visual result as before
+    if (width != nullptr)
+        *width *= scale_x;
 }
 
 void ConfigManager::SaveConfigToFile()

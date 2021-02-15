@@ -1791,16 +1791,6 @@ float OutputManager::GetHMDFrameRate() const
     return vr::VRSystem()->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DisplayFrequency_Float);
 }
 
-float OutputManager::GetTimeNowToPhotons() const
-{
-    float seconds_since_last_vsync;
-    vr::VRSystem()->GetTimeSinceLastVsync(&seconds_since_last_vsync, nullptr);
-
-    float vsync_to_photons = vr::VRSystem()->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SecondsFromVsyncToPhotons_Float);
-
-    return (1.0f / GetHMDFrameRate()) - seconds_since_last_vsync + vsync_to_photons;
-}
-
 int OutputManager::GetDesktopWidth() const
 {
     return m_DesktopWidth;
@@ -1990,6 +1980,16 @@ bool OutputManager::IsDashboardTabActive() const
 {
     return m_OvrlDashboardActive;
 }
+
+float OutputManager::GetDashboardScale() const
+{
+    vr::HmdMatrix34_t matrix = {0};
+    vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, vr::TrackingUniverseStanding, {0.5f, 0.5f}, &matrix);
+    Vector3 row_1(matrix.m[0][0], matrix.m[1][0], matrix.m[2][0]);
+
+    return row_1.length(); //Scaling is always uniform so we just check the x-axis
+}
+
 void OutputManager::SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle)
 {
     vr::EVROverlayError vr_error = vr::VROverlay()->SetOverlayFromFile(overlay_handle, (ConfigManager::Get().GetApplicationPath() + "images/output_error.png").c_str());    
@@ -4379,17 +4379,17 @@ void OutputManager::ApplySettingTransform()
         HideOverlay(overlay.GetID());
     }
 
-    //Update width
-    const float width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
+    float width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
     float height = 0.0f;
     float dashboard_offset = 0.0f;
     OverlayOrigin overlay_origin = (is_detached) ? (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) : ovrl_origin_dashboard;
 
-    vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle, width);
-
-    //Calculate height of the main overlay to set dashboard dummy height correctly
     if ( (overlay.GetID() == k_ulOverlayID_Dashboard) && (should_be_visible) )
     {
+        //Dashboard uses differently scaled transform depending on the current setting. We counteract that scaling to ensure the config value actually matches world scale
+        width /= GetDashboardScale();
+
+        //Calculate height of the main overlay to set dashboard dummy height correctly
         const DPRect& crop_rect = overlay.GetValidatedCropRect();
         int crop_width = crop_rect.GetWidth(), crop_height = crop_rect.GetHeight();
 
@@ -4432,6 +4432,9 @@ void OutputManager::ApplySettingTransform()
         vr::VROverlay()->GetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, &dashboard_offset);
         dashboard_offset = (dashboard_offset - (height + 0.20f)) / 2.0f;
     }
+
+    //Update Width
+    vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle, width);
 
     //Update Curvature
     vr::VROverlay()->SetOverlayCurvature(ovrl_handle, ConfigManager::Get().GetConfigFloat(configid_float_overlay_curvature));
@@ -5319,6 +5322,7 @@ void OutputManager::DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref
     //Position next to reference if not main overlay or room/HMD Pos/dashboard origin
     if ((ovrl_handle_ref != m_OvrlHandleMain) || (overlay_origin <= ovrl_origin_dashboard))
     {
+        OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
         vr::HmdMatrix34_t overlay_transform;
         vr::HmdVector2_t mouse_scale;
 
@@ -5351,6 +5355,17 @@ void OutputManager::DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref
         vr::HmdVector2_t coordinate_offset = {mouse_scale.v[0] * x_offset_mul, mouse_scale.v[1] / 2.0f};
         vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_ref, universe_origin, coordinate_offset, &overlay_transform);
         transform = overlay_transform;
+
+        //Remove scaling from dashboard transform
+        if (ovrl_handle_ref == m_OvrlHandleMain)
+        {
+            Vector3 translation = transform.getTranslation();
+            transform.setTranslation({0.0f, 0.0f, 0.0f});
+
+            transform.scale(1.0f / GetDashboardScale());
+
+            transform.setTranslation(translation);
+        }
 
         //Restore reference overlay state if it was changed
         if (ref_overlay_changed)

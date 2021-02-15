@@ -22,6 +22,7 @@ enum ConfigID_Bool
 {
     configid_bool_overlay_detached,
     configid_bool_overlay_enabled,
+    configid_bool_overlay_width_unscaled,
     configid_bool_overlay_3D_swapped,
     configid_bool_overlay_gazefade_enabled,
     configid_bool_overlay_input_enabled,
@@ -277,6 +278,8 @@ class ConfigManager
         void SaveOverlayProfile(Ini& config, unsigned int overlay_id = UINT_MAX);
         void LoadMultiOverlayProfile(const Ini& config, bool clear_existing_overlays = true);
         void SaveMultiOverlayProfile(Ini& config);
+
+        static void RemoveScaleFromTransform(Matrix4& transform, float* width);
 
 	public:
 		ConfigManager();

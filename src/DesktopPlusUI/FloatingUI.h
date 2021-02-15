@@ -14,6 +14,7 @@ class FloatingUI
         vr::VROverlayHandle_t m_OvrlHandleCurrentUITarget;
         unsigned int m_OvrlIDCurrentUITarget;
 
+        float m_Width;
         float m_Alpha;
         bool m_Visible;
         bool m_IsSwitchingTarget;

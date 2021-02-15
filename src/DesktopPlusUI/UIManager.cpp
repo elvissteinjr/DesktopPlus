@@ -777,12 +777,12 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
         float curve = config_data.ConfigFloat[configid_float_overlay_curvature];
 
         //Adjust curve value used for UI by the overlay width difference so it's curved according to its size
-        if (config_data.ConfigFloat[configid_float_overlay_width] >= 2.0f)
+        if (config_data.ConfigFloat[configid_float_overlay_width] >= 0.9f)
         {
-            curve *= (2.75f / config_data.ConfigFloat[configid_float_overlay_width]);
+            curve *= (1.35f / config_data.ConfigFloat[configid_float_overlay_width]);
             curve = clamp(curve, 0.0f, 1.0f);
         }
-        else //Smaller than 2m can more easily curve into the UI overlay, adjust curve further
+        else //Smaller than 0.9m can more easily curve into the UI overlay, adjust curve further
         {
             //For higher curve values, also move UI overlay forward a bit when needed, even if it doesn't look so nice
             if ( (curve > 0.16f) && (dplus_forward > -0.1f) )
