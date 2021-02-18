@@ -127,7 +127,7 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
                 //Numbering on the icons starts with 1. 
                 //While there is no guarantee this corresponds to the same display as in the Windows settings, it is more familiar than the 0-based ID used internally
                 //Why icon bitmaps? No need to create/load an icon font, cleaner rendered number and easily customizable icon per desktop for the end-user.
-                if (tmtex_icon_desktop_1 + i < tmtex_icon_desktop_6)
+                if (tmtex_icon_desktop_1 + i <= tmtex_icon_desktop_6)
                     TextureManager::Get().GetTextureInfo((TMNGRTexID)(tmtex_icon_desktop_1 + i), b_size, b_uv_min, b_uv_max);
                 else
                     TextureManager::Get().GetTextureInfo(tmtex_icon_desktop, b_size, b_uv_min, b_uv_max);

@@ -314,16 +314,16 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
     SingleOutput = EnumerateOutputs(SingleOutput, &adapter_ptr_preferred, &adapter_ptr_vr);
 
-    //If they're the same, we don't need to do any multi-gpu handling
-    if (adapter_ptr_vr == adapter_ptr_preferred)
-    {
-        adapter_ptr_vr = nullptr;
-    }
-    //If there's no preferred adapter it should default to one the HMD is connected to
+    //If there's no preferred adapter it should default to the one the HMD is connected to
     if (adapter_ptr_preferred == nullptr) 
     {
         //If both are nullptr it'll still try to find a working adapter to init, though it'll probably not work at the end in that scenario
         adapter_ptr_preferred = adapter_ptr_vr; 
+    }
+    //If they're the same, we don't need to do any multi-gpu handling
+    if (adapter_ptr_vr == adapter_ptr_preferred)
+    {
+        adapter_ptr_vr = nullptr;
     }
 
     // Driver types supported
@@ -354,7 +354,6 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
         if (FAILED(hr))
         {
-            adapter_ptr_preferred->Release();
             adapter_ptr_preferred = nullptr;
         }
     }
@@ -375,7 +374,6 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     }
     else
     {
-        adapter_ptr_preferred->Release();
         adapter_ptr_preferred = nullptr;
     }
 
@@ -2313,7 +2311,7 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
             }
 
             //Count the available outputs
-            IDXGIOutput* output_ptr;
+            Microsoft::WRL::ComPtr<IDXGIOutput> output_ptr;
             UINT output_index = 0;
             while (adapter_ptr->EnumOutputs(output_index, &output_ptr) != DXGI_ERROR_NOT_FOUND)
             {
