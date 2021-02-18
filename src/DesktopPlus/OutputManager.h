@@ -144,7 +144,6 @@ class OutputManager
 
     // Vars
         ID3D11Device* m_Device;
-        IDXGIFactory2* m_Factory;
         ID3D11DeviceContext* m_DeviceContext;
         ID3D11SamplerState* m_Sampler;
         ID3D11BlendState* m_BlendState;

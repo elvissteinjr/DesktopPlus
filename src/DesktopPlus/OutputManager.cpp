@@ -33,7 +33,6 @@ OutputManager* OutputManager::Get()
 
 OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent) :
     m_Device(nullptr),
-    m_Factory(nullptr),
     m_DeviceContext(nullptr),
     m_Sampler(nullptr),
     m_BlendState(nullptr),
@@ -246,12 +245,6 @@ void OutputManager::CleanRefs()
         m_KeyMutex = nullptr;
     }
 
-    if (m_Factory)
-    {
-        m_Factory->Release();
-        m_Factory = nullptr;
-    }
-
     if (m_ComInitDone)
     {
         ::CoUninitialize();
@@ -394,31 +387,6 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
         }
 
         adapter_ptr_vr = nullptr;
-    }
-
-    // Get DXGI factory
-    IDXGIDevice* DxgiDevice = nullptr;
-    hr = m_Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DxgiDevice));
-    if (FAILED(hr))
-    {
-        return ProcessFailure(nullptr, L"Failed to QI for DXGI device", L"Error", hr, nullptr);
-    }
-
-    IDXGIAdapter* DxgiAdapter = nullptr;
-    hr = DxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&DxgiAdapter));
-    DxgiDevice->Release();
-    DxgiDevice = nullptr;
-    if (FAILED(hr))
-    {
-        return ProcessFailure(m_Device, L"Failed to get parent DXGI adapter", L"Error", hr, SystemTransitionsExpectedErrors);
-    }
-
-    hr = DxgiAdapter->GetParent(__uuidof(IDXGIFactory2), reinterpret_cast<void**>(&m_Factory));
-    DxgiAdapter->Release();
-    DxgiAdapter = nullptr;
-    if (FAILED(hr))
-    {
-        return ProcessFailure(m_Device, L"Failed to get parent DXGI factory", L"Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // Create shared texture
