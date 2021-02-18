@@ -1251,6 +1251,8 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
             else if (msg.wParam < configid_bool_MAX + configid_int_MAX)
             {
                 ConfigID_Int int_id = (ConfigID_Int)(msg.wParam - configid_bool_MAX);
+
+                int previous_value = ConfigManager::Get().GetConfigInt(int_id);
                 ConfigManager::Get().SetConfigInt(int_id, msg.lParam);
 
                 switch (int_id)
@@ -1271,7 +1273,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         CropToDisplay(msg.lParam);
 
-                        reset_mirroring = ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring);
+                        reset_mirroring = (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring) && (msg.lParam != previous_value));
                         break;
                     }
                     case configid_int_overlay_capture_source:
