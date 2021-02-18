@@ -80,7 +80,7 @@ unsigned int OverlayManager::AddUIOverlay()
         else
         {
             data.ConfigInt[configid_int_overlay_detached_origin] = ovrl_origin_room;
-            data.ConfigFloat[configid_float_overlay_width] = 1.5f;
+            data.ConfigFloat[configid_float_overlay_width] = 0.7f;
         }
     #ifdef DPLUS_UI
     }

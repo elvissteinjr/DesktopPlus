@@ -50,6 +50,8 @@ class WindowPerformance
         ImVec2 m_Pos;
         ImVec2 m_Size;
         bool m_Visible;
+        ULONGLONG m_VisibleTickLast; //Valid when m_Visible is false
+        bool m_IsPopupOpen;
 
         Win32PerformanceData m_PerfData;
 
@@ -128,6 +130,7 @@ class WindowPerformance
         const ImVec2& GetPos() const;
         const ImVec2& GetSize() const;
         bool IsVisible() const;
+        void SetPopupOpen(bool is_open);
 
         static bool IsAnyOverlayUsingPerformanceMonitor();
 };

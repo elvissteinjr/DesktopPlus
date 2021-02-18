@@ -2432,14 +2432,15 @@ void WindowSettings::UpdateCatPerformance()
         ImGui::SetColumnWidth(0, column_width_0);
         ImGui::SetColumnWidth(1, column_width_0);
 
-        bool& show_cpu           = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_cpu);
-        bool& show_gpu           = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_gpu);
-        bool& show_graphs        = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_graphs);
-        bool& show_fps           = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_fps);
-        bool& show_battery       = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_battery);
-        bool& show_time          = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_time);
-        bool& show_trackers      = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_trackers);
-        bool& show_vive_wireless = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_vive_wireless);
+        bool& show_cpu             = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_cpu);
+        bool& show_gpu             = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_gpu);
+        bool& show_graphs          = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_graphs);
+        bool& show_fps             = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_fps);
+        bool& show_battery         = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_battery);
+        bool& show_time            = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_time);
+        bool& show_trackers        = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_trackers);
+        bool& show_vive_wireless   = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_vive_wireless);
+        bool& disable_gpu_counters = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_disable_gpu_counters);
 
         //Keep unavailable options as enabled but show the check boxes as unticked to avoid confusion
         bool show_graphs_visual        = ( (use_large_style) && ((!show_cpu) && (!show_gpu)) ) ? false : show_graphs;
@@ -2529,6 +2530,28 @@ void WindowSettings::UpdateCatPerformance()
         if (!show_battery)
             ImGui::PopItemDisabled();
 
+        ImGui::NextColumn();
+
+        if (ImGui::Checkbox("Disable GPU Performance Counters", &disable_gpu_counters))
+        {
+            //Update active performance counter state if the window is currently visible
+            if (UIManager::Get()->GetPerformanceWindow().IsVisible())
+            {
+                if (disable_gpu_counters)
+                {
+                    UIManager::Get()->GetPerformanceWindow().GetPerformanceData().DisableGPUCounters();
+                }
+                else
+                {
+                    UIManager::Get()->GetPerformanceWindow().GetPerformanceData().EnableCounters(true);
+                }
+            }
+
+            UIManager::Get()->RepeatFrame();
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("Disables display of GPU load % and VRAM usage.\nThis prevents GPU hardware monitoring related stutter with recent NVIDIA drivers.");
+
         ImGui::Columns(1);
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
 
@@ -2569,8 +2592,13 @@ void WindowSettings::UpdateCatPerformance()
     {
         //PerformanceMonitor does not work with the large interface scale, so pop it temporarily
         PopInterfaceScale();
+        UIManager::Get()->GetPerformanceWindow().SetPopupOpen(true);
         UIManager::Get()->GetPerformanceWindow().Update(true);
         PushInterfaceScale();
+    }
+    else
+    {
+        UIManager::Get()->GetPerformanceWindow().SetPopupOpen(false);
     }
 
     //Stats

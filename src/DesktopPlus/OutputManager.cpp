@@ -5463,12 +5463,17 @@ void OutputManager::DetachedTransformAdjust(unsigned int packed_value)
 
         if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
         {
+            Matrix4 mat_base_offset = DragGetBaseOffsetMatrix();
+
             //Preserve scaling from transform, which can be present in matrices originating from the dashboard
             Vector3 row_1(transform[0], transform[1], transform[2]);
             float scale_x = row_1.length(); //Scaling is always uniform so we just check the x-axis
+            //Dashboard origin itself also contains scale, so take the base scale in account as well
+            Vector3 row_1_base(mat_base_offset[0], mat_base_offset[1], mat_base_offset[2]);
+            float scale_x_base = row_1_base.length();
+            scale_x *= scale_x_base;
 
             //Rotate towards HMD position
-            Matrix4 mat_base_offset = DragGetBaseOffsetMatrix();
             Matrix4 mat_hmd(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
             Matrix4 mat_lookat = mat_base_offset * transform;   //Apply base offset for LookAt
 

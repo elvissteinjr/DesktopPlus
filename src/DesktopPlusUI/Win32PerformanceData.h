@@ -32,6 +32,10 @@ class Win32PerformanceData
         Win32PerformanceData();
         ~Win32PerformanceData();
 
+        void EnableCounters(bool enable_gpu);
+        void DisableGPUCounters();
+        void DisableCounters();
+
         bool Update();
         void SetTargetGPU(LUID gpu_luid, DWORDLONG vram_total_bytes);
 

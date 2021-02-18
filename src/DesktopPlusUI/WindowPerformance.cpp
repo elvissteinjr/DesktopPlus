@@ -15,6 +15,9 @@
 static LPCWSTR const g_ViveWirelessLogPathBase = L"%ProgramData%\\VIVE Wireless\\ConnectionUtility\\Log\\";
 
 WindowPerformance::WindowPerformance() : 
+    m_Visible(false),
+    m_VisibleTickLast(0),
+    m_IsPopupOpen(false),
     m_PIDLast(0),
     m_OffsetFramesPresents(0),
     m_OffsetReprojectedFrames(0),
@@ -135,7 +138,7 @@ void WindowPerformance::Update(bool show_as_popup)
 
         //Store window bounds and update affected overlays if they changed
         ImVec2 pos_new  = ImGui::GetWindowPos();
-        ImVec2 size_new =ImGui::GetWindowSize();
+        ImVec2 size_new = ImGui::GetWindowSize();
 
         if ((pos_new.x != m_Pos.x) || (pos_new.y != m_Pos.y) || (size_new.x != m_Size.x) || (size_new.y != m_Size.y))
         {
@@ -151,7 +154,28 @@ void WindowPerformance::Update(bool show_as_popup)
 
 void WindowPerformance::UpdateVisibleState()
 {
-    m_Visible = IsAnyOverlayUsingPerformanceMonitor();
+    bool was_visible = m_Visible;
+
+    m_Visible = ( (m_IsPopupOpen) || (IsAnyOverlayUsingPerformanceMonitor()) );
+
+    if (m_Visible)
+    {
+        if (!was_visible)
+        {
+            m_PerfData.EnableCounters(!ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_disable_gpu_counters));
+        }
+    }
+    else
+    {
+        if (was_visible)
+        {
+            m_VisibleTickLast = ::GetTickCount64();
+        }
+        else if (m_VisibleTickLast + 3000 <= ::GetTickCount64())    //Only actually disable counters after at least 3 seconds of being hidden
+        {
+            m_PerfData.DisableCounters();
+        }
+    }
 }
 
 void WindowPerformance::DisplayStatsLarge()
@@ -296,21 +320,24 @@ void WindowPerformance::DisplayStatsLarge()
         ImGui::NextColumn();
         ImGui::NextColumn();
 
-        //-GPU Load
-        ImGui::Text("Load:");
-        ImGui::NextColumn();
+        if (!ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_disable_gpu_counters)) //No point in showing it all if it's not updating
+        {
+            //-GPU Load
+            ImGui::Text("Load:");
+            ImGui::NextColumn();
 
-        ImGui::TextRight(text_percent_width, "%.2f", m_PerfData.GetGPULoadPrecentage());
-        ImGui::SameLine(0.0f, 0.0f);
-        ImGui::TextUnformatted("%");
-        ImGui::NextColumn();
+            ImGui::TextRight(text_percent_width, "%.2f", m_PerfData.GetGPULoadPrecentage());
+            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::TextUnformatted("%");
+            ImGui::NextColumn();
 
-        //-VRAM
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() - item_spacing_half);  //Reduce horizontal spacing
-        ImGui::Text("VRAM:");
-        ImGui::NextColumn();
-        ImGui::TextRight(right_border_offset - 1.0f, "%.2f/%.2f GB", m_PerfData.GetVRAMUsedGB(), m_PerfData.GetVRAMTotalGB());
-        ImGui::NextColumn();
+            //-VRAM
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() - item_spacing_half);  //Reduce horizontal spacing
+            ImGui::Text("VRAM:");
+            ImGui::NextColumn();
+            ImGui::TextRight(right_border_offset - 1.0f, "%.2f/%.2f GB", m_PerfData.GetVRAMUsedGB(), m_PerfData.GetVRAMTotalGB());
+            ImGui::NextColumn();
+        }
     }
 
     //-Table SteamVR
@@ -647,18 +674,21 @@ void WindowPerformance::DisplayStatsCompact()
         if (m_FrameTimeGPU > frame_time_warning_limit)
             ImGui::PopStyleColor();
 
-        //-GPU Load
-        ImGui::TextRight(text_percent_width, "%.2f", m_PerfData.GetGPULoadPrecentage());
-        ImGui::SameLine(0.0f, 0.0f);
-        ImGui::TextUnformatted("%");
-        ImGui::NextColumn();
+        if (!ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_disable_gpu_counters)) //No point in showing it all if it's not updating
+        {
+            //-GPU Load
+            ImGui::TextRight(text_percent_width, "%.2f", m_PerfData.GetGPULoadPrecentage());
+            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::TextUnformatted("%");
+            ImGui::NextColumn();
 
-        //-VRAM
-        ImGui::TextRight(text_ram_padding, "%.2f GB/", m_PerfData.GetVRAMUsedGB());
-        ImGui::SameLine(0.0f, 0.0f);
-        ImGui::TextRight(0.0f, "%.2f GB", m_PerfData.GetVRAMTotalGB());
-        text_vram_total_width = ImGui::GetItemRectSize().x;
-        ImGui::NextColumn();
+            //-VRAM
+            ImGui::TextRight(text_ram_padding, "%.2f GB/", m_PerfData.GetVRAMUsedGB());
+            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::TextRight(0.0f, "%.2f GB", m_PerfData.GetVRAMTotalGB());
+            text_vram_total_width = ImGui::GetItemRectSize().x;
+            ImGui::NextColumn();
+        }
     }
 
     //--Row FPS
@@ -1366,6 +1396,11 @@ const ImVec2 & WindowPerformance::GetSize() const
 bool WindowPerformance::IsVisible() const
 {
     return m_Visible;
+}
+
+void WindowPerformance::SetPopupOpen(bool is_open)
+{
+    m_IsPopupOpen = is_open;
 }
 
 bool WindowPerformance::IsAnyOverlayUsingPerformanceMonitor()

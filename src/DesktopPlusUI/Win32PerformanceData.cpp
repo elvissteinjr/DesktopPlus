@@ -18,7 +18,7 @@ LUID Win32PerformanceData::GetLUIDFromFormattedCounterNameString(const std::wstr
         if (pos != std::string::npos)
         {
             std::wstring str_low_part = str.substr(pos + 1, 10);
-           
+
             //Convert from string
             parsed_luid.HighPart = stol(str_high_part, 0, 16);
             parsed_luid.LowPart  = stoul(str_low_part, 0, 16);
@@ -32,67 +32,131 @@ Win32PerformanceData::Win32PerformanceData() :
     m_QueryCPU(nullptr), m_QueryGPU(nullptr), m_QueryVRAM(nullptr), m_CounterCPU(nullptr), m_CounterGPU(nullptr), m_CounterVRAM(nullptr), 
     m_GPUTargetLUID{0, 0}, m_CPULoad(0.0f), m_GPULoad(0.0f), m_VRAMTotalGB(0.0f), m_VRAMUsedGB(0.0f), m_LastUpdateTick(0)
 {
-    PDH_STATUS pdh_status;
-
-    //CPU Load
-    pdh_status = ::PdhOpenQuery(nullptr, 0, &m_QueryCPU);
-
-    if (pdh_status == ERROR_SUCCESS)
-    {
-        pdh_status = ::PdhAddEnglishCounter(m_QueryCPU, L"\\Processor(_Total)\\% Processor Time", 0, &m_CounterCPU);
-
-        if (pdh_status != ERROR_SUCCESS)
-        {
-            ::PdhCloseQuery(&m_QueryCPU);
-            m_QueryCPU = nullptr;
-        }
-    }
-
-    //GPU Load
-    pdh_status = ::PdhOpenQuery(nullptr, 0, &m_QueryGPU);
-
-    if (pdh_status == ERROR_SUCCESS)
-    {
-        pdh_status = ::PdhAddEnglishCounter(m_QueryGPU, L"\\GPU Engine(*)\\Utilization Percentage", 0, &m_CounterGPU);
-
-        if (pdh_status != ERROR_SUCCESS)
-        {
-            ::PdhCloseQuery(&m_QueryGPU);
-            m_QueryGPU = nullptr;
-        }
-    }
-
-    //GPU VRAM
-    pdh_status = ::PdhOpenQuery(nullptr, 0, &m_QueryVRAM);
-
-    if (pdh_status == ERROR_SUCCESS)
-    {
-        pdh_status = ::PdhAddEnglishCounter(m_QueryVRAM, L"\\GPU Adapter Memory(*)\\Dedicated Usage", 0, &m_CounterVRAM);
-
-        if (pdh_status != ERROR_SUCCESS)
-        {
-            ::PdhCloseQuery(&m_QueryVRAM);
-            m_QueryVRAM = nullptr;
-        }
-    }
-
     //RAM Total
     MEMORYSTATUSEX mem_info;
     mem_info.dwLength = sizeof(MEMORYSTATUSEX);
     ::GlobalMemoryStatusEx(&mem_info);
     m_RAMTotalGB = float(mem_info.ullTotalPhys / (1024.0 * 1024.0 * 1024.0));
 
-    Update();
+    Update(); //Fills m_RamUsedGB
 }
 
 Win32PerformanceData::~Win32PerformanceData()
 {
-    if (m_QueryCPU != nullptr)
-        PdhCloseQuery(&m_QueryCPU);
-    if (m_QueryCPU != nullptr)
+    DisableCounters();
+}
+
+void Win32PerformanceData::EnableCounters(bool enable_gpu)
+{
+    PDH_STATUS pdh_status;
+    bool new_counter_added = false;
+
+    //CPU Load
+    if (m_QueryCPU == nullptr)
+    {
+        pdh_status = ::PdhOpenQuery(nullptr, 0, &m_QueryCPU);
+
+        if (pdh_status == ERROR_SUCCESS)
+        {
+            pdh_status = ::PdhAddEnglishCounter(m_QueryCPU, L"\\Processor(_Total)\\% Processor Time", 0, &m_CounterCPU);
+
+            if (pdh_status != ERROR_SUCCESS)
+            {
+                ::PdhCloseQuery(&m_QueryCPU);
+                m_QueryCPU = nullptr;
+            }
+            else
+            {
+                new_counter_added = true;
+            }
+        }
+    }
+
+    if (enable_gpu)
+    {
+        //GPU Load
+        if (m_QueryGPU == nullptr)
+        {
+            pdh_status = ::PdhOpenQuery(nullptr, 0, &m_QueryGPU);
+
+            if (pdh_status == ERROR_SUCCESS)
+            {
+                pdh_status = ::PdhAddEnglishCounter(m_QueryGPU, L"\\GPU Engine(*)\\Utilization Percentage", 0, &m_CounterGPU);
+
+                if (pdh_status != ERROR_SUCCESS)
+                {
+                    ::PdhCloseQuery(&m_QueryGPU);
+                    m_QueryGPU = nullptr;
+                }
+                else
+                {
+                    new_counter_added = true;
+                }
+            }
+        }
+
+        //GPU VRAM
+        if (m_QueryVRAM == nullptr)
+        {
+            pdh_status = ::PdhOpenQuery(nullptr, 0, &m_QueryVRAM);
+
+            if (pdh_status == ERROR_SUCCESS)
+            {
+                pdh_status = ::PdhAddEnglishCounter(m_QueryVRAM, L"\\GPU Adapter Memory(*)\\Dedicated Usage", 0, &m_CounterVRAM);
+
+                if (pdh_status != ERROR_SUCCESS)
+                {
+                    ::PdhCloseQuery(&m_QueryVRAM);
+                    m_QueryVRAM = nullptr;
+                }
+                else
+                {
+                    new_counter_added = true;
+                }
+            }
+        }
+    }
+
+    if (new_counter_added)
+    {
+        m_LastUpdateTick = ::GetTickCount64();  //Not an update, but we need to start waiting from when a counter was first added
+    }
+}
+
+void Win32PerformanceData::DisableGPUCounters()
+{
+    if (m_QueryGPU != nullptr)
+    {
         PdhCloseQuery(&m_QueryGPU);
-    if (m_QueryCPU != nullptr)
+        m_QueryGPU = nullptr;
+    }
+
+    if (m_QueryVRAM != nullptr)
+    {
         PdhCloseQuery(&m_QueryVRAM);
+        m_QueryVRAM = nullptr;
+    }
+}
+
+void Win32PerformanceData::DisableCounters()
+{
+    if (m_QueryCPU != nullptr)
+    {
+        PdhCloseQuery(&m_QueryCPU);
+        m_QueryCPU = nullptr;
+    }
+
+    if (m_QueryGPU != nullptr)
+    {
+        PdhCloseQuery(&m_QueryGPU);
+        m_QueryGPU = nullptr;
+    }
+
+    if (m_QueryVRAM != nullptr)
+    {
+        PdhCloseQuery(&m_QueryVRAM);
+        m_QueryVRAM = nullptr;
+    }
 }
 
 bool Win32PerformanceData::Update()
