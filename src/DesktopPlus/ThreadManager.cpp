@@ -182,16 +182,9 @@ DUPL_RETURN THREADMANAGER::InitializeDx(_Out_ DX_RESOURCES* Data, IDXGIAdapter* 
     D3D_FEATURE_LEVEL FeatureLevel;
 
     // Create device
-    for (UINT DriverTypeIndex = 0; DriverTypeIndex < NumDriverTypes; ++DriverTypeIndex)
-    {
-        hr = D3D11CreateDevice(nullptr, DriverTypes[DriverTypeIndex], nullptr, 0, FeatureLevels, NumFeatureLevels,
-                                D3D11_SDK_VERSION, &Data->Device, &FeatureLevel, &Data->Context);
-        if (SUCCEEDED(hr))
-        {
-            // Device creation success, no need to loop anymore
-            break;
-        }
-    }
+    hr = D3D11CreateDevice(DXGIAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, FeatureLevels, NumFeatureLevels,
+                            D3D11_SDK_VERSION, &Data->Device, &FeatureLevel, &Data->Context);
+
     if (FAILED(hr))
     {
         return ProcessFailure(nullptr, L"Failed to create device for thread", L"Error", hr);
