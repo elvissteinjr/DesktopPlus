@@ -393,6 +393,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_interface_overlay_current_id]                   = config.ReadInt( "Interface", "OverlayCurrentID", 0);
     m_ConfigInt[configid_int_interface_mainbar_desktop_listing]              = config.ReadInt( "Interface", "DesktopButtonCyclingMode", mainbar_desktop_listing_individual);
     m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]        = config.ReadBool("Interface", "DesktopButtonIncludeAll", false);
+    m_ConfigInt[configid_int_interface_desktop_count_override]               = config.ReadInt( "Interface", "DesktopCountOverride", -1);
 
     //Read color string and store it interpreted as signed int
     unsigned int rgba = std::stoul(config.ReadString("Interface", "EnvironmentBackgroundColor", "00000080"), nullptr, 16);

@@ -253,7 +253,7 @@ void FloatingUI::UpdateUITargetState()
                 Matrix4 mat_hmd = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
                 float distance = mat_overlay.getTranslation().distance(mat_hmd.getTranslation());
 
-                m_Width = 0.66 + (0.5f * distance);
+                m_Width = 0.66f + (0.5f * distance);
                 vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle_floating_ui, m_Width);
             }
         }

@@ -95,6 +95,7 @@ enum ConfigID_Int
     configid_int_overlay_MAX,
     configid_int_interface_overlay_current_id,
     configid_int_interface_mainbar_desktop_listing,
+    configid_int_interface_desktop_count_override,
     configid_int_interface_background_color,
     configid_int_interface_background_color_display_mode,
     configid_int_interface_wmr_ignore_vscreens,             //This assumes the WMR virtual screens are the 3 last ones... (-1 means auto/unset which is the value non-WMR users get)
