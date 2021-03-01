@@ -2309,11 +2309,6 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
             ++i;
         }
 
-        //Allow overriding the total desktop count for when the output somehow didn't enumerate properly (no idea why, but happened for someone)
-        int desktop_count_override = ConfigManager::Get().GetConfigInt(configid_int_interface_desktop_count_override);
-        if (desktop_count_override > -1)
-            output_count = desktop_count_override;
-
         //Store output/desktop count and send it over to UI
         ConfigManager::Get().SetConfigInt(configid_int_state_interface_desktop_count, output_count);
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_interface_desktop_count), output_count);

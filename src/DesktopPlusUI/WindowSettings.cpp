@@ -370,15 +370,34 @@ void WindowSettings::UpdateCatOverlay()
 
         ImGui::ComboWithInputTextActivationCheck(is_combo_input_visible);
 
+        OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
         if (buffer_changed)
         {
-            OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
-            data.ConfigNameStr = buffer_overlay_name;
-
-            if (ImGui::StringContainsUnmappedCharacter(buffer_overlay_name))
+            //If name buffer is not empty, set name from user input, otherwise fall back to auto naming
+            if (buffer_overlay_name[0] != '\0')
             {
-                TextureManager::Get().ReloadAllTexturesLater();
+                data.ConfigBool[configid_bool_overlay_name_custom] = true;
+                data.ConfigNameStr = buffer_overlay_name;
+
+                if (ImGui::StringContainsUnmappedCharacter(buffer_overlay_name))
+                {
+                    TextureManager::Get().ReloadAllTexturesLater();
+                }
             }
+            else
+            {
+                data.ConfigBool[configid_bool_overlay_name_custom] = false;
+                OverlayManager::Get().SetCurrentOverlayNameAuto();
+            }
+        }
+        else if ( (!is_combo_input_visible) && (buffer_overlay_name[0] == '\0') ) //If editing is over and the buffer is still blank, update it so it has the auto name
+        {
+            //This can also trigger when the name was loaded blank, so set these again so it doesn't repeat this forever
+            data.ConfigBool[configid_bool_overlay_name_custom] = false;
+            OverlayManager::Get().SetCurrentOverlayNameAuto();
+
+            m_OverlayNameBufferNeedsUpdate = true;
         }
 
         if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup))
@@ -811,6 +830,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
             capture_method = ovrl_capsource_desktop_duplication;
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_capture_source), capture_method);
 
+            OverlayManager::Get().SetCurrentOverlayNameAuto();
+            m_OverlayNameBufferNeedsUpdate = true;
+
             UIManager::Get()->RepeatFrame();
         }
 
@@ -823,6 +845,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
         {
             capture_method = ovrl_capsource_winrt_capture;
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_capture_source), capture_method);
+
+            OverlayManager::Get().SetCurrentOverlayNameAuto();
+            m_OverlayNameBufferNeedsUpdate = true;
 
             UIManager::Get()->RepeatFrame();
         }
@@ -923,6 +948,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                     ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,    "");
                     ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, "");
 
+                    OverlayManager::Get().SetCurrentOverlayNameAuto();
+                    m_OverlayNameBufferNeedsUpdate = true;
+
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
 
@@ -941,6 +969,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                     ConfigManager::Get().SetConfigIntPtr(configid_intptr_overlay_state_winrt_hwnd, 0);
                     ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,    "");
                     ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, "");
+
+                    OverlayManager::Get().SetCurrentOverlayNameAuto();
+                    m_OverlayNameBufferNeedsUpdate = true;
 
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
@@ -965,6 +996,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                         ConfigManager::Get().SetConfigIntPtr(configid_intptr_overlay_state_winrt_hwnd, 0);
                         ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,    "");
                         ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, "");
+
+                        OverlayManager::Get().SetCurrentOverlayNameAuto();
+                        m_OverlayNameBufferNeedsUpdate = true;
 
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
@@ -995,6 +1029,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                             ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,    StringConvertFromUTF16(window.Title.c_str())); //No need to sync these
                             ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, window.ExeName);
 
+                            OverlayManager::Get().SetCurrentOverlayNameAuto();
+                            m_OverlayNameBufferNeedsUpdate = true;
+
                             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), -2);
                             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), (LPARAM)winrt_selected_window);
 
@@ -1023,7 +1060,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                 //Try to find the foreground window in the window list and only use it when found there
                 HWND foreground_window = ::GetForegroundWindow();
                 const auto it = std::find_if(capture_window_list.begin(), capture_window_list.end(), [&](const auto& window){ return (window.WindowHandle == foreground_window); });
-                
+
                 if (it != capture_window_list.end())
                 {
                     winrt_selected_desktop = -2;
@@ -1032,6 +1069,10 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                     capture_window_list_selected_window = winrt_selected_window;
 
                     ConfigManager::Get().SetConfigIntPtr(configid_intptr_overlay_state_winrt_hwnd, (intptr_t)winrt_selected_window);
+
+                    OverlayManager::Get().SetCurrentOverlayNameAuto();
+                    m_OverlayNameBufferNeedsUpdate = true;
+
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), -2);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), (LPARAM)winrt_selected_window);
                 }
@@ -1120,6 +1161,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                 //This is the same as resetting, except the desktop ID can be changed
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), list_selected_desktop);
                 ConfigManager::Get().SetConfigInt(configid_int_overlay_desktop_id, list_selected_desktop);
+
+                OverlayManager::Get().SetCurrentOverlayNameAuto();
+                m_OverlayNameBufferNeedsUpdate = true;
             }
 
             ImGui::Columns(1);
@@ -1259,6 +1303,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
             {
                 //Have the dashboard app figure out how to do this as the UI doesn't have all data needed at hand
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_crop_to_active_window);
+
+                OverlayManager::Get().SetCurrentOverlayNameAuto(::GetForegroundWindow());
+                m_OverlayNameBufferNeedsUpdate = true;
             }
 
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
@@ -1285,6 +1332,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id),
                                                             ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id));
             }
+
+            OverlayManager::Get().SetCurrentOverlayNameAuto();
+            m_OverlayNameBufferNeedsUpdate = true;
         }
 
         if (disable_sliders)
@@ -2572,7 +2622,7 @@ void WindowSettings::UpdateCatPerformance()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new_ui);
 
             OverlayManager::Get().SetCurrentOverlayID(new_id);
-            OverlayManager::Get().GetCurrentConfigData().ConfigNameStr = "Performance Monitor";
+            OverlayManager::Get().SetCurrentOverlayNameAuto();
             ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, (int)new_id);
 
             UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
@@ -4079,9 +4129,8 @@ bool WindowSettings::PopupCurrentOverlayManage()
 
         if (ImGui::Button("Add")) 
         {
-            //Copy data of current overlay and generate default name
+            //Copy data of current overlay
             OverlayConfigData data = OverlayManager::Get().GetCurrentConfigData();
-            data.ConfigNameStr = "Overlay " + std::to_string(OverlayManager::Get().GetOverlayCount());
 
             OverlayManager::Get().AddOverlay(data, (current_overlay == k_ulOverlayID_Dashboard));
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, current_overlay);
@@ -4219,7 +4268,20 @@ bool WindowSettings::PopupCurrentOverlayRename()
 
         if (do_save)
         {
-            OverlayManager::Get().GetCurrentConfigData().ConfigNameStr = buf_name;
+            OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+            //If name buffer is not empty, set name from user input, otherwise fall back to auto naming
+            if (buf_name[0] != '\0')
+            {
+                data.ConfigBool[configid_bool_overlay_name_custom] = true;
+                data.ConfigNameStr = buf_name;
+            }
+            else
+            {
+                data.ConfigBool[configid_bool_overlay_name_custom] = false;
+                OverlayManager::Get().SetCurrentOverlayNameAuto();
+            }
+
             m_OverlayNameBufferNeedsUpdate = true;
             ret = true;
 

@@ -107,20 +107,45 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
         section = "Overlay";
     }
 
-    //Set default name for when loading profiles before names existed
-    std::string default_name;
-    
-    if (data.ConfigNameStr.empty()) //But only if there wasn't one before
-    {
-        default_name = (current_id == k_ulOverlayID_Dashboard) ? "Dashboard" : "Overlay " + std::to_string(current_id);
-    }
-    else
-    {
-        default_name = data.ConfigNameStr;
-    }
-    
-    data.ConfigNameStr = config.ReadString(section.c_str(), "Name", default_name.c_str());
+    data.ConfigNameStr = config.ReadString(section.c_str(), "Name");
 
+    //Determine if the name is one of the old default names when the NameIsCustom key is missing
+    bool name_custom_default_value = false;
+    if (!config.KeyExists(section.c_str(), "NameIsCustom"))
+    {
+        //Check if it's empty or just "Dashboard" and skip it then
+        if ((!data.ConfigNameStr.empty()) && (data.ConfigNameStr != "Dashboard"))
+        {
+            //Check if the name is "Overlay [Number]"
+            std::stringstream ss(data.ConfigNameStr);
+            std::string out_str;
+            int out_int;
+
+            ss >> out_str;
+
+            if (out_str == "Overlay")
+            {
+                ss >> out_int;
+
+                if (!ss.fail())
+                {
+                    //Check if any additional string can be extracted, which would mean it's custom despite starting like a default name
+                    ss >> out_str;
+                    name_custom_default_value = !ss.fail();
+                }
+                else //Number extraction failed, so custom
+                {
+                    name_custom_default_value = true;
+                }
+            }
+            else //Doesn't start with "Overlay", so custom
+            {
+                name_custom_default_value = true;
+            }
+        }
+    }
+
+    data.ConfigBool[configid_bool_overlay_name_custom]                 = config.ReadBool(section.c_str(),   "NameIsCustom", name_custom_default_value);
     data.ConfigBool[configid_bool_overlay_enabled]                     = config.ReadBool(section.c_str(),   "Enabled", true);
     data.ConfigInt[configid_int_overlay_desktop_id]                    = config.ReadInt(section.c_str(),    "DesktopID", -2);
     data.ConfigInt[configid_int_overlay_capture_source]                = config.ReadInt(section.c_str(),    "CaptureSource", ovrl_capsource_desktop_duplication);
@@ -276,6 +301,12 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
 
         UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
     }
+
+    //If NameIsCustom key was missing, set overlay auto name to override old default names
+    if (!config.KeyExists(section.c_str(), "NameIsCustom"))
+    {
+        OverlayManager::Get().SetCurrentOverlayNameAuto();
+    }
     #endif
 }
 
@@ -299,6 +330,7 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
 
     config.WriteString(section.c_str(), "Name", data.ConfigNameStr.c_str());
 
+    config.WriteBool(section.c_str(), "NameIsCustom",           data.ConfigBool[configid_bool_overlay_name_custom]);
     config.WriteBool(section.c_str(), "Enabled",                data.ConfigBool[configid_bool_overlay_enabled]);
     config.WriteInt( section.c_str(), "DesktopID",              data.ConfigInt[configid_int_overlay_desktop_id]);
     config.WriteInt( section.c_str(), "CaptureSource",          data.ConfigInt[configid_int_overlay_capture_source]);
@@ -393,7 +425,6 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_interface_overlay_current_id]                   = config.ReadInt( "Interface", "OverlayCurrentID", 0);
     m_ConfigInt[configid_int_interface_mainbar_desktop_listing]              = config.ReadInt( "Interface", "DesktopButtonCyclingMode", mainbar_desktop_listing_individual);
     m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]        = config.ReadBool("Interface", "DesktopButtonIncludeAll", false);
-    m_ConfigInt[configid_int_interface_desktop_count_override]               = config.ReadInt( "Interface", "DesktopCountOverride", -1);
 
     //Read color string and store it interpreted as signed int
     unsigned int rgba = std::stoul(config.ReadString("Interface", "EnvironmentBackgroundColor", "00000080"), nullptr, 16);
@@ -1017,7 +1048,9 @@ void ConfigManager::SetConfigIntPtr(ConfigID_IntPtr id, intptr_t value)
 
 void ConfigManager::SetConfigString(ConfigID_String id, const std::string& value)
 {
-    if (id < configid_str_MAX)
+    if (id < configid_str_overlay_MAX)
+        OverlayManager::Get().GetCurrentConfigData().ConfigStr[id] = value;
+    else if (id < configid_str_MAX)
         m_ConfigString[id] = value;
 }
 
@@ -1044,7 +1077,7 @@ intptr_t ConfigManager::GetConfigIntPtr(ConfigID_IntPtr id) const
 
 const std::string& ConfigManager::GetConfigString(ConfigID_String id) const
 {
-    return m_ConfigString[id];
+    return (id < configid_str_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigStr[id] : m_ConfigString[id];
 }
 
 bool& ConfigManager::GetConfigBoolRef(ConfigID_Bool id)

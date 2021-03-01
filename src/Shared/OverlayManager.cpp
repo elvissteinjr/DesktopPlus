@@ -7,6 +7,8 @@
     #include "UIManager.h"
 #endif
 
+#include "Util.h"
+
 #include <sstream>
 
 static OverlayManager g_OverlayManager;
@@ -299,4 +301,74 @@ void OverlayManager::RemoveAllOverlays()
             outmgr->ResetOverlayActiveCount();
         }
     #endif
+}
+
+void OverlayManager::SetCurrentOverlayNameAuto(HWND window_handle)
+{
+    SetOverlayNameAuto(m_CurrentOverlayID, window_handle);
+}
+
+void OverlayManager::SetOverlayNameAuto(unsigned int id, HWND window_handle)
+{
+    if (id < m_OverlayConfigData.size())
+    {
+        OverlayConfigData& data = m_OverlayConfigData[id];
+
+        //Call is just silently ignored when overlay name is set to custom/user set already
+        if (data.ConfigBool[configid_bool_overlay_name_custom])
+            return;
+
+        data.ConfigNameStr = (id == k_ulOverlayID_Dashboard) ? "[Dashboard] " : "";
+
+        //If override window handle passed, try to use that
+        if (window_handle != nullptr)
+        {
+            auto title_length = ::GetWindowTextLengthW(window_handle);
+            if (title_length > 0)
+            {
+                title_length++;
+
+                std::unique_ptr<WCHAR[]> title_buffer = std::unique_ptr<WCHAR[]>{ new WCHAR[title_length] };
+
+                if (::GetWindowTextW(window_handle, title_buffer.get(), title_length) != 0)
+                {
+                    data.ConfigNameStr += StringConvertFromUTF16(title_buffer.get());
+
+                    return;
+                }
+            }
+        }
+
+        switch (data.ConfigInt[configid_int_overlay_capture_source])
+        {
+            case ovrl_capsource_desktop_duplication:
+            {
+                data.ConfigNameStr += (data.ConfigInt[configid_int_overlay_desktop_id] == -1) ? "Combined Desktop" : 
+                                                                                                "Desktop " + std::to_string(data.ConfigInt[configid_int_overlay_desktop_id] + 1);
+                break;
+            }
+            case ovrl_capsource_winrt_capture:
+            {
+                if (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0)
+                {
+                    data.ConfigNameStr += data.ConfigStr[configid_str_overlay_winrt_last_window_title];
+                }
+                else if (data.ConfigInt[configid_int_overlay_winrt_desktop_id] != -2)
+                {
+                    data.ConfigNameStr += (data.ConfigInt[configid_int_overlay_winrt_desktop_id] == -1) ? "Combined Desktop" : 
+                                                                                                          "Desktop " + std::to_string(data.ConfigInt[configid_int_overlay_winrt_desktop_id] + 1);
+                }
+                else
+                {
+                    data.ConfigNameStr += "[No Capture Target]";
+                }
+                break;
+            }
+            case ovrl_capsource_ui:
+            {
+                data.ConfigNameStr += "Performance Monitor"; //So far all UI overlays are just that
+                break;
+            }
+        }
+    }
 }

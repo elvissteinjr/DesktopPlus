@@ -326,6 +326,11 @@ void UIManager::HandleIPCMessage(const MSG& msg)
 
                 switch (int_id)
                 {
+                    case configid_int_overlay_winrt_desktop_id:
+                    {
+                        OverlayManager::Get().SetCurrentOverlayNameAuto();
+                        break;
+                    }
                     case configid_int_interface_overlay_current_id:
                     {
                         OverlayManager::Get().SetCurrentOverlayID((unsigned int)msg.lParam);
@@ -361,6 +366,8 @@ void UIManager::HandleIPCMessage(const MSG& msg)
 
                         ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,    StringConvertFromUTF16(info.Title.c_str()));
                         ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, info.ExeName);
+
+                        OverlayManager::Get().SetCurrentOverlayNameAuto();
                     }
                     default: break;
                 }

@@ -42,4 +42,7 @@ class OverlayManager
         void SwapOverlays(unsigned int id, unsigned int id2);
         void RemoveOverlay(unsigned int id);
         void RemoveAllOverlays();                                 //Except Dashboard of course (doesn't reset it either)
+
+        void SetCurrentOverlayNameAuto(HWND window_handle = nullptr);
+        void SetOverlayNameAuto(unsigned int id, HWND window_handle = nullptr);    //window_handle is optional, can be passed as override for when the handle isn't stored
 };
