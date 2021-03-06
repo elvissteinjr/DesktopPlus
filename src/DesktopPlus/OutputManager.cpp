@@ -5716,6 +5716,9 @@ bool OutputManager::HasDashboardMoved()
 
 void OutputManager::DimDashboard(bool do_dim)
 {
+    if (vr::VROverlay() == nullptr)
+        return;
+
     //This *could* terribly conflict with other apps messing with these settings, but I'm unaware of any that are right now, so let's just say we're the first
     vr::VROverlayHandle_t system_dashboard;
     vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
