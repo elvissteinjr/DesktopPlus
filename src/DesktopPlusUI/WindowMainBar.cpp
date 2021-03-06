@@ -57,6 +57,8 @@ void WindowMainBar::DisplayTooltipIfHovered(const char* text)
 
 void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
 {
+    ImGui::PushID("DesktopButtons");
+
     ImGuiIO& io = ImGui::GetIO();
 
     ImVec2 b_size, b_uv_min, b_uv_max;
@@ -116,8 +118,6 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
     {
         case mainbar_desktop_listing_individual:
         {
-            ImGui::PushID("DesktopButtons");
-
             char tooltip_str[16];
             for (int i = 0; i < desktop_count; ++i)
             {
@@ -156,8 +156,6 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
                 ImGui::PopID();
                 ImGui::SameLine();
             }
-
-            ImGui::PopID();
             break;
         }
         case mainbar_desktop_listing_cycle:
@@ -203,10 +201,14 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
 
     if (disable_normal)
         ImGui::PopItemDisabled();
+
+    ImGui::PopID();
 }
 
 void WindowMainBar::UpdateActionButtons(unsigned int overlay_id)
 {
+    ImGui::PushID("ActionButtons");
+
     ImGuiIO& io = ImGui::GetIO();
     ImVec2 b_size, b_uv_min, b_uv_max;
     TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
@@ -306,6 +308,8 @@ void WindowMainBar::UpdateActionButtons(unsigned int overlay_id)
         }
         list_id++;
     }
+
+    ImGui::PopID();
 }
 
 WindowMainBar::WindowMainBar(WindowSettings* settings_window) : m_Visible(true),
