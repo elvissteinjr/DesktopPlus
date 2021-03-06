@@ -29,7 +29,7 @@ namespace ImGui
     //Uses PopupContextMenuInputText() with the InputText
     //Use normal EndCombo() to finish
     bool BeginComboWithInputText(const char* str_id, char* str_buffer, size_t buffer_size, bool& out_buffer_changed,
-                                 bool& persist_input_visible, bool& persist_input_activated, bool& persist_mouse_released_once);
+                                 bool& persist_input_visible, bool& persist_input_activated, bool& persist_mouse_released_once, bool no_preview_text = false);
     void ComboWithInputTextActivationCheck(bool& persist_input_visible); //Always call after BeginComboWithInputText(), outside the if statement
     bool ChoiceTest();
 

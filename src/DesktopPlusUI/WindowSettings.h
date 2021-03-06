@@ -6,6 +6,7 @@
 #include "imgui.h"
 
 #include "ConfigManager.h"
+#include "TextureManager.h"
 #include "WindowList.h"
 
 //The entire settings interface
@@ -18,6 +19,7 @@ class WindowSettings
 
         bool m_ActionEditIsNew;
         bool m_OverlayNameBufferNeedsUpdate;
+        std::vector<WindowInfo> m_CaptureWindowList;
         ImGuiStyle m_StyleOrig;
         bool m_IsStyleScaled;
 
@@ -41,7 +43,7 @@ class WindowSettings
         bool ButtonAction(const char* str_id, ActionID& action_id);
         bool ButtonHotkey(unsigned int hotkey_id);
         void ProfileSelector(bool multi_overlay);
-        void UpdateWindowList(std::vector<WindowInfo>& window_list, HWND selected_window, std::string& selected_window_str);
+        void UpdateWindowList(HWND selected_window, std::string& selected_window_str);
         void ActionOrderSetting(unsigned int overlay_id = UINT_MAX);
         void UpdateLimiterSetting(float column_width_0, bool is_override = false);
         bool ActionButtonRow(ActionID action_id, int list_pos, int& list_selected_pos, unsigned int overlay_id = UINT_MAX);
@@ -56,6 +58,7 @@ class WindowSettings
         void PopupSettingsReset();
 
         void HighlightOverlay(int overlay_id);
+        int GetOverlayIcon(unsigned int overlay_id, TMNGRTexID& texture_id); //Returns icon cache id or -1 when unused
 
     public:
         WindowSettings();

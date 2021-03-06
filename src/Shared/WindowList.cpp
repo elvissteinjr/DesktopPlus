@@ -69,6 +69,7 @@ bool IsCapturableWindow(WindowInfo const& window)
 WindowInfo::WindowInfo(HWND window_handle)
 {
     WindowHandle = window_handle;
+    Icon = nullptr;
 
     if (WindowHandle == nullptr)
     {
@@ -99,6 +100,11 @@ WindowInfo::WindowInfo(HWND window_handle)
     {
         ClassName = class_buffer;
     }
+}
+
+HICON WindowInfo::GetIcon()
+{
+    return (Icon == nullptr) ? Icon = GetIcon(WindowHandle) : Icon;
 }
 
 std::vector<WindowInfo> WindowInfo::CreateCapturableWindowList()
@@ -160,6 +166,24 @@ std::string WindowInfo::GetExeName(HWND window_handle)
     }
 
     return exe_name;
+}
+
+HICON WindowInfo::GetIcon(HWND window_handle)
+{
+    HICON icon_handle = nullptr;
+    icon_handle = (HICON)::SendMessage(window_handle, WM_GETICON, ICON_BIG, 0);
+
+    if (icon_handle == nullptr)
+    {
+        icon_handle = (HICON)::GetClassLongPtr(window_handle, GCLP_HICON);
+    }
+
+    if (icon_handle == nullptr)
+    {
+        icon_handle = ::LoadIcon(nullptr, IDI_APPLICATION);
+    }
+
+    return icon_handle;
 }
 
 HWND WindowInfo::FindClosestWindowForTitle(const std::string title_str, const std::string exe_str)

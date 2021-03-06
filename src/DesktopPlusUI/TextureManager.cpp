@@ -38,7 +38,17 @@ const wchar_t* TextureManager::s_TextureFilenames[] =
     L"images/icons/small_close.png",
     L"images/icons/small_move.png",
     L"images/icons/small_actionbar.png",
-    L"",                                    //tmtex_icon_temp, blank
+    L"images/icons/xsmall_desktop.png",
+    L"images/icons/xsmall_desktop_1.png",
+    L"images/icons/xsmall_desktop_2.png",
+    L"images/icons/xsmall_desktop_3.png",
+    L"images/icons/xsmall_desktop_4.png",
+    L"images/icons/xsmall_desktop_5.png",
+    L"images/icons/xsmall_desktop_6.png",
+    L"images/icons/xsmall_desktop_all.png",
+    L"images/icons/xsmall_desktop_none.png",
+    L"images/icons/xsmall_performance_monitor.png",
+    L"",                                            //tmtex_icon_temp, blank
 };
 
 static TextureManager g_TextureManager;
@@ -188,7 +198,7 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     for (; icon_id < tmtex_MAX; ++icon_id)
     {
         std::unique_ptr<Gdiplus::Bitmap> bmp;
-        
+
         if (icon_id == tmtex_icon_temp)
         {
             bmp = std::unique_ptr<Gdiplus::Bitmap>( new Gdiplus::Bitmap(m_TextureFilenameIconTemp.c_str()) );
@@ -200,7 +210,6 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
 
         if (bmp->GetLastStatus() == Gdiplus::Ok)
         {
-            //ID has to be above 0x110000 as below is reserved by ImGui
             m_ImGuiRectIDs[icon_id] = io.Fonts->AddCustomRectRegular(bmp->GetWidth(), bmp->GetHeight());
 
             if (io.Fonts->TexDesiredWidth <= (int)bmp->GetWidth())
@@ -227,7 +236,6 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
 
             if (bmp->GetLastStatus() == Gdiplus::Ok)
             {
-                //ID has to be above 0x11000 as below is reserved by ImGui
                 action.IconImGuiRectID = io.Fonts->AddCustomRectRegular(bmp->GetWidth(), bmp->GetHeight());
 
                 if (io.Fonts->TexDesiredWidth <= (int)bmp->GetWidth())
@@ -238,6 +246,18 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
             }
 
             bitmaps.push_back(std::move(bmp));
+        }
+    }
+
+    //Set up already loaded window icons
+    for (auto& window_icon : m_WindowIcons)
+    {
+        window_icon.ImGuiRectID = io.Fonts->AddCustomRectRegular((int)window_icon.Size.x, (int)window_icon.Size.y);
+
+        if (io.Fonts->TexDesiredWidth <= (int)window_icon.Size.x)
+        {
+            //See above
+            io.Fonts->TexDesiredWidth = (window_icon.Size.x >= 2048) ? 4096 : (window_icon.Size.x >= 1024) ? 2048 : (window_icon.Size.x >= 512) ? 1024 : 512;
         }
     }
 
@@ -285,7 +305,7 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
                 }
                 while (*rect_id == -1);
             }
-            
+
             if ( (rect_id != nullptr) && (*rect_id != -1) )
             {
                 if (const ImFontAtlasCustomRect* rect = io.Fonts->GetCustomRectByIndex(*rect_id))
@@ -294,14 +314,14 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
                     Gdiplus::Rect gdirect(0, 0, rect->Width, rect->Height);
                     if (bmp->LockBits(&gdirect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bitmapData) == Gdiplus::Ok)  //Access bitmap data from GDI+
                     {
-                        for (int y = 0; y < rect->Height; y++)
+                        for (int y = 0; y < rect->Height; ++y)
                         {
                             ImU32* p = (ImU32*)tex_pixels + (rect->Y + y) * tex_width + (rect->X);
                             UINT8* pgdi = (UINT8*)bitmapData.Scan0 + (y * bitmapData.Stride);
 
-                            for (int x = 0; x < rect->Width; x++)
+                            for (int x = 0; x < rect->Width; ++x)
                             {
-                                //GDI+ order is BGRA or it's just different endianess... either way, as simple memcpy doesn't cut it
+                                //GDI+ order is BGRA, convert
                                 *p++ = IM_COL32(*(pgdi + 2), *(pgdi + 1), *pgdi, *(pgdi + 3));
                                 pgdi += 4;
                             }
@@ -337,6 +357,33 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         }
 
         icon_id++;
+    }
+
+    //Copy cached window icons into atlas
+    for (auto& window_icon : m_WindowIcons)
+    {
+        if (const ImFontAtlasCustomRect* rect = io.Fonts->GetCustomRectByIndex(window_icon.ImGuiRectID))
+        {
+            UINT8* psrc = (UINT8*)window_icon.PixelData.get();
+            size_t stride = rect->Width * 4;
+            //Copy RGBA pixels line-by-line
+            for (int y = 0; y < rect->Height; ++y, psrc += stride)
+            {
+                ImU32* p = (ImU32*)tex_pixels + (rect->Y + y) * tex_width + (rect->X);
+                memcpy(p, psrc, stride);
+            }
+
+            //Store UVs
+            window_icon.AtlasUV.x = (float)rect->X * io.Fonts->TexUvScale.x;                  //Min U
+            window_icon.AtlasUV.y = (float)rect->Y * io.Fonts->TexUvScale.y;                  //Min V
+            window_icon.AtlasUV.z = (float)(rect->X + rect->Width)  * io.Fonts->TexUvScale.x; //Max U
+            window_icon.AtlasUV.w = (float)(rect->Y + rect->Height) * io.Fonts->TexUvScale.y; //Max V
+        }
+        else
+        {
+            window_icon.ImGuiRectID = -1;
+            all_ok = false;
+        }
     }
 
     //Delete Bitmaps before shutting down GDI+
@@ -402,6 +449,148 @@ bool TextureManager::GetTextureInfo(const CustomAction& action, ImVec2& size, Im
         uv_min.y = action.IconAtlasUV.y;
         uv_max.x = action.IconAtlasUV.z;
         uv_max.y = action.IconAtlasUV.w;
+
+        return true;
+    }
+
+    return false;
+}
+
+int TextureManager::GetWindowIconCacheID(HICON icon_handle)
+{
+    //Look if the icon is already loaded
+    for (int i = 0; i < m_WindowIcons.size(); ++i)
+    {
+        if (m_WindowIcons[i].IconHandle == icon_handle)
+        {
+            return i;
+        }
+    }
+
+    //Icon not loaded yet, try to do that
+    int ret = -1;
+    ICONINFO icon_info = {0};
+    if (::GetIconInfo(icon_handle, &icon_info) != 0)
+    {
+        HDC hdc, hdcMem;
+
+        hdc    = ::GetDC(nullptr);
+        hdcMem = ::CreateCompatibleDC(hdc);
+
+        //Get bitmap info from icon bitmap
+        BITMAPINFO bmp_info = {0};
+        bmp_info.bmiHeader.biSize = sizeof(bmp_info.bmiHeader);
+        if (::GetDIBits(hdcMem, icon_info.hbmColor, 0, 0, nullptr, &bmp_info, DIB_RGB_COLORS) != 0)
+        {
+            TMNGRWindowIcon window_icon;
+            int icon_width  = bmp_info.bmiHeader.biWidth;
+            int icon_height = abs(bmp_info.bmiHeader.biHeight);
+            const size_t icon_pixel_count = icon_width * icon_height;
+
+            auto PixelData = std::unique_ptr<BYTE[]>{new BYTE[icon_pixel_count * 4]};
+
+            bmp_info.bmiHeader.biSize        = sizeof(bmp_info.bmiHeader);
+            bmp_info.bmiHeader.biBitCount    = 32;
+            bmp_info.bmiHeader.biCompression = BI_RGB;
+            bmp_info.bmiHeader.biHeight      = -icon_height; //Always use top-down order (negative height)
+
+            //Read the actual bitmap buffer into the pixel data array
+            if (::GetDIBits(hdc, icon_info.hbmColor, 0, bmp_info.bmiHeader.biHeight, (LPVOID)PixelData.get(), &bmp_info, DIB_RGB_COLORS) != 0)
+            {
+                //Even if we don't override biBitCount to 32, it's still returned as that for 24-bit and lower bit-depth icons (probably just the screen DC format)
+                //It seems the only way to check if the icon needs its mask applied is to see if the alpha channel is fully blank
+                //32-bit icons still come masks, but applying them means to override the alpha channel with a 1-bit one (and doing so is also wasteful)
+                bool needs_mask = true;
+                BYTE* psrc = PixelData.get() + 3; //BGRA alpha pixel
+                const BYTE* const psrc_end = PixelData.get() + (icon_pixel_count * 4);
+                for (; psrc < psrc_end; psrc += 4)
+                {
+                    if (*psrc != 0)
+                    {
+                        needs_mask = false;
+                        break;
+                    }
+                }
+
+                //Apply mask if we need to
+                if (needs_mask)
+                {
+                    //Get bitmap info for the mask this time
+                    BITMAPINFO bmp_info = {0};
+                    bmp_info.bmiHeader.biSize = sizeof(bmp_info.bmiHeader);
+                    if (::GetDIBits(hdcMem, icon_info.hbmMask, 0, 0, nullptr, &bmp_info, DIB_RGB_COLORS) != 0)
+                    {
+                        int mask_width  = bmp_info.bmiHeader.biWidth;
+                        int mask_height = abs(bmp_info.bmiHeader.biHeight);
+
+                        //Only continue if icon and mask are really the same size (can be different for monochrome bitmap formats, which are not supported here)
+                        if ( (icon_width == mask_width) && (icon_height == mask_height) )
+                        {
+                            auto PixelDataMask = std::unique_ptr<BYTE[]>{new BYTE[icon_pixel_count * 4]};
+
+                            bmp_info.bmiHeader.biSize        = sizeof(bmp_info.bmiHeader);
+                            bmp_info.bmiHeader.biBitCount    = 32;
+                            bmp_info.bmiHeader.biCompression = BI_RGB;
+                            bmp_info.bmiHeader.biHeight      = -abs(bmp_info.bmiHeader.biHeight); //Always use top-down order (negative height)
+
+                            //Read the mask bitmap buffer
+                            if (::GetDIBits(hdc, icon_info.hbmMask, 0, bmp_info.bmiHeader.biHeight, (LPVOID)PixelDataMask.get(), &bmp_info, DIB_RGB_COLORS) != 0)
+                            {
+                                //Apply mask to color pixel data
+                                psrc       = PixelData.get() + 3; //BGRA alpha pixel
+                                BYTE* pmsk = PixelDataMask.get(); //BGRA blue pixel (alpha channel is blank for the mask)
+                                for (; psrc < psrc_end; psrc += 4, pmsk += 4)
+                                {
+                                    *psrc = ~(*pmsk);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                //Convert BGRA to RGBA for ImGui's texture atlas
+                window_icon.PixelData = std::unique_ptr<BYTE[]>{new BYTE[icon_pixel_count * 4]};
+                psrc         = PixelData.get();
+                UINT32* pdst = (UINT32*)window_icon.PixelData.get();
+                for (; psrc < psrc_end; psrc += 4, ++pdst)
+                {
+                    *pdst = IM_COL32(*(psrc + 2), *(psrc + 1), *psrc, *(psrc + 3));
+                }
+
+                //Fill out other data and move the icon to the cache
+                window_icon.IconHandle = icon_handle;
+                window_icon.Size = {(float)icon_width, (float)icon_height};
+                m_WindowIcons.push_back(std::move(window_icon));
+
+                //We succeeded, but the icon won't be ready until next frame, so schedule reload and skip rendering this frame
+                ReloadAllTexturesLater();
+                UIManager::Get()->RepeatFrame();
+
+                ret = (int)m_WindowIcons.size() - 1;
+            }
+        }
+
+        ::DeleteObject(icon_info.hbmColor);
+        ::DeleteObject(icon_info.hbmMask);
+
+        ::DeleteDC(hdcMem);
+        ::ReleaseDC(nullptr, hdc);
+    }
+
+    return ret;
+}
+
+bool TextureManager::GetWindowIconTextureInfo(int icon_cache_id, ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const
+{
+    if ( (icon_cache_id >= 0) && (icon_cache_id < m_WindowIcons.size()) )
+    {
+        const TMNGRWindowIcon& window_icon = m_WindowIcons[icon_cache_id];
+
+        size     = window_icon.Size;
+        uv_min.x = window_icon.AtlasUV.x;
+        uv_min.y = window_icon.AtlasUV.y;
+        uv_max.x = window_icon.AtlasUV.z;
+        uv_max.y = window_icon.AtlasUV.w;
 
         return true;
     }

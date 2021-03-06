@@ -13,7 +13,6 @@
 #include "Util.h"
 #include "ConfigManager.h"
 #include "OverlayManager.h"
-#include "TextureManager.h"
 #include "InterprocessMessaging.h"
 #include "ImGuiExt.h"
 
@@ -309,6 +308,8 @@ void WindowSettings::UpdateCatOverlay()
 
     //Overlay selector
     {
+        static int overlay_window_icon_id = -1;
+        static TMNGRTexID overlay_icon_texture_id = tmtex_icon_desktop;
         static char buffer_overlay_name[1024] = "";
         static float button_change_width = 0.0f;
 
@@ -328,9 +329,16 @@ void WindowSettings::UpdateCatOverlay()
         static bool is_combo_input_activated = false;
         static bool is_combo_mouse_released_once = false;
 
-        if (ImGui::BeginComboWithInputText("##ComboOverlaySelector", buffer_overlay_name, 1024, buffer_changed, is_combo_input_visible, is_combo_input_activated, is_combo_mouse_released_once))
+        ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
+        ImVec2 img_size, img_uv_min, img_uv_max;
+
+        ImVec2 combo_pos = ImGui::GetCursorScreenPos();
+
+        if (ImGui::BeginComboWithInputText("##ComboOverlaySelector", buffer_overlay_name, 1024, buffer_changed, is_combo_input_visible, is_combo_input_activated, is_combo_mouse_released_once, true))
         {
             int index_hovered = -1;
+            int selectable_window_icon_id = -1;
+            TMNGRTexID selectable_icon_texture_id = tmtex_icon_desktop;
 
             for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
             {
@@ -343,14 +351,33 @@ void WindowSettings::UpdateCatOverlay()
 
                 ImGui::PushID(i);
 
-                if (ImGui::Selectable(data.ConfigNameStr.c_str(), (i == current_overlay)))
+                if (ImGui::Selectable("", (i == current_overlay)))
                 {
                     current_overlay = i;
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
                     OverlayManager::Get().SetCurrentOverlayID(current_overlay);
 
                     m_OverlayNameBufferNeedsUpdate = true;
+                    UIManager::Get()->RepeatFrame();
                 }
+
+                ImGui::SameLine(0.0f, 0.0f);
+
+                //Icon and text
+                if (ImGui::IsRectVisible(img_size_line_height)) //Only lookup icon if it's gonna be visible
+                {
+                    selectable_window_icon_id = GetOverlayIcon(i, selectable_icon_texture_id);
+
+                    if (selectable_window_icon_id != -1)
+                        TextureManager::Get().GetWindowIconTextureInfo(selectable_window_icon_id, img_size, img_uv_min, img_uv_max);
+                    else
+                        TextureManager::Get().GetTextureInfo(selectable_icon_texture_id, img_size, img_uv_min, img_uv_max);
+
+                    ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+                    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                }
+
+                ImGui::Text(data.ConfigNameStr.c_str());
 
                 ImGui::PopID();
 
@@ -369,6 +396,39 @@ void WindowSettings::UpdateCatOverlay()
         }
 
         ImGui::ComboWithInputTextActivationCheck(is_combo_input_visible);
+
+        ImGui::SameLine();
+
+        //Custom combo preview content (icon with text), unless input is visible
+        if (!is_combo_input_visible)
+        {
+            ImGuiStyle& style = ImGui::GetStyle();
+            ImVec2 backup_pos = ImGui::GetCursorScreenPos();
+            ImVec2 clip_end = ImGui::GetItemRectMax();
+            clip_end.x -= ImGui::GetFrameHeight();
+
+            ImGui::SetCursorScreenPos(ImVec2(combo_pos.x + style.FramePadding.x, combo_pos.y + style.FramePadding.y));
+
+            ImGui::PushID(current_overlay);
+
+            if (overlay_window_icon_id != -1)
+                TextureManager::Get().GetWindowIconTextureInfo(overlay_window_icon_id, img_size, img_uv_min, img_uv_max);
+            else
+                TextureManager::Get().GetTextureInfo(overlay_icon_texture_id, img_size, img_uv_min, img_uv_max);
+
+            ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+            ImGui::PopID();
+
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() - style.FramePadding.y);
+
+            ImGui::PushClipRect(ImGui::GetCursorPos(), clip_end, true);
+            ImGui::Text(buffer_overlay_name);
+            ImGui::PopClipRect();
+
+            ImGui::SetCursorScreenPos(backup_pos);
+        }
 
         OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
@@ -391,7 +451,7 @@ void WindowSettings::UpdateCatOverlay()
                 OverlayManager::Get().SetCurrentOverlayNameAuto();
             }
         }
-        else if ( (!is_combo_input_visible) && (buffer_overlay_name[0] == '\0') ) //If editing is over and the buffer is still blank, update it so it has the auto name
+        else if ( (!is_combo_input_visible) && (!m_OverlayNameBufferNeedsUpdate) && (buffer_overlay_name[0] == '\0') ) //If editing is over and the buffer is still blank, update it so it has the auto name
         {
             //This can also trigger when the name was loaded blank, so set these again so it doesn't repeat this forever
             data.ConfigBool[configid_bool_overlay_name_custom] = false;
@@ -411,8 +471,6 @@ void WindowSettings::UpdateCatOverlay()
                 HighlightOverlay(-1);
             }
         }
-
-        ImGui::SameLine();
 
         if (ImGui::Button("Manage"))
         {
@@ -438,6 +496,9 @@ void WindowSettings::UpdateCatOverlay()
             {
                 TextureManager::Get().ReloadAllTexturesLater();
             }
+
+            //Update icon
+            overlay_window_icon_id = GetOverlayIcon(current_overlay, overlay_icon_texture_id);
 
             //Deactivate selection mode
             ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_selectmode, false);
@@ -806,7 +867,6 @@ void WindowSettings::UpdateCatOverlayTabCapture()
     int& winrt_selected_desktop = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_winrt_desktop_id);
     HWND winrt_selected_window = (HWND)ConfigManager::Get().GetConfigIntPtr(configid_intptr_overlay_state_winrt_hwnd);
 
-    static std::vector<WindowInfo> capture_window_list;
     static HWND capture_window_list_selected_window = nullptr;
     static std::string capture_list_selected_str;
 
@@ -868,9 +928,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
         //WinRT Capture settings
         if (capture_method == ovrl_capsource_winrt_capture)
         {
-            if ((ImGui::IsWindowAppearing()) || (capture_window_list.empty()))
+            if ((ImGui::IsWindowAppearing()) || (m_CaptureWindowList.empty()))
             {
-                UpdateWindowList(capture_window_list, capture_window_list_selected_window, capture_list_selected_str);
+                UpdateWindowList(capture_window_list_selected_window, capture_list_selected_str);
             }
 
             //Catch selection changes from other sources or from changing the current overlay (or window is just gone)
@@ -893,9 +953,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                 }
                 else
                 {
-                    const auto it = std::find_if(capture_window_list.begin(), capture_window_list.end(), [&](const auto& window) { return (window.WindowHandle == winrt_selected_window); });
+                    const auto it = std::find_if(m_CaptureWindowList.begin(), m_CaptureWindowList.end(), [&](const auto& window) { return (window.WindowHandle == winrt_selected_window); });
 
-                    if ( (it != capture_window_list.end()) && (::IsWindow(winrt_selected_window)) )
+                    if ( (it != m_CaptureWindowList.end()) && (::IsWindow(winrt_selected_window)) )
                     {
                         capture_list_selected_str = it->ListTitle;
                     }
@@ -928,17 +988,24 @@ void WindowSettings::UpdateCatOverlayTabCapture()
             //That makes for a little bit of awkward sizing, so we adjust the item spacing value to nudge it to be just right
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {ImGui::GetStyle().ItemSpacing.x, ImGui::GetStyle().ItemSpacing.y + (ImGui::GetStyle().ItemSpacing.y*2) });
 
-            if (ImGui::BeginCombo("##ComboSource", capture_list_selected_str.c_str()))
+            ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
+            ImVec2 img_size, img_uv_min, img_uv_max;
+
+            ImVec2 combo_pos = ImGui::GetCursorScreenPos();
+
+            if (ImGui::BeginCombo("##ComboSource", ""))
             {
                 ImGui::PopStyleVar();
 
                 //Update list when dropdown was just opened as well
                 if (ImGui::IsWindowAppearing())
                 {
-                    UpdateWindowList(capture_window_list, capture_window_list_selected_window, capture_list_selected_str);
+                    UpdateWindowList(capture_window_list_selected_window, capture_list_selected_str);
                 }
 
-                if (ImGui::Selectable("[None]", ( (winrt_selected_desktop == -2) && (winrt_selected_window == nullptr) ) ))
+                ImGui::PushID(-2);
+
+                if (ImGui::Selectable("", ( (winrt_selected_desktop == -2) && (winrt_selected_window == nullptr) ) ))
                 {
                     winrt_selected_desktop = -2;
                     winrt_selected_window = nullptr;
@@ -957,26 +1024,51 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                     UIManager::Get()->RepeatFrame();
                 }
 
+                ImGui::SameLine(0.0f, 0.0f);
+
+                TextureManager::Get().GetTextureInfo(tmtex_icon_xsmall_desktop_none, img_size, img_uv_min, img_uv_max);
+                ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                ImGui::Text("[None]");
+
+                ImGui::PopID();
+
                 ImGui::Separator();
 
                 //List Combined desktop, if supported
-                if ( (DPWinRT_IsCaptureFromCombinedDesktopSupported()) && (ImGui::Selectable("Combined Desktop", (winrt_selected_desktop == -1))) )
+                if (DPWinRT_IsCaptureFromCombinedDesktopSupported())
                 {
-                    winrt_selected_desktop = -1;
-                    winrt_selected_window = nullptr;
-                    capture_list_selected_str = "Combined Desktop";
-                    capture_window_list_selected_window = winrt_selected_window;
-                    ConfigManager::Get().SetConfigIntPtr(configid_intptr_overlay_state_winrt_hwnd, 0);
-                    ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,    "");
-                    ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, "");
+                    ImGui::PushID(-1);
 
-                    OverlayManager::Get().SetCurrentOverlayNameAuto();
-                    m_OverlayNameBufferNeedsUpdate = true;
+                    if (ImGui::Selectable("", (winrt_selected_desktop == -1)))
+                    {
+                        winrt_selected_desktop = -1;
+                        winrt_selected_window = nullptr;
+                        capture_list_selected_str = "Combined Desktop";
+                        capture_window_list_selected_window = winrt_selected_window;
+                        ConfigManager::Get().SetConfigIntPtr(configid_intptr_overlay_state_winrt_hwnd, 0);
+                        ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,    "");
+                        ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, "");
 
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
+                        OverlayManager::Get().SetCurrentOverlayNameAuto();
+                        m_OverlayNameBufferNeedsUpdate = true;
 
-                    UIManager::Get()->RepeatFrame();
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
+
+                        UIManager::Get()->RepeatFrame();
+                    }
+
+                    ImGui::SameLine(0.0f, 0.0f);
+
+                    TextureManager::Get().GetTextureInfo(tmtex_icon_xsmall_desktop_all, img_size, img_uv_min, img_uv_max);
+                    ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+                    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                    ImGui::Text("Combined Desktop");
+
+                    ImGui::PopID();
                 }
 
                 //List desktops
@@ -987,7 +1079,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                     char desktop_str[16];
                     snprintf(desktop_str, 16, "Desktop %d", i + 1);
 
-                    if (ImGui::Selectable(desktop_str, (winrt_selected_desktop == i)))
+                    if (ImGui::Selectable("", (winrt_selected_desktop == i)))
                     {
                         winrt_selected_desktop = i;
                         winrt_selected_window = nullptr;
@@ -1006,17 +1098,26 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                         UIManager::Get()->RepeatFrame();
                     }
 
+                    ImGui::SameLine(0.0f, 0.0f);
+
+                    const TMNGRTexID texid = (tmtex_icon_desktop_1 + i <= tmtex_icon_desktop_6) ? (TMNGRTexID)(tmtex_icon_xsmall_desktop_1 + i) : tmtex_icon_xsmall_desktop;
+                    TextureManager::Get().GetTextureInfo(texid, img_size, img_uv_min, img_uv_max);
+                    ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+                    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                    ImGui::Text(desktop_str);
+
                     ImGui::PopID();
                 }
 
                 ImGui::Separator();
 
                 //List windows
-                for (WindowInfo& window : capture_window_list)
+                for (WindowInfo& window : m_CaptureWindowList)
                 {
                     ImGui::PushID(&window);
 
-                    if (ImGui::Selectable(window.ListTitle.c_str(), (winrt_selected_window == window.WindowHandle)))
+                    if (ImGui::Selectable("", (winrt_selected_window == window.WindowHandle)))
                     {
                         if (winrt_selected_window != window.WindowHandle)
                         {
@@ -1039,6 +1140,20 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                         }
                     }
 
+                    ImGui::SameLine(0.0f, 0.0f);
+
+                    int icon_id = TextureManager::Get().GetWindowIconCacheID(window.GetIcon());
+
+                    if (icon_id != -1)
+                    {
+                        TextureManager::Get().GetWindowIconTextureInfo(icon_id, img_size, img_uv_min, img_uv_max);
+                        ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+                        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                    }
+
+                    ImGui::Text(window.ListTitle.c_str());
+
                     ImGui::PopID();
                 }
 
@@ -1052,6 +1167,39 @@ void WindowSettings::UpdateCatOverlayTabCapture()
             //Undo effects of style adjustment as explained above BeginCombo()
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() - (ImGui::GetStyle().ItemSpacing.y*2));
 
+            //Custom combo preview content (icon with text)
+            ImGuiStyle& style = ImGui::GetStyle();
+            ImVec2 backup_pos = ImGui::GetCursorScreenPos();
+            ImVec2 clip_end = ImGui::GetItemRectMax();
+            clip_end.x -= ImGui::GetFrameHeight();
+
+            int window_icon_id = -1;
+            TMNGRTexID icon_texture_id = tmtex_icon_desktop;
+
+            ImGui::SetCursorScreenPos(ImVec2(combo_pos.x + style.FramePadding.x, combo_pos.y + style.FramePadding.y));
+
+            ImGui::PushID(OverlayManager::Get().GetCurrentOverlayID());
+
+            window_icon_id = GetOverlayIcon(OverlayManager::Get().GetCurrentOverlayID(), icon_texture_id);
+
+            if (window_icon_id != -1)
+                TextureManager::Get().GetWindowIconTextureInfo(window_icon_id, img_size, img_uv_min, img_uv_max);
+            else
+                TextureManager::Get().GetTextureInfo(icon_texture_id, img_size, img_uv_min, img_uv_max);
+
+            ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+            ImGui::PopID();
+
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY());
+
+            ImGui::PushClipRect(ImGui::GetCursorPos(), clip_end, true);
+            ImGui::Text(capture_list_selected_str.c_str());
+            ImGui::PopClipRect();
+
+            ImGui::SetCursorScreenPos(backup_pos);
+
             ImGui::NextColumn();
             ImGui::NextColumn();
 
@@ -1059,9 +1207,9 @@ void WindowSettings::UpdateCatOverlayTabCapture()
             {
                 //Try to find the foreground window in the window list and only use it when found there
                 HWND foreground_window = ::GetForegroundWindow();
-                const auto it = std::find_if(capture_window_list.begin(), capture_window_list.end(), [&](const auto& window){ return (window.WindowHandle == foreground_window); });
+                const auto it = std::find_if(m_CaptureWindowList.begin(), m_CaptureWindowList.end(), [&](const auto& window){ return (window.WindowHandle == foreground_window); });
 
-                if (it != capture_window_list.end())
+                if (it != m_CaptureWindowList.end())
                 {
                     winrt_selected_desktop = -2;
                     winrt_selected_window = foreground_window;
@@ -1088,7 +1236,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
 
                 if (ImGui::Button("Use Picker Window"))
                 {
-                    capture_window_list.clear();    //Clear window list so it's refreshed next frame
+                    m_CaptureWindowList.clear();    //Clear window list so it's refreshed next frame
 
                     //Have the dashboard app figure out how to do this as the UI doesn't have all data needed at hand
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_winrt_show_picker);
@@ -3544,13 +3692,13 @@ void WindowSettings::ProfileSelector(bool multi_overlay)
     ImGui::PopID();
 }
 
-void WindowSettings::UpdateWindowList(std::vector<WindowInfo>& window_list, HWND selected_window, std::string& selected_window_str)
+void WindowSettings::UpdateWindowList(HWND selected_window, std::string& selected_window_str)
 {
-    window_list = WindowInfo::CreateCapturableWindowList();
+    m_CaptureWindowList = WindowInfo::CreateCapturableWindowList();
 
     //Check if any of the titles contain unmapped characters and add them to the font builder list if they do
     //Also update string of selected window in case it changed
-    for (WindowInfo& window : window_list)
+    for (WindowInfo& window : m_CaptureWindowList)
     {
         if (ImGui::StringContainsUnmappedCharacter(window.ListTitle.c_str()))
         {
@@ -3942,36 +4090,19 @@ bool WindowSettings::PopupCurrentOverlayManage()
         ImGui::PopStyleVar(); //ImGuiStyleVar_PopupRounding
         is_popup_rounding_pushed = false;
 
-        static std::vector<std::string> list_overlays;
         //List of unique IDs for overlays so ImGui can identify the same list entries after reordering or list expansion (needed for drag reordering)
         static std::vector<int> list_unique_ids; 
-        static bool has_list_changed = false;
 
         //Reset unique IDs when popup was opened
         if (ImGui::IsWindowAppearing())
         {
             list_unique_ids.clear();
         }
-        //Refresh list if popup was opened or the overlay count/list changed
-        if ( (ImGui::IsWindowAppearing()) || (list_overlays.size() != OverlayManager::Get().GetOverlayCount()) || (has_list_changed) )
+
+        //Expand unique id lists if overlays were added (also does initialization since it's empty then)
+        while (list_unique_ids.size() < OverlayManager::Get().GetOverlayCount())
         {
-            list_overlays.clear();
-
-            //Expand unique id lists if overlays were added (also does initialization since it's empty then)
-            while (list_unique_ids.size() < OverlayManager::Get().GetOverlayCount())
-            {
-                list_unique_ids.push_back((int)list_unique_ids.size());
-            }
-
-            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
-            {
-                std::stringstream ss;
-                ss << "#" << i << " - " << OverlayManager::Get().GetConfigData(i).ConfigNameStr << "###" << list_unique_ids[i];
-
-                list_overlays.push_back(ss.str());
-            }
-
-            has_list_changed = false;
+            list_unique_ids.push_back((int)list_unique_ids.size());
         }
 
         if (UIManager::Get()->IsOpenVRLoaded())
@@ -3998,21 +4129,28 @@ bool WindowSettings::PopupCurrentOverlayManage()
         ImGui::BeginChild("ViewOverlayList", ImVec2(0.0f, viewbuttons_height), true);
 
         //List overlays
-        int index = 0;
+        const int overlay_count = (int)OverlayManager::Get().GetOverlayCount();
         int index_hovered = -1;
-        for (const auto& str: list_overlays)
+        ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
+        ImVec2 img_size, img_uv_min, img_uv_max;
+        int selectable_window_icon_id = -1;
+        TMNGRTexID selectable_icon_texture_id = tmtex_icon_desktop;
+
+        for (int index = 0; index < overlay_count; ++index)
         {
             const OverlayConfigData& data = OverlayManager::Get().GetConfigData(index);
             bool current_overlay_enabled = data.ConfigBool[configid_bool_overlay_enabled];
 
-            if (!current_overlay_enabled)
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            ImGui::PushID(list_unique_ids[index]);
 
-            if (ImGui::Selectable(str.c_str(), (index == current_overlay)))
+            if (ImGui::Selectable("", (index == current_overlay)))
             {
                 current_overlay = index;
+                m_OverlayNameBufferNeedsUpdate = true;
+
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
                 OverlayManager::Get().SetCurrentOverlayID(current_overlay);
+                UIManager::Get()->RepeatFrame();
             }
 
             if (ImGui::IsItemHovered())
@@ -4022,7 +4160,7 @@ bool WindowSettings::PopupCurrentOverlayManage()
             else if ( (ImGui::IsItemActive()) && (!ImGui::IsItemHovered()) ) //Drag reordering
             {
                 int index_swap = index + ((ImGui::GetMouseDragDelta(0).y < 0.0f) ? -1 : 1);
-                if ( (index > 0) && (index_swap > 0) && (index_swap < list_overlays.size()) )
+                if ( (index > 0) && (index_swap > 0) && (index_swap < overlay_count) )
                 {
                     OverlayManager::Get().SwapOverlays(index, index_swap);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_swap, index_swap);
@@ -4033,14 +4171,37 @@ bool WindowSettings::PopupCurrentOverlayManage()
                     std::iter_swap(list_unique_ids.begin() + index, list_unique_ids.begin() + index_swap);
 
                     ImGui::ResetMouseDragDelta();
-                    has_list_changed = true;
                 }
             }
 
-            if (!current_overlay_enabled)
-                ImGui::PopStyleVar();
+            ImGui::SameLine(0.0f, 0.0f);
 
-            index++;
+            if (!current_overlay_enabled)
+                ImGui::PushItemDisabled();
+
+            ImGui::Text("#%d -", index);
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+            //Icon and text
+            if (ImGui::IsRectVisible(img_size_line_height)) //Only lookup icon if it's gonna be visible
+            {
+                selectable_window_icon_id = GetOverlayIcon(index, selectable_icon_texture_id);
+
+                if (selectable_window_icon_id != -1)
+                    TextureManager::Get().GetWindowIconTextureInfo(selectable_window_icon_id, img_size, img_uv_min, img_uv_max);
+                else
+                    TextureManager::Get().GetTextureInfo(selectable_icon_texture_id, img_size, img_uv_min, img_uv_max);
+
+                ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            }
+
+            ImGui::Text(OverlayManager::Get().GetConfigData(index).ConfigNameStr.c_str());
+
+            ImGui::PopID();
+
+            if (!current_overlay_enabled)
+                ImGui::PopItemDisabled();
         }
 
         ImGui::EndChild();
@@ -4086,16 +4247,13 @@ bool WindowSettings::PopupCurrentOverlayManage()
             current_overlay--;
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
             OverlayManager::Get().SetCurrentOverlayID(current_overlay);
-
-
-            has_list_changed = true;
         }
 
         if (current_overlay_prev <= 1)
             ImGui::PopItemDisabled();
 
         //Down
-        if ( (current_overlay_prev < 1) || (current_overlay_prev + 1 == list_overlays.size()) )
+        if ( (current_overlay_prev < 1) || (current_overlay_prev + 1 == overlay_count) )
             ImGui::PushItemDisabled();
 
         if (ImGui::ArrowButton("MoveDown", ImGuiDir_Down))
@@ -4106,11 +4264,9 @@ bool WindowSettings::PopupCurrentOverlayManage()
             current_overlay++;
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), current_overlay);
             OverlayManager::Get().SetCurrentOverlayID(current_overlay);
-
-            has_list_changed = true;
         }
 
-        if ( (current_overlay_prev < 1) || (current_overlay_prev + 1 == list_overlays.size()) )
+        if ( (current_overlay_prev < 1) || (current_overlay_prev + 1 == overlay_count) )
             ImGui::PopItemDisabled();
 
         ImGui::PopStyleVar();
@@ -4177,10 +4333,7 @@ bool WindowSettings::PopupCurrentOverlayManage()
 
         extra_buttons_width += ImGui::GetItemRectSize().x;
 
-        if (PopupCurrentOverlayRename()) //Overlay got renamed
-        {
-            has_list_changed = true;
-        }
+        PopupCurrentOverlayRename();
 
         ImGui::EndPopup();
     }
@@ -5385,6 +5538,70 @@ void WindowSettings::HighlightOverlay(int overlay_id)
             colored_id = -1;
         }
     }
+}
+
+int WindowSettings::GetOverlayIcon(unsigned int overlay_id, TMNGRTexID& texture_id)
+{
+    if (overlay_id < OverlayManager::Get().GetOverlayCount())
+    {
+        const OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+        int desktop_id = -2;
+
+        switch (data.ConfigInt[configid_int_overlay_capture_source])
+        {
+            case ovrl_capsource_desktop_duplication:
+            {
+                desktop_id = data.ConfigInt[configid_int_overlay_desktop_id];
+                break;
+            }
+            case ovrl_capsource_winrt_capture:
+            {
+                if (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0)
+                {
+                    //Find HWND in the capturable window list to use cached HICON if possible
+                    auto it = std::find_if(m_CaptureWindowList.begin(), m_CaptureWindowList.end(), 
+                                           [&](const auto& window) { return (window.WindowHandle == (HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]); });
+
+                    if (it != m_CaptureWindowList.end())
+                    {
+                        return TextureManager::Get().GetWindowIconCacheID(it->GetIcon());
+                    }
+
+                    //If not get icon directly
+                    return TextureManager::Get().GetWindowIconCacheID(WindowInfo::GetIcon( (HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] ));
+                }
+                else if (data.ConfigInt[configid_int_overlay_winrt_desktop_id] != -2)
+                {
+                    desktop_id = data.ConfigInt[configid_int_overlay_winrt_desktop_id];
+                }
+                else
+                {
+                    texture_id = tmtex_icon_xsmall_desktop_none;
+                    return -1;
+                }
+                break;
+            }
+            case ovrl_capsource_ui:
+            {
+                texture_id = tmtex_icon_xsmall_performance_monitor;
+                return -1;
+            }
+        }
+
+        if (desktop_id != -2)
+        {
+            if (desktop_id != -1)
+            {
+                texture_id = (tmtex_icon_desktop_1 + desktop_id <= tmtex_icon_desktop_6) ? (TMNGRTexID)(tmtex_icon_xsmall_desktop_1 + desktop_id) : tmtex_icon_xsmall_desktop;
+            }
+            else
+            {
+                texture_id = tmtex_icon_desktop_all;
+            }
+        }
+    }
+
+    return -1;
 }
 
 WindowSettings::WindowSettings() : m_Visible(false), m_Alpha(0.0f), m_ActionEditIsNew(false), m_OverlayNameBufferNeedsUpdate(true), m_IsStyleScaled(false)

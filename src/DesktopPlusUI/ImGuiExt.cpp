@@ -278,7 +278,8 @@ namespace ImGui
         return ret;
     }
 
-    bool BeginComboWithInputText(const char* str_id, char* str_buffer, size_t buffer_size, bool& out_buffer_changed, bool& persist_input_visible, bool& persist_input_activated, bool& persist_mouse_released_once)
+    bool BeginComboWithInputText(const char* str_id, char* str_buffer, size_t buffer_size, bool& out_buffer_changed, bool& persist_input_visible,
+                                 bool& persist_input_activated, bool& persist_mouse_released_once, bool no_preview_text)
     {
         ImGuiContext& g = *GImGui;
 
@@ -326,7 +327,7 @@ namespace ImGui
             ImGui::PopID();
         }
 
-        return (ImGui::BeginCombo(str_id, str_buffer, (persist_input_visible) ? (ImGuiComboFlags_NoPreview | ImGuiComboFlags_PopupAlignLeft) : ImGuiComboFlags_None));
+        return (ImGui::BeginCombo(str_id, (no_preview_text) ? "" : str_buffer, (persist_input_visible) ? (ImGuiComboFlags_NoPreview | ImGuiComboFlags_PopupAlignLeft) : ImGuiComboFlags_None));
     }
 
     void ComboWithInputTextActivationCheck(bool& persist_input_visible)
