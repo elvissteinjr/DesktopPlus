@@ -111,8 +111,11 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
 
     //Determine if the name is one of the old default names when the NameIsCustom key is missing
     bool name_custom_default_value = false;
+    bool do_set_auto_name = false;
     if (!config.KeyExists(section.c_str(), "NameIsCustom"))
     {
+        do_set_auto_name = true; //Set overlay auto name later to override old default names
+
         //Check if it's empty or just "Dashboard" and skip it then
         if ((!data.ConfigNameStr.empty()) && (data.ConfigNameStr != "Dashboard"))
         {
@@ -188,6 +191,16 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     {
         HWND window = WindowInfo::FindClosestWindowForTitle(data.ConfigStr[configid_str_overlay_winrt_last_window_title], data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name]);
         data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] = (intptr_t)window;
+
+        //If we found a new match, adjust last window title and update the overlay name later (we want to keep the old name if the window is gone though)
+        if (window != nullptr)
+        {
+            WindowInfo info(window);
+            data.ConfigStr[configid_str_overlay_winrt_last_window_title] = StringConvertFromUTF16(info.Title.c_str());
+            //ExeName is not gonna change
+
+            do_set_auto_name = true;
+        }
     }
 
     //Disable settings which are invalid for the dashboard overlay
@@ -302,8 +315,8 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
         UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
     }
 
-    //If NameIsCustom key was missing, set overlay auto name to override old default names
-    if (!config.KeyExists(section.c_str(), "NameIsCustom"))
+    //Set auto name if the NameIsCustom key was missing entirely or there's a new window match
+    if (do_set_auto_name)
     {
         OverlayManager::Get().SetCurrentOverlayNameAuto();
     }
