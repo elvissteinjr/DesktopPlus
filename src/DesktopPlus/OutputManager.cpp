@@ -3546,6 +3546,7 @@ bool OutputManager::HandleOpenVREvents()
     //Finish up pending keyboard input collected into the queue
     m_InputSim.KeyboardTextFinish();
 
+    UpdateKeyboardHelperModifierState();
     HandleHotkeys();
 
     //Update postion if necessary
@@ -5816,10 +5817,10 @@ void OutputManager::HandleHotkeys()
         if (action_id[i] != action_none)
         {
             if ( (::GetAsyncKeyState(keycode[i]) < 0) && 
-                 ( ((flags[i] & MOD_SHIFT) == 0)   || (::GetAsyncKeyState(VK_SHIFT) < 0) )   &&
+                 ( ((flags[i] & MOD_SHIFT)   == 0) || (::GetAsyncKeyState(VK_SHIFT)   < 0) ) &&
                  ( ((flags[i] & MOD_CONTROL) == 0) || (::GetAsyncKeyState(VK_CONTROL) < 0) ) &&
-                 ( ((flags[i] & MOD_ALT) == 0)     || (::GetAsyncKeyState(VK_MENU) < 0) )    &&
-                 ( ((flags[i] & MOD_WIN) == 0)     || ((::GetAsyncKeyState(VK_LWIN) < 0) || (::GetAsyncKeyState(VK_RWIN))) ) )
+                 ( ((flags[i] & MOD_ALT)     == 0) || (::GetAsyncKeyState(VK_MENU)    < 0) ) &&
+                 ( ((flags[i] & MOD_WIN)     == 0) || ((::GetAsyncKeyState(VK_LWIN)   < 0) || (::GetAsyncKeyState(VK_RWIN) < 0)) ) )
             {
                 if (!m_IsHotkeyDown[i])
                 {
@@ -5831,6 +5832,31 @@ void OutputManager::HandleHotkeys()
             else if (m_IsHotkeyDown[i])
             {
                 m_IsHotkeyDown[i] = false;
+            }
+        }
+    }
+}
+
+void OutputManager::UpdateKeyboardHelperModifierState()
+{
+    //Only track if keyboard helper enabled and keyboard visible
+    if ((ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_helper_enabled)) && (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1))
+    {
+        //Elevated mode active, have that process handle it instead
+        if (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active))
+        {
+            IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_keyboard_update_modifiers);
+        }
+        else
+        {
+            unsigned int modifiers = GetKeyboardModifierState();
+
+            //If modifier state changed, send over to UI
+            if (modifiers != (unsigned int)ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_modifiers))
+            {
+                ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_modifiers, (int)modifiers);
+
+                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_modifiers), (int)modifiers);
             }
         }
     }

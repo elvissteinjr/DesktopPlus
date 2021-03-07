@@ -123,6 +123,7 @@ enum ConfigID_Int
     configid_int_state_action_value_int,                    //to set up with existing IPC stuff
     configid_int_state_mouse_dbl_click_assist_duration_ms,  //Internally used value, which will replace -1 with the current double-click delay automatically
     configid_int_state_keyboard_visible_for_overlay_id,     //-1 = None
+    configid_int_state_keyboard_modifiers,                  //Keyboard modifier state when keyboard helper is enabled and visible (allows UI seeing state while elevated app is in focus)
     configid_int_state_performance_duplication_fps,
     configid_int_state_interface_desktop_count,             //Count of desktops after optionally filtering virtual WMR displays
 	configid_int_MAX

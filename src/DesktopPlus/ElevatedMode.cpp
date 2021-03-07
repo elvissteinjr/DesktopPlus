@@ -237,6 +237,17 @@ bool HandleIPCMessage(MSG msg)
                     }
                     break;
                 }
+                case ipceact_keyboard_update_modifiers:
+                {
+                    static unsigned int modifiers_last = -1;
+                    unsigned int modifiers = GetKeyboardModifierState();
+
+                    if (modifiers != modifiers_last)
+                    {
+                        modifiers_last = modifiers;
+                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_modifiers), (int)modifiers);
+                    }
+                }
             }
         }
     }

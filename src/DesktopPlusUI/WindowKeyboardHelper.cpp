@@ -35,11 +35,12 @@ void WindowKeyboardHelper::Update()
     static float button_right_width = 0.0f;
     static float button_f12_width = 0.0f;
 
-    //Toggle button state, synced with actual keyboard state
-    bool is_ctrl_down  = (GetAsyncKeyState(VK_CONTROL) < 0);
-    bool is_alt_down   = (GetAsyncKeyState(VK_MENU)    < 0);
-    bool is_shift_down = (GetAsyncKeyState(VK_SHIFT)   < 0);
-    bool is_win_down   = (GetAsyncKeyState(VK_LWIN)    < 0);
+    //Toggle button state, synced with actual keyboard state, but through the dashboard app in case an eleveated application has focus (where it would just all be unpressed)
+    unsigned int modifiers = (unsigned int)ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_modifiers);
+    bool is_ctrl_down  = (modifiers & MOD_CONTROL);
+    bool is_alt_down   = (modifiers & MOD_ALT);
+    bool is_shift_down = (modifiers & MOD_SHIFT);
+    bool is_win_down   = (modifiers & MOD_WIN);
 
     LPARAM message_key = 0;
 

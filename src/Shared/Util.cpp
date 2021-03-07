@@ -506,6 +506,22 @@ HWND FindMainWindow(DWORD pid)
     return 0;
 }
 
+unsigned int GetKeyboardModifierState()
+{
+    unsigned int modifiers = 0;
+
+    if (::GetAsyncKeyState(VK_SHIFT) < 0)
+        modifiers |= MOD_SHIFT;
+    if (::GetAsyncKeyState(VK_CONTROL) < 0)
+        modifiers |= MOD_CONTROL;
+    if (::GetAsyncKeyState(VK_MENU) < 0)
+        modifiers |= MOD_ALT;
+    if ((::GetAsyncKeyState(VK_LWIN) < 0) || (::GetAsyncKeyState(VK_RWIN) < 0))
+        modifiers |= MOD_WIN;
+
+    return modifiers;
+}
+
 //This ain't pretty, but GetKeyNameText() works with scancodes, which are not exactly the same and the output strings aren't that nice either (and always localized)
 //Those duplicate lines are optimized away to the same address by any sane compiler, nothing to worry about.
 const char* g_VK_name[256] = 

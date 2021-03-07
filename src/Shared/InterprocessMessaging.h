@@ -78,14 +78,15 @@ enum IPCActionOverlayProfileLoadArg
 
 enum IPCElevatedActionID
 {
-    ipceact_refresh,                //Prompts to refresh possibly changed data, such as InputSimulator screen offsets. No data in lParam
-    ipceact_mouse_move,             //lParam = X & Y (in low/high word order, signed)
-    ipceact_key_down,               //lParam = Keycodes (3 unsigned chars)
-    ipceact_key_up,                 //lParam = Keycodes (3 unsigned chars)
-    ipceact_key_toggle,             //lParam = Keycodes (3 unsigned chars)
-    ipceact_key_press_and_release,  //lParam = Keycode  (1 unsigned char)
-    ipceact_keyboard_text_finish,   //Finishes the keyboard text queue. Keyboard text is queued by sending strings with ipcestrid_keyboard_text*. No data in lParam
-    ipceact_launch_application,     //Launches application previously defined by sending ipcestrid_launch_application_path and ipcestrid_launch_application_arg strings. No data in lParam
+    ipceact_refresh,                   //Prompts to refresh possibly changed data, such as InputSimulator screen offsets. No data in lParam
+    ipceact_mouse_move,                //lParam = X & Y (in low/high word order, signed)
+    ipceact_key_down,                  //lParam = Keycodes (3 unsigned chars)
+    ipceact_key_up,                    //lParam = Keycodes (3 unsigned chars)
+    ipceact_key_toggle,                //lParam = Keycodes (3 unsigned chars)
+    ipceact_key_press_and_release,     //lParam = Keycode  (1 unsigned char)
+    ipceact_keyboard_text_finish,      //Finishes the keyboard text queue. Keyboard text is queued by sending strings with ipcestrid_keyboard_text*. No data in lParam
+    ipceact_launch_application,        //Launches application previously defined by sending ipcestrid_launch_application_path and ipcestrid_launch_application_arg strings. No data in lParam
+    ipceact_keyboard_update_modifiers, //Updates the UI process with the current modifier state. Kind of spammy but the elevated process doesn't poll. No data in lParam
     ipceact_MAX
 };
 

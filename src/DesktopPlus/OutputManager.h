@@ -136,6 +136,8 @@ class OutputManager
         void RegisterHotkeys();
         void HandleHotkeys();
 
+        void UpdateKeyboardHelperModifierState();
+
     // ClassVars
         InputSimulator m_InputSim;
         VRInput m_VRInput;
