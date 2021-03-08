@@ -48,6 +48,7 @@ Desktop+ will only use it when the button in the settings is used to switch into
     <Exec>
       <Command>"'+ $PSScriptRoot + '\..\DesktopPlus.exe"</Command>
 	  <Arguments>-ElevatedMode</Arguments>
+	  <WorkingDirectory>'+ $PSScriptRoot + '\..</WorkingDirectory>
     </Exec>
   </Actions>
 </Task>'
