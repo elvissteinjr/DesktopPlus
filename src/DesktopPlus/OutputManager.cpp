@@ -1165,6 +1165,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                     break;
                 }
+                case ipcact_focus_window:
+                {
+                    WindowManager::Get().RaiseAndFocusWindow((HWND)msg.lParam, &m_InputSim);
+                    break;
+                }
             }
             break;
         }
@@ -1509,7 +1514,7 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
 
             if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus))
             {
-                WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]);
+                WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd], &m_InputSim);
             }
 
             OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
@@ -3336,7 +3341,7 @@ bool OutputManager::HandleOpenVREvents()
 
                 if (ConfigManager::Get().GetConfigBool(configid_bool_windows_auto_focus_scene_app_dashboard))
                 {
-                    WindowManager::FocusActiveVRSceneApp();
+                    WindowManager::Get().FocusActiveVRSceneApp(&m_InputSim);
                 }
 
                 //In unfortunate situations we can have a target window set and close the dashboard without getting a mouse up event ever, 
@@ -3448,7 +3453,7 @@ bool OutputManager::HandleOpenVREvents()
                     {
                         if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus))
                         {
-                            WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]);
+                            WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd], &m_InputSim);
                         }
 
                         if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_keep_on_screen))
@@ -3482,7 +3487,7 @@ bool OutputManager::HandleOpenVREvents()
                     if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) && 
                          (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus_scene_app)) )
                     {
-                        WindowManager::FocusActiveVRSceneApp();
+                        WindowManager::Get().FocusActiveVRSceneApp(&m_InputSim);
                     }
 
                     //A resize while drag can make the pointer lose focus, which is pretty janky. Remove target and do mouse up at least.
@@ -4211,7 +4216,7 @@ void OutputManager::ApplySettingCaptureSource()
 
                             if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus))
                             {
-                                WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]);
+                                WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd], &m_InputSim);
                             }
                         }
                         break;

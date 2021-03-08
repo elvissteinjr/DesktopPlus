@@ -123,7 +123,7 @@ class UIManager
         void ResetOverlayErrorLast();
         void ResetWinRTErrorLast();
         bool IsElevatedTaskSetUp() const;
-        static void TryChangingWindowFocus();
+        void TryChangingWindowFocus() const;
 
         bool IsOverlayVisible() const;
         bool IsOverlayKeyboardHelperVisible() const;

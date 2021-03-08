@@ -159,7 +159,7 @@ void WindowSettings::UpdateWarnings()
             {
                 if (ImGui::Selectable("Try changing Focus"))
                 {
-                    UIManager::TryChangingWindowFocus();
+                    UIManager::Get()->TryChangingWindowFocus();
                     UIManager::Get()->RepeatFrame();
                 }
                 else if ((UIManager::Get()->IsElevatedTaskSetUp()) && ImGui::Selectable("Enter Elevated Mode"))

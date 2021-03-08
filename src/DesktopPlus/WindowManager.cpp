@@ -7,6 +7,7 @@
 
 #include "ConfigManager.h"
 #include "InterprocessMessaging.h"
+#include "InputSimulator.h"
 #include "Util.h"
 
 WindowManager g_WindowManager;
@@ -103,23 +104,42 @@ bool WindowManager::WouldDragMaximizedTitleBar(HWND window, int prev_cursor_x, i
 	return false;
 }
 
-void WindowManager::RaiseAndFocusWindow(HWND window)
+void WindowManager::RaiseAndFocusWindow(HWND window, InputSimulator* input_sim_ptr)
 {
 	bool focus_success = true;
 	if ( ( (m_LastFocusFailedWindow != window) || (m_LastFocusFailedTick + 3000 >= ::GetTickCount64()) ) && (::GetForegroundWindow() != window) )
 	{
-		if (::IsIconic(window))
-		{
-			focus_success = ::OpenIcon(window); //Also focuses
-		}
-		else
-		{
-			focus_success = ::SetForegroundWindow(window);
-		}
+		focus_success = (::IsIconic(window)) ? ::OpenIcon(window) /*Also focuses*/: ::SetForegroundWindow(window);
 
 		if (focus_success)
 		{
 			m_LastFocusFailedWindow = nullptr;
+		}
+		else if (input_sim_ptr != nullptr)
+		{
+			//We failed, let's try again with a hack: Pressing the ALT key before trying to switch. This releases most locks that block SetForegroundWindow()
+			bool alt_was_down = (::GetAsyncKeyState(VK_MENU) < 0);
+
+			if (alt_was_down) //Release ALT first if it's already down so it can actually be pressed again
+			{
+				input_sim_ptr->KeyboardSetUp(VK_MENU);
+			}
+
+			input_sim_ptr->KeyboardSetDown(VK_MENU);
+			::Sleep(100); //Allow for a little bit of time for the system to register the key press
+
+			//Try again
+			focus_success = (::IsIconic(window)) ? ::OpenIcon(window) : ::SetForegroundWindow(window);
+
+			if (!alt_was_down) //Leave the key down if it was previously
+			{
+				input_sim_ptr->KeyboardSetUp(VK_MENU);
+			}
+
+			if (focus_success)
+			{
+				m_LastFocusFailedWindow = nullptr;
+			}
 		}
 	}
 
@@ -128,6 +148,22 @@ void WindowManager::RaiseAndFocusWindow(HWND window)
 		//If a focusing attempt failed we either wait until it succeeded on another window or 3 seconds in order to not spam attempts when it's blocked for some reason
 		m_LastFocusFailedWindow = window;
 		m_LastFocusFailedTick = ::GetTickCount64();
+	}
+}
+
+void WindowManager::FocusActiveVRSceneApp(InputSimulator* input_sim_ptr)
+{
+	//Try finding and focusing the window of the current scene application
+	uint32_t pid = vr::VRApplications()->GetCurrentSceneProcessId();
+
+	if (pid != 0)
+	{
+		HWND scene_process_window = FindMainWindow(pid);
+
+		if (scene_process_window != nullptr)
+		{
+			RaiseAndFocusWindow(scene_process_window, input_sim_ptr);
+		}
 	}
 }
 
@@ -169,22 +205,6 @@ void WindowManager::MoveWindowIntoWorkArea(HWND window)
 	window_rect.bottom = window_rect.top  + height;
 
 	::SetWindowPos(window, nullptr,  window_rect.left + offset_x, window_rect.top + offset_y, 0, 0, SWP_NOZORDER | SWP_NOSIZE | SWP_NOACTIVATE);
-}
-
-void WindowManager::FocusActiveVRSceneApp()
-{
-	//Try finding and focusing the window of the current scene application
-	uint32_t pid = vr::VRApplications()->GetCurrentSceneProcessId();
-
-	if (pid != 0)
-	{
-		HWND scene_process_window = FindMainWindow(pid);
-
-		if (scene_process_window != nullptr)
-		{
-			::SetForegroundWindow(scene_process_window);
-		}
-	}
 }
 
 void WindowManager::HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, LONG id_child, DWORD event_thread, DWORD event_time)

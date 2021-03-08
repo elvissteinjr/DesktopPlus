@@ -380,8 +380,6 @@ void InputSimulator::KeyboardPressAndRelease(unsigned char keycode)
     ::SendInput(upid + 1, input_event, sizeof(INPUT));
 }
 
-#include "CommonTypes.h"
-
 void InputSimulator::KeyboardText(const char* str_utf8, bool always_use_unicode_event)
 {
     if (m_ForwardToElevatedModeProcess)
@@ -409,7 +407,7 @@ void InputSimulator::KeyboardText(const char* str_utf8, bool always_use_unicode_
         //However, in order to trigger shortcuts and non-text events in applications, at least 0-9 & A-Z are simulated as proper key events
         //For consistent handling, capslock and shift are reset at the start, but that shouldn't be an issue in practice
 
-        if ((GetKeyState(VK_CAPITAL) & 0x0001) != 0) //Turn off capslock if it's on
+        if ((::GetKeyState(VK_CAPITAL) & 0x0001) != 0) //Turn off capslock if it's on
         {
             input_event.ki.dwFlags = 0;
             input_event.ki.wVk = VK_CAPITAL;
@@ -419,7 +417,7 @@ void InputSimulator::KeyboardText(const char* str_utf8, bool always_use_unicode_
             m_KeyboardTextQueue.push_back(input_event);
         }
 
-        if (GetAsyncKeyState(VK_SHIFT) < 0) //Release shift if it's down
+        if (::GetAsyncKeyState(VK_SHIFT) < 0) //Release shift if it's down
         {
             input_event.ki.dwFlags = KEYEVENTF_KEYUP;
             input_event.ki.wVk = VK_SHIFT;

@@ -29,6 +29,8 @@ struct WindowManagerThreadData
     }
 };
 
+class InputSimulator;
+
 //WindowManager uses a separate thread for win event hook callbacks in order to be able to react as soon as possible (needed for window drag blocking)
 class WindowManager
 {
@@ -42,9 +44,9 @@ class WindowManager
         void SetActive(bool is_active);                                                        //Set active state for the window manager. Threads are destroyed when it's inactive
 
         bool WouldDragMaximizedTitleBar(HWND window, int prev_cursor_x, int prev_cursor_y, int new_cursor_x, int new_cursor_y);
-        void RaiseAndFocusWindow(HWND window);
+        void RaiseAndFocusWindow(HWND window, InputSimulator* input_sim_ptr = nullptr);        //input_sim_ptr is optional but passing it increases chance of success
+        void FocusActiveVRSceneApp(InputSimulator* input_sim_ptr = nullptr);
         static void MoveWindowIntoWorkArea(HWND window);
-        static void FocusActiveVRSceneApp();
 
     private:
         //- Only accessed in main thread
@@ -65,7 +67,7 @@ class WindowManager
         //- Synchronization variables for UpdateConfigState(). m_TargetWindow is not something we can afford to have updated slightly delayed, so that function blocks
         std::condition_variable m_UpdateDoneCV;
         std::mutex m_UpdateDoneMutex;
-        bool m_UpdateDoneFlag;
+        bool m_UpdateDoneFlag = false;
 
         //- Only accessed in WindowManager thread
         WindowManagerThreadData m_ThreadLocalData;

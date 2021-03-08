@@ -53,6 +53,7 @@ enum IPCActionID
     ipcact_winrt_thread_error,      //Sent by dashboard application when an error occured in a Graphics Capture thread. lParam is HRESULT
     ipcact_winmanager_drag_start,   //Sent by dashboard application's WindowManager thread to main thread to start an overlay drag. lParam is ID of overlay to drag
     ipcact_sync_config_state,       //Sent by the UI application to request overlay and config state variables after a restart
+    ipcact_focus_window,            //Sent by the UI application to focus a window. lParam is HWND
     ipcact_MAX
 };
 

@@ -659,29 +659,44 @@ bool UIManager::IsElevatedTaskSetUp() const
     return m_ElevatedTaskSetUp;
 }
 
-void UIManager::TryChangingWindowFocus()
+void UIManager::TryChangingWindowFocus() const
 {
     //This is a non-exhaustive attempt to get a different window to set focus on, but it works in most cases
     HWND window_top    = ::GetForegroundWindow();
     HWND window_switch = nullptr;
 
-    //Just use a capturable window list as a base, it's about what we want here anyways
-    std::vector<WindowInfo> window_list = WindowInfo::CreateCapturableWindowList();
-    auto it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& info){ return (info.WindowHandle == window_top); });
-
-    //Find the next window in that is not elevated
-    if (it != window_list.end())
+    //Try current VR app window first
+    if (m_OpenVRLoaded)
     {
-        for (++it; it != window_list.end(); ++it)
-        {
-            //Check if the window is also of an elevated process
-            DWORD process_id = 0;
-            ::GetWindowThreadProcessId(it->WindowHandle, &process_id);
+        uint32_t pid = vr::VRApplications()->GetCurrentSceneProcessId();
 
-            if (!IsProcessElevated(process_id))
+        if ( (pid != 0) && (!IsProcessElevated(pid)) )
+        {
+            window_switch = FindMainWindow(pid);
+        }
+    }
+
+    //Try getting the next window
+    if (window_switch == nullptr)
+    {
+        //Just use a capturable window list as a base, it's about what we want here anyways
+        std::vector<WindowInfo> window_list = WindowInfo::CreateCapturableWindowList();
+        auto it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& info){ return (info.WindowHandle == window_top); });
+
+        //Find the next window in that is not elevated
+        if (it != window_list.end())
+        {
+            for (++it; it != window_list.end(); ++it)
             {
-                window_switch = it->WindowHandle;
-                break;
+                //Check if the window is also of an elevated process
+                DWORD process_id = 0;
+                ::GetWindowThreadProcessId(it->WindowHandle, &process_id);
+
+                if (!IsProcessElevated(process_id))
+                {
+                    window_switch = it->WindowHandle;
+                    break;
+                }
             }
         }
     }
@@ -693,7 +708,8 @@ void UIManager::TryChangingWindowFocus()
         window_switch = ::GetShellWindow(); 
     }
 
-    ::SetForegroundWindow(window_switch); //I still do wonder why it is possible to switch away from elevated windows. Documentation says otherwise too.
+    //Dashboard app is more successful at changing focus for some reason, so let it try instead
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_focus_window, (LPARAM)window_switch);
 }
 
 bool UIManager::IsOverlayVisible() const
