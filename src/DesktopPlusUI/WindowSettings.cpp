@@ -4741,7 +4741,28 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
 
         ImGui::SetNextItemWidth(-1.0f);
 
-        if (str_icon_file.empty()) //No icon
+        bool use_icon = !str_icon_file.empty();
+
+        if (use_icon)
+        {
+            if (use_action_icon)
+            {
+                use_icon = TextureManager::Get().GetTextureInfo(action, b_size, b_uv_min, b_uv_max); //Loading may have failed, which falls back to no icon
+            }
+            else
+            {
+                TextureManager::Get().GetTextureInfo(tmtex_icon_temp, b_size, b_uv_min, b_uv_max);
+            }
+        }
+
+        if (use_icon)
+        {
+            if (ImGui::ImageButton(ImGui::GetIO().Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+            {
+                ImGui::OpenPopup("Select Icon");
+            }
+        }
+        else
         {
             //Adapt to the last known scale used in VR so the text alignment matches what's seen in the headset later
             if (UIManager::Get()->IsInDesktopMode())
@@ -4753,22 +4774,6 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
             }
 
             if (ImGui::ButtonWithWrappedLabel(buf_name, b_size_default))
-            {
-                ImGui::OpenPopup("Select Icon");
-            }
-        }
-        else
-        {
-            if (use_action_icon)
-            {
-                TextureManager::Get().GetTextureInfo(action, b_size, b_uv_min, b_uv_max);
-            }
-            else
-            {
-                TextureManager::Get().GetTextureInfo(tmtex_icon_temp, b_size, b_uv_min, b_uv_max);
-            }
-            
-            if (ImGui::ImageButton(ImGui::GetIO().Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
             {
                 ImGui::OpenPopup("Select Icon");
             }
@@ -5416,6 +5421,10 @@ bool WindowSettings::PopupIconSelect(std::string& filename)
 
         if (ImGui::IsWindowAppearing())
         {
+            //Get current filename without subfolders
+            size_t filename_compare_start = filename.find_last_of('/');
+            const std::string filename_compare = filename.substr( (filename_compare_start != std::string::npos) ? filename_compare_start + 1 : 0);
+
             list_files.clear();
             list_files.emplace_back("[Text Label]");
 
@@ -5428,6 +5437,12 @@ bool WindowSettings::PopupIconSelect(std::string& filename)
                 do
                 {
                     list_files.push_back(StringConvertFromUTF16(find_data.cFileName));
+
+                    //Select matching entry when appearing
+                    if (list_files.back() == filename_compare)
+                    {
+                        list_id = list_files.size() - 1;
+                    }
                 }
                 while (::FindNextFileW(handle_find, &find_data) != 0);
 
