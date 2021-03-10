@@ -64,6 +64,7 @@ enum ConfigID_Bool
     configid_bool_windows_winrt_auto_size_overlay,
     configid_bool_windows_winrt_auto_focus_scene_app,
     configid_bool_misc_no_steam,                              //Restarts without Steam when it detects to have been launched by Steam
+    configid_bool_misc_uiaccess_was_enabled,                  //Tracks if UIAccess was enabled to show a warning after it isn't anymore due to updates or modified executable
     configid_bool_state_overlay_dragmode,
     configid_bool_state_overlay_selectmode,
     configid_bool_state_overlay_dragselectmode_show_hidden,   //True if mode is from a popup
@@ -73,6 +74,7 @@ enum ConfigID_Bool
     configid_bool_state_misc_process_elevated,                //True if the dashboard application is running with admin privileges
     configid_bool_state_misc_elevated_mode_active,            //True if the elevated mode process is running
     configid_bool_state_misc_process_started_by_steam,
+    configid_bool_state_misc_uiaccess_enabled,
 	configid_bool_MAX
 };
 
@@ -282,6 +284,7 @@ class ConfigManager
         void LoadMultiOverlayProfile(const Ini& config, bool clear_existing_overlays = true);
         void SaveMultiOverlayProfile(Ini& config);
 
+        static bool IsUIAccessEnabled();
         static void RemoveScaleFromTransform(Matrix4& transform, float* width);
 
 	public:

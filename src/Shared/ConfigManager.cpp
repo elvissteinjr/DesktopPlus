@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <fstream>
 
 #include "Util.h"
 #include "OverlayManager.h"
@@ -81,6 +82,9 @@ ConfigManager::ConfigManager() : m_IsSteamInstall(false)
     }
 
     delete[] buffer;
+
+    //Check if UIAccess is enabled
+    m_ConfigBool[configid_bool_state_misc_uiaccess_enabled] = IsUIAccessEnabled();
 }
 
 ConfigManager& ConfigManager::Get()
@@ -524,7 +528,8 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_performance_monitor_disable_gpu_counters] = config.ReadBool("Performance", "PerformanceMonitorDisableGPUCounters", false);
 
 
-    m_ConfigBool[configid_bool_misc_no_steam]                           = config.ReadBool("Misc", "NoSteam", false);
+    m_ConfigBool[configid_bool_misc_no_steam]             = config.ReadBool("Misc", "NoSteam", false);
+    m_ConfigBool[configid_bool_misc_uiaccess_was_enabled] = config.ReadBool("Misc", "UIAccessWasEnabled", false);
 
     //Load custom actions (this is where using ini feels dumb, but it still kinda works)
     auto& custom_actions = m_ActionManager.GetCustomActions();
@@ -745,6 +750,29 @@ void ConfigManager::SaveMultiOverlayProfile(Ini& config)
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
+bool ConfigManager::IsUIAccessEnabled()
+{
+    std::ifstream file_manifest("DesktopPlus.exe.manifest");
+
+    if (file_manifest.good())
+    {
+        //Read lines and see if 'uiAccess="true"' can be found, otherwise assume it's not enabled
+        std::string line_str;
+
+        while (file_manifest.good())
+        {
+            std::getline(file_manifest, line_str);
+
+            if (line_str.find("uiAccess=\"true\"") != std::string::npos)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void ConfigManager::RemoveScaleFromTransform(Matrix4& transform, float* width)
 {
     Vector3 row_1(transform[0], transform[1], transform[2]);
@@ -854,7 +882,8 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Performance", "PerformanceMonitorShowViveWireless",   m_ConfigBool[configid_bool_performance_monitor_show_vive_wireless]);
     config.WriteBool("Performance", "PerformanceMonitorDisableGPUCounters", m_ConfigBool[configid_bool_performance_monitor_disable_gpu_counters]);
 
-    config.WriteBool("Misc", "NoSteam",                         m_ConfigBool[configid_bool_misc_no_steam]);
+    config.WriteBool("Misc", "NoSteam",            m_ConfigBool[configid_bool_misc_no_steam]);
+    config.WriteBool("Misc", "UIAccessWasEnabled", (m_ConfigBool[configid_bool_misc_uiaccess_was_enabled] || m_ConfigBool[configid_bool_state_misc_uiaccess_enabled]));
 
     //Save custom actions
     config.RemoveSection("CustomActions"); //Remove old section first to avoid any leftovers

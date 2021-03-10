@@ -1,0 +1,46 @@
+This folder contains scripts enabling Desktop+ to gain higher access rights.
+The scripts are provided for convenience. Changes made by these scripts are inherently unsafe due to SteamVR running from an
+user-writable location among other things.
+
+! Use your own judgment before running any of them. Don't use them if you don't know what you're doing.
+! The author of Desktop+ shall not be liable for any damage caused by the use of these scripts.
+
+The .ps1 PowerShell scripts require to be run as administrator. The .bat files will try do that for you, so it's recommended to
+use those instead.
+Make sure Desktop+ is not running before executing them.
+
+
+CreateElevatedTask.ps1:
+-
+Creates a scheduled task to enable use of Desktop+'s elevated mode.
+Elevated mode allows inputs and actions to be executed with administrator privileges, getting around most restrictions of User
+Interface Privilege Isolation (UIPI), which it is subject to otherwise.
+After running this script, elevated mode can be accessed via [Misc|Troubleshooting|Desktop+: Enter Elevated Mode].
+If you move Desktop+'s files, the scheduled task will break but the button remains. Re-run the script to fix this.
+
+Note that actions launching applications will run them with the same privileges as Desktop+, so be careful if you don't intend
+them to have administrator rights.
+Leave elevated mode again as soon as possible.
+
+
+EnableUIAccess.ps1:
+-
+Enables UIAccess rights for Desktop+ to lift interaction restrictions with higher privileged applications and UAC prompts.
+This is done by signing the DesktopPlus.exe executable with a self-signed certificate, using a different side-by-side manifest
+and changing group policies if needed.
+
+Compared to elevated mode, this enables Desktop+ to simulate input on any applications, including UAC prompts, at any time while
+not running with administrator privileges.
+This script needs to be run again after Desktop+ has been updated or otherwise modified.
+
+The following group policy is changed by the script:
+- "User Account Control: Only elevate UIAccess applications that are installed in secure locations" (set to 0) (only if needed)
+
+In order for Desktop+ to be able to mirror and interact with UAC prompts, the UAC level has to be lowered to not display the
+prompts on the secure desktop ("do not dim my desktop").
+
+
+UndoSystemChanges.ps1:
+-
+Reverts system-wide changes made by above scripts.
+The script does not revert changes made to group policies as it may impact other applications.

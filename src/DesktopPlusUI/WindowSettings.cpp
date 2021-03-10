@@ -143,7 +143,7 @@ void WindowSettings::UpdateWarnings()
     //Focused process elevation warning
     {
         if (  (ConfigManager::Get().GetConfigBool(configid_bool_state_window_focused_process_elevated)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated)) && 
-             (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active)) )
+             (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active))       && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)) )
         {
             //Use selectable stretching over the text area to make it clickable
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f); //Make the selectable invisible though
@@ -166,6 +166,32 @@ void WindowSettings::UpdateWarnings()
                 {
                     UIManager::Get()->ElevatedModeEnter();
                     UIManager::Get()->RepeatFrame();
+                }
+                ImGui::EndPopup();
+            }
+
+            warning_displayed = true;
+        }
+    }
+
+    {
+        if ((ConfigManager::Get().GetConfigBool(configid_bool_misc_uiaccess_was_enabled)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)))
+        {
+            //Use selectable stretching over the text area to make it clickable
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f); //Make the selectable invisible though
+            if (ImGui::Selectable("##WarningUIAccess"))
+            {
+                ImGui::OpenPopup("DontShowAgain6");
+            }
+            ImGui::PopStyleVar();
+            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::TextColored(Style_ImGuiCol_TextWarning, "Warning: Desktop+ is no longer running with UIAccess privileges!");
+
+            if (ImGui::BeginPopup("DontShowAgain6"))
+            {
+                if (ImGui::Selectable("Don't show this again"))
+                {
+                    ConfigManager::Get().SetConfigBool(configid_bool_misc_uiaccess_was_enabled, false);
                 }
                 ImGui::EndPopup();
             }

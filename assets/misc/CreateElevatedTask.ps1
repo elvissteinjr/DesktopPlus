@@ -1,15 +1,28 @@
 #Requires -RunAsAdministrator
 
-$msg = 'Desktop+ Elevated Scheduled Task Creation Script
+$msg = "Desktop+ Elevated Scheduled Task Creation Script
 ------------------------------------------------
-This creates an elevated scheduled task for Desktop+ to allow it to simulate inputs with administrator rights without UAC prompt.
+This creates an elevated scheduled task for Desktop+ to allow entering elevated mode without UAC prompt to simulate inputs with administrator rights.
 Desktop+ will only use this task when the button in the UI is used to enter elevated mode.
 Please keep the security implications of doing this in mind.
 At the very least consider restricting write access to the Desktop+ executable file.
-'
+"
 
 Write-Host $msg
 
+#Ask before continuing
+$opt_yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", "Create scheduled task and enable elevated mode for Desktop+"
+$opt_no  = New-Object System.Management.Automation.Host.ChoiceDescription "&No",  'Cancel'
+$options = [System.Management.Automation.Host.ChoiceDescription[]]($opt_yes, $opt_no)
+
+$result = $host.ui.PromptForChoice("", "Continue and create the scheduled task?", $options, 1)
+
+if ($result -eq 1)
+{
+    exit
+}
+
+#Apply the changes
 #We use an XML file with schtasks instead of the Powershell cmdlets as we can create the task from an elevated session without additional password input this way.
 $xml = '<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
