@@ -23,6 +23,23 @@ if ($result -eq 1)
 }
 
 #Apply the changes
+
+#Command and arguments for the scheduled task
+$command = $PSScriptRoot + "\..\DesktopPlus.exe"
+$arg = "-ElevatedMode"
+
+#Check if UIAccess is currently enabled
+$sel = Select-String -Path "..\DesktopPlus.exe.manifest" -Pattern "uiAccess=`"true`""
+
+#String found means UIAccess is enabled
+if ($sel -ne $null)
+{
+	#Change the command and arguments to use cmd as a workaround since the elevated scheduled task can't be run directly when UIAccess is enabled
+	$command = "cmd"
+	$arg = "/c `"start DesktopPlus.exe -ElevatedMode`""
+}
+
+
 #We use an XML file with schtasks instead of the Powershell cmdlets as we can create the task from an elevated session without additional password input this way.
 $xml = '<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
@@ -59,8 +76,8 @@ Desktop+ will only use it when the button in the settings is used to switch into
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>"'+ $PSScriptRoot + '\..\DesktopPlus.exe"</Command>
-	  <Arguments>-ElevatedMode</Arguments>
+      <Command>' + $command + '</Command>
+	  <Arguments>' + $arg + '</Arguments>
 	  <WorkingDirectory>'+ $PSScriptRoot + '\..</WorkingDirectory>
     </Exec>
   </Actions>

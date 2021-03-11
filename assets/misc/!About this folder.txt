@@ -38,6 +38,7 @@ The following group policy is changed by the script:
 
 In order for Desktop+ to be able to mirror and interact with UAC prompts, the UAC level has to be lowered to not display the
 prompts on the secure desktop ("do not dim my desktop").
+The elevated scheduled task has to be recreated after enabling UIAccess for the first time or entering elevated mode will fail.
 
 
 UndoSystemChanges.ps1:

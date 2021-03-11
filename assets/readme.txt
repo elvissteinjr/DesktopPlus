@@ -93,27 +93,12 @@ Apart from the 3 global shortcuts, a function for floating overlay interaction c
 "Enable Floating Overlay Interaction": Can be used to enable the laser pointer outside of the dashboard.
 
 
-Elevated Mode
--------------
-As Desktop+ is subject to User Interface Privilege Isolation (UIPI), it can't simulate input or
-move the cursor when a higher privileged application (i.e. running as administrator) is in focus.
-Desktop+ offers an easy way to quickly switch into elevated mode to get around this restriction when needed.
-
-! Please be aware of the security implications of this. Desktop+ takes no additional security measures in this mode.
-! An attacker could spoof OpenVR input, replace DesktopPlus.exe or change config.ini to have actions run their applications.
-! The author of Desktop+ shall not be liable for any damage caused by the use of this mode.
-
-In order to use elevated mode, a scheduled task has to be set up to allow Desktop+ to be launched as an administrator without
-requiring approval through an UAC prompt. To do this, run "misc\CreateElevatedTask.bat".
-It can then be accessed in [Misc|Troubleshooting|Desktop+: Enter Elevated Mode].
-If you move Desktop+'s files, the scheduled task will break but the button remains. Re-run the batch file to fix this.
-
-Note that actions launching applications will run them with the same privileges as Desktop+, so be careful if you don't intend
-them to have administrator rights.
-
-In general, if you don't know what you're doing, reconsider just activating this. This mode is provided as a convenience to
-prevent users just running it elevated at all times instead.
-Leave elevated mode as soon as possible.
+Elevated Mode / Enabling UIAccess
+---------------------------------
+As Desktop+ is subject to User Interface Privilege Isolation (UIPI), it can't simulate input or move the cursor when a higher
+privileged application (i.e. running as administrator) is in focus.
+Desktop+ offers multiple ways to deal with this, such as elevated mode or enabling UIAccess for the application.
+See "misc\!About this folder.txt" for details.
 
 
 Keyboard Extension
