@@ -48,7 +48,8 @@ IMGUI_IMPL_API bool ImGui_ImplOpenVR_InputEventHandler(const vr::VREvent_t& vr_e
 
 // Resets internal extra keyboard state for VR keyboard handling
 // This needs to be called before a NewFrame and handling the OpenVR events
-IMGUI_IMPL_API void ImGui_ImplOpenVR_InputResetVRKeyboard(vr::VROverlayHandle_t overlay_handle);
+// Returns the overlay error returned by IVROverlay::ShowKeyboardForOverlay()
+IMGUI_IMPL_API vr::EVROverlayError ImGui_ImplOpenVR_InputResetVRKeyboard(vr::VROverlayHandle_t overlay_handle);
 
 // Called on VREvent_KeyboardClosed
 // Exposed for application to call if the keyboard is handled by something else

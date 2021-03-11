@@ -2078,7 +2078,7 @@ void OutputManager::DoAction(ActionID action_id)
                     }
 
                     vr::EVROverlayError keyboard_error = vr::VROverlay()->ShowKeyboardForOverlay(ovrl_keyboard_target, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
-                        vr::KeyboardFlag_Minimal, "Desktop+", 1024, "", m_OvrlHandleMain);
+                                                                                                 vr::KeyboardFlag_Minimal, "Desktop+", 1024, "", m_OvrlHandleMain);
 
                     if (keyboard_error == vr::VROverlayError_None)
                     {
@@ -2093,7 +2093,7 @@ void OutputManager::DoAction(ActionID action_id)
 
                         ApplySettingKeyboardScale(1.0f);    //Apply detached keyboard scale if necessary
 
-                                                            //Tell UI that the keyboard helper can be displayed
+                        //Tell UI that the keyboard helper can be displayed
                         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), ovrl_keyboard_id);
                     }
                 }

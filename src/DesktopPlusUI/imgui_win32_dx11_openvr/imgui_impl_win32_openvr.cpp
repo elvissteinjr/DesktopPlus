@@ -566,8 +566,10 @@ IMGUI_IMPL_API bool ImGui_ImplOpenVR_InputEventHandler(const vr::VREvent_t& vr_e
     return false;
 }
 
-IMGUI_IMPL_API void ImGui_ImplOpenVR_InputResetVRKeyboard(vr::VROverlayHandle_t overlay_handle)
+IMGUI_IMPL_API vr::EVROverlayError ImGui_ImplOpenVR_InputResetVRKeyboard(vr::VROverlayHandle_t overlay_handle)
 {
+    vr::EVROverlayError keyboard_error = vr::VROverlayError_None;
+
     ImGuiIO& io = ImGui::GetIO();
 
     //Reset these keys in case they were pressed by the VR keyboard
@@ -578,8 +580,8 @@ IMGUI_IMPL_API void ImGui_ImplOpenVR_InputResetVRKeyboard(vr::VROverlayHandle_t 
     {
         if ( (!g_OnScreenKeyboardShown) && (!g_OnScreenKeyboardDismissedLastFrame) )
         {
-            vr::EVROverlayError keyboard_error = vr::VROverlay()->ShowKeyboardForOverlay(overlay_handle, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
-                                                                                         vr::KeyboardFlag_Minimal, "ImGuiInput", 1024, "", 0);
+            keyboard_error = vr::VROverlay()->ShowKeyboardForOverlay(overlay_handle, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
+                                                                     vr::KeyboardFlag_Minimal, "ImGuiInput", 1024, "", 0);
 
             if (keyboard_error == vr::VROverlayError_None)
             {
@@ -602,6 +604,8 @@ IMGUI_IMPL_API void ImGui_ImplOpenVR_InputResetVRKeyboard(vr::VROverlayHandle_t 
     }
 
     g_OnScreenKeyboardDismissedLastFrame = false;
+
+    return keyboard_error;
 }
 
 IMGUI_IMPL_API void ImGui_ImplOpenVR_InputOnVRKeyboardClosed()

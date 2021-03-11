@@ -148,7 +148,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
             if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
             {
-                ImGui_ImplOpenVR_InputResetVRKeyboard(ovrl_handle_dplus);
+                vr::EVROverlayError keyboard_error = ImGui_ImplOpenVR_InputResetVRKeyboard(ovrl_handle_dplus);
+                
+                //If InputResetVRKeyboard() failed to show the keyboard because it's already in use, hide that, but only if the keyboard was in use by Desktop+
+                if ( (keyboard_error == vr::VROverlayError_KeyboardAlreadyInUse) && (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1) )
+                {
+                    vr::VROverlay()->HideKeyboard();
+                }
             }
         }
 
