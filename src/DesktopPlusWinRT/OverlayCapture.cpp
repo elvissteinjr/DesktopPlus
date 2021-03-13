@@ -308,7 +308,7 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
     //Hide cursor from capture if the window is not in front as it just adds more confusion when it's there
     if ( (m_CursorEnabled) && (m_SourceWindow != nullptr) && (DPWinRT_IsCaptureCursorEnabledPropertySupported()) )
     {
-        bool should_enable_cursor = (m_SourceWindow != ::GetForegroundWindow());
+        bool should_enable_cursor = (m_SourceWindow == ::GetForegroundWindow());
 
         if (m_CursorEnabledInternal != should_enable_cursor)
         {
