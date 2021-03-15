@@ -28,16 +28,17 @@
 #endif
 
 //Thread message IDs
-#define WM_DPLUSWINRT WM_APP                        //Base ID, to allow changing it easily later
-#define WM_DPLUSWINRT_SIZE WM_DPLUSWINRT            //Sent to main thread on size change. wParam = overlay handle, lParam = width & height (in low/high word order, signed)
-#define WM_DPLUSWINRT_SET_HWND WM_DPLUSWINRT+1      //Sent to main thread on HWND guess after picker use. wParam = overlay handle, lParam = HWND
-#define WM_DPLUSWINRT_SET_DESKTOP WM_DPLUSWINRT+2   //Sent to main thread on desktop ID guess after picker use. wParam = overlay handle, lParam = desktop ID
-#define WM_DPLUSWINRT_UPDATE_DATA WM_DPLUSWINRT+3   //Sent to capture thread to update its local data
-#define WM_DPLUSWINRT_CAPTURE_PAUSE WM_DPLUSWINRT+4 //Sent to capture thread to pause/resume capture. wParam = overlay handle, lParam = pause bool
-#define WM_DPLUSWINRT_CAPTURE_LOST WM_DPLUSWINRT+5  //Sent to main thread when capture item was closed, should call StopCapture() in response. wParam = overlay handle
-#define WM_DPLUSWINRT_ENABLE_CURSOR WM_DPLUSWINRT+6 //Sent to capture thread to change cursor enabled state, wParam = cursor enabled bool
-#define WM_DPLUSWINRT_THREAD_QUIT WM_DPLUSWINRT+7   //Sent to capture thread to quit when no overlays are left to capture
-#define WM_DPLUSWINRT_THREAD_ERROR WM_DPLUSWINRT+8  //Sent to main thread when an unexpected error occured in the capture thread. wParam = thread ID, lParam = hresult
+#define WM_DPLUSWINRT               WM_APP           //Base ID, to allow changing it easily later
+#define WM_DPLUSWINRT_SIZE          WM_DPLUSWINRT    //Sent to main thread on size change. wParam = overlay handle, lParam = width & height (in low/high word order, signed)
+#define WM_DPLUSWINRT_SET_HWND      WM_DPLUSWINRT+1  //Sent to main thread on HWND guess after picker use. wParam = overlay handle, lParam = HWND
+#define WM_DPLUSWINRT_SET_DESKTOP   WM_DPLUSWINRT+2  //Sent to main thread on desktop ID guess after picker use. wParam = overlay handle, lParam = desktop ID
+#define WM_DPLUSWINRT_UPDATE_DATA   WM_DPLUSWINRT+3  //Sent to capture thread to update its local data
+#define WM_DPLUSWINRT_CAPTURE_PAUSE WM_DPLUSWINRT+4  //Sent to capture thread to pause/resume capture. wParam = overlay handle, lParam = pause bool
+#define WM_DPLUSWINRT_CAPTURE_LOST  WM_DPLUSWINRT+5  //Sent to main thread when capture item was closed, should call StopCapture() in response. wParam = overlay handle
+#define WM_DPLUSWINRT_ENABLE_CURSOR WM_DPLUSWINRT+6  //Sent to capture thread to change cursor enabled state, wParam = cursor enabled bool
+#define WM_DPLUSWINRT_THREAD_QUIT   WM_DPLUSWINRT+7  //Sent to capture thread to quit when no overlays are left to capture
+#define WM_DPLUSWINRT_THREAD_ERROR  WM_DPLUSWINRT+8  //Sent to main thread when an unexpected error occured in the capture thread. wParam = thread ID, lParam = hresult
+#define WM_DPLUSWINRT_THREAD_ACK    WM_DPLUSWINRT+9  //Sent to main thread to acknowledge thread messages from StopCapture() (main thread is blocked until this is received)
 
 #ifdef __cplusplus
 extern "C" {

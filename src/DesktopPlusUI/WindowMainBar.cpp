@@ -75,7 +75,8 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
         disable_combined = !DPWinRT_IsCaptureFromCombinedDesktopSupported();
     }
 
-    int current_desktop = overlay_config.ConfigInt[current_configid];
+    int& current_desktop = overlay_config.ConfigInt[current_configid];
+    int current_desktop_new = current_desktop;
 
     if (ConfigManager::Get().GetConfigBool(configid_bool_interface_mainbar_desktop_include_all))
     {
@@ -92,10 +93,7 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
             //Don't change to same value to avoid flicker from mirror reset
             if ( (current_desktop != -1) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )
             {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), -1);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
-                overlay_config.ConfigInt[current_configid] = -1;
+                current_desktop_new = -1;
             }
         }
         DisplayTooltipIfHovered("Combined Desktop");
@@ -140,10 +138,7 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
                     //Don't change to same value to avoid flicker from mirror reset
                     if ( (i != current_desktop) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )
                     {
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), i);
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
-                        overlay_config.ConfigInt[current_configid] = i;
+                        current_desktop_new = i;
                     }
                 }
 
@@ -164,15 +159,10 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
             TextureManager::Get().GetTextureInfo(tmtex_icon_desktop_prev, b_size, b_uv_min, b_uv_max);
             if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
             {
-                current_desktop--;
+                current_desktop_new--;
 
-                if (current_desktop == -1)
-                    current_desktop = desktop_count - 1;
-
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), current_desktop);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
-                overlay_config.ConfigInt[current_configid] = current_desktop;
+                if (current_desktop_new == -1)
+                    current_desktop_new = desktop_count - 1;
             }
             DisplayTooltipIfHovered("Previous Desktop");
             ImGui::PopID();
@@ -182,15 +172,10 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
             TextureManager::Get().GetTextureInfo(tmtex_icon_desktop_next, b_size, b_uv_min, b_uv_max);
             if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
             {
-                current_desktop++;
+                current_desktop_new++;
 
-                if (current_desktop == desktop_count)
-                    current_desktop = 0;
-
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), current_desktop);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
-                OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[current_configid] = current_desktop;
+                if (current_desktop_new == desktop_count)
+                    current_desktop_new = 0;
             }
             DisplayTooltipIfHovered("Next Desktop");
             ImGui::PopID();
@@ -201,6 +186,22 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
 
     if (disable_normal)
         ImGui::PopItemDisabled();
+
+    if (current_desktop_new != current_desktop)
+    {
+        current_desktop = current_desktop_new;
+
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), current_desktop);
+
+        //Reset window selection when switching to a desktop
+        if (current_configid == configid_int_overlay_winrt_desktop_id)
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
+        }
+
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+    }
 
     ImGui::PopID();
 }

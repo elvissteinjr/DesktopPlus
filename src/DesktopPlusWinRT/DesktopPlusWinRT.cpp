@@ -274,30 +274,52 @@ bool DPWinRT_StopCapture(vr::VROverlayHandle_t overlay_handle)
 {
     #ifndef DPLUSWINRT_STUB
 
-    std::lock_guard<std::mutex> lock(g_ThreadsMutex);
+    bool wait_for_ack = false;
+    //Clear out existing WM_DPLUSWINRT_THREAD_ACK messages first just in case
+    MSG msg;
+    while (PeekMessage(&msg, nullptr, WM_DPLUSWINRT_THREAD_ACK, WM_DPLUSWINRT_THREAD_ACK, PM_REMOVE));
 
-    for (auto thread_it = g_Threads.begin(); thread_it != g_Threads.end(); ++thread_it)
+    //Find thread with overlay and remove overlay from it
     {
-        auto& thread = *thread_it;
-        auto it = std::find_if(thread.Overlays.begin(), thread.Overlays.end(), [&](const auto& data){ return (data.Handle == overlay_handle); });
+        std::lock_guard<std::mutex> lock(g_ThreadsMutex);
 
-        if (it != thread.Overlays.end())
+        for (auto thread_it = g_Threads.begin(); thread_it != g_Threads.end(); ++thread_it)
         {
-            thread.Overlays.erase(it);
+            auto& thread = *thread_it;
+            auto it = std::find_if(thread.Overlays.begin(), thread.Overlays.end(), [&](const auto& data) { return (data.Handle == overlay_handle); });
 
-            if (thread.Overlays.empty()) //Quit and remove thread when no overlays left
+            if (it != thread.Overlays.end())
             {
-                ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_THREAD_QUIT, 0, 0);
-                ::CloseHandle(thread.ThreadHandle);
-                g_Threads.erase(thread_it);
-            }
-            else //otherwise, update data
-            {
-                ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_UPDATE_DATA, 0, 0);
-            }
+                thread.Overlays.erase(it);
 
+                if (thread.Overlays.empty()) //Quit and remove thread when no overlays left
+                {
+                    ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_THREAD_QUIT, 0, 0);
+
+                    ::CloseHandle(thread.ThreadHandle);
+                    g_Threads.erase(thread_it);
+                }
+                else //otherwise, update data
+                {
+                    ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_UPDATE_DATA, 0, 0);
+                }
+
+                wait_for_ack = true;
+                break;
+            }
+        }
+    }
+
+    //Wait for WM_DPLUSWINRT_THREAD_ACK so we can be sure there won't be any additional overlay updates after this function returns
+    ULONGLONG start_tick = ::GetTickCount64();
+    while (wait_for_ack)
+    {
+        if ( (PeekMessage(&msg, nullptr, WM_DPLUSWINRT_THREAD_ACK, WM_DPLUSWINRT_THREAD_ACK, PM_REMOVE)) || (::GetTickCount64() >= start_tick + 500) ) //On message or 500ms timeout
+        {
             return true;
         }
+
+        ::Sleep(0);
     }
 
     #endif //DPLUSWINRT_STUB
@@ -538,6 +560,8 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
                             }
                         }
 
+                        ::PostThreadMessage(g_MainThreadID, WM_DPLUSWINRT_THREAD_ACK, 0, 0);
+
                         break;
                     }
                     case WM_DPLUSWINRT_CAPTURE_PAUSE:
@@ -579,6 +603,10 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
                     }
                     case WM_DPLUSWINRT_THREAD_QUIT:
                     {
+                        //Clear overlays here so they won't receive any more updates before the actually thread exits
+                        data.Overlays.clear();
+                        ::PostThreadMessage(g_MainThreadID, WM_DPLUSWINRT_THREAD_ACK, 0, 0);
+
                         ::PostQuitMessage(0);
                         break;
                     }

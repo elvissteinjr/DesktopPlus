@@ -1289,8 +1289,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
                     case configid_int_overlay_winrt_desktop_id:
                     {
-                        OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_none);
-                        ResetCurrentOverlay();
+                        if (previous_value != msg.lParam)
+                        {
+                            OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_none);
+                            ResetCurrentOverlay();
+                        }
                         break;
                     }
                     case configid_int_overlay_crop_x:
@@ -1395,19 +1398,24 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
                     default: break;
                 }
-                
+
             }
             else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX + configid_intptr_MAX)
             {
                 ConfigID_IntPtr intptr_id = (ConfigID_IntPtr)(msg.wParam - configid_bool_MAX - configid_int_MAX - configid_float_MAX);
+
+                intptr_t previous_value = ConfigManager::Get().GetConfigIntPtr(intptr_id);
                 ConfigManager::Get().SetConfigIntPtr(intptr_id, msg.lParam);
 
                 switch (intptr_id)
                 {
                     case configid_intptr_overlay_state_winrt_hwnd:
                     {
-                        OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_none);
-                        ResetCurrentOverlay();
+                        if (previous_value != msg.lParam)
+                        {
+                            OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_none);
+                            ResetCurrentOverlay();
+                        }
                         break;
                     }
                 }
@@ -4545,7 +4553,10 @@ void OutputManager::ApplySettingCrop()
     vr::VRTextureBounds_t tex_bounds;
     vr::VRTextureBounds_t tex_bounds_prev;
 
-    if (overlay.GetTextureSource() == ovrl_texsource_none)
+    const int content_width  = data.ConfigInt[configid_int_overlay_state_content_width];
+    const int content_height = data.ConfigInt[configid_int_overlay_state_content_height];
+
+    if ( (overlay.GetTextureSource() == ovrl_texsource_none) || ((content_width == -1) && (content_height == -1)) )
     {
         tex_bounds.uMin = 0.0f;
         tex_bounds.vMin = 0.0f;
@@ -4558,8 +4569,6 @@ void OutputManager::ApplySettingCrop()
 
     overlay.UpdateValidatedCropRect();
     const DPRect& crop_rect = overlay.GetValidatedCropRect();
-    const int content_width  = data.ConfigInt[configid_int_overlay_state_content_width];
-    const int content_height = data.ConfigInt[configid_int_overlay_state_content_height];
 
     const int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
     const bool is_ou3d = (mode_3d == ovrl_3Dmode_ou) || (mode_3d == ovrl_3Dmode_hou);

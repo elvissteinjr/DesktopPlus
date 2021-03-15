@@ -96,8 +96,9 @@ void OverlayCapture::IsCursorEnabled(bool value)
 
 void OverlayCapture::OnOverlayDataRefresh()
 {
-    //Find the smallest update limiter delay and count Over-Under overlays
+    //Find the smallest update limiter delay, count Over-Under & paused overlays
     size_t ou_count = 0;
+    size_t pause_count = 0;
     m_UpdateLimiterDelay.QuadPart = UINT_MAX;
     vr::HmdVector2_t mouse_scale = {(float)m_LastTextureSize.Width, (float)m_LastTextureSize.Height};
 
@@ -109,6 +110,10 @@ void OverlayCapture::OnOverlayDataRefresh()
             {
                 m_UpdateLimiterDelay = overlay.UpdateLimiterDelay;
             }
+        }
+        else
+        {
+            pause_count++;
         }
 
         if (overlay.IsOverUnder3D)
@@ -129,6 +134,9 @@ void OverlayCapture::OnOverlayDataRefresh()
 
     //Make sure the shared textures are set up again on the next update
     m_OverlaySharedTextureSetupsNeeded = 2;
+
+    //Pause/unpause capture if all overlays are set to be paused
+    m_Paused = (pause_count == m_Overlays.size()); //Don't call PauseCapture() since that calls this function
 }
 
 void OverlayCapture::Close()
@@ -242,7 +250,7 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
                 if (ou_count < m_OUConverters.size())
                 {
                     HRESULT hr = m_OUConverters[ou_count].Convert(d3d_device.get(), m_D3DContext.get(), nullptr, nullptr, surface_texture.get(), texture_desc.Width, texture_desc.Height,
-                        overlay.OU3D_crop_x, overlay.OU3D_crop_y, overlay.OU3D_crop_width, overlay.OU3D_crop_height);
+                                                                  overlay.OU3D_crop_x, overlay.OU3D_crop_y, overlay.OU3D_crop_width, overlay.OU3D_crop_height);
 
                     if (hr == S_OK)
                     {
