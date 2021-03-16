@@ -362,6 +362,11 @@ void WindowSettings::UpdateCatOverlay()
 
         if (ImGui::BeginComboWithInputText("##ComboOverlaySelector", buffer_overlay_name, 1024, buffer_changed, is_combo_input_visible, is_combo_input_activated, is_combo_mouse_released_once, true))
         {
+            if (ImGui::IsWindowAppearing())
+            {
+                UIManager::Get()->RepeatFrame();    //Dropdown scrollbar flickers when size of elements is unknown and arrow was used, so skip the frame
+            }
+
             int index_hovered = -1;
             int selectable_window_icon_id = -1;
             TMNGRTexID selectable_icon_texture_id = tmtex_icon_desktop;
@@ -437,6 +442,11 @@ void WindowSettings::UpdateCatOverlay()
 
             ImGui::PushID(current_overlay);
 
+            bool current_overlay_enabled = ConfigManager::Get().GetConfigBool(configid_bool_overlay_enabled);
+
+            if (!current_overlay_enabled)
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+
             if (overlay_window_icon_id != -1)
                 TextureManager::Get().GetWindowIconTextureInfo(overlay_window_icon_id, img_size, img_uv_min, img_uv_max);
             else
@@ -452,6 +462,9 @@ void WindowSettings::UpdateCatOverlay()
             ImGui::PushClipRect(ImGui::GetCursorPos(), clip_end, true);
             ImGui::Text(buffer_overlay_name);
             ImGui::PopClipRect();
+
+            if (!current_overlay_enabled)
+                ImGui::PopStyleVar();
 
             ImGui::SetCursorScreenPos(backup_pos);
         }
@@ -894,6 +907,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
     HWND winrt_selected_window = (HWND)ConfigManager::Get().GetConfigIntPtr(configid_intptr_overlay_state_winrt_hwnd);
 
     static HWND capture_window_list_selected_window = nullptr;
+    static int capture_list_selected_desktop = -2;
     static std::string capture_list_selected_str;
 
     ImGui::BeginChild("ViewOverlayTabCapture");
@@ -960,7 +974,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
             }
 
             //Catch selection changes from other sources or from changing the current overlay (or window is just gone)
-            if ((capture_window_list_selected_window != winrt_selected_window) || (capture_list_selected_str.empty()) ||
+            if ((capture_window_list_selected_window != winrt_selected_window) || (capture_list_selected_desktop != winrt_selected_desktop) || (capture_list_selected_str.empty()) ||
                 ( (winrt_selected_window != nullptr) && (!::IsWindow(winrt_selected_window)) ) )
             {
                 if (winrt_selected_window == nullptr)
@@ -994,7 +1008,10 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                     }
                 }
 
+                capture_list_selected_desktop = winrt_selected_desktop;
                 capture_window_list_selected_window = winrt_selected_window;
+
+                OverlayManager::Get().SetCurrentOverlayNameAuto();
             }
 
             ImGui::NextColumn();
@@ -1027,6 +1044,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                 if (ImGui::IsWindowAppearing())
                 {
                     UpdateWindowList(capture_window_list_selected_window, capture_list_selected_str);
+                    UIManager::Get()->RepeatFrame();
                 }
 
                 ImGui::PushID(-2);
@@ -3735,6 +3753,11 @@ void WindowSettings::UpdateWindowList(HWND selected_window, std::string& selecte
         if (window.WindowHandle == selected_window)
         {
             selected_window_str = window.ListTitle;
+
+            //Update last window title and auto name on current overlay
+            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title, StringConvertFromUTF16(window.Title.c_str()));
+            OverlayManager::Get().SetCurrentOverlayNameAuto();
+            m_OverlayNameBufferNeedsUpdate = true;
         }
     }
 }
@@ -5441,7 +5464,7 @@ bool WindowSettings::PopupIconSelect(std::string& filename)
                     //Select matching entry when appearing
                     if (list_files.back() == filename_compare)
                     {
-                        list_id = list_files.size() - 1;
+                        list_id = (int)list_files.size() - 1;
                     }
                 }
                 while (::FindNextFileW(handle_find, &find_data) != 0);
@@ -5836,4 +5859,9 @@ bool WindowSettings::IsShown() const
 const ImVec2& WindowSettings::GetSize() const
 {
     return m_Size;
+}
+
+void WindowSettings::RefreshCurrentOverlayNameBuffer()
+{
+    m_OverlayNameBufferNeedsUpdate = true;
 }

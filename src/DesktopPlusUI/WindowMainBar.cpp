@@ -161,7 +161,7 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
             {
                 current_desktop_new--;
 
-                if (current_desktop_new == -1)
+                if (current_desktop_new <= -1)
                     current_desktop_new = desktop_count - 1;
             }
             DisplayTooltipIfHovered("Previous Desktop");
@@ -198,9 +198,14 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
         if (current_configid == configid_int_overlay_winrt_desktop_id)
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
+            overlay_config.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] = 0;
         }
 
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+
+        //Update overlay name
+        OverlayManager::Get().SetOverlayNameAuto(overlay_id);
+        UIManager::Get()->GetDashboardUI().GetSettingsWindow().RefreshCurrentOverlayNameBuffer();
     }
 
     ImGui::PopID();

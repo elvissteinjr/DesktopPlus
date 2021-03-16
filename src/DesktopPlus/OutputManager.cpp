@@ -4382,7 +4382,7 @@ void OutputManager::ApplySettingTransform()
             crop_width  = k_lOverlayOutputErrorTextureWidth;
             crop_height = k_lOverlayOutputErrorTextureHeight;
         }
-        else if (overlay.GetTextureSource() == ovrl_texsource_none)
+        else if ( (overlay.GetTextureSource() == ovrl_texsource_none) || (crop_width <= 0) || (crop_height <= 0) )
         {
             //Get dimensions from mouse scale if possible 
             vr::HmdVector2_t mouse_scale;

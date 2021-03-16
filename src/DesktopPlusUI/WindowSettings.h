@@ -68,4 +68,5 @@ class WindowSettings
 
         bool IsShown() const;
         const ImVec2& GetSize() const;
+        void RefreshCurrentOverlayNameBuffer();
 };
