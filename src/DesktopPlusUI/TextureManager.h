@@ -79,5 +79,5 @@ class TextureManager
         int  GetWindowIconCacheID(HICON icon_handle); //Returns -1 on error
         bool GetWindowIconTextureInfo(int icon_cache_id, ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const;
 
-        void AddFontBuilderString(const char* str);
+        bool AddFontBuilderString(const char* str);   //Returns true if string has been added (not already in extra string list)
 };

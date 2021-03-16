@@ -598,7 +598,16 @@ bool TextureManager::GetWindowIconTextureInfo(int icon_cache_id, ImVec2& size, I
     return false;
 }
 
-void TextureManager::AddFontBuilderString(const char* str)
+bool TextureManager::AddFontBuilderString(const char* str)
 {
-    m_FontBuilderExtraStrings.emplace_back(str);
+    const std::string builder_string(str);
+
+    //Add only if it's not already in the extra string list. Avoids duplicates and unnecessary texture rebuilds if the requested character can't be found in the loaded fonts
+    if (std::find(m_FontBuilderExtraStrings.begin(), m_FontBuilderExtraStrings.end(), builder_string) == m_FontBuilderExtraStrings.end())
+    {
+        m_FontBuilderExtraStrings.emplace_back(builder_string);
+        return true;
+    }
+
+    return false;
 }

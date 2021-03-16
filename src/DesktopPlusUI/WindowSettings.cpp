@@ -533,7 +533,10 @@ void WindowSettings::UpdateCatOverlay()
 
             if (ImGui::StringContainsUnmappedCharacter(buffer_overlay_name))
             {
-                TextureManager::Get().ReloadAllTexturesLater();
+                if (TextureManager::Get().AddFontBuilderString(buffer_overlay_name)) //Doesn't need to be added to it actually, but helps with avoiding texture reloads
+                {
+                    TextureManager::Get().ReloadAllTexturesLater();
+                }
             }
 
             //Update icon
@@ -3746,8 +3749,10 @@ void WindowSettings::UpdateWindowList(HWND selected_window, std::string& selecte
     {
         if (ImGui::StringContainsUnmappedCharacter(window.ListTitle.c_str()))
         {
-            TextureManager::Get().AddFontBuilderString(window.ListTitle.c_str());
-            TextureManager::Get().ReloadAllTexturesLater();
+            if (TextureManager::Get().AddFontBuilderString(window.ListTitle.c_str()))
+            {
+                TextureManager::Get().ReloadAllTexturesLater();
+            }
         }
 
         if (window.WindowHandle == selected_window)
@@ -4456,8 +4461,10 @@ bool WindowSettings::PopupCurrentOverlayRename()
         {
             if (ImGui::StringContainsUnmappedCharacter(buf_name))
             {
-                TextureManager::Get().AddFontBuilderString(buf_name);
-                TextureManager::Get().ReloadAllTexturesLater();
+                if (TextureManager::Get().AddFontBuilderString(buf_name))
+                {
+                    TextureManager::Get().ReloadAllTexturesLater();
+                }
             }
         }
 
