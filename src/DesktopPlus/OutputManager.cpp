@@ -5332,7 +5332,9 @@ void OutputManager::DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref
         //Get x-offset multiplier, taking width differences into account
         float ref_overlay_width;
         vr::VROverlay()->GetOverlayWidthInMeters(ovrl_handle_ref, &ref_overlay_width);
-        float x_offset_mul = ( (ConfigManager::Get().GetConfigFloat(configid_float_overlay_width) / ref_overlay_width) / 2.0f) + 1.0f;
+        float dashboard_scale = GetDashboardScale();
+        float overlay_width_scaled = (ovrl_handle_ref == m_OvrlHandleMain) ? data.ConfigFloat[configid_float_overlay_width] / dashboard_scale : data.ConfigFloat[configid_float_overlay_width];
+        float x_offset_mul = ( (overlay_width_scaled / ref_overlay_width) / 2.0f) + 1.0f;
 
         //Put it next to the refernce overlay so it can actually be seen
         vr::HmdVector2_t coordinate_offset = {mouse_scale.v[0] * x_offset_mul, mouse_scale.v[1] / 2.0f};
@@ -5345,7 +5347,7 @@ void OutputManager::DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref
             Vector3 translation = transform.getTranslation();
             transform.setTranslation({0.0f, 0.0f, 0.0f});
 
-            transform.scale(1.0f / GetDashboardScale());
+            transform.scale(1.0f / dashboard_scale);
 
             transform.setTranslation(translation);
         }

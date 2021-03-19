@@ -59,6 +59,7 @@ class WindowSettings
 
         void HighlightOverlay(int overlay_id);
         int GetOverlayIcon(unsigned int overlay_id, TMNGRTexID& texture_id); //Returns icon cache id or -1 when unused
+        void DuplicateCurrentOverlay();
 
     public:
         WindowSettings();

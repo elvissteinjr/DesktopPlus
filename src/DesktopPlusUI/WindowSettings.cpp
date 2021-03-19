@@ -392,6 +392,11 @@ void WindowSettings::UpdateCatOverlay()
                     UIManager::Get()->RepeatFrame();
                 }
 
+                if (ImGui::IsItemHovered())
+                {
+                    index_hovered = i;
+                }
+
                 ImGui::SameLine(0.0f, 0.0f);
 
                 //Icon and text
@@ -412,11 +417,6 @@ void WindowSettings::UpdateCatOverlay()
 
                 ImGui::PopID();
 
-                if (ImGui::IsItemHovered())
-                {
-                    index_hovered = i;
-                }
-
                 if (!current_overlay_enabled)
                     ImGui::PopStyleVar();
             }
@@ -427,6 +427,18 @@ void WindowSettings::UpdateCatOverlay()
         }
 
         ImGui::ComboWithInputTextActivationCheck(is_combo_input_visible);
+
+        if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup))
+        {
+            if (ImGui::IsItemHovered())
+            {
+                HighlightOverlay(current_overlay);
+            }
+            else if (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
+            {
+                HighlightOverlay(-1);
+            }
+        }
 
         ImGui::SameLine();
 
@@ -499,17 +511,12 @@ void WindowSettings::UpdateCatOverlay()
             m_OverlayNameBufferNeedsUpdate = true;
         }
 
-        if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup))
+        if (ImGui::Button("+##AddOverlay", {ImGui::GetFrameHeight(), ImGui::GetFrameHeight()}))
         {
-            if (ImGui::IsItemHovered())
-            {
-                HighlightOverlay(current_overlay);
-            }
-            else if (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
-            {
-                HighlightOverlay(-1);
-            }
+            DuplicateCurrentOverlay();
         }
+
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
         if (ImGui::Button("Manage"))
         {
@@ -521,7 +528,7 @@ void WindowSettings::UpdateCatOverlay()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_selectmode), true);
         }
 
-        button_change_width = ImGui::GetItemRectSize().x + ImGui::GetStyle().ItemSpacing.x;
+        button_change_width = ImGui::GetItemRectSize().x + ImGui::GetStyle().ItemSpacing.x + ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x;
 
         if ( (PopupCurrentOverlayManage()) || (ImGui::IsWindowAppearing()) || (m_OverlayNameBufferNeedsUpdate) )
         {
@@ -4034,11 +4041,17 @@ void WindowSettings::PopupQuickStartGuide()
                                    "Each created overlay can be customized in the Overlays settings page.\n"
                                    "\n"
                                    "The first overlay is special. It's only visible in and fixed to the Desktop+ dashboard tab.\n"
-                                   "If you wish to bring an desktop into the game world for example, you need to add another overlay.\n"
-                                   "Additional overlays can be created in the overlay management popup.");
+                                   "If you wish to bring an desktop into the game world for example, you need to add another overlay.\n");
+                
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text("Additional overlays can be created by clicking on ");
+                ImGui::SameLine(0.0f, 0.0f);
+                ImGui::Button("+");
+                ImGui::SameLine(0.0f, 0.0f);
+                ImGui::Text(".");
 
                 ImGui::AlignTextToFramePadding();
-                ImGui::Text("You can get there by clicking on ");
+                ImGui::Text("You also can manage and remove them again by clicking on ");
                 ImGui::SameLine(0.0f, 0.0f);
                 ImGui::Button("Manage");
                 ImGui::SameLine(0.0f, 0.0f);
@@ -4339,20 +4352,7 @@ bool WindowSettings::PopupCurrentOverlayManage()
 
         if (ImGui::Button("Add")) 
         {
-            //Copy data of current overlay
-            OverlayConfigData data = OverlayManager::Get().GetCurrentConfigData();
-
-            OverlayManager::Get().AddOverlay(data, (current_overlay == k_ulOverlayID_Dashboard));
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, current_overlay);
-
-            current_overlay = (int)OverlayManager::Get().GetOverlayCount() - 1;
-            OverlayManager::Get().SetCurrentOverlayID(current_overlay);
-            //No need to sync current overlay here
-
-            if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
-            {
-                UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
-            }
+            DuplicateCurrentOverlay();
         }
 
         extra_buttons_width = ImGui::GetItemRectSize().x;
@@ -5673,6 +5673,28 @@ int WindowSettings::GetOverlayIcon(unsigned int overlay_id, TMNGRTexID& texture_
     }
 
     return -1;
+}
+
+void WindowSettings::DuplicateCurrentOverlay()
+{
+    int& current_overlay = ConfigManager::Get().GetConfigIntRef(configid_int_interface_overlay_current_id);
+
+    //Copy data of current overlay
+    OverlayConfigData data = OverlayManager::Get().GetCurrentConfigData();
+
+    OverlayManager::Get().AddOverlay(data, (current_overlay == k_ulOverlayID_Dashboard));
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, current_overlay);
+
+    current_overlay = (int)OverlayManager::Get().GetOverlayCount() - 1;
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay);
+    //No need to sync current overlay here
+
+    if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
+    {
+        UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
+    }
+
+    UIManager::Get()->RepeatFrame();
 }
 
 WindowSettings::WindowSettings() : m_Visible(false), m_Alpha(0.0f), m_ActionEditIsNew(false), m_OverlayNameBufferNeedsUpdate(true), m_IsStyleScaled(false)

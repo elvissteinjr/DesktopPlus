@@ -42,6 +42,10 @@ unsigned int OverlayManager::AddOverlay(const OverlayConfigData& data, bool is_b
         {
             //Desktop buttons should not be enabled by default on floating overlays
             m_OverlayConfigData.back().ConfigBool[configid_bool_overlay_floatingui_desktops_enabled] = false;
+
+            #ifdef DPLUS_UI
+                SetOverlayNameAuto(id); //Set auto name when based on dashboard to get rid of the [Dashboard] in the name
+            #endif
         }
     }
 
