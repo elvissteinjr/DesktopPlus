@@ -193,12 +193,12 @@ bool Overlay::IsVisible() const
 
 bool Overlay::ShouldBeVisible() const
 {
-    if (m_Opacity == 0.0f)
+    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_ID);
+    
+    if ( (m_Opacity == 0.0f) && (!data.ConfigBool[configid_bool_overlay_update_invisible]) )
         return false;
 
     bool should_be_visible = false;
-
-    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_ID);
 
     if (!data.ConfigBool[configid_bool_overlay_enabled])
         return false;

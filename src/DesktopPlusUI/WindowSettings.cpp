@@ -781,11 +781,11 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
             int mode_display_old = mode_display;
 
             //Displays some only when origin isn't dashboard
-            if ( (mode_origin != ovrl_origin_dashboard) && (ImGui::Selectable(items_display[ovrl_dispmode_always], (mode_display == ovrl_dispmode_always))) )
+            if (ImGui::Selectable(items_display[ovrl_dispmode_always], (mode_display == ovrl_dispmode_always)))
                 mode_display = ovrl_dispmode_always;
             if (ImGui::Selectable(items_display[ovrl_dispmode_dashboard], (mode_display == ovrl_dispmode_dashboard)))
                 mode_display = ovrl_dispmode_dashboard;
-            if ( (mode_origin != ovrl_origin_dashboard) && (ImGui::Selectable(items_display[ovrl_dispmode_scene], (mode_display == ovrl_dispmode_scene))) )
+            if (ImGui::Selectable(items_display[ovrl_dispmode_scene], (mode_display == ovrl_dispmode_scene)))
                 mode_display = ovrl_dispmode_scene;
             if (ImGui::Selectable(items_display[ovrl_dispmode_dplustab], (mode_display == ovrl_dispmode_dplustab)))
                 mode_display = ovrl_dispmode_dplustab;
@@ -802,8 +802,13 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
         ImGui::NextColumn();
         ImGui::AlignTextToFramePadding();
         ImGui::Text("Position Origin");
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-        ImGui::FixedHelpMarker("Some origins are restricted to certain display modes");
+
+        if (mode_origin == ovrl_origin_dashboard)
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::FixedHelpMarker("Dashboard origin is only an approximation");
+        }
+
         ImGui::NextColumn();
 
         ImGui::SetNextItemWidth(-1);
@@ -1731,6 +1736,21 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
 
         ImGui::Columns(1);
     }
+
+    //Performance
+    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Performance");
+    ImGui::Columns(2, "ColumnPerformance", false);
+    ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
+
+    bool& always_update = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_update_invisible);
+    if (ImGui::Checkbox("Update when Invisible", &always_update))
+    {
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_update_invisible), always_update);
+    }
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::FixedHelpMarker("Update overlay even when invisible from Opacity setting or Gaze Fade.\nHelps with third-party applications accessing the overlay's contents. Not recommended otherwise.\nUpdates are still suspended if the overlay is disabled or hidden by Display Mode setting.");
+
+    ImGui::Columns(1);
 
     ImGui::EndChild();
     ImGui::EndTabItem();
@@ -5694,6 +5714,7 @@ void WindowSettings::DuplicateCurrentOverlay()
         UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
     }
 
+    m_OverlayNameBufferNeedsUpdate = true;
     UIManager::Get()->RepeatFrame();
 }
 

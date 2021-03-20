@@ -1189,6 +1189,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
                     case configid_bool_overlay_enabled:
                     case configid_bool_overlay_gazefade_enabled:
+                    case configid_bool_overlay_update_invisible:
                     {
                         ApplySettingTransform();
                         break;
@@ -3317,7 +3318,7 @@ bool OutputManager::HandleOpenVREvents()
 
                 for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
                 {
-                    OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+                    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
                     if ((m_DashboardActivatedOnce) && (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_dashboard))
                     {
@@ -3326,6 +3327,18 @@ bool OutputManager::HandleOpenVREvents()
                     else if (data.ConfigInt[configid_int_overlay_detached_display_mode] == ovrl_dispmode_scene)
                     {
                         HideOverlay(i);
+                    }
+                    else if (data.ConfigInt[configid_int_overlay_detached_origin] == ovrl_origin_dashboard) //Dashboard origin with Always/Only in Scene, update pos
+                    {
+                        //Hacky workaround, need to wait for the dashboard to finish appearing when not in Desktop+ tab
+                        if (!m_OvrlDashboardActive)
+                        {
+                            ::Sleep(50);
+                            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+                            OverlayManager::Get().SetCurrentOverlayID(i);
+                            ApplySettingTransform();
+                            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+                        }
                     }
                 }
 
