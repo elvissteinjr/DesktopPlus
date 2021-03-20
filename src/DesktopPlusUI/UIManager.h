@@ -56,7 +56,8 @@ class UIManager
         vr::EVROverlayError m_OverlayErrorLast; //Last encountered error when adding an overlay (usually just overlay limit exceeded)
         HRESULT m_WinRTErrorLast;    //Last encountered error when a Graphics Capture thread crashed (ideally never happens)
 
-        bool m_ElevatedTaskSetUp;   
+        bool m_ElevatedTaskSetUp;
+        bool m_ComInitDone;
 
         vr::VROverlayHandle_t m_OvrlHandle;
         vr::VROverlayHandle_t m_OvrlHandleFloatingUI;

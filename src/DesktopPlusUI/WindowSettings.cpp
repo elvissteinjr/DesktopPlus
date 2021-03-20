@@ -1178,25 +1178,22 @@ void WindowSettings::UpdateCatOverlayTabCapture()
 
                     if (ImGui::Selectable("", (winrt_selected_window == window.WindowHandle)))
                     {
-                        if (winrt_selected_window != window.WindowHandle)
-                        {
-                            winrt_selected_desktop = -2;
-                            winrt_selected_window = window.WindowHandle;
-                            capture_list_selected_str = window.ListTitle;
-                            capture_window_list_selected_window = winrt_selected_window;
+                        winrt_selected_desktop = -2;
+                        winrt_selected_window = window.WindowHandle;
+                        capture_list_selected_str = window.ListTitle;
+                        capture_window_list_selected_window = winrt_selected_window;
 
-                            ConfigManager::Get().SetConfigIntPtr(configid_intptr_overlay_state_winrt_hwnd, (intptr_t)winrt_selected_window);
-                            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,    StringConvertFromUTF16(window.Title.c_str())); //No need to sync these
-                            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, window.ExeName);
+                        ConfigManager::Get().SetConfigIntPtr(configid_intptr_overlay_state_winrt_hwnd, (intptr_t)winrt_selected_window);
+                        ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,    StringConvertFromUTF16(window.Title.c_str())); //No need to sync these
+                        ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, window.ExeName);
 
-                            OverlayManager::Get().SetCurrentOverlayNameAuto();
-                            m_OverlayNameBufferNeedsUpdate = true;
+                        OverlayManager::Get().SetCurrentOverlayNameAuto();
+                        m_OverlayNameBufferNeedsUpdate = true;
 
-                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), -2);
-                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), (LPARAM)winrt_selected_window);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), -2);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), (LPARAM)winrt_selected_window);
 
-                            UIManager::Get()->RepeatFrame();
-                        }
+                        UIManager::Get()->RepeatFrame();
                     }
 
                     ImGui::SameLine(0.0f, 0.0f);

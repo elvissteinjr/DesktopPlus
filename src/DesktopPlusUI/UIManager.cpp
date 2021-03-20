@@ -63,6 +63,7 @@ UIManager::UIManager(bool desktop_mode) : m_WindowHandle(nullptr),
                                           m_OverlayErrorLast(vr::VROverlayError_None),
                                           m_WinRTErrorLast(S_OK),
                                           m_ElevatedTaskSetUp(false),
+                                          m_ComInitDone(false),
                                           m_OvrlHandle(vr::k_ulOverlayHandleInvalid),
                                           m_OvrlHandleFloatingUI(vr::k_ulOverlayHandleInvalid),
                                           m_OvrlHandleKeyboardHelper(vr::k_ulOverlayHandleInvalid),
@@ -397,6 +398,11 @@ void UIManager::OnExit()
         //Save config, just in case (we don't need to do this when calling Restart())
         ConfigManager::Get().SaveConfigToFile();
     }
+
+    if (m_ComInitDone)
+    {
+        ::CoUninitialize();
+    }
 }
 
 DashboardUI& UIManager::GetDashboardUI()
@@ -532,16 +538,29 @@ void UIManager::RestartDashboardApp(bool force_steam)
     }
     else
     {
-        STARTUPINFO si = {0};
-        PROCESS_INFORMATION pi = {0};
-        si.cb = sizeof(si);
-
         std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";
-        ::CreateProcess(path.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
 
-        //We don't care about these, so close right away
-        ::CloseHandle(pi.hProcess);
-        ::CloseHandle(pi.hThread);
+        if (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)) //UIAccess enabled executable doesn't run straight from CreateProcess()
+        {
+            if (!m_ComInitDone) //Let's only do this if really needed
+            {
+                m_ComInitDone = (::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) != RPC_E_CHANGED_MODE);
+            }
+
+            ::ShellExecute(nullptr, nullptr, path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        }
+        else
+        {
+            STARTUPINFO si = {0};
+            PROCESS_INFORMATION pi = {0};
+            si.cb = sizeof(si);
+
+            ::CreateProcess(path.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
+
+            //We don't care about these, so close right away
+            ::CloseHandle(pi.hProcess);
+            ::CloseHandle(pi.hThread);
+        }
     }
 
     m_WindowPerformance.ScheduleOverlaySharedTextureUpdate();

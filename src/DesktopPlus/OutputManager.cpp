@@ -1412,7 +1412,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 {
                     case configid_intptr_overlay_state_winrt_hwnd:
                     {
-                        if (previous_value != msg.lParam)
+                        if ( (previous_value != msg.lParam) || (OverlayManager::Get().GetCurrentOverlay().GetTextureSource() == ovrl_texsource_none) )
                         {
                             OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_none);
                             ResetCurrentOverlay();
@@ -1675,9 +1675,9 @@ void OutputManager::ResetOverlays()
     {
         OverlayManager::Get().SetCurrentOverlayID(i);
 
-        ApplySettingCaptureSource();
         ApplySettingCrop();
         ApplySettingTransform();
+        ApplySettingCaptureSource();
         ApplySetting3DMode();
     }
 
@@ -1704,9 +1704,9 @@ void OutputManager::ResetOverlays()
 void OutputManager::ResetCurrentOverlay()
 {
     //Reset current overlay
-    ApplySettingCaptureSource();
     ApplySettingCrop();
     ApplySettingTransform();
+    ApplySettingCaptureSource();
     ApplySettingInputMode();
     ApplySetting3DMode();
 
@@ -3472,7 +3472,7 @@ bool OutputManager::HandleOpenVREvents()
                     //If it's a WinRT window capture, check for window management stuff
                     if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) )
                     {
-                        if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus))
+                        if ( (!m_MouseIgnoreMoveEvent) && (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus)) )
                         {
                             WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd], &m_InputSim);
                         }
