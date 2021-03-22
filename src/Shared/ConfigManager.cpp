@@ -320,12 +320,6 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
         UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
     }
 
-    //If UI, default desktop init value needs to be set here so auto overlay naming doesn't show -1 instead
-    if (data.ConfigInt[configid_int_overlay_desktop_id] == -2)
-    {
-        data.ConfigInt[configid_int_overlay_desktop_id] = 0;
-    }
-
     //Set auto name if the NameIsCustom key was missing entirely or there's a new window match
     if (do_set_auto_name)
     {

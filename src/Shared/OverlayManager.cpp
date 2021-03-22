@@ -347,8 +347,14 @@ void OverlayManager::SetOverlayNameAuto(unsigned int id, HWND window_handle)
         {
             case ovrl_capsource_desktop_duplication:
             {
-                data.ConfigNameStr += (data.ConfigInt[configid_int_overlay_desktop_id] == -1) ? "Combined Desktop" : 
-                                                                                                "Desktop " + std::to_string(data.ConfigInt[configid_int_overlay_desktop_id] + 1);
+                int desktop_id = data.ConfigInt[configid_int_overlay_desktop_id];
+
+                if (desktop_id == -2) //Default value for desktop 0 that has yet to initialize cropping values
+                {
+                    desktop_id = 0;
+                }
+
+                data.ConfigNameStr += (data.ConfigInt[configid_int_overlay_desktop_id] == -1) ? "Combined Desktop" : "Desktop " + std::to_string(desktop_id + 1);
                 break;
             }
             case ovrl_capsource_winrt_capture:
