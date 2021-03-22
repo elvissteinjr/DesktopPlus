@@ -2519,6 +2519,15 @@ void WindowSettings::UpdateCatInput()
 
         ImGui::NextColumn();
 
+        bool& global_pointer = ConfigManager::Get().GetConfigBoolRef(configid_bool_input_global_hmd_pointer);
+        if (ImGui::Checkbox("Global HMD-Pointer", &global_pointer))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_input_global_hmd_pointer), global_pointer);
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::FixedHelpMarker("Enables using HMD gaze to point at Desktop+ overlays while the dashboard is closed.\nThe Interaction Auto-Toggle Max Distance value is used here as well.");
+
+
         ImGui::Columns(1);
     }
 
@@ -2943,7 +2952,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.4.5 Beta");
+        ImGui::Text("Desktop+ Version 2.4.6 Beta");
 
         ImGui::Columns(1);
     }

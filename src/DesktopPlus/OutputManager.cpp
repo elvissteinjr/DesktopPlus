@@ -3625,6 +3625,8 @@ bool OutputManager::HandleOpenVREvents()
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
+    DetachedOverlayGlobalHMDPointerAll();
+
     return false;
 }
 
@@ -3632,6 +3634,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 {
     const Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
     const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+    bool device_is_hmd = ((vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd) || (vr_event.trackedDeviceIndex == vr::k_unTrackedDeviceIndex_Hmd));
 
     switch (vr_event.eventType)
     {
@@ -3752,7 +3756,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             }
 
             //Check coordinates if HMDPointerOverride is enabled
-            if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) && (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd))
+            if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) && (device_is_hmd))
             {
                 POINT pt;
                 ::GetCursorPos(&pt);
@@ -5709,6 +5713,97 @@ void OutputManager::DetachedOverlayGazeFadeAutoConfigure()
 
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_gazefade_distance), *(LPARAM*)&gaze_distance);
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_gazefade_rate),     *(LPARAM*)&fade_rate);
+    }
+}
+
+void OutputManager::DetachedOverlayGlobalHMDPointerAll()
+{
+    //Don't do anything if setting disabled or a dashboard pointer is active
+    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_input_global_hmd_pointer)) || (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid) )
+        return;
+
+    static vr::VROverlayHandle_t ovrl_last_enter = vr::k_ulOverlayHandleInvalid;
+
+    vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
+    vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+    if (!poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+        return;
+
+    //Set up intersection test
+    bool hit_nothing = true;
+    Matrix4 mat_hmd = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+    Vector3 v_pos = mat_hmd.getTranslation();
+    Vector3 forward = {mat_hmd[8], mat_hmd[9], mat_hmd[10]};
+    forward *= -1.0f;
+
+    vr::VROverlayIntersectionResults_t results;
+    vr::VROverlayIntersectionParams_t params;
+    params.eOrigin = vr::TrackingUniverseStanding;
+    params.vSource = {v_pos.x, v_pos.y, v_pos.z};
+    params.vDirection = {forward.x, forward.y, forward.z};
+
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+
+    for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        OverlayManager::Get().SetCurrentOverlayID(i);
+        Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+        const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+        if (overlay.IsVisible())
+        {
+            float max_distance = ConfigManager::Get().GetConfigFloat(configid_float_input_detached_interaction_max_distance) + 0.20f; //HMD origin is inside the headset 
+
+            if ( (vr::VROverlay()->ComputeOverlayIntersection(OverlayManager::Get().GetCurrentOverlay().GetHandle(), &params, &results)) && (results.fDistance <= max_distance) )
+            {
+                hit_nothing = false;
+
+                //If input wasn't active yet, send focus enter event
+                if (!m_OvrlInputActive)
+                {
+                    ovrl_last_enter = OverlayManager::Get().GetCurrentOverlay().GetHandle();
+
+                    vr::VREvent_t vr_event = {0};
+                    vr_event.trackedDeviceIndex = vr::k_unTrackedDeviceIndex_Hmd;
+                    vr_event.eventType = vr::VREvent_FocusEnter;
+
+                    vr::VROverlayView()->PostOverlayEvent(ovrl_last_enter, &vr_event);
+
+                    //Reset HMD-Pointer override
+                    if (m_MouseIgnoreMoveEvent)
+                    {
+                        m_MouseIgnoreMoveEvent = false;
+
+                        ResetMouseLastLaserPointerPos();
+                        ApplySettingMouseInput();
+                    }
+                }
+
+                vr::HmdVector2_t mouse_scale;
+                vr::VROverlay()->GetOverlayMouseScale(OverlayManager::Get().GetCurrentOverlay().GetHandle(), &mouse_scale);
+
+                vr::VREvent_t vr_event = {0};
+                vr_event.trackedDeviceIndex = vr::k_unTrackedDeviceIndex_Hmd;
+                vr_event.eventType = vr::VREvent_MouseMove;
+                vr_event.data.mouse.x = results.vUVs.v[0] * mouse_scale.v[0];
+                vr_event.data.mouse.y = results.vUVs.v[1] * mouse_scale.v[1];
+
+                vr::VROverlayView()->PostOverlayEvent(OverlayManager::Get().GetCurrentOverlay().GetHandle(), &vr_event);
+            }  
+        }
+    }
+
+    //If we hit no overlay and input was already active, send focus leave event to last entered overlay
+    if ( (hit_nothing) && (m_OvrlInputActive) && (ovrl_last_enter != vr::k_ulOverlayHandleInvalid) )
+    {
+        vr::VREvent_t vr_event = {0};
+        vr_event.trackedDeviceIndex = vr::k_unTrackedDeviceIndex_Hmd;
+        vr_event.eventType = vr::VREvent_FocusLeave;
+
+        vr::VROverlayView()->PostOverlayEvent(ovrl_last_enter, &vr_event);
+        ovrl_last_enter = vr::k_ulOverlayHandleInvalid;
     }
 }
 

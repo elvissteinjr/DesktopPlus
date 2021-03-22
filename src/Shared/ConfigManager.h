@@ -55,6 +55,7 @@ enum ConfigID_Bool
     configid_bool_performance_monitor_show_trackers,
     configid_bool_performance_monitor_show_vive_wireless,
     configid_bool_performance_monitor_disable_gpu_counters,
+    configid_bool_input_global_hmd_pointer,
     configid_bool_input_mouse_render_cursor,
     configid_bool_input_mouse_render_intersection_blob,
     configid_bool_input_mouse_hmd_pointer_override,
