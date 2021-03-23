@@ -658,7 +658,8 @@ IMGUI_IMPL_API vr::EVROverlayError ImGui_ImplOpenVR_InputResetVRKeyboard(vr::VRO
     ImGuiIO& io = ImGui::GetIO();
 
     //Reset these keys in case they were pressed by the VR keyboard
-    io.KeysDown[VK_BACK] = false;
+    io.KeysDown[VK_BACK]   = false;
+    io.KeysDown[VK_RETURN] = false;
 
     //Show keyboard if needed
     if (io.WantTextInput)
