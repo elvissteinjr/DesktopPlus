@@ -1666,6 +1666,7 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
             if (!is_overlay_enabled)
                 ImGui::PopItemDisabled();
 
+            ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
             if (ImGui::BeginPopupModal("PopupGazeFadeAutoConfigure", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
             {
                 static double start_time = 0;
@@ -3187,7 +3188,8 @@ bool WindowSettings::ButtonKeybind(unsigned char* key_code, bool no_mouse)
         open_list_popup = false;
     }
 
-    if (ImGui::BeginPopupModal("Bind Key", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if (ImGui::BeginPopupModal("Bind Key", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
         ImGui::Text((no_mouse) ? "Press any key..." : "Press any key or mouse button...");
 
@@ -3226,7 +3228,8 @@ bool WindowSettings::ButtonKeybind(unsigned char* key_code, bool no_mouse)
         ImGui::EndPopup();
     }
 
-    if (ImGui::BeginPopupModal("Select Key", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if (ImGui::BeginPopupModal("Select Key", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
         ImGui::SetWindowSize(ImVec2(GetSize().x * 0.5f, GetSize().y * 0.75f));
 
@@ -3307,6 +3310,7 @@ bool WindowSettings::ButtonAction(const char* str_id, ActionID& action_id)
         ImGui::OpenPopup("Select Action");
     }
 
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     if (ImGui::BeginPopupModal("Select Action", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
         ImGui::SetWindowSize(ImVec2(GetSize().x * 0.5f, GetSize().y * 0.75f));
@@ -3434,6 +3438,7 @@ bool WindowSettings::ButtonHotkey(unsigned int hotkey_id)
     }
 
     ImGui::SetNextWindowSizeConstraints(ImVec2(GetSize().x * 0.5f, -1),  ImVec2(GetSize().x * 0.5f, -1));
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     if (ImGui::BeginPopupModal("HotkeyEditPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
         static bool mod_ctrl  = false;
@@ -4438,6 +4443,7 @@ bool WindowSettings::PopupCurrentOverlayRename()
 {
     bool ret = false;
 
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     if (ImGui::BeginPopupModal("RenameOverlayPopup", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
         ImGui::SetWindowSize(ImVec2(GetSize().x * 0.45f, -1.0f));
@@ -4538,6 +4544,7 @@ bool WindowSettings::PopupCurrentOverlayRename()
 
 void WindowSettings::PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id, bool multi_overlay)
 {
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     if (ImGui::BeginPopupModal("NewOverlayProfilePopup", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
         ImGui::SetWindowSize(ImVec2(GetSize().x * 0.5f, -1.0f));
@@ -4697,7 +4704,8 @@ void WindowSettings::PopupNewOverlayProfile(std::vector<std::string>& overlay_pr
 void WindowSettings::PopupActionEdit(CustomAction& action, int id)
 {
     ImGui::SetNextWindowSizeConstraints(ImVec2(GetSize().x * 0.5f, -1),  ImVec2(GetSize().x * 0.5f, -1));
-    if (ImGui::BeginPopupModal("ActionEditPopup", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if (ImGui::BeginPopupModal("ActionEditPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
         //Working with fixed sized char arrays for input fields makes this a bit simpler
         static char buf_name[1024] = "";
@@ -5468,7 +5476,8 @@ bool WindowSettings::PopupIconSelect(std::string& filename)
 {
     bool ret = false;
 
-    if (ImGui::BeginPopupModal("Select Icon", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
+    ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if (ImGui::BeginPopupModal("Select Icon", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
         ImGui::SetWindowSize(ImVec2(GetSize().x * 0.5f, GetSize().y * 0.75f));
 
