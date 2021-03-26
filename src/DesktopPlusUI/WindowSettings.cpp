@@ -852,6 +852,19 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
                 //Automatically reset the matrix to a saner default if it still has the zero value
                 if (ConfigManager::Get().GetOverlayDetachedTransform().isZero())
                 {
+                    //Limit initial width to 0.25m for controller origin. This only helps then first switching the origin, but better than not at all
+                    if ((mode_origin == ovrl_origin_right_hand) || (mode_origin == ovrl_origin_left_hand))
+                    {
+                        float& width = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_width);
+
+                        if (width > 0.25f)
+                        {
+                            width = 0.25f;
+
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_width), *(LPARAM*)&width);
+                        }
+                    }
+
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
                 }
             }
@@ -3437,7 +3450,8 @@ bool WindowSettings::ButtonHotkey(unsigned int hotkey_id)
         ImGui::OpenPopup("HotkeyEditPopup");
     }
 
-    ImGui::SetNextWindowSizeConstraints(ImVec2(GetSize().x * 0.5f, -1),  ImVec2(GetSize().x * 0.5f, -1));
+    float scale_mul = (m_IsStyleScaled) ? 1.25f : 1.0f;
+    ImGui::SetNextWindowSizeConstraints(ImVec2(GetSize().x * 0.5f * scale_mul, -1),  ImVec2(GetSize().x * 0.5f * scale_mul, -1));
     ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     if (ImGui::BeginPopupModal("HotkeyEditPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar))
     {
@@ -4835,6 +4849,11 @@ void WindowSettings::PopupActionEdit(CustomAction& action, int id)
                 b_size_default.y *= UIManager::Get()->GetUIScale();
                 b_size_default.x *= ConfigManager::Get().GetConfigFloat(configid_float_interface_last_vr_ui_scale);
                 b_size_default.y *= ConfigManager::Get().GetConfigFloat(configid_float_interface_last_vr_ui_scale);
+            }
+            else if (m_IsStyleScaled) //Scale the button size up if the large display scale is active
+            {
+                b_size_default.x *= 1.5f;
+                b_size_default.y *= 1.5f;
             }
 
             if (ImGui::ButtonWithWrappedLabel(buf_name, b_size_default))

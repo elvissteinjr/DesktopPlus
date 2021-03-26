@@ -3990,6 +3990,11 @@ bool OutputManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
     if (profile_name == "Default")
     {
         ConfigManager::Get().LoadOverlayProfileDefault(multi_overlay);
+
+        if ( (!multi_overlay) && (OverlayManager::Get().GetCurrentOverlayID() != k_ulOverlayID_Dashboard) ) //Non-dashboard overlays need their transform reset afterwards
+        {
+            DetachedTransformReset();
+        }
     }
     else
     {

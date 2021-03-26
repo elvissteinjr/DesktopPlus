@@ -298,21 +298,25 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         {
             //Make ImGui think the surface is smaller than it is (a poor man's multi-viewport hack)
             io.DisplaySize.y = TEXSPACE_DASHBOARD_UI_HEIGHT * ui_manager.GetUIScale();
+            ImGui::GetMainViewport()->Size.y = io.DisplaySize.y;
 
             ui_manager.GetDashboardUI().Update();
 
             //Once again for the floating surface
             io.DisplaySize.y += (TEXSPACE_VERTICAL_SPACING + TEXSPACE_FLOATING_UI_HEIGHT) * ui_manager.GetUIScale();
+            ImGui::GetMainViewport()->Size.y = io.DisplaySize.y;
 
             ui_manager.GetFloatingUI().Update();
 
             //And again for the keyboard helper
             io.DisplaySize.y += (TEXSPACE_VERTICAL_SPACING + TEXSPACE_KEYBOARD_HELPER_HEIGHT) * ui_manager.GetUIScale();
+            ImGui::GetMainViewport()->Size.y = io.DisplaySize.y;
 
             window_kbdhelper.Update();
 
             //Reset/full size for the performance monitor
             io.DisplaySize.y = TEXSPACE_TOTAL_HEIGHT * ui_manager.GetUIScale();
+            ImGui::GetMainViewport()->Size.y = io.DisplaySize.y;
 
             ui_manager.GetPerformanceWindow().Update();
         }

@@ -951,6 +951,8 @@ void ConfigManager::RestoreConfigFromDefault()
 
 void ConfigManager::LoadOverlayProfileDefault(bool multi_overlay)
 {
+    Ini config(L"");
+
     //Multi-Overlay "default" config is removing all overlays except dashboard and defaulting that
     if (multi_overlay)
     {
@@ -958,8 +960,12 @@ void ConfigManager::LoadOverlayProfileDefault(bool multi_overlay)
 
         OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigNameStr = ""; //Have the dashboard name reset on LoadOverlayProfile()
     }
+    else if (OverlayManager::Get().GetCurrentOverlayID() != k_ulOverlayID_Dashboard)
+    {
+        //Adjust width here as the zero matrices will not get unscaled by LoadOverlayProfile() and yet it'll go with the old default width which is now too big
+        config.WriteInt("Overlay", "Width", 165);
+    }
 
-    Ini config(L"");
     LoadOverlayProfile(config); //All read calls will fail end fill in default values as a result
 }
 
