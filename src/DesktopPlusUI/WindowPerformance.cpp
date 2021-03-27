@@ -924,10 +924,11 @@ void WindowPerformance::UpdateStatValuesSteamVR()
         for (uint32_t frames_ago = std::min(frame_timing_current.m_nFrameIndex - m_FrameTimeLastIndex, (uint32_t)m_FrameTimeCPUHistory.MaxSize); frames_ago != 0; --frames_ago)
         {
             frame_timing_prev_valid = vr::VRCompositor()->GetFrameTiming(&frame_timing_prev, frames_ago);
+            //Calculate our own frame index as we get duplicates if SteamVR runs out of history
+            float frame_index = float(frame_timing_current.m_nFrameIndex - frames_ago);
 
             if (frame_timing_prev_valid)
             {
-                float frame_index    = (float)frame_timing_prev.m_nFrameIndex;
                 float frame_time_cpu = frame_timing_prev.m_flClientFrameIntervalMs + frame_timing_prev.m_flCompositorRenderCpuMs;
 
                 m_FrameTimeCPUHistory.AddFrame(frame_index, frame_time_cpu);
@@ -938,8 +939,6 @@ void WindowPerformance::UpdateStatValuesSteamVR()
             }
             else //No valid data, leave gap in history
             {
-                float frame_index = float(frame_timing_current.m_nFrameIndex - frames_ago);
-
                 m_FrameTimeCPUHistory.AddFrame(frame_index, 0.0f);
                 m_FrameTimeCPUHistoryWarning.AddFrame(frame_index, 0.0f);
 

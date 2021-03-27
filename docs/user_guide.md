@@ -46,9 +46,12 @@ Configures the state of the current overlay. Changes made here do not apply to o
 
 - **Current Overlay**
   - **(Drop-down List)**:  
-  Use the drop-down list to select which overlay's settings to show. The drop-down list can be right-clicked to rename the current overlay. Hovering a selection highlights the overlay in the VR space to help you identify it.
+  Use the drop-down list to select which overlay's settings to show. The drop-down list can be right-clicked to rename the current overlay. Hovering a selection highlights the overlay in the VR space to help you identify it.  
+  Overlay names are generated automatically based on the overlay's capture settings unless they were renamed manually. To restore the automatic overlay name, leave the input field blank when renaming.
+  - **[+]**:  
+  Click to quickly add another overlay.
   - **[Manage]**:  
-  Click to open the overlay management pop-up. Overlays can be added, removed, sorted or set as current from there. Added overlays copy the settings from the current overlay and are positioned next to it if possible. You can also click on the overlays in the VR space to select them while the pop-up is open.
+  Click to open the overlay management pop-up. Overlays can be added, renamed, removed, sorted or set as current from there. Added overlays copy the settings from the current overlay and are positioned next to it if possible. You can also click on the overlays in the VR space to select them while the pop-up is open.
 
 ##### General
 
@@ -142,6 +145,8 @@ Gaze Fade gradually fades the overlay to 0% opacity when not looking at it. When
   Distance of the gaze point from the HMD. Put the slider to the leftmost value to set it to "Infinite".
   - **Fade Rate**:  
   Rate at which the fading occurs. As Gaze Fade only takes the center point of the overlay in account, adjusting this value depending on the overlay size is recommended.
+  - **[Set from Gaze]**:  
+  Configure Gaze Distance and Fade Rate values automatically from the current gaze and overlay settings. After clicking, a pop-up will appear asking to look at the overlay for 3 seconds.
 
 - **Update Limiter Override**
   - **Limiter Mode**:  
@@ -155,6 +160,12 @@ Gaze Fade gradually fades the overlay to 0% opacity when not looking at it. When
   - **Overlay Group**:  
   Sets the group the overlay belongs to. Overlay groups are used to target overlays in actions and input bindings.  
   This is currently only used to change the enablement state of multiple overlays at once.
+    
+- **Performance**
+  - **Update when Invisible**:  
+  Updates the overlay even when invisible from Opacity setting or Gaze Fade.  
+  This helps with third-party applications accessing the overlay's contents but is not recommended otherwise. Updates are still suspended if the overlay is disabled or hidden by Display Mode setting.  
+  Allowing overlays to update when not needed can have a significant performance impact.
   
 ##### Interface
 
@@ -189,6 +200,13 @@ Gaze Fade gradually fades the overlay to 0% opacity when not looking at it. When
 - **Action Buttons**
   - **(Action Button List)**:  
   Global order and visibility of action buttons on the Action Bar can be customized here. This list can be expanded by creating custom actions.
+  
+- **Interface**
+  - **Background Color**:  
+  Allows to partially or fully cover the VR scene either only while looking at the Desktop+ dashboard tab or at all times.  
+  Click on the color button to open the color picker pop-up and click on the drop-down list to choose when the background color appears.
+  - **Dim Interface**:  
+  Dims the SteamVR dashboard and Desktop+ UI while the Desktop+ dashboard tab is open.
 
 #### Actions
 
@@ -242,6 +260,9 @@ Custom icons for these actions can be added by putting PNG files in the "images/
 - **Floating Overlay**
   - **Interaction Auto-Toggle Max Distance**:  
   Maximum allowed distance between overlay and pointing controller to automatically toggle interaction mode while the dashboard is closed. Set this to "Off" when using the global controller binding toggle.
+  - **Global HMD-Pointer**:  
+  Enables using HMD gaze to point at Desktop+ overlays while the dashboard is closed. The Interaction Auto-Toggle Max Distance value is used here as well to limit the maximum pointing distance.  
+  This option only allows to move the mouse cursor with the HMD gaze, no other inputs. It is mainly useful to change focus, get the cursor to window overlays and then use the physical mouse to continue the interaction.
   
 #### Windows
 
@@ -284,13 +305,15 @@ These settings allow tweaking the performance characteristics of Desktop+. Howev
   Mirrors individual desktops instead of cropping from the combined desktop. All Desktop Duplication overlays will be showing the same desktop when this is active.
   There can be a noticeable performance impact when multiple desktops update constantly. This setting can be used to mitigate it.
   
-- **Peformance Monitor**  
+- **Performance Monitor**  
 The Performance Monitor lets you quickly check the current state of your system from within VR in real time. Once added as an overlay, it can be customized and positioned like any of the desktop/window ones.  
 While it's possible to create as many overlays of it as desired, they will all be showing the same content. Performance Monitor settings are global.
   - **Style**:  
   Switches between a large and compact style of the Performance Monitor. The compact style does not allow displaying frame time graphs and the current time.
   - **Show (Item)**:  
   Allows to customize which performance characteristics and states are displayed on the Performance Monitor.
+  - **Disable GPU Performance Counters**:  
+  Disables display of GPU load % and VRAM usage. This prevents GPU hardware monitoring related stutter with recent NVIDIA drivers.
   - **[View as Pop-Up]**:  
   Displays the Performance Monitor as a pop-up. This usually only serves as a preview since the VR scene applications will pause and reduce rendering load while the dashboard is open.
   - **[Add as Overlay]**:  

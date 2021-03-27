@@ -1126,8 +1126,8 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                         OverlayManager::Get().SetCurrentOverlayNameAuto();
                         m_OverlayNameBufferNeedsUpdate = true;
 
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
 
                         UIManager::Get()->RepeatFrame();
                     }
@@ -1164,8 +1164,8 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                         OverlayManager::Get().SetCurrentOverlayNameAuto();
                         m_OverlayNameBufferNeedsUpdate = true;
 
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
 
                         UIManager::Get()->RepeatFrame();
                     }
@@ -1275,6 +1275,7 @@ void WindowSettings::UpdateCatOverlayTabCapture()
             if (ImGui::Button("Use Active Window"))
             {
                 //Try to find the foreground window in the window list and only use it when found there
+                UpdateWindowList(capture_window_list_selected_window, capture_list_selected_str);
                 HWND foreground_window = ::GetForegroundWindow();
                 const auto it = std::find_if(m_CaptureWindowList.begin(), m_CaptureWindowList.end(), [&](const auto& window){ return (window.WindowHandle == foreground_window); });
 
@@ -1282,10 +1283,12 @@ void WindowSettings::UpdateCatOverlayTabCapture()
                 {
                     winrt_selected_desktop = -2;
                     winrt_selected_window = foreground_window;
-                    capture_list_selected_str  = it->ListTitle;
+                    capture_list_selected_str = it->ListTitle;
                     capture_window_list_selected_window = winrt_selected_window;
 
                     ConfigManager::Get().SetConfigIntPtr(configid_intptr_overlay_state_winrt_hwnd, (intptr_t)winrt_selected_window);
+                    ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,    StringConvertFromUTF16(it->Title.c_str())); //No need to sync these
+                    ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, it->ExeName);
 
                     OverlayManager::Get().SetCurrentOverlayNameAuto();
                     m_OverlayNameBufferNeedsUpdate = true;
@@ -2966,7 +2969,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.4.6 Beta");
+        ImGui::Text("Desktop+ Version 2.5");
 
         ImGui::Columns(1);
     }
@@ -5713,16 +5716,18 @@ int WindowSettings::GetOverlayIcon(unsigned int overlay_id, TMNGRTexID& texture_
             }
         }
 
-        if (desktop_id != -2)
+        if (desktop_id == -2)
         {
-            if (desktop_id != -1)
-            {
-                texture_id = (tmtex_icon_desktop_1 + desktop_id <= tmtex_icon_desktop_6) ? (TMNGRTexID)(tmtex_icon_xsmall_desktop_1 + desktop_id) : tmtex_icon_xsmall_desktop;
-            }
-            else
-            {
-                texture_id = tmtex_icon_desktop_all;
-            }
+            desktop_id = 0;
+        }
+
+        if (desktop_id != -1)
+        {
+            texture_id = (tmtex_icon_desktop_1 + desktop_id <= tmtex_icon_desktop_6) ? (TMNGRTexID)(tmtex_icon_xsmall_desktop_1 + desktop_id) : tmtex_icon_xsmall_desktop;
+        }
+        else
+        {
+            texture_id = tmtex_icon_desktop_all;
         }
     }
 

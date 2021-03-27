@@ -192,7 +192,6 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
         current_desktop = current_desktop_new;
 
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), current_desktop);
 
         //Reset window selection when switching to a desktop
         if (current_configid == configid_int_overlay_winrt_desktop_id)
@@ -200,6 +199,8 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
             overlay_config.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] = 0;
         }
+
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), current_desktop);
 
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
 
