@@ -5727,7 +5727,7 @@ int WindowSettings::GetOverlayIcon(unsigned int overlay_id, TMNGRTexID& texture_
         }
         else
         {
-            texture_id = tmtex_icon_desktop_all;
+            texture_id = tmtex_icon_xsmall_desktop_all;
         }
     }
 
