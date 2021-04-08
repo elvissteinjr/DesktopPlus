@@ -531,12 +531,22 @@ void UIManager::RestartDashboardApp(bool force_steam)
         StopProcessByWindowClass(g_WindowClassNameDashboardApp);
 
         ULONGLONG start_tick = ::GetTickCount64();
-        while ( (vr::VRApplications()->LaunchDashboardOverlay(g_AppKeyDashboardApp) == vr::VRApplicationError_ApplicationAlreadyRunning) && (::GetTickCount64() - start_tick < 3000) ) //Try 3 seconds max
+        vr::EVRApplicationError app_error = vr::VRApplications()->LaunchDashboardOverlay(g_AppKeyDashboardApp);
+
+        while ( (app_error == vr::VRApplicationError_ApplicationAlreadyRunning) && (::GetTickCount64() - start_tick < 5000) ) //Try 5 seconds max
         {
-            ::Sleep(100);
+            ::Sleep(250);
+            app_error = vr::VRApplications()->LaunchDashboardOverlay(g_AppKeyDashboardApp);
+        }
+
+        //Try without Steam below if launching failed somehow
+        if (app_error != vr::VRApplicationError_None)
+        {
+            use_steam = false;
         }
     }
-    else
+    
+    if (!use_steam)
     {
         std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";
 

@@ -3464,22 +3464,27 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     m_OvrlInputActive = true;
 
-                    if (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd)
-                    {
-                        ResetMouseLastLaserPointerPos();
-                    }
+                    bool drag_or_select_mode_enabled = ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) );
 
-                    //If it's a WinRT window capture, check for window management stuff
-                    if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) )
+                    if (!drag_or_select_mode_enabled)
                     {
-                        if ( (!m_MouseIgnoreMoveEvent) && (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus)) )
+                        if (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd)
                         {
-                            WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd], &m_InputSim);
+                            ResetMouseLastLaserPointerPos();
                         }
 
-                        if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_keep_on_screen))
+                        //If it's a WinRT window capture, check for window management stuff
+                        if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) )
                         {
-                            WindowManager::MoveWindowIntoWorkArea((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]);
+                            if ( (!m_MouseIgnoreMoveEvent) && (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus)) )
+                            {
+                                WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd], &m_InputSim);
+                            }
+
+                            if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_keep_on_screen))
+                            {
+                                WindowManager::MoveWindowIntoWorkArea((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]);
+                            }
                         }
                     }
 
@@ -3504,18 +3509,23 @@ bool OutputManager::HandleOpenVREvents()
                         overlay.SetGlobalInteractiveFlag(false);
                     }
 
-                    //If leaving a WinRT window capture and the option is enabled, focus the active scene app
-                    if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) && 
-                         (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus_scene_app)) )
-                    {
-                        WindowManager::Get().FocusActiveVRSceneApp(&m_InputSim);
-                    }
+                    bool drag_or_select_mode_enabled = ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) );
 
-                    //A resize while drag can make the pointer lose focus, which is pretty janky. Remove target and do mouse up at least.
-                    if (WindowManager::Get().GetTargetWindow() != nullptr)
+                    if (!drag_or_select_mode_enabled)
                     {
-                        m_InputSim.MouseSetLeftDown(false);
-                        WindowManager::Get().SetTargetWindow(nullptr);
+                        //If leaving a WinRT window capture and the option is enabled, focus the active scene app
+                        if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) && 
+                             (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus_scene_app)) )
+                        {
+                            WindowManager::Get().FocusActiveVRSceneApp(&m_InputSim);
+                        }
+
+                        //A resize while drag can make the pointer lose focus, which is pretty janky. Remove target and do mouse up at least.
+                        if (WindowManager::Get().GetTargetWindow() != nullptr)
+                        {
+                            m_InputSim.MouseSetLeftDown(false);
+                            WindowManager::Get().SetTargetWindow(nullptr);
+                        }
                     }
 
                     //Finish drag if there's somehow still one going
