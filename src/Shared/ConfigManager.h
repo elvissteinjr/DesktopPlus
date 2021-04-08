@@ -147,6 +147,7 @@ enum ConfigID_Float
     configid_float_overlay_MAX,
     configid_float_input_keyboard_detached_size,
     configid_float_input_detached_interaction_max_distance,
+    configid_float_input_global_hmd_pointer_max_distance,
     configid_float_interface_last_vr_ui_scale,
     configid_float_performance_update_limit_ms,
 	configid_float_MAX

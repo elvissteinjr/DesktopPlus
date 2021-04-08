@@ -2542,8 +2542,30 @@ void WindowSettings::UpdateCatInput()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_input_global_hmd_pointer), global_pointer);
         }
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-        ImGui::FixedHelpMarker("Enables using HMD gaze to point at Desktop+ overlays while the dashboard is closed.\nThe Interaction Auto-Toggle Max Distance value is used here as well.");
+        ImGui::FixedHelpMarker("Enables using HMD gaze to point at Desktop+ overlays while the dashboard is closed");
 
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+
+        if (!global_pointer)
+            ImGui::PushItemDisabled();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Global HMD-Pointer Max Distance");
+
+        ImGui::NextColumn();
+
+        float& hmd_distance = ConfigManager::Get().GetConfigFloatRef(configid_float_input_global_hmd_pointer_max_distance);
+        if (ImGui::SliderWithButtonsFloat("HMDPointerMaxDistance", hmd_distance, 0.05f, 0.01f, 0.0f, 3.0f, (hmd_distance < 0.01f) ? "Infinite##%.2f" : "%.2f m", ImGuiSliderFlags_Logarithmic))
+        {
+            if (hmd_distance < 0.01f)
+                hmd_distance = 0.0f;
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_input_global_hmd_pointer_max_distance), *(LPARAM*)&hmd_distance);
+        }
+
+        if (!global_pointer)
+            ImGui::PopItemDisabled();
 
         ImGui::Columns(1);
     }
