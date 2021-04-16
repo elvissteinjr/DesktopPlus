@@ -26,6 +26,7 @@ This guide does not touch upon all topics covered by the [readme file](../assets
   
 * [Desktop Duplication vs. Graphics Capture](#desktop-duplication-vs-graphics-capture)
   * [Desktop Duplication](#desktop-duplication-1)
+    * [Mirroring at Unconstrained Frame-Rates](#mirroring-at-unconstrained-frame-rates)
   * [Graphics Capture](#graphics-capture)
     * [Graphics Capture Feature Support](#graphics-capture-feature-support)
     
@@ -400,10 +401,21 @@ Desktop+ features two capture methods for overlays. Both have different strength
 - Mirrors desktops
 - Decoupled cursor movement
 - Only updates on screen changes
-- Supports mirroring applications in exclusive full-screen mode
-- Supports mirroring exclusive full-screen applications at unconstrained frame-rates*
+- Supports mirroring applications in exclusive fullscreen mode
+- Supports mirroring exclusive fullscreen applications at unconstrained frame-rates
 
-<sub>* Actual support depends heavily on how the application does its rendering. There have been mostly successful tests with games using OpenGL or Vulkan to render.</sub>
+##### Mirroring at Unconstrained Frame-Rates
+
+Desktop Duplication supports mirroring exclusive fullscreen applications at unconstrained frame-rates. Actual support depends on how the application does its rendering, but it works for most.  
+For this to work, the following conditions have to be met:
+
+- Application has to run in exclusive fullscreen mode
+- VSync has to be disabled
+- Fullscreen optimizations have to be disabled*
+
+<sub>* May not be required for certain games using OpenGL or Vulkan to render.</sub>
+
+Fullscreen optimizations can be disabled on a per-application basis in the Compatibility tab of the executable's properties window on Windows 10 version 1803 or newer.
 
 #### Graphics Capture
 
