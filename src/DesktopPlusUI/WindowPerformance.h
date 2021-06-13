@@ -69,6 +69,7 @@ class WindowPerformance
         //Offset values for cumulative counters
         uint32_t m_OffsetFramesPresents;
         uint32_t m_OffsetReprojectedFrames;
+        uint32_t m_OffsetReprojectedFramesTimedOut;
         uint32_t m_OffsetDroppedFrames;
 
         //Updated every frame

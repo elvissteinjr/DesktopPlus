@@ -21,6 +21,7 @@ WindowPerformance::WindowPerformance() :
     m_PIDLast(0),
     m_OffsetFramesPresents(0),
     m_OffsetReprojectedFrames(0),
+    m_OffsetReprojectedFramesTimedOut(0),
     m_OffsetDroppedFrames(0),
     m_FrameTimeCPU(0.0f),
     m_FrameTimeGPU(0.0f),
@@ -976,13 +977,14 @@ void WindowPerformance::UpdateStatValuesSteamVR()
     }
 
     //Apply offsets to stat values
-    uint32_t frame_presents     = frame_stats.m_nNumFramePresents     - m_OffsetFramesPresents;
-    uint32_t reprojected_frames = frame_stats.m_nNumReprojectedFrames - m_OffsetReprojectedFrames;
+    uint32_t frame_presents               = frame_stats.m_nNumFramePresents             - m_OffsetFramesPresents;
+    uint32_t reprojected_frames           = frame_stats.m_nNumReprojectedFrames         - m_OffsetReprojectedFrames;
+    uint32_t reprojected_frames_timed_out = frame_stats.m_nNumReprojectedFramesTimedOut - m_OffsetReprojectedFramesTimedOut;
 
     //Update frame count if at least a second passed since the last time
     if ( (m_PIDLast != 0) && (m_FPS_TickLast + 1000 <= ::GetTickCount64()) )
     {
-        uint32_t frame_count = frame_presents - reprojected_frames;
+        uint32_t frame_count = frame_presents - reprojected_frames + reprojected_frames_timed_out;  //Add timed-out frames back in to get fps numbers when only reprojected frames are being displayed
 
         if (vr::VRSystem()->GetTrackedDeviceActivityLevel(vr::k_unTrackedDeviceIndex_Hmd) != vr::k_EDeviceActivityLevel_Standby) //Don't count frames when entering standby
         {
@@ -1358,9 +1360,10 @@ void WindowPerformance::ResetCumulativeValues()
         vr::Compositor_CumulativeStats frame_stats = {0};
         vr::VRCompositor()->GetCumulativeStats(&frame_stats, sizeof(vr::Compositor_CumulativeStats));
 
-        m_OffsetFramesPresents    = frame_stats.m_nNumFramePresents;
-        m_OffsetReprojectedFrames = frame_stats.m_nNumReprojectedFrames;
-        m_OffsetDroppedFrames     = frame_stats.m_nNumDroppedFrames;
+        m_OffsetFramesPresents              = frame_stats.m_nNumFramePresents;
+        m_OffsetReprojectedFrames           = frame_stats.m_nNumReprojectedFrames;
+        m_OffsetReprojectedFramesTimedOut   = frame_stats.m_nNumReprojectedFramesTimedOut;
+        m_OffsetDroppedFrames               = frame_stats.m_nNumDroppedFrames;
     }
 }
 
