@@ -18,8 +18,8 @@ class FloatingUI
         float m_Alpha;
         bool m_Visible;
         bool m_IsSwitchingTarget;
+        bool m_IsTargetCurved;
         int m_FadeOutDelayCount;
-
 
     public:
         FloatingUI();

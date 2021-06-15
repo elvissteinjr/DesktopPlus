@@ -110,6 +110,9 @@ void DPWinRT_Init()
     #ifndef DPLUSWINRT_STUB
 
     g_MainThreadID = ::GetCurrentThreadId();
+    //Reserve thread data vector size to avoid potential race condition between resize and thread creation when many overlays are created back-to-back (while also avoiding explicit syncing there).
+    //100 should be pretty safe as a limit, considering k_unMaxOverlayCount (128) with system overlays and Desktop+ UI overlays... also 100 captures are insane either way
+    g_Threads.reserve(100);
 
     //Init results of capability query functions so we don't need an apartment on the main thread
     winrt::init_apartment(winrt::apartment_type::multi_threaded);

@@ -11,6 +11,7 @@ FloatingUI::FloatingUI() : m_OvrlHandleCurrentUITarget(vr::k_ulOverlayHandleInva
                            m_Alpha(0.0f),
                            m_Visible(false),
                            m_IsSwitchingTarget(false),
+                           m_IsTargetCurved(false),
                            m_FadeOutDelayCount(0)
 {
     m_WindowActionBar.Hide(true); //Visible by default, so hide
@@ -106,7 +107,7 @@ void FloatingUI::UpdateUITargetState()
         m_OvrlHandleCurrentUITarget = vr::k_ulOverlayHandleInvalid;
         ovrl_handle_hover_target = vr::k_ulOverlayHandleInvalid;
         m_Visible = false;
-        m_FadeOutDelayCount = 20;
+        m_FadeOutDelayCount = 100;
     }
 
     //Don't show UI if ImGui popup is open (which blocks all input so just hide this)
@@ -265,20 +266,25 @@ void FloatingUI::UpdateUITargetState()
         OffsetTransformFromSelf(matrix, -m_Width * 0.449f, m_Width * 0.0487f, clamp(m_Width * 0.005f, 0.0025f, 0.025f));
 
         vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_floating_ui, origin, &matrix);
+
+        m_IsTargetCurved = (curvature > 0.0f);
     }
 
     if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) || (m_OvrlHandleCurrentUITarget == vr::k_ulOverlayHandleInvalid) ) //If not even the UI itself is being hovered, fade out
     {
-        m_FadeOutDelayCount++;
-
-        //Delay normal fade in order to not flicker when switching hover target between mirror overlay and floating UI
-        if (m_FadeOutDelayCount > 20)
+        if (m_Visible)
         {
-            //Hide
-            m_Visible = false;
-            m_FadeOutDelayCount = 0;
+            m_FadeOutDelayCount++;
 
-            vr::VROverlay()->SetOverlayFlag(ovrl_handle_floating_ui, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, false);
+            //Delay normal fade in order to not flicker when switching hover target between mirror overlay and floating UI
+            if (m_FadeOutDelayCount > ((m_IsTargetCurved) ? 100 : 50))
+            {
+                //Hide
+                m_Visible = false;
+                m_FadeOutDelayCount = 0;
+
+                vr::VROverlay()->SetOverlayFlag(ovrl_handle_floating_ui, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, false);
+            }
         }
     }
     else

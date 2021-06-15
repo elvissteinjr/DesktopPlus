@@ -5311,6 +5311,8 @@ void OutputManager::DragGestureFinish()
 
 void OutputManager::DetachedTransformSyncAll()
 {
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+
     for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
         OverlayManager::Get().SetCurrentOverlayID(i);
@@ -5319,6 +5321,8 @@ void OutputManager::DetachedTransformSyncAll()
         IPCManager::Get().SendStringToUIApp(configid_str_state_detached_transform_current, ConfigManager::Get().GetOverlayDetachedTransform().toString(), m_WindowHandle);
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
     }
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
 void OutputManager::DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref)
@@ -5608,33 +5612,40 @@ void OutputManager::DetachedInteractionAutoToggle()
         vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
         vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
+        OverlayOrigin origin = (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin);
+
         //Check left and right hand controller
         vr::ETrackedControllerRole controller_role = vr::TrackedControllerRole_LeftHand;
         for (;;)
         {
-            vr::TrackedDeviceIndex_t device_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(controller_role);
-
-            if ((device_index < vr::k_unMaxTrackedDeviceCount) && (poses[device_index].bPoseIsValid))
+            //Do not check controller if the overlay uses it as origin
+            if ( ( (origin != ovrl_origin_left_hand)  || (controller_role != vr::TrackedControllerRole_LeftHand)  ) &&
+                 ( (origin != ovrl_origin_right_hand) || (controller_role != vr::TrackedControllerRole_RightHand) ) )
             {
-                //Get matrix with tip offset
-                Matrix4 mat_controller = poses[device_index].mDeviceToAbsoluteTracking;
-                mat_controller = mat_controller * GetControllerTipMatrix( (controller_role == vr::TrackedControllerRole_RightHand) );
+                vr::TrackedDeviceIndex_t device_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(controller_role);
 
-                //Set up intersection test
-                Vector3 v_pos = mat_controller.getTranslation();
-                Vector3 forward = {mat_controller[8], mat_controller[9], mat_controller[10]};
-                forward *= -1.0f;
-
-                vr::VROverlayIntersectionParams_t params;
-                params.eOrigin = vr::TrackingUniverseStanding;
-                params.vSource = {v_pos.x, v_pos.y, v_pos.z};
-                params.vDirection = {forward.x, forward.y, forward.z};
-
-                vr::VROverlayIntersectionResults_t results;
-
-                if ( (vr::VROverlay()->ComputeOverlayIntersection(ovrl_handle, &params, &results)) && (results.fDistance <= max_distance) )
+                if ((device_index < vr::k_unMaxTrackedDeviceCount) && (poses[device_index].bPoseIsValid))
                 {
-                    do_set_interactive = true;
+                    //Get matrix with tip offset
+                    Matrix4 mat_controller = poses[device_index].mDeviceToAbsoluteTracking;
+                    mat_controller = mat_controller * GetControllerTipMatrix( (controller_role == vr::TrackedControllerRole_RightHand) );
+
+                    //Set up intersection test
+                    Vector3 v_pos = mat_controller.getTranslation();
+                    Vector3 forward = {mat_controller[8], mat_controller[9], mat_controller[10]};
+                    forward *= -1.0f;
+
+                    vr::VROverlayIntersectionParams_t params;
+                    params.eOrigin = vr::TrackingUniverseStanding;
+                    params.vSource = {v_pos.x, v_pos.y, v_pos.z};
+                    params.vDirection = {forward.x, forward.y, forward.z};
+
+                    vr::VROverlayIntersectionResults_t results;
+
+                    if ( (vr::VROverlay()->ComputeOverlayIntersection(ovrl_handle, &params, &results)) && (results.fDistance <= max_distance) )
+                    {
+                        do_set_interactive = true;
+                    }
                 }
             }
 
