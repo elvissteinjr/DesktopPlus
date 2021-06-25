@@ -19,9 +19,9 @@ WindowPerformance::WindowPerformance() :
     m_VisibleTickLast(0),
     m_IsPopupOpen(false),
     m_PIDLast(0),
+    m_OffsetFrameIndex(0),
     m_OffsetFramesPresents(0),
     m_OffsetReprojectedFrames(0),
-    m_OffsetReprojectedFramesTimedOut(0),
     m_OffsetDroppedFrames(0),
     m_FrameTimeCPU(0.0f),
     m_FrameTimeGPU(0.0f),
@@ -359,10 +359,6 @@ void WindowPerformance::DisplayStatsLarge()
 
         if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_fps))
         {
-            //No VR app means no FPS readings
-            if (m_PIDLast == 0)
-                ImGui::PushItemDisabled();
-
             //-FPS
             ImGui::Text("FPS:");
             ImGui::NextColumn();
@@ -375,6 +371,10 @@ void WindowPerformance::DisplayStatsLarge()
             ImGui::NextColumn();
             ImGui::TextRight(right_border_offset, "%.2f", m_FPS_Average);
             ImGui::NextColumn();
+
+            //No VR app means no frame statistics (FPS still gets counted, though)
+            if (m_PIDLast == 0)
+                ImGui::PushItemDisabled();
 
             //-Reprojection Ratio
             ImGui::Text("Reprojection Ratio:");
@@ -979,12 +979,11 @@ void WindowPerformance::UpdateStatValuesSteamVR()
     //Apply offsets to stat values
     uint32_t frame_presents               = frame_stats.m_nNumFramePresents             - m_OffsetFramesPresents;
     uint32_t reprojected_frames           = frame_stats.m_nNumReprojectedFrames         - m_OffsetReprojectedFrames;
-    uint32_t reprojected_frames_timed_out = frame_stats.m_nNumReprojectedFramesTimedOut - m_OffsetReprojectedFramesTimedOut;
 
     //Update frame count if at least a second passed since the last time
-    if ( (m_PIDLast != 0) && (m_FPS_TickLast + 1000 <= ::GetTickCount64()) )
+    if (m_FPS_TickLast + 1000 <= ::GetTickCount64())
     {
-        uint32_t frame_count = frame_presents - reprojected_frames + reprojected_frames_timed_out;  //Add timed-out frames back in to get fps numbers when only reprojected frames are being displayed
+        uint32_t frame_count = frame_timing_current.m_nFrameIndex - m_OffsetFrameIndex;
 
         if (vr::VRSystem()->GetTrackedDeviceActivityLevel(vr::k_unTrackedDeviceIndex_Hmd) != vr::k_EDeviceActivityLevel_Standby) //Don't count frames when entering standby
         {
@@ -1003,7 +1002,7 @@ void WindowPerformance::UpdateStatValuesSteamVR()
 
         m_FPS_TickLast   = ::GetTickCount64();
         m_FrameCountLast = frame_count;
-    }  
+    }
 
     //Reprojection ratio and dropped frames
     m_ReprojectionRatio = (frame_presents != 0) ? ((float)reprojected_frames / frame_presents) * 100.f : 0.0f;
@@ -1362,8 +1361,17 @@ void WindowPerformance::ResetCumulativeValues()
 
         m_OffsetFramesPresents              = frame_stats.m_nNumFramePresents;
         m_OffsetReprojectedFrames           = frame_stats.m_nNumReprojectedFrames;
-        m_OffsetReprojectedFramesTimedOut   = frame_stats.m_nNumReprojectedFramesTimedOut;
         m_OffsetDroppedFrames               = frame_stats.m_nNumDroppedFrames;
+
+        //Update frame index offset
+        vr::Compositor_FrameTiming frame_timing_current;
+        frame_timing_current.m_nSize = sizeof(vr::Compositor_FrameTiming);
+        m_OffsetFrameIndex = 0;
+
+        if (vr::VRCompositor()->GetFrameTiming(&frame_timing_current, 0))
+        {
+            m_OffsetFrameIndex = frame_timing_current.m_nFrameIndex;
+        }
     }
 }
 

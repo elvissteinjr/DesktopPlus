@@ -67,9 +67,9 @@ class WindowPerformance
         ULONGLONG m_FPS_TickLast;
 
         //Offset values for cumulative counters
+        uint32_t m_OffsetFrameIndex;
         uint32_t m_OffsetFramesPresents;
         uint32_t m_OffsetReprojectedFrames;
-        uint32_t m_OffsetReprojectedFramesTimedOut;
         uint32_t m_OffsetDroppedFrames;
 
         //Updated every frame
