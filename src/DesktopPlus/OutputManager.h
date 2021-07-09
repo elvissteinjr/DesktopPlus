@@ -112,6 +112,7 @@ class OutputManager
         void DragStart(bool is_gesture_drag = false);
         void DragUpdate();
         void DragAddDistance(float distance);
+        void DragAddWidth(float width);
         Matrix4 DragGetBaseOffsetMatrix();
         void DragFinish();
 

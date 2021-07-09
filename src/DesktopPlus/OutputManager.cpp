@@ -3960,8 +3960,24 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             //Smooth scrolls are only used for dragging mode
             if (m_DragModeDeviceID != -1)
             {
-                DragAddDistance(vr_event.data.scroll.ydelta);
+                float xdelta_abs = fabs(vr_event.data.scroll.xdelta);
+                float ydelta_abs = fabs(vr_event.data.scroll.ydelta);
+
+                //Deadzone
+                if ((xdelta_abs > 0.05f) || (ydelta_abs > 0.05f))
+                {
+                    //Add distance as long as y-delta input is bigger
+                    if (xdelta_abs < ydelta_abs)
+                    {
+                        DragAddDistance(vr_event.data.scroll.ydelta);
+                    }
+                    else
+                    {
+                        DragAddWidth(vr_event.data.scroll.xdelta * -0.25f);
+                    }
+                }
             }
+
             break;
         }
     }
@@ -5050,8 +5066,10 @@ void OutputManager::DragAddDistance(float distance)
 
     if (poses[m_DragModeDeviceID].bPoseIsValid)
     {
-        //Clamp distance as there can be inflated scroll values when holding the wheel down before starting a drag for some reason (doesn't limit normally occuring values)
-        distance = clamp(distance, -0.5f, 0.5f);
+        const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_DragModeOverlayID);
+
+        //Scale distance to overlay width
+        distance = clamp(distance * (data.ConfigFloat[configid_float_overlay_width] / 2.0f), -0.5f, 0.5f);
 
         Matrix4 mat_drag_device = m_DragModeMatrixSourceStart;
 
@@ -5068,6 +5086,30 @@ void OutputManager::DragAddDistance(float distance)
         OffsetTransformFromSelf(mat_drag_device, 0.0f, 0.0f, distance * -0.5f);
         m_DragModeMatrixTargetStart.setTranslation(mat_drag_device.getTranslation());
     }
+}
+
+void OutputManager::DragAddWidth(float width)
+{
+    if (m_DragModeDeviceID == -1)
+        return;
+
+    width = clamp(width, -0.25f, 0.25f) + 1.0f; //Expected range is smaller than for DragAddDistance()
+
+    OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_DragModeOverlayID);
+
+    //Scale width change to current overlay width
+    float overlay_width = data.ConfigFloat[configid_float_overlay_width] * width;
+
+    if (overlay_width < 0.05f)
+        overlay_width = 0.05f;
+
+    vr::VROverlay()->SetOverlayWidthInMeters(OverlayManager::Get().GetOverlay(m_DragModeOverlayID).GetHandle(), overlay_width);
+    data.ConfigFloat[configid_float_overlay_width] = overlay_width;
+
+    //Send adjusted width to the UI app
+    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)m_DragModeOverlayID);
+    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_width), *(LPARAM*)&overlay_width);
+    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
 }
 
 Matrix4 OutputManager::DragGetBaseOffsetMatrix()
