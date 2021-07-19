@@ -27,6 +27,7 @@ WindowPerformance::WindowPerformance() :
     m_FrameTimeGPU(0.0f),
     m_ReprojectionRatio(0.0f),
     m_DroppedFrames(0),
+    m_BatteryHMD(-1.0f),
     m_BatteryLeft(-1.0f),
     m_BatteryRight(-1.0f),
     m_FrameTimeLastIndex(0),
@@ -451,6 +452,24 @@ void WindowPerformance::DisplayStatsLarge()
                 ImGui::PopItemDisabled();
             }
 
+            //-Battery HMD (only shown if available)
+            if (m_BatteryHMD != -1.0f)
+            {
+                ImGui::Text("Headset:");
+                ImGui::NextColumn();
+                //15% warning color (Same percentage the SteamVR dashboard battery icon goes red at)
+                if (m_BatteryHMD < 15.0f)
+                    ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
+
+                ImGui::TextRight(text_percent_width, "%.0f", m_BatteryHMD);
+                ImGui::SameLine(0.0f, 0.0f);
+                ImGui::TextUnformatted("%");
+                ImGui::NextColumn();
+
+                if (m_BatteryHMD < 15.0f)
+                    ImGui::PopStyleColor();
+            }
+
             float right_offset;
 
             //-Battery Trackers
@@ -797,6 +816,24 @@ void WindowPerformance::DisplayStatsCompact()
 
         ImGui::NextColumn();
 
+        //-Battery HMD (only shown if available)
+        if (m_BatteryHMD != -1.0f)
+        {
+            ImGui::TextRight(text_percentage_cwidth, "H");
+            ImGui::SameLine(0.0f, 0.0f);
+
+            //15% warning color
+            if (m_BatteryHMD < 15.0f)
+                ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
+
+            ImGui::TextRight(0.0f, "%.0f%%", m_BatteryHMD);
+
+            if (m_BatteryHMD < 15.0f)
+                ImGui::PopStyleColor();
+        }
+
+        ImGui::NextColumn();
+
         //-Battery Trackers
         if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_trackers))
         {
@@ -1030,6 +1067,16 @@ void WindowPerformance::UpdateStatValuesSteamVR()
     else
     {
         m_BatteryRight = -1.0f;
+    }
+
+    //Battery HMD
+    if (vr::VRSystem()->GetBoolTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DeviceProvidesBatteryStatus_Bool))
+    {
+        m_BatteryHMD = vr::VRSystem()->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DeviceBatteryPercentage_Float) * 100.0f;
+    }
+    else
+    {
+        m_BatteryHMD = -1.0f;
     }
 
     //Battery Trackers

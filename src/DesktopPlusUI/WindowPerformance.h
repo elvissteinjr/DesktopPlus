@@ -83,6 +83,7 @@ class WindowPerformance
         float m_ReprojectionRatio;
         uint32_t m_DroppedFrames;
 
+        float m_BatteryHMD;
         float m_BatteryLeft;
         float m_BatteryRight;
         std::vector< std::pair<vr::TrackedDeviceIndex_t, float> > m_BatteryTrackers; //List updated in RefreshTrackerBatteryList(), called on devices connect/disconnect
