@@ -1,7 +1,7 @@
 #pragma once
 
 //This is the part of Desktop+ using Windows Runtime functions, separated from rest of the codebase as a DLL
-//Windows SDK 10.0.19041.0 or newer is required to build this
+//Windows SDK 10.0.19041.0 or newer is required to build this, 10.0.20348.0 or newer recommended to allow removing the capture border
 //
 //If you wish to build Desktop+ without support for the functionality provided by this library, define DPLUSWINRT_STUB for the project,
 //remove the package references and adjust the project's Windows SDK version if needed

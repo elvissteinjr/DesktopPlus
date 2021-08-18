@@ -18,7 +18,7 @@ namespace winrt
 }
 
 OverlayCapture::OverlayCapture(winrt::IDirect3DDevice const& device, winrt::GraphicsCaptureItem const& item, winrt::DirectXPixelFormat pixel_format, DWORD global_main_thread_id,
-                             const std::vector<DPWinRTOverlayData>& overlays, HWND source_window) :
+                               const std::vector<DPWinRTOverlayData>& overlays, HWND source_window) :
     m_Overlays(overlays),
     m_SourceWindow(source_window)
 {
@@ -39,6 +39,17 @@ OverlayCapture::OverlayCapture(winrt::IDirect3DDevice const& device, winrt::Grap
     m_LastContentSize = m_Item.Size();
     m_Session = m_FramePool.CreateCaptureSession(m_Item);
     m_FramePool.FrameArrived({ this, &OverlayCapture::OnFrameArrived });
+
+    //Disable yellow capture border if possible (Windows SDK 10.0.20348.0 or newer + running on Windows 11)
+    #if WINDOWS_FOUNDATION_UNIVERSALAPICONTRACT_VERSION >= 0xc0000
+        if (winrt::Metadata::ApiInformation::IsPropertyPresent(L"Windows.Graphics.Capture.GraphicsCaptureSession", L"IsBorderRequired"))
+        {
+            //Request access... except it doesn't appear to prompt the user at all and just returns AppCapabilityAccessStatus_Allowed straight away when supported
+            //Still need to do it though
+            winrt::GraphicsCaptureAccess::RequestAccessAsync(winrt::GraphicsCaptureAccessKind::Borderless).get();
+            m_Session.IsBorderRequired(false);
+        }
+    #endif
 
     //Set mouse scale on all overlays and send size updates to default them to -1 until we get the real size on the first frame update
     vr::HmdVector2_t mouse_scale = {(float)m_Item.Size().Width, (float)m_Item.Size().Height};
