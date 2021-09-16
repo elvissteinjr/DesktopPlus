@@ -1,15 +1,14 @@
 #pragma once
 
-#include "WindowMainBar.h"
-#include "WindowSideBar.h"
+#include "WindowFloatingUIBar.h"
 
 #include "openvr.h"
 
 class FloatingUI
 {
     private:
-        WindowMainBar m_WindowActionBar;
-        WindowSideBar m_WindowSideBar;
+        WindowFloatingUIMainBar m_WindowMainBar;
+        WindowFloatingUIActionBar m_WindowActionBar;
 
         vr::VROverlayHandle_t m_OvrlHandleCurrentUITarget;
         unsigned int m_OvrlIDCurrentUITarget;
@@ -18,12 +17,15 @@ class FloatingUI
         float m_Alpha;
         bool m_Visible;
         bool m_IsSwitchingTarget;
-        int m_FadeOutDelayCount;
-
+        float m_FadeOutDelayCount;
+        int m_AutoFitFrames;
 
     public:
         FloatingUI();
         void Update();
         void UpdateUITargetState();
         bool IsVisible() const;
+        float GetAlpha() const;
+
+        WindowFloatingUIMainBar& GetMainBarWindow();
 };

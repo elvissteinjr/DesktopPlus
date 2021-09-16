@@ -16,6 +16,7 @@
 #include "DisplayManager.h"
 #include "DuplicationManager.h"
 #include "OutputManager.h"
+#include "WindowManager.h"
 #include "ThreadManager.h"
 #include "InterprocessMessaging.h"
 #include "ElevatedMode.h"
@@ -495,6 +496,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     CloseHandle(ResumeDuplicationEvent);
     CloseHandle(TerminateThreadsEvent);
 
+    //Tell WindowManager to exit if it's still active
+    WindowManager::Get().SetActive(false);
+
     //Kindly ask elevated mode process to quit if it exists
     if (HWND window = ::FindWindow(g_WindowClassNameElevatedMode, nullptr))
     {
@@ -894,19 +898,8 @@ void WriteMessageToLog(_In_ LPCWSTR str)
 {
     //Get rid of newlines (system error strings comes with CRLF while \n is treated as LF-only before writing to file...)
     std::wstring wstr(str);
-    std::wstring nline(L"\r\n");
-    size_t start_pos = 0;
-    while ((start_pos = wstr.find(nline, start_pos)) != std::string::npos)
-    {
-        wstr.replace(start_pos, nline.length(), L" ");
-    }
-
-    start_pos = 0;
-    nline = L"\n";
-    while ((start_pos = wstr.find(nline, start_pos)) != std::string::npos)
-    {
-        wstr.replace(start_pos, nline.length(), L" ");
-    }
+    WStringReplaceAll(wstr, L"\r\n", L" ");
+    WStringReplaceAll(wstr, L"\n", L" ");
 
     //Get the time
     std::time_t t = std::time(nullptr);

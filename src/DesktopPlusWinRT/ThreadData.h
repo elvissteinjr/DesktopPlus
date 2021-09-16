@@ -26,5 +26,4 @@ struct DPWinRTThreadData
     std::vector<DPWinRTOverlayData> Overlays;
     HWND SourceWindow = nullptr;
     int DesktopID = -2;
-    bool UsePicker = false;
 };

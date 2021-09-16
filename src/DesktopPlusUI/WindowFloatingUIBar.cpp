@@ -1,15 +1,249 @@
-#include "WindowMainBar.h"
+#include "WindowFloatingUIBar.h"
 
 #include "ImGuiExt.h"
 #include "TextureManager.h"
 #include "InterprocessMessaging.h"
-#include "WindowSettings.h"
 #include "Util.h"
 #include "UIManager.h"
 #include "OverlayManager.h"
+#include "WindowManager.h"
 #include "DesktopPlusWinRT.h"
 
-void WindowMainBar::DisplayTooltipIfHovered(const char* text)
+//-WindowFloatingUIMainBar
+WindowFloatingUIMainBar::WindowFloatingUIMainBar() : m_IsCurrentWindowCapturable(-1), m_AnimationProgress(0.0f)
+{
+
+}
+
+void WindowFloatingUIMainBar::DisplayTooltipIfHovered(const char* text)
+{
+    if ( ((m_AnimationProgress == 0.0f) || (m_AnimationProgress == 1.0f)) && (ImGui::IsItemHovered()) ) //Also hide while animating
+    {
+        static ImVec2 button_pos_last; //Remember last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
+        ImVec2 pos = ImGui::GetItemRectMin();
+        float button_width = ImGui::GetItemRectSize().x;
+
+        //Default tooltips are not suited for this as there's too much trouble with resize flickering and stuff
+        ImGui::Begin(text, nullptr, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | 
+                                    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
+
+        ImGui::TextUnformatted(text);
+
+        //Not using GetWindowSize() here since it's delayed and plays odd when switching between buttons with the same label
+        ImVec2 window_size = ImGui::GetItemRectSize();
+        window_size.x += ImGui::GetStyle().WindowPadding.x * 2.0f;
+        window_size.y += ImGui::GetStyle().WindowPadding.y * 2.0f;
+
+        //Repeat frame when the window is appearing as it will not have the right position (either from being first time or still having old pos)
+        if ( (ImGui::IsWindowAppearing()) || (pos.x != button_pos_last.x) )
+        {
+            UIManager::Get()->RepeatFrame();
+        }
+
+        button_pos_last = pos;
+
+        pos.x += (button_width / 2.0f) - (window_size.x / 2.0f);
+        pos.y += button_width + ImGui::GetStyle().WindowPadding.y - 2.0f;
+
+        //Clamp x so the tooltip does not get cut off
+        pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);   //Clamp right side to texture end
+
+        ImGui::SetWindowPos(pos);
+
+        ImGui::End();
+    }
+}
+
+void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overlay_id)
+{
+    OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(overlay_id);
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    ImVec2 b_size, b_uv_min, b_uv_max;
+    TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
+    const ImGuiStyle& style = ImGui::GetStyle();
+
+    //Put window near the bottom of the overlay with space for the tooltips + padding (touching action-bar when visible)
+    const float offset_base = ImGui::GetFontSize() + style.FramePadding.y + (style.WindowPadding.y * 2.0f) + 3.0f;
+    const float offset_y = smoothstep(m_AnimationProgress, offset_base + actionbar_height /* Action-Bar not visible */, offset_base /* Action-Bar visible */);
+
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y - offset_y), 0, ImVec2(0.5f, 1.0f));
+    ImGui::Begin("WindowFloatingUIMainBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
+                                                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+
+    //Show Action-Bar Button (this is a per-overlay state)
+    bool& is_actionbar_enabled = overlay_data.ConfigBool[configid_bool_overlay_actionbar_enabled];
+    bool actionbar_was_enabled = is_actionbar_enabled;
+
+    if (actionbar_was_enabled)
+        ImGui::PushStyleColor(ImGuiCol_Button, Style_ImGuiCol_ButtonPassiveToggled);
+
+    ImGui::PushID(tmtex_icon_small_actionbar);
+    TextureManager::Get().GetTextureInfo(tmtex_icon_small_actionbar, b_size, b_uv_min, b_uv_max);
+    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    {
+        is_actionbar_enabled = !is_actionbar_enabled;
+        //This is an UI state so no need to sync
+    }
+
+    if (actionbar_was_enabled)
+        ImGui::PopStyleColor();
+
+    DisplayTooltipIfHovered(TranslationManager::GetString( (actionbar_was_enabled) ? tstr_FloatingUIActionBarHideTip : tstr_FloatingUIActionBarShowTip ));
+
+    ImGui::PopID();
+    //
+
+    ImGui::SameLine();
+
+    //Add current window as overlay (only show if desktop duplication or non-window WinRT capture)
+    if (  (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) ||
+         ((overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (overlay_data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] == 0)) )
+    {
+        //If marked to need update, refresh actual state
+        if (m_IsCurrentWindowCapturable == -1)
+        {
+            m_IsCurrentWindowCapturable = (WindowManager::Get().WindowListFindWindow(::GetForegroundWindow()) != nullptr);
+        }
+
+        if (m_IsCurrentWindowCapturable != 1)
+            ImGui::PushItemDisabled();
+
+        ImGui::PushID(tmtex_icon_small_add_window);
+        TextureManager::Get().GetTextureInfo(tmtex_icon_small_add_window, b_size, b_uv_min, b_uv_max);
+        ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max); //This one's activated on mouse down
+
+        if (ImGui::IsItemActivated())
+        {
+            vr::TrackedDeviceIndex_t device_index = vr::VROverlay()->GetPrimaryDashboardDevice();
+
+            //If no dashboard device, try finding one
+            if (device_index == vr::k_unTrackedDeviceIndexInvalid)
+            {
+                device_index = FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleFloatingUI());
+            }
+
+            //Try to get the pointer distance
+            float source_distance = 1.0f;
+            vr::VROverlayIntersectionResults_t results;
+
+            if (ComputeOverlayIntersectionForDevice(UIManager::Get()->GetOverlayHandleFloatingUI(), device_index, vr::TrackingUniverseStanding, &results))
+            {
+                source_distance = results.fDistance;
+            }
+
+            //Set pointer hint in case dashboard app needs it
+            ConfigManager::Get().SetConfigInt(configid_int_state_laser_pointer_device_hint, (int)device_index);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_laser_pointer_device_hint), (int)device_index);
+
+            //Add overlay
+            HWND current_window = ::GetForegroundWindow();
+            OverlayManager::Get().AddOverlay(ovrl_capsource_winrt_capture, -2, current_window);
+
+            //Send to dashboard app
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_intptr_state_arg_hwnd), (LPARAM)current_window);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new_drag, MAKELPARAM(-2, (source_distance * 100.0f)));
+        }
+
+        if (m_IsCurrentWindowCapturable != 1)
+            ImGui::PopItemDisabled();
+
+        DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIWindowAddTip));
+
+        ImGui::PopID();
+
+        ImGui::SameLine();
+    }
+    //
+
+    ImGui::SameLine();
+
+    //Drag-Mode Toggle Button (this is a global state)
+    bool& is_dragmode_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_overlay_dragmode);
+    bool dragmode_was_enabled = is_dragmode_enabled;
+
+    if (dragmode_was_enabled)
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+
+    ImGui::PushID(tmtex_icon_small_move);
+    TextureManager::Get().GetTextureInfo(tmtex_icon_small_move, b_size, b_uv_min, b_uv_max);
+    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    {
+        is_dragmode_enabled = !is_dragmode_enabled;
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragselectmode_show_hidden), false);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_dragmode_enabled);
+    }
+
+    if (dragmode_was_enabled)
+        ImGui::PopStyleColor();
+
+    DisplayTooltipIfHovered(TranslationManager::GetString( (dragmode_was_enabled) ? tstr_FloatingUIDragModeDisableTip : tstr_FloatingUIDragModeEnableTip ));
+
+    ImGui::PopID();
+    //
+
+    ImGui::SameLine();
+
+    //Close/Disable Button
+    ImGui::PushID(tmtex_icon_small_close);
+    TextureManager::Get().GetTextureInfo(tmtex_icon_small_close, b_size, b_uv_min, b_uv_max);
+    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    {
+        overlay_data.ConfigBool[configid_bool_overlay_enabled] = false;
+
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), false);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+    }
+
+    DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIHideOverlayTip));
+
+    ImGui::PopID();
+    //
+
+    ImGui::PopStyleColor(); //ImGuiCol_Button
+    ImGui::PopStyleVar();   //ImGuiStyleVar_FrameRounding
+
+    m_Pos  = ImGui::GetWindowPos();
+    m_Size = ImGui::GetWindowSize();
+
+    ImGui::End();
+
+    //Sliding animation when action-bar state changes
+    if (UIManager::Get()->GetFloatingUI().GetAlpha() != 0.0f)
+    {
+        m_AnimationProgress += (is_actionbar_enabled) ? ImGui::GetIO().DeltaTime * 3.0f : ImGui::GetIO().DeltaTime * -3.0f;
+        m_AnimationProgress = clamp(m_AnimationProgress, 0.0f, 1.0f);
+    }
+    else //Skip animation when Floating UI is just fading in
+    {
+        m_AnimationProgress = (is_actionbar_enabled) ? 1.0f : 0.0f;
+    }
+}
+
+const ImVec2& WindowFloatingUIMainBar::GetPos() const
+{
+    return m_Pos;
+}
+
+const ImVec2& WindowFloatingUIMainBar::GetSize() const
+{
+    return m_Size;
+}
+
+void WindowFloatingUIMainBar::MarkCurrentWindowCapturableStateOutdated()
+{
+    //Mark state as outdated. We don't do the update here as the current window can change a lot while the UI isn't even displaying... no need to bother then.
+    m_IsCurrentWindowCapturable = -1;
+}
+
+
+//-WindowFloatingUIActionBar
+void WindowFloatingUIActionBar::DisplayTooltipIfHovered(const char* text)
 {
     if (ImGui::IsItemHovered())
     {
@@ -18,10 +252,10 @@ void WindowMainBar::DisplayTooltipIfHovered(const char* text)
         float button_width = ImGui::GetItemRectSize().x;
 
         //Default tooltips are not suited for this as there's too much trouble with resize flickering and stuff
-        ImGui::Begin(text, NULL, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | 
-                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
+        ImGui::Begin(text, nullptr, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | 
+                                    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
 
-        ImGui::Text(text);
+        ImGui::TextUnformatted(text);
 
         //Not using GetWindowSize() here since it's delayed and plays odd when switching between buttons with the same label
         ImVec2 window_size = ImGui::GetItemRectSize();
@@ -40,14 +274,7 @@ void WindowMainBar::DisplayTooltipIfHovered(const char* text)
         pos.y -= window_size.y + ImGui::GetStyle().WindowPadding.y;
 
         //Clamp x so the tooltip does not get cut off
-        if (m_WndSettingsPtr == nullptr)                //if floating UI mode
-        {
-            pos.x = clamp(pos.x, 0.0f, m_Pos.x + m_Size.x - window_size.x);             //Clamp right side to right end of bar
-        }
-        else
-        {
-            pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);   //Clamp right side to texture end
-        }
+        pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);   //Clamp right side to texture end
 
         ImGui::SetWindowPos(pos);
 
@@ -55,7 +282,7 @@ void WindowMainBar::DisplayTooltipIfHovered(const char* text)
     }
 }
 
-void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
+void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
 {
     ImGui::PushID("DesktopButtons");
 
@@ -116,7 +343,6 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
     {
         case mainbar_desktop_listing_individual:
         {
-            char tooltip_str[16];
             for (int i = 0; i < desktop_count; ++i)
             {
                 ImGui::PushID(tmtex_icon_desktop_1 + i);
@@ -145,8 +371,7 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
                 if (i == current_desktop)
                     ImGui::PopStyleColor();
 
-                snprintf(tooltip_str, 16, "Desktop %d", i + 1);
-                DisplayTooltipIfHovered(tooltip_str);
+                DisplayTooltipIfHovered(TranslationManager::Get().GetDesktopIDString(i));
 
                 ImGui::PopID();
                 ImGui::SameLine();
@@ -206,15 +431,21 @@ void WindowMainBar::UpdateDesktopButtons(unsigned int overlay_id)
 
         //Update overlay name
         OverlayManager::Get().SetOverlayNameAuto(overlay_id);
-        UIManager::Get()->GetDashboardUI().GetSettingsWindow().RefreshCurrentOverlayNameBuffer();
+
+        //Update overlay properties title if this is the current overlay
+        if (UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID() == overlay_id)
+        {
+            UIManager::Get()->GetOverlayPropertiesWindow().SetActiveOverlayID(overlay_id, true);
+        }
     }
 
     ImGui::PopID();
 }
 
-void WindowMainBar::UpdateActionButtons(unsigned int overlay_id)
+void WindowFloatingUIActionBar::UpdateActionButtons(unsigned int overlay_id)
 {
     ImGui::PushID("ActionButtons");
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
 
     ImGuiIO& io = ImGui::GetIO();
     ImVec2 b_size, b_uv_min, b_uv_max;
@@ -316,17 +547,16 @@ void WindowMainBar::UpdateActionButtons(unsigned int overlay_id)
         list_id++;
     }
 
+    ImGui::PopStyleColor(); //ImGuiCol_ChildBg
     ImGui::PopID();
 }
 
-WindowMainBar::WindowMainBar(WindowSettings* settings_window) : m_Visible(true),
-                                                                m_Alpha(1.0f), 
-                                                                m_WndSettingsPtr(settings_window)
+WindowFloatingUIActionBar::WindowFloatingUIActionBar() : m_Visible(false), m_Alpha(0.0f)
 {
     m_Size.x = 32.0f;
 }
 
-void WindowMainBar::Show(bool skip_fade)
+void WindowFloatingUIActionBar::Show(bool skip_fade)
 {
     m_Visible = true;
 
@@ -336,7 +566,7 @@ void WindowMainBar::Show(bool skip_fade)
     }
 }
 
-void WindowMainBar::Hide(bool skip_fade)
+void WindowFloatingUIActionBar::Hide(bool skip_fade)
 {
     m_Visible = false;
 
@@ -346,7 +576,7 @@ void WindowMainBar::Hide(bool skip_fade)
     }
 }
 
-void WindowMainBar::Update(unsigned int overlay_id)
+void WindowFloatingUIActionBar::Update(unsigned int overlay_id)
 {
     if ( (m_Alpha != 0.0f) || (m_Visible) )
     {
@@ -366,25 +596,19 @@ void WindowMainBar::Update(unsigned int overlay_id)
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_Alpha);
 
     ImGuiIO& io = ImGui::GetIO();
+    const ImGuiStyle& style = ImGui::GetStyle();
 
     ImVec2 b_size, b_uv_min, b_uv_max;
-    bool floating_ui_mode = (m_WndSettingsPtr == nullptr);
 
-    if (floating_ui_mode)
-    {
-        TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
-        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - b_size.y - ImGui::GetStyle().FramePadding.x, io.DisplaySize.y), 0, ImVec2(1.0f, 1.0f));  //Put window at bottom right of the overlay
+    //Put window near the top of the overlay with space for the tooltips + padding
+    const DPRect& rect_floating_ui = UITextureSpaces::Get().GetRect(ui_texspace_floating_ui);
+    const float tooltip_height = ImGui::GetFontSize() + (style.WindowPadding.y * 2.0f);
+    const float offset_y = rect_floating_ui.GetTL().y + tooltip_height + (style.FramePadding.y * 2.0f) + style.WindowPadding.y;
 
-        ImGui::Begin("WindowActionBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
-                                                 ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
-    }
-    else
-    {
-        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y), 0, ImVec2(0.5f, 1.0f));  //Center window at bottom of the overlay
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, offset_y), 0, ImVec2(0.5f, 0.0f));
 
-        ImGui::Begin("WindowMainBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
-                                               ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
-    }
+    ImGui::Begin("WindowFloatingUIActionBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
+                                                       ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
@@ -396,35 +620,6 @@ void WindowMainBar::Update(unsigned int overlay_id)
 
     UpdateActionButtons(overlay_id);
 
-    if (!floating_ui_mode)
-    {
-        //Settings Button
-        bool settings_shown = m_WndSettingsPtr->IsShown();
-        if (settings_shown)
-            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-
-        ImGui::PushID(tmtex_icon_settings);
-        TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
-        if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
-        {
-            if (!m_WndSettingsPtr->IsShown())
-            {
-                m_WndSettingsPtr->Show();
-            }
-            else
-            {
-                m_WndSettingsPtr->Hide();
-            }
-        }
-
-        if (settings_shown)
-            ImGui::PopStyleColor(); //ImGuiCol_Button
-
-        DisplayTooltipIfHovered("Settings");
-
-        ImGui::PopID();
-    }
-
     ImGui::PopStyleColor(); //ImGuiCol_Button
     ImGui::PopStyleVar();   //ImGuiStyleVar_FrameRounding
 
@@ -435,22 +630,22 @@ void WindowMainBar::Update(unsigned int overlay_id)
     ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
 }
 
-const ImVec2 & WindowMainBar::GetPos() const
+const ImVec2& WindowFloatingUIActionBar::GetPos() const
 {
     return m_Pos;
 }
 
-const ImVec2 & WindowMainBar::GetSize() const
+const ImVec2& WindowFloatingUIActionBar::GetSize() const
 {
     return m_Size;
 }
 
-bool WindowMainBar::IsVisible() const
+bool WindowFloatingUIActionBar::IsVisible() const
 {
     return m_Visible;
 }
 
-float WindowMainBar::GetAlpha() const
+float WindowFloatingUIActionBar::GetAlpha() const
 {
     return m_Alpha;
 }

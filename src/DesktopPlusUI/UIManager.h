@@ -8,38 +8,70 @@
 #include <windows.h>
 #include <d3d11.h>
 
+#include <array>
+
 #include "openvr.h"
 #include "Matrices.h"
+#include "DPRect.h"
 
 #include "NotificationIcon.h"
-#include "DashboardUI.h"
+#include "OverlayDragger.h"
 #include "FloatingUI.h"
+#include "AuxUI.h"
+#include "VRKeyboard.h"
+#include "WindowOverlayBar.h"
+#include "WindowSettings.h"
+#include "WindowOverlayProperties.h"
 #include "WindowPerformance.h"
 
-//Screen/Overlay definitions used to cram the several overlays on the same render space
-#define TEXSPACE_VERTICAL_SPACING 2             //Space kept blank between render spaces so interpolation doesn't bleed in pixels
-#define TEXSPACE_DASHBOARD_UI_HEIGHT 1080
-#define TEXSPACE_FLOATING_UI_HEIGHT 440         //This will break when changing the icon size, but whatever
-#define TEXSPACE_KEYBOARD_HELPER_HEIGHT 128
-#define TEXSPACE_KEYBOARD_HELPER_SCALE 0.35f
-#define TEXSPACE_PERFORMANCE_MONITOR_WIDTH 850
-#define TEXSPACE_PERFORMANCE_MONITOR_HEIGHT 550
-#define TEXSPACE_TOTAL_WIDTH 1920
-#define TEXSPACE_TOTAL_HEIGHT (TEXSPACE_DASHBOARD_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_FLOATING_UI_HEIGHT + TEXSPACE_VERTICAL_SPACING + TEXSPACE_KEYBOARD_HELPER_HEIGHT +\
-                               TEXSPACE_VERTICAL_SPACING + TEXSPACE_PERFORMANCE_MONITOR_HEIGHT)
+//Overlay width definitions
 #define OVERLAY_WIDTH_METERS_DASHBOARD_UI 2.75f
+#define OVERLAY_WIDTH_METERS_SETTINGS 1.5f
+#define OVERLAY_WIDTH_METERS_KEYBOARD 2.75f
+#define OVERLAY_WIDTH_METERS_AUXUI_DRAG_HINT 0.12f
+#define OVERLAY_WIDTH_METERS_AUXUI_WINDOW_SELECT 0.75f
 
-class WindowKeyboardHelper;
+enum UITexspaceID
+{
+    ui_texspace_total,
+    ui_texspace_overlay_bar,
+    ui_texspace_floating_ui,
+    ui_texspace_settings,
+    ui_texspace_overlay_properties,
+    ui_texspace_keyboard,
+    ui_texspace_performance_monitor,
+    ui_texspace_aux_ui,
+    ui_texspace_MAX
+};
+
+class UITextureSpaces
+{
+    private:
+        DPRect m_TexspaceRects[ui_texspace_MAX];
+
+    public:
+        static UITextureSpaces& Get();
+
+        void Init(bool desktop_mode);
+        const DPRect& GetRect(UITexspaceID texspace_id) const;
+};
+
+static const char* const k_pch_bold_exclamation_mark = "\xE2\x9D\x97";
 
 class UIManager
 {
     private:
-        DashboardUI m_DashboardUI;
         FloatingUI m_FloatingUI;
+        VRKeyboard m_VRKeyboard;
+        AuxUI m_AuxUI;
+        WindowOverlayBar m_WindowOverlayBar;
+        WindowSettingsNew m_WindowSettingsNew;
+        WindowOverlayProperties m_WindowOverlayProperties;
         WindowPerformance m_WindowPerformance;
 
         HWND m_WindowHandle;
         NotificationIcon m_NotificationIcon;
+        OverlayDragger m_OverlayDragger;
         ID3D11Resource* m_SharedTextureRef; //Pointer to render target texture, should only be used for calls to SetSharedOverlayTexture()
         int m_RepeatFrame;
 
@@ -59,16 +91,32 @@ class UIManager
         bool m_ElevatedTaskSetUp;
         bool m_ComInitDone;
 
-        vr::VROverlayHandle_t m_OvrlHandle;
+        vr::VROverlayHandle_t m_OvrlHandleOverlayBar;
         vr::VROverlayHandle_t m_OvrlHandleFloatingUI;
-        vr::VROverlayHandle_t m_OvrlHandleKeyboardHelper;
+        vr::VROverlayHandle_t m_OvrlHandleSettings;
+        vr::VROverlayHandle_t m_OvrlHandleOverlayProperties;
+        vr::VROverlayHandle_t m_OvrlHandleKeyboard;
+        vr::VROverlayHandle_t m_OvrlHandleAuxUI;
+        vr::VROverlayHandle_t m_OvrlHandleDPlusDashboard;   //Cached to minimize FindOverlay() calls
+        vr::VROverlayHandle_t m_OvrlHandleSystemUI;         //Cached to minimize FindOverlay() calls
         bool m_OvrlVisible;
-        bool m_OvrlVisibleKeyboardHelper;
+
+        float m_OvrlOverlayBarAlpha;
+        ULONGLONG m_SystemUIActiveTick;
+        bool m_IsSystemUIHoveredFromSwitch;     //Set when the dashboard was hovered when dashboard tab was switched to prevent the UI overlay fading out right away
+        bool m_IsDummyOverlayTransformUnstable;
+
         //Dimensions of the mirror texture, updated from OpenVR when opening up settings or receiving a resolution update message from the overlay application
         int m_OvrlPixelWidth;
         int m_OvrlPixelHeight;
 
+        unsigned int m_TransformSyncValueCount;
+        float m_TransformSyncValues[16];        //Stores transform sync values until all are set for a full Matrix4
+
+        std::vector<MSG> m_DelayedICPMessages;  //Stores ICP messages that need to be delayed for processing within an ImGui frame
+
         void DisplayDashboardAppError(const std::string& str);
+        void SetOverlayInputEnabled(bool is_enabled);
 
     public:
         static UIManager* Get();
@@ -77,11 +125,16 @@ class UIManager
         ~UIManager();
 
         vr::EVRInitError InitOverlay();
-        void HandleIPCMessage(const MSG& msg);
+        void HandleIPCMessage(const MSG& msg, bool handle_delayed = false); //Messages that need processing within an ImGui frame are stored in m_DelayedICPMessages when handle_delayed is false
+        void HandleDelayedIPCMessages();                                    //Calls HandleIPCMessage() for messages in m_DelayedICPMessages and clears it
         void OnExit();
 
-        DashboardUI& GetDashboardUI();
         FloatingUI& GetFloatingUI();
+        VRKeyboard& GetVRKeyboard();
+        AuxUI& GetAuxUI();
+        WindowOverlayBar& GetOverlayBarWindow();
+        WindowSettingsNew& GetSettingsWindow();
+        WindowOverlayProperties& GetOverlayPropertiesWindow();
         WindowPerformance& GetPerformanceWindow();
 
         void SetWindowHandle(HWND handle);
@@ -89,10 +142,18 @@ class UIManager
         NotificationIcon& GetNotificationIcon();
         void SetSharedTextureRef(ID3D11Resource* ref);
         ID3D11Resource* GetSharedTextureRef() const;
+        OverlayDragger& GetOverlayDragger();
 
-        vr::VROverlayHandle_t GetOverlayHandle() const;
-        vr::VROverlayHandle_t GetOverlayHandleFloatingUI() const;
-        vr::VROverlayHandle_t GetOverlayHandleKeyboardHelper() const;
+        vr::VROverlayHandle_t GetOverlayHandleOverlayBar()         const;
+        vr::VROverlayHandle_t GetOverlayHandleFloatingUI()         const;
+        vr::VROverlayHandle_t GetOverlayHandleSettings()           const;
+        vr::VROverlayHandle_t GetOverlayHandleOverlayProperties()  const;
+        vr::VROverlayHandle_t GetOverlayHandleKeyboard()           const;
+        vr::VROverlayHandle_t GetOverlayHandleAuxUI()              const;
+        vr::VROverlayHandle_t GetOverlayHandleDPlusDashboard()     const;
+        vr::VROverlayHandle_t GetOverlayHandleSystemUI()           const;
+        std::array<vr::VROverlayHandle_t, 6> GetUIOverlayHandles() const;
+        bool IsDummyOverlayTransformUnstable() const;
 
         //This can be called by functions knowingly making changes which will cause visible layout re-alignment due to ImGui's nature of intermediate UI
         //This will cause 2 extra frames to be calculated but thrown away instantly to be more pleasing to the eye.
@@ -126,11 +187,12 @@ class UIManager
         bool IsElevatedTaskSetUp() const;
         void TryChangingWindowFocus() const;
 
-        bool IsOverlayVisible() const;
-        bool IsOverlayKeyboardHelperVisible() const;
+        bool IsOverlayBarOverlayVisible() const;
 
         void GetDesktopOverlayPixelSize(int& width, int& height) const;
         void UpdateDesktopOverlayPixelSize();
 
-        void PositionOverlay(WindowKeyboardHelper& window_kdbhelper);
+        void PositionOverlay();
+        void UpdateOverlayDrag();
+        void HighlightOverlay(unsigned int overlay_id);
 };

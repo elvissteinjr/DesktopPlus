@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   id="svg1468"
+   viewBox="0 0 32 32"
+   version="1.0"
+   y="0"
+   x="0"
+   width="32"
+   height="32">
+  <path
+     style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.999997;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
+     d="m 13.293103,7.5 v 1 H 11.63793 c -2.254206,0 -4.1379316,1.3829821 -4.1379316,3.652907 v 1.249758 c 0,2.269925 1.8837256,4.097336 4.1379316,4.097336 h 7.72414 c 2.254207,0 4.137931,-1.827411 4.137931,-4.097336 V 12.152907 C 23.500001,9.8829821 21.616277,8.5 19.36207,8.5 h -1.655173 v -1 z M 10.5,14.388857 c 0.60942,0 1.103448,0.497476 1.103448,1.111143 0,0.613668 -0.494028,1.111142 -1.103448,1.111142 -0.6094185,0 -1.1034485,-0.497474 -1.1034485,-1.111142 0,-0.613667 0.49403,-1.111143 1.1034485,-1.111143 z m 10.000002,0 c 0.609418,0 1.103446,0.497476 1.103446,1.111143 0,0.613668 -0.494028,1.111142 -1.103446,1.111142 -0.609418,0 -1.103449,-0.497474 -1.103449,-1.111142 0,-0.613667 0.494031,-1.111143 1.103449,-1.111143 z"
+     id="path866" />
+  <defs
+     id="defs14">
+    <mask
+       maskUnits="userSpaceOnUse"
+       id="mask863">
+      <g
+         id="g871"
+         transform="matrix(-1,0,0,1,24.499997,-1.9)">
+        <rect
+           transform="scale(-1,1)"
+           style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
+           id="rect865"
+           width="32"
+           height="32"
+           x="-32"
+           y="0" />
+        <g
+           id="g869"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.50536537px;line-height:125%;font-family:Calibri;-inkscape-font-specification:Calibri;opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
+           transform="scale(0.98422736,1.0160254)"
+           aria-label="L">
+          <path
+             id="path867"
+             style="stroke-width:1"
+             d="m 20.320505,13.21136 c 0,0.100947 -0.005,0.186751 -0.01514,0.257413 -0.01009,0.06561 -0.02776,0.123658 -0.053,0.174133 -0.02019,0.04543 -0.04795,0.08076 -0.08328,0.105993 -0.03029,0.02019 -0.06814,0.03028 -0.113564,0.03028 h -4.3306 c -0.116089,0 -0.22713,-0.03785 -0.333124,-0.113564 -0.100946,-0.08076 -0.151423,-0.219559 -0.151419,-0.416404 l 1.75e-4,-9.0700292 c 10e-7,-0.040379 0.01009,-0.07571 0.03028,-0.1059937 0.02019,-0.030284 0.05552,-0.052997 0.105994,-0.068139 0.05047,-0.020189 0.118612,-0.035331 0.204416,-0.045426 0.0858,-0.015142 0.189275,-0.022713 0.31041,-0.022713 0.126184,0 0.229654,0.00757 0.31041,0.022713 0.08581,0.010095 0.153944,0.025237 0.204417,0.045426 0.05047,0.015142 0.08581,0.037855 0.105993,0.068139 0.02019,0.030284 0.03028,0.065615 0.03028,0.1059937 l -1.75e-4,8.4719252 h 3.512935 c 0.04543,0 0.08328,0.01262 0.113564,0.03786 0.03533,0.02019 0.06309,0.05299 0.08328,0.09842 0.02524,0.04038 0.04291,0.0959 0.053,0.166562 0.01009,0.07066 0.01514,0.156466 0.01514,0.257413 z" />
+        </g>
+      </g>
+    </mask>
+  </defs>
+  <metadata
+     id="metadata11">
+    <rdf:RDF>
+      <cc:Work>
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+        <dc:title></dc:title>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <path
+     style="opacity:1;fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
+     d="m 4,21.5 -2,8 h 28 l -2,-8 H 16 Z"
+     id="path818" />
+  <path
+     id="path849"
+     style="fill:#000000;stroke:#ffffff;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"
+     d="m 13.5,25.5 h 4 m -2,2 v -4" />
+</svg>

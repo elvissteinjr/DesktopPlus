@@ -10,7 +10,6 @@
 
 #include "CommonHeaders.h"
 #include "CaptureManager.h"
-#include "PickerDummyWindow.h"
 
 #include "ThreadData.h"
 
@@ -72,22 +71,19 @@ bool DPWinRT_Internal_StartCapture(vr::VROverlayHandle_t overlay_handle, const D
     DPWinRTOverlayData overlay_data;
     overlay_data.Handle = overlay_handle;
 
-    //If not using picker, try to find a thread already capturing this item
-    if (!data.UsePicker)
+    //Try to find a thread already capturing this item
+    for (auto& thread : g_Threads)
     {
-        for (auto& thread : g_Threads)
+        if ( (thread.DesktopID == data.DesktopID) && (thread.SourceWindow == data.SourceWindow) )
         {
-            if ( (thread.DesktopID == data.DesktopID) && (thread.SourceWindow == data.SourceWindow) )
-            {
-                thread.Overlays.push_back(overlay_data);
-                
-                ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_UPDATE_DATA, 0, 0);
-                return true;
-            }
+            thread.Overlays.push_back(overlay_data);
+
+            ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_UPDATE_DATA, 0, 0);
+            return true;
         }
     }
 
-    //Create new thread if no existing one was found or using picker
+    //Create new thread if no existing one was found
     g_Threads.push_back(data);
     g_Threads.back().Overlays.push_back(overlay_data);
 
@@ -110,6 +106,9 @@ void DPWinRT_Init()
     #ifndef DPLUSWINRT_STUB
 
     g_MainThreadID = ::GetCurrentThreadId();
+    //Reserve thread data vector size to avoid potential race condition between resize and thread creation when many overlays are created back-to-back (while also avoiding explicit syncing there).
+    //100 should be pretty safe as a limit, considering k_unMaxOverlayCount (128) with system overlays and Desktop+ UI overlays... also 100 captures are insane either way
+    g_Threads.reserve(100);
 
     //Init results of capability query functions so we don't need an apartment on the main thread
     winrt::init_apartment(winrt::apartment_type::multi_threaded);
@@ -125,10 +124,8 @@ void DPWinRT_Init()
                 g_APIContractPresent = 9;
             else if (winrt::ApiInformation::IsApiContractPresent(L"Windows.Foundation.UniversalApiContract", 8))
                 g_APIContractPresent = 8;
-            else 
+            else
                 g_APIContractPresent = 1;
-
-            PickerDummyWindow::RegisterWindowClass();
         }
         catch (const winrt::hresult_error&)
         {
@@ -148,7 +145,7 @@ void DPWinRT_Init()
 bool DPWinRT_IsCaptureSupported()
 {
     #ifndef DPLUSWINRT_STUB
-        return g_IsCaptureSupported;
+        return ((g_IsCaptureSupported) && (DPWinRT_IsCaptureFromHandleSupported()));
     #else
         return false;
     #endif
@@ -176,18 +173,6 @@ bool DPWinRT_IsCaptureCursorEnabledPropertySupported()
 {
     #ifndef DPLUSWINRT_STUB
         return (g_APIContractPresent >= 9);
-    #else
-        return false;
-    #endif
-}
-
-bool DPWinRT_StartCaptureFromPicker(vr::VROverlayHandle_t overlay_handle)
-{
-    #ifndef DPLUSWINRT_STUB
-        DPWinRTThreadData data;
-        data.UsePicker = true;
-
-        return DPWinRT_Internal_StartCapture(overlay_handle, data);
     #else
         return false;
     #endif
@@ -505,12 +490,7 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
         auto capture_manager = std::make_unique<CaptureManager>(data, g_MainThreadID);
 
         //Start capture
-        winrt::IAsyncOperation<winrt::GraphicsCaptureItem> picker_operation = nullptr;
-        if (data.UsePicker)
-        {
-            picker_operation = capture_manager->StartCaptureWithPickerAsync();
-        }
-        else if (DPWinRT_IsCaptureFromHandleSupported())
+        if (DPWinRT_IsCaptureFromHandleSupported())
         {
             if (data.SourceWindow != nullptr)
             {
@@ -618,12 +598,6 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
                 TranslateMessage(&msg);
                 DispatchMessageW(&msg);
             }
-        }
-
-        //If there's still a pending picker operation, cancel it
-        if ( (picker_operation != nullptr) && (picker_operation.Status() == winrt::AsyncStatus::Started) )
-        {
-            picker_operation.Cancel();
         }
 
         capture_manager = nullptr;

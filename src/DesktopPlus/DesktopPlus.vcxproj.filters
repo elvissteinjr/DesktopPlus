@@ -35,15 +35,17 @@
     <ClCompile Include="..\Shared\OverlayManager.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
-    <ClCompile Include="..\Shared\WindowList.cpp">
-      <Filter>Shared</Filter>
-    </ClCompile>
     <ClCompile Include="..\Shared\OUtoSBSConverter.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
-    <ClCompile Include="WindowManager.cpp" />
     <ClCompile Include="ElevatedMode.cpp" />
     <ClCompile Include="BackgroundOverlay.cpp" />
+    <ClCompile Include="..\Shared\OverlayDragger.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Shared\WindowManager.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -85,15 +87,17 @@
     <ClInclude Include="..\Shared\OverlayManager.h">
       <Filter>Shared</Filter>
     </ClInclude>
-    <ClInclude Include="..\Shared\WindowList.h">
-      <Filter>Shared</Filter>
-    </ClInclude>
     <ClInclude Include="..\Shared\OUtoSBSConverter.h">
       <Filter>Shared</Filter>
     </ClInclude>
-    <ClInclude Include="WindowManager.h" />
     <ClInclude Include="ElevatedMode.h" />
     <ClInclude Include="BackgroundOverlay.h" />
+    <ClInclude Include="..\Shared\OverlayDragger.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\WindowManager.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DesktopPlus.rc" />

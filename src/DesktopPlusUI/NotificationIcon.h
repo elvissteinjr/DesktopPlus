@@ -20,5 +20,6 @@ class NotificationIcon
         NotificationIcon();
         ~NotificationIcon();
         bool Init(HINSTANCE hinstance);
+        void RefreshPopupMenu();        //Destroys the popup menu if it exists and recreates it. Called after Init() to update translation strings
         void OnCallbackMessage(WPARAM wparam, LPARAM lparam);
 };

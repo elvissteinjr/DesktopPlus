@@ -69,4 +69,4 @@ IMGUI_IMPL_API void ImGui_ImplOpenVR_InputOnVRKeyboardClosed();
 IMGUI_IMPL_API void ImGui_ImplOpenVR_AddInputFromOSK(const char* input);
 
 // Set overlay intersection mask from current top-level window outer rects
-IMGUI_IMPL_API void ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(vr::VROverlayHandle_t overlay_handle);
+IMGUI_IMPL_API void ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(vr::VROverlayHandle_t* overlay_handles, size_t overlay_count);

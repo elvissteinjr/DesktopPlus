@@ -1,73 +1,65 @@
 #pragma once
 
-#include <vector>
-#include <string>
+#include "FloatingWindow.h"
 
-#include "imgui.h"
+enum WindowSettingsPage
+{
+    wndsettings_page_none,
+    wndsettings_page_main,
+    wndsettings_page_keyboard
+};
 
-#include "ConfigManager.h"
-#include "TextureManager.h"
-#include "WindowList.h"
+enum WindowSettingsMainCategory
+{
+    wndsettings_cat_interface,
+    wndsettings_cat_keyboard,
+    wndsettings_cat_window_overlays,
+    wndsettings_cat_version_info,
+    wndsettings_cat_warnings,
+    wndsettings_cat_startup,
+    wndsettings_cat_troubleshooting,
+    wndsettings_cat_MAX
+};
 
-//The entire settings interface
-class WindowSettings
+class WindowSettingsNew : public FloatingWindow
 {
     private:
-        ImVec2 m_Size;
-        bool m_Visible;
-        float m_Alpha;
+        std::vector<WindowSettingsPage> m_PageStack;
+        int m_PageStackPos;
+        int m_PageStackPosAnimation;
+        WindowSettingsPage m_PageAppearing; //Similar to ImGui::IsWindowAppearing(), equals the current page ID for a single frame if it or the window is newly appearing
 
-        bool m_ActionEditIsNew;
-        bool m_OverlayNameBufferNeedsUpdate;
-        std::vector<WindowInfo> m_CaptureWindowList;
-        ImGuiStyle m_StyleOrig;
-        bool m_IsStyleScaled;
+        int m_PageAnimationDir;
+        float m_PageAnimationProgress;
+        float m_PageAnimationStartPos;
+        float m_PageAnimationOffset;
 
-        void UpdateWarnings();
-        void UpdateCatOverlay();
-        void UpdateCatOverlayTabGeneral();
-        void UpdateCatOverlayTabCapture();
-        void UpdateCatOverlayTabAdvanced();
-        void UpdateCatOverlayTabInterface();
-        void UpdateCatInterface();
-        void UpdateCatActions();
-        void UpdateCatInput();
-        void UpdateCatWindows();
-        void UpdateCatPerformance();
-        void UpdateCatMisc();
+        bool m_IsScrolling;
+        float m_ScrollMainCatPos[wndsettings_cat_MAX];
+        float m_ScrollMainCurrent;
+        float m_ScrollMainMaxPos;
+        float m_ScrollProgress;
+        float m_ScrollStartPos;
+        float m_ScrollTargetPos;
 
-        void PushInterfaceScale();
-        void PopInterfaceScale();
+        float m_Column0Width;
 
-        bool ButtonKeybind(unsigned char* key_code, bool no_mouse = false);
-        bool ButtonAction(const char* str_id, ActionID& action_id);
-        bool ButtonHotkey(unsigned int hotkey_id);
-        void ProfileSelector(bool multi_overlay);
-        void UpdateWindowList(HWND selected_window, std::string& selected_window_str);
-        void ActionOrderSetting(unsigned int overlay_id = UINT_MAX);
-        void UpdateLimiterSetting(float column_width_0, bool is_override = false);
-        bool ActionButtonRow(ActionID action_id, int list_pos, int& list_selected_pos, unsigned int overlay_id = UINT_MAX);
+        virtual void WindowUpdate();
 
-        void PopupQuickStartGuide();
-        bool PopupCurrentOverlayManage();
-        bool PopupCurrentOverlayRename();
-        void PopupNewOverlayProfile(std::vector<std::string>& overlay_profile_list, int& overlay_profile_selected_id, bool multi_overlay);
-        void PopupActionEdit(CustomAction& action, int id);
-        void PopupOverlayDetachedPositionChange();
-        bool PopupIconSelect(std::string& filename);
-        void PopupSettingsReset();
+        void UpdatePageMain();
+        void UpdatePageMainCatInterface();
+        void UpdatePageMainCatInput();
+        void UpdatePageMainCatWindows();
+        void UpdatePageMainCatMisc();
+        void UpdatePageKeyboardLayout();
 
-        void HighlightOverlay(int overlay_id);
-        int GetOverlayIcon(unsigned int overlay_id, TMNGRTexID& texture_id); //Returns icon cache id or -1 when unused
-        void DuplicateCurrentOverlay();
+        void PageGoForward(WindowSettingsPage new_page);
+        void PageGoBack();
+        void PageGoHome();
 
     public:
-        WindowSettings();
-        void Show();
-        void Hide();
-        void Update();
-
-        bool IsShown() const;
-        const ImVec2& GetSize() const;
-        void RefreshCurrentOverlayNameBuffer();
+        WindowSettingsNew();
+        virtual void Hide(bool skip_fade = false);
+        virtual void ResetTransform();
+        virtual vr::VROverlayHandle_t GetOverlayHandle() const;
 };

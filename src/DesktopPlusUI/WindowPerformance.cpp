@@ -7,7 +7,6 @@
 #include "ImGuiExt.h"
 #include "TextureManager.h"
 #include "InterprocessMessaging.h"
-#include "WindowSettings.h"
 #include "Util.h"
 #include "UIManager.h"
 #include "OverlayManager.h"
@@ -19,6 +18,7 @@ WindowPerformance::WindowPerformance() :
     m_VisibleTickLast(0),
     m_IsPopupOpen(false),
     m_PIDLast(0),
+    m_OffsetFrameIndex(0),
     m_OffsetFramesPresents(0),
     m_OffsetReprojectedFrames(0),
     m_OffsetDroppedFrames(0),
@@ -26,6 +26,7 @@ WindowPerformance::WindowPerformance() :
     m_FrameTimeGPU(0.0f),
     m_ReprojectionRatio(0.0f),
     m_DroppedFrames(0),
+    m_BatteryHMD(-1.0f),
     m_BatteryLeft(-1.0f),
     m_BatteryRight(-1.0f),
     m_FrameTimeLastIndex(0),
@@ -51,7 +52,8 @@ void WindowPerformance::Update(bool show_as_popup)
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {TEXSPACE_PERFORMANCE_MONITOR_WIDTH - 1, TEXSPACE_PERFORMANCE_MONITOR_HEIGHT - 1});
+    const DPRect& tex_rect = UITextureSpaces::Get().GetRect(ui_texspace_performance_monitor);
+    ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {(float)tex_rect.GetWidth() - 1, (float)tex_rect.GetHeight() - 1});
 
     if (show_as_popup)
     {
@@ -122,7 +124,9 @@ void WindowPerformance::Update(bool show_as_popup)
             CheckScheduledOverlaySharedTextureUpdate();
         }
 
-        ImGui::SetNextWindowPos(ImVec2(1.0f, io.DisplaySize.y - 1.0f), 0, ImVec2(0.0f, 1.0f)); //Offsets to stay away from the texture edges
+        //Center in overlay space
+        const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_performance_monitor);
+        ImGui::SetNextWindowPos(ImVec2((float)rect.GetCenter().x, (float)rect.GetCenter().y), 0, ImVec2(0.5f, 0.5f));
 
         ImGui::Begin("WindowPerformance", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
                                                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
@@ -245,7 +249,7 @@ void WindowPerformance::DisplayStatsLarge()
     //--Table CPU
     if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu))
     {
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "CPU");
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_PerformanceMonitorCPU));
         ImGui::NextColumn();
         ImGui::NextColumn();
 
@@ -253,7 +257,7 @@ void WindowPerformance::DisplayStatsLarge()
         ImGui::NextColumn();
 
         //-CPU Frame Time
-        ImGui::Text("Frame Time:");
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorFrameTime));
         ImGui::NextColumn();
 
         //Warning color when frame time above 95% vsync time
@@ -273,7 +277,7 @@ void WindowPerformance::DisplayStatsLarge()
         ImGui::NextColumn();
 
         //-CPU Load
-        ImGui::Text("Load:");
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorLoad));
         ImGui::NextColumn();
 
         ImGui::TextRight(text_percent_width, "%.2f", m_PerfData.GetCPULoadPrecentage());
@@ -284,7 +288,7 @@ void WindowPerformance::DisplayStatsLarge()
 
         //-RAM
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() - item_spacing_half);  //Reduce horizontal spacing
-        ImGui::Text("RAM:");
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorRAM));
         ImGui::NextColumn();
 
         //Right align
@@ -296,14 +300,14 @@ void WindowPerformance::DisplayStatsLarge()
     if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu))
     {
         row_gpu_y = ImGui::GetCursorPosY();
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "GPU");
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_PerformanceMonitorGPU));
         ImGui::NextColumn();
         ImGui::NextColumn();
         ImGui::NextColumn();
         ImGui::NextColumn();
 
         //-GPU Frame Time
-        ImGui::Text("Frame Time:");
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorFrameTime));
         ImGui::NextColumn();
 
         if (m_FrameTimeGPU > frame_time_warning_limit)
@@ -323,7 +327,7 @@ void WindowPerformance::DisplayStatsLarge()
         if (!ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_disable_gpu_counters)) //No point in showing it all if it's not updating
         {
             //-GPU Load
-            ImGui::Text("Load:");
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorLoad));
             ImGui::NextColumn();
 
             ImGui::TextRight(text_percent_width, "%.2f", m_PerfData.GetGPULoadPrecentage());
@@ -333,7 +337,7 @@ void WindowPerformance::DisplayStatsLarge()
 
             //-VRAM
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() - item_spacing_half);  //Reduce horizontal spacing
-            ImGui::Text("VRAM:");
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorVRAM));
             ImGui::NextColumn();
             ImGui::TextRight(right_border_offset - 1.0f, "%.2f/%.2f GB", m_PerfData.GetVRAMUsedGB(), m_PerfData.GetVRAMTotalGB());
             ImGui::NextColumn();
@@ -351,32 +355,32 @@ void WindowPerformance::DisplayStatsLarge()
         //-Time
         if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_time))
         {
-            ImGui::TextRight(right_border_offset, m_TimeStr.c_str());
+            ImGui::TextRightUnformatted(right_border_offset, m_TimeStr.c_str());
         }
 
         ImGui::NextColumn();
 
         if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_fps))
         {
-            //No VR app means no FPS readings
-            if (m_PIDLast == 0)
-                ImGui::PushItemDisabled();
-
             //-FPS
-            ImGui::Text("FPS:");
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorFPS));
             ImGui::NextColumn();
             ImGui::TextRight(0.0f, "%d", m_FPS);
             ImGui::NextColumn();
 
             //-Average FPS
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() - item_spacing_half);  //Reduce horizontal spacing
-            ImGui::Text("Average FPS:");
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorFPSAverage));
             ImGui::NextColumn();
             ImGui::TextRight(right_border_offset, "%.2f", m_FPS_Average);
             ImGui::NextColumn();
 
+            //No VR app means no frame statistics (FPS still gets counted, though)
+            if (m_PIDLast == 0)
+                ImGui::PushItemDisabled();
+
             //-Reprojection Ratio
-            ImGui::Text("Reprojection Ratio:");
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorReprojectionRatio));
             ImGui::NextColumn();
 
             ImGui::TextRight(text_percent_width, "%.2f", m_ReprojectionRatio);
@@ -386,7 +390,7 @@ void WindowPerformance::DisplayStatsLarge()
 
             //-Dropped Frames
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() - item_spacing_half);  //Reduce horizontal spacing
-            ImGui::Text("Dropped Frames:");
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorDroppedFrames));
             ImGui::NextColumn();
             ImGui::TextRight(right_border_offset, "%u", m_DroppedFrames);
             ImGui::NextColumn();
@@ -398,7 +402,7 @@ void WindowPerformance::DisplayStatsLarge()
         if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_battery))
         {
             //-Battery Left
-            ImGui::Text("Left Controller:");
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorBatteryLeft));
             ImGui::NextColumn();
 
             if (m_BatteryLeft != -1.0f)
@@ -418,14 +422,14 @@ void WindowPerformance::DisplayStatsLarge()
             else
             {
                 ImGui::PushItemDisabled();
-                ImGui::TextRight(0.0f, "N/A");
+                ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorBatteryDisconnected));
                 ImGui::NextColumn();
                 ImGui::PopItemDisabled();
             }
 
             //-Battery Right
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() - item_spacing_half);  //Reduce horizontal spacing
-            ImGui::Text("Right Controller:");
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorBatteryRight));
             ImGui::NextColumn();
 
             if (m_BatteryRight != -1.0f)
@@ -445,9 +449,27 @@ void WindowPerformance::DisplayStatsLarge()
             else
             {
                 ImGui::PushItemDisabled();
-                ImGui::TextRight(right_border_offset, "N/A");
+                ImGui::TextRightUnformatted(right_border_offset, TranslationManager::GetString(tstr_PerformanceMonitorBatteryDisconnected));
                 ImGui::NextColumn();
                 ImGui::PopItemDisabled();
+            }
+
+            //-Battery HMD (only shown if available)
+            if (m_BatteryHMD != -1.0f)
+            {
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorBatteryHMD));
+                ImGui::NextColumn();
+                //15% warning color
+                if (m_BatteryHMD < 15.0f)
+                    ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
+
+                ImGui::TextRight(text_percent_width, "%.0f", m_BatteryHMD);
+                ImGui::SameLine(0.0f, 0.0f);
+                ImGui::TextUnformatted("%");
+                ImGui::NextColumn();
+
+                if (m_BatteryHMD < 15.0f)
+                    ImGui::PopStyleColor();
             }
 
             float right_offset;
@@ -456,7 +478,7 @@ void WindowPerformance::DisplayStatsLarge()
             if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_trackers))
             {
                 unsigned int tracker_number = 1;
-                for (const auto& tracker_pair : m_BatteryTrackers)
+                for (const auto& tracker_info : m_BatteryTrackers)
                 {
                     //Reduce horizontal spacing on the right column
                     if (ImGui::GetColumnIndex() == 2)
@@ -469,19 +491,19 @@ void WindowPerformance::DisplayStatsLarge()
                         right_offset = text_percent_width;
                     }
 
-                    ImGui::Text("Tracker #%u:", tracker_number);
+                    ImGui::TextUnformatted(tracker_info.Name.c_str());
                     ImGui::NextColumn();
 
                     //15% warning color
-                    if (tracker_pair.second < 15.0f)
+                    if (tracker_info.BatteryLevel < 15.0f)
                         ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-                    ImGui::TextRight(right_offset, "%.0f", tracker_pair.second);
+                    ImGui::TextRight(right_offset, "%.0f", tracker_info.BatteryLevel);
                     ImGui::SameLine(0.0f, 0.0f);
                     ImGui::TextUnformatted("%");
                     ImGui::NextColumn();
 
-                    if (tracker_pair.second < 15.0f)
+                    if (tracker_info.BatteryLevel < 15.0f)
                         ImGui::PopStyleColor();
 
                     tracker_number++;
@@ -519,7 +541,7 @@ void WindowPerformance::DisplayStatsLarge()
                 else
                 {
                     ImGui::PushItemDisabled();
-                    ImGui::TextRight(right_offset, "N/A");
+                    ImGui::TextRightUnformatted(right_offset, TranslationManager::GetString(tstr_PerformanceMonitorCompactViveWirelessTempNotAvailable));
                     ImGui::PopItemDisabled();
                 }
             }
@@ -530,7 +552,7 @@ void WindowPerformance::DisplayStatsLarge()
     if (ImGui::GetItemRectSize().y == 0.0f)
     {
         ImGui::Columns(1);
-        ImGui::TextUnformatted("No Performance Monitor Items enabled.");
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorEmpty));
     }
 }
 
@@ -540,6 +562,7 @@ void WindowPerformance::DisplayStatsCompact()
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, ImGui::GetStyle().ItemSpacing.y});
 
+    //These width caluclations are not using the translated strings, but there really is no space for those to be longer either, so whatever
     static const float column_width_0     = ImGui::GetFontSize() * 1.5f;
     float column_width_cpu_1              = ImGui::CalcTextSize(" 000.00 ms ").x;
     float column_width_cpu_2              = ImGui::CalcTextSize(" 000.00% ").x;
@@ -626,7 +649,7 @@ void WindowPerformance::DisplayStatsCompact()
     //--Row CPU
     if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu))
     {
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "CPU");
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_PerformanceMonitorCompactCPU));
         ImGui::NextColumn();
 
         //-CPU Frame Time
@@ -659,7 +682,7 @@ void WindowPerformance::DisplayStatsCompact()
     //--Row GPU
     if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu))
     {
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "GPU");
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_PerformanceMonitorCompactGPU));
         ImGui::NextColumn();
 
         //-GPU Frame Time
@@ -694,10 +717,6 @@ void WindowPerformance::DisplayStatsCompact()
     //--Row FPS
     if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_fps))
     {
-        //No VR app means no FPS readings
-        if (m_PIDLast == 0)
-            ImGui::PushItemDisabled();
-
         ImGui::Columns(5, "ColumnStatsCompactFPS", false);
         ImGui::SetColumnWidth(0, column_width_0);
         ImGui::SetColumnWidth(1, column_width_fps_1);
@@ -705,7 +724,7 @@ void WindowPerformance::DisplayStatsCompact()
         ImGui::SetColumnWidth(3, column_width_fps_3);
         ImGui::SetColumnWidth(4, column_width_fps_4);
 
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "FPS");
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_PerformanceMonitorCompactFPS));
 
         //-FPS
         ImGui::NextColumn();
@@ -715,19 +734,23 @@ void WindowPerformance::DisplayStatsCompact()
         //-Average FPS
         ImGui::TextRight(text_avg_cwidth, "%.2f", m_FPS_Average);
         ImGui::SameLine(0.0f, 0.0f);
-        ImGui::TextRight(0.0f, "AVG");
+        ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactFPSAverage));
         ImGui::NextColumn();
+
+        //No VR app means no frame statistics (FPS still gets counted, though)
+        if (m_PIDLast == 0)
+            ImGui::PushItemDisabled();
 
         //-Reprojection Ratio
         ImGui::TextRight(text_rpr_cwidth, "%.2f", m_ReprojectionRatio);
         ImGui::SameLine(0.0f, 0.0f);
-        ImGui::TextRight(0.0f, "%% RPR");
+        ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactReprojectionRatio));
         ImGui::NextColumn();
 
         //-Dropped Frames
         ImGui::TextRight(text_drp_cwidth, "%u", m_DroppedFrames);
         ImGui::SameLine(0.0f, 0.0f);
-        ImGui::TextRight(0.0f, "DRP");
+        ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactDroppedFrames));
         ImGui::NextColumn();
 
         if (m_PIDLast == 0)
@@ -745,11 +768,11 @@ void WindowPerformance::DisplayStatsCompact()
         ImGui::SetColumnWidth(3, column_width_bat);
         ImGui::SetColumnWidth(4, column_width_bat);
 
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "BAT");
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_PerformanceMonitorCompactBattery));
         ImGui::NextColumn();
 
         //-Battery Left
-        ImGui::TextRight(text_percentage_cwidth, "L");
+        ImGui::TextRightUnformatted(text_percentage_cwidth, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryLeft));
         ImGui::SameLine(0.0f, 0.0f);
 
         if (m_BatteryLeft != -1.0f)
@@ -766,14 +789,14 @@ void WindowPerformance::DisplayStatsCompact()
         else
         {
             ImGui::PushItemDisabled();
-            ImGui::TextRight(0.0f, "N/A");
+            ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryDisconnected));
             ImGui::PopItemDisabled();
         }
 
         ImGui::NextColumn();
 
         //-Battery Right
-        ImGui::TextRight(text_percentage_cwidth, "R");
+        ImGui::TextRightUnformatted(text_percentage_cwidth, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryRight));
         ImGui::SameLine(0.0f, 0.0f);
 
         if (m_BatteryRight != -1.0f)
@@ -790,8 +813,26 @@ void WindowPerformance::DisplayStatsCompact()
         else
         {
             ImGui::PushItemDisabled();
-            ImGui::TextRight(0.0f, "N/A");
+            ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryDisconnected));
             ImGui::PopItemDisabled();
+        }
+
+        ImGui::NextColumn();
+
+        //-Battery HMD (only shown if available)
+        if (m_BatteryHMD != -1.0f)
+        {
+            ImGui::TextRightUnformatted(text_percentage_cwidth, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryHMD));
+            ImGui::SameLine(0.0f, 0.0f);
+
+            //15% warning color
+            if (m_BatteryHMD < 15.0f)
+                ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
+
+            ImGui::TextRight(0.0f, "%.0f%%", m_BatteryHMD);
+
+            if (m_BatteryHMD < 15.0f)
+                ImGui::PopStyleColor();
         }
 
         ImGui::NextColumn();
@@ -800,7 +841,7 @@ void WindowPerformance::DisplayStatsCompact()
         if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_trackers))
         {
             unsigned int tracker_number = 1;
-            for (const auto& tracker_pair : m_BatteryTrackers)
+            for (const auto& tracker_info : m_BatteryTrackers)
             {
                 //Skip first column
                 if (ImGui::GetColumnIndex() == 0)
@@ -808,16 +849,16 @@ void WindowPerformance::DisplayStatsCompact()
                     ImGui::NextColumn();
                 }
 
-                ImGui::TextRight(text_percentage_cwidth, "T%u", tracker_number);
+                ImGui::TextRightUnformatted(text_percentage_cwidth, tracker_info.NameCompact.c_str());
                 ImGui::SameLine(0.0f, 0.0f);
 
                 //15% warning color
-                if (tracker_pair.second < 15.0f)
+                if (tracker_info.BatteryLevel < 15.0f)
                     ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-                ImGui::TextRight(0.0f, "%.0f%%", tracker_pair.second);
+                ImGui::TextRight(0.0f, "%.0f%%", tracker_info.BatteryLevel);
 
-                if (tracker_pair.second < 15.0f)
+                if (tracker_info.BatteryLevel < 15.0f)
                     ImGui::PopStyleColor();
 
                 ImGui::NextColumn();
@@ -835,7 +876,7 @@ void WindowPerformance::DisplayStatsCompact()
                 ImGui::NextColumn();
             }
 
-            ImGui::TextRight(text_percentage_cwidth, "VW");
+            ImGui::TextRightUnformatted(text_percentage_cwidth, "VW");
             ImGui::SameLine(0.0f, 0.0f);
 
             if (m_ViveWirelessTemp != -1)
@@ -852,7 +893,7 @@ void WindowPerformance::DisplayStatsCompact()
             else
             {
                 ImGui::PushItemDisabled();
-                ImGui::TextRight(0.0f, "N/A");
+                ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactViveWirelessTempNotAvailable));
                 ImGui::PopItemDisabled();
             }
         }
@@ -864,7 +905,7 @@ void WindowPerformance::DisplayStatsCompact()
     if (ImGui::GetItemRectSize().y == 0.0f)
     {
         ImGui::Columns(1);
-        ImGui::TextUnformatted("No Performance Monitor Items enabled.");
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorEmpty));
     }
 }
 
@@ -976,13 +1017,13 @@ void WindowPerformance::UpdateStatValuesSteamVR()
     }
 
     //Apply offsets to stat values
-    uint32_t frame_presents     = frame_stats.m_nNumFramePresents     - m_OffsetFramesPresents;
-    uint32_t reprojected_frames = frame_stats.m_nNumReprojectedFrames - m_OffsetReprojectedFrames;
+    uint32_t frame_presents               = frame_stats.m_nNumFramePresents             - m_OffsetFramesPresents;
+    uint32_t reprojected_frames           = frame_stats.m_nNumReprojectedFrames         - m_OffsetReprojectedFrames;
 
     //Update frame count if at least a second passed since the last time
-    if ( (m_PIDLast != 0) && (m_FPS_TickLast + 1000 <= ::GetTickCount64()) )
+    if (m_FPS_TickLast + 1000 <= ::GetTickCount64())
     {
-        uint32_t frame_count = frame_presents - reprojected_frames;
+        uint32_t frame_count = frame_timing_current.m_nFrameIndex - m_OffsetFrameIndex;
 
         if (vr::VRSystem()->GetTrackedDeviceActivityLevel(vr::k_unTrackedDeviceIndex_Hmd) != vr::k_EDeviceActivityLevel_Standby) //Don't count frames when entering standby
         {
@@ -1001,7 +1042,7 @@ void WindowPerformance::UpdateStatValuesSteamVR()
 
         m_FPS_TickLast   = ::GetTickCount64();
         m_FrameCountLast = frame_count;
-    }  
+    }
 
     //Reprojection ratio and dropped frames
     m_ReprojectionRatio = (frame_presents != 0) ? ((float)reprojected_frames / frame_presents) * 100.f : 0.0f;
@@ -1031,10 +1072,20 @@ void WindowPerformance::UpdateStatValuesSteamVR()
         m_BatteryRight = -1.0f;
     }
 
-    //Battery Trackers
-    for (auto& tracker_pair : m_BatteryTrackers)
+    //Battery HMD
+    if (vr::VRSystem()->GetBoolTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DeviceProvidesBatteryStatus_Bool))
     {
-        tracker_pair.second = vr::VRSystem()->GetFloatTrackedDeviceProperty(tracker_pair.first, vr::Prop_DeviceBatteryPercentage_Float) * 100.0f;
+        m_BatteryHMD = vr::VRSystem()->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DeviceBatteryPercentage_Float) * 100.0f;
+    }
+    else
+    {
+        m_BatteryHMD = -1.0f;
+    }
+
+    //Battery Trackers
+    for (auto& tracker_info : m_BatteryTrackers)
+    {
+        tracker_info.BatteryLevel = vr::VRSystem()->GetFloatTrackedDeviceProperty(tracker_info.DeviceIndex, vr::Prop_DeviceBatteryPercentage_Float) * 100.0f;
     }
 }
 
@@ -1227,10 +1278,9 @@ void WindowPerformance::CheckScheduledOverlaySharedTextureUpdate()
 
     if (m_IsOverlaySharedTextureUpdateNeeded)
     {
-        vr::HmdVector2_t mouse_scale;
-        mouse_scale.v[0] = TEXSPACE_TOTAL_WIDTH;
-        mouse_scale.v[1] = TEXSPACE_TOTAL_HEIGHT;
+        const DPRect& rect_total = UITextureSpaces::Get().GetRect(ui_texspace_total);
 
+        vr::HmdVector2_t mouse_scale = {(float)rect_total.GetWidth(), (float)rect_total.GetHeight()};
 
         bool all_ok = true;
 
@@ -1247,7 +1297,7 @@ void WindowPerformance::CheckScheduledOverlaySharedTextureUpdate()
                     //Check if we're allowed to render to it from this process yet, otherwise try again next frame
                     if (vr::VROverlay()->GetOverlayRenderingPid(ovrl_handle) == ::GetCurrentProcessId())
                     {
-                        SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandle(), ovrl_handle, UIManager::Get()->GetSharedTextureRef());
+                        SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), ovrl_handle, UIManager::Get()->GetSharedTextureRef());
                         vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
                     }
                     else
@@ -1276,20 +1326,18 @@ void WindowPerformance::OnWindowBoundsChanged()
         return;
 
     //Texture bounds
-    float spacing_size = (float)TEXSPACE_VERTICAL_SPACING / TEXSPACE_TOTAL_HEIGHT;
-    float texel_offset = 0.5f / TEXSPACE_TOTAL_HEIGHT;
     vr::VRTextureBounds_t bounds;
     //Avoid resize flicker before a real size is known (ImGui defaults to 32) and just set bounds to 0 in that case
     if (m_Size.x > 32.0f)
     {
-        bounds.uMin = 0.0f;
-        bounds.vMax = ((float)TEXSPACE_DASHBOARD_UI_HEIGHT / TEXSPACE_TOTAL_HEIGHT) + texel_offset;
-        bounds.vMax = bounds.vMax + spacing_size + ((float)TEXSPACE_FLOATING_UI_HEIGHT / TEXSPACE_TOTAL_HEIGHT);
-        bounds.vMax = bounds.vMax + spacing_size + ((float)TEXSPACE_KEYBOARD_HELPER_HEIGHT / TEXSPACE_TOTAL_HEIGHT);
-
-        bounds.vMin = bounds.vMax + spacing_size;
-        bounds.vMax = bounds.vMax + spacing_size + ((float)TEXSPACE_PERFORMANCE_MONITOR_HEIGHT / TEXSPACE_TOTAL_HEIGHT);
-        bounds.uMax = ((m_Pos.x + m_Size.x + 1.0f) / TEXSPACE_TOTAL_WIDTH);
+        const DPRect& rect       = UITextureSpaces::Get().GetRect(ui_texspace_performance_monitor);
+        const DPRect& rect_total = UITextureSpaces::Get().GetRect(ui_texspace_total);
+        float tex_width  = (float)rect_total.GetWidth();
+        float tex_height = (float)rect_total.GetHeight();
+        bounds.uMin = rect.GetTL().x / tex_width;
+        bounds.vMin = rect.GetTL().y / tex_height;
+        bounds.uMax = rect.GetBR().x / tex_width;
+        bounds.vMax = rect.GetBR().y / tex_height;
     }
     else
     {
@@ -1332,7 +1380,17 @@ void WindowPerformance::RefreshTrackerBatteryList()
     {
         if ( (vr::VRSystem()->GetTrackedDeviceClass(i) == vr::TrackedDeviceClass_GenericTracker) && (vr::VRSystem()->IsTrackedDeviceConnected(i)) )
         {
-            m_BatteryTrackers.emplace_back(i, vr::VRSystem()->GetFloatTrackedDeviceProperty(i, vr::Prop_DeviceBatteryPercentage_Float) * 100.0f);
+            TrackerInfo info;
+            info.DeviceIndex  = i;
+            info.BatteryLevel = vr::VRSystem()->GetFloatTrackedDeviceProperty(i, vr::Prop_DeviceBatteryPercentage_Float) * 100.0f;
+
+            info.Name = TranslationManager::GetString(tstr_PerformanceMonitorBatteryTracker);
+            StringReplaceAll(info.Name, "%ID%", std::to_string(m_BatteryTrackers.size() + 1));
+
+            info.NameCompact = TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryTracker);
+            StringReplaceAll(info.NameCompact, "%ID%", std::to_string(m_BatteryTrackers.size() + 1));
+
+            m_BatteryTrackers.push_back(info);
         }
     }
 }
@@ -1358,9 +1416,19 @@ void WindowPerformance::ResetCumulativeValues()
         vr::Compositor_CumulativeStats frame_stats = {0};
         vr::VRCompositor()->GetCumulativeStats(&frame_stats, sizeof(vr::Compositor_CumulativeStats));
 
-        m_OffsetFramesPresents    = frame_stats.m_nNumFramePresents;
-        m_OffsetReprojectedFrames = frame_stats.m_nNumReprojectedFrames;
-        m_OffsetDroppedFrames     = frame_stats.m_nNumDroppedFrames;
+        m_OffsetFramesPresents              = frame_stats.m_nNumFramePresents;
+        m_OffsetReprojectedFrames           = frame_stats.m_nNumReprojectedFrames;
+        m_OffsetDroppedFrames               = frame_stats.m_nNumDroppedFrames;
+
+        //Update frame index offset
+        vr::Compositor_FrameTiming frame_timing_current;
+        frame_timing_current.m_nSize = sizeof(vr::Compositor_FrameTiming);
+        m_OffsetFrameIndex = 0;
+
+        if (vr::VRCompositor()->GetFrameTiming(&frame_timing_current, 0))
+        {
+            m_OffsetFrameIndex = frame_timing_current.m_nFrameIndex;
+        }
     }
 }
 
@@ -1408,7 +1476,7 @@ bool WindowPerformance::IsAnyOverlayUsingPerformanceMonitor()
         return false;
 
     //This isn't the most efficient check thanks to the split responsibilities of each process, but it's still better than always rendering the window
-    for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
         const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 

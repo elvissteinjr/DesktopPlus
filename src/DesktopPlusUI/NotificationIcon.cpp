@@ -71,23 +71,35 @@ bool NotificationIcon::Init(HINSTANCE hinstance)
     bool ret = ::Shell_NotifyIcon(NIM_ADD, &m_IconData);
     ::Shell_NotifyIcon(NIM_SETVERSION, &m_IconData);
 
+    RefreshPopupMenu();
+
+    return ret;
+}
+
+void NotificationIcon::RefreshPopupMenu()
+{
+    //Destroy old menu if it exists
+    if (m_PopupMenu != nullptr)
+    {
+        DestroyMenu(m_PopupMenu);
+    }
+
     //Create popup menu
     m_PopupMenu = ::CreatePopupMenu();
     if (m_PopupMenu != nullptr)
     {
         if (UIManager::Get()->IsInDesktopMode())
         {
-            ::InsertMenu(m_PopupMenu, 0, MF_BYPOSITION | MF_STRING, 1, L"Restore VR Interface");
+            ::InsertMenu(m_PopupMenu, 0, MF_BYPOSITION | MF_STRING, 1, WStringConvertFromUTF8(TranslationManager::GetString(tstr_NotificationIconRestoreVR)).c_str());
+
         }
         else
         {
-            ::InsertMenu(m_PopupMenu, 0, MF_BYPOSITION | MF_STRING, 1, L"Open Settings on Desktop");
+            ::InsertMenu(m_PopupMenu, 0, MF_BYPOSITION | MF_STRING, 1, WStringConvertFromUTF8(TranslationManager::GetString(tstr_NotificationIconOpenOnDesktop)).c_str());
         }
 
-        ::InsertMenu(m_PopupMenu, 1, MF_BYPOSITION | MF_STRING, 2, L"Quit");
+        ::InsertMenu(m_PopupMenu, 1, MF_BYPOSITION | MF_STRING, 2, WStringConvertFromUTF8(TranslationManager::GetString(tstr_NotificationIconQuit)).c_str());
     }
-
-    return ret;
 }
 
 void NotificationIcon::OnCallbackMessage(WPARAM wparam, LPARAM lparam)

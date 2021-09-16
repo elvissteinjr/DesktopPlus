@@ -23,7 +23,7 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{045FFB0E-D0D4-404D-8C33-13C7074B3236}</ProjectGuid>
     <RootNamespace>DesktopPlusWinRT</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.20348.0</WindowsTargetPlatformVersion>
     <ProjectName>DesktopPlusWinRT</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -165,10 +165,8 @@
   <ItemGroup>
     <ClCompile Include="..\Shared\OUtoSBSConverter.cpp" />
     <ClCompile Include="..\Shared\Util.cpp" />
-    <ClCompile Include="..\Shared\WindowList.cpp" />
     <ClCompile Include="CaptureManager.cpp" />
     <ClCompile Include="DesktopPlusWinRT.cpp" />
-    <ClCompile Include="PickerDummyWindow.cpp" />
     <ClCompile Include="OverlayCapture.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -176,12 +174,10 @@
     <ClInclude Include="..\Shared\openvr.h" />
     <ClInclude Include="..\Shared\OUtoSBSConverter.h" />
     <ClInclude Include="..\Shared\Util.h" />
-    <ClInclude Include="..\Shared\WindowList.h" />
     <ClInclude Include="CaptureManager.h" />
     <ClInclude Include="CommonHeaders.h" />
     <ClInclude Include="DesktopPlusWinRT.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="PickerDummyWindow.h" />
     <ClInclude Include="ThreadData.h" />
     <ClInclude Include="util\capture.desktop.interop.h" />
     <ClInclude Include="util\DesktopWindow.h" />

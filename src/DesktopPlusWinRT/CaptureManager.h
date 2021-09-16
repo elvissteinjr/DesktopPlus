@@ -9,7 +9,6 @@ class CaptureManager
 
         winrt::Windows::Graphics::Capture::GraphicsCaptureItem StartCaptureFromWindowHandle(HWND hwnd);
         winrt::Windows::Graphics::Capture::GraphicsCaptureItem StartCaptureFromMonitorHandle(HMONITOR hmon);
-        winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Graphics::Capture::GraphicsCaptureItem> StartCaptureWithPickerAsync();
         winrt::Windows::Graphics::DirectX::DirectXPixelFormat PixelFormat() { return m_PixelFormat; }
         void PixelFormat(winrt::Windows::Graphics::DirectX::DirectXPixelFormat pixel_format);
 
@@ -25,7 +24,6 @@ class CaptureManager
     private:
         void StartCaptureFromItem(winrt::Windows::Graphics::Capture::GraphicsCaptureItem item);
         void OnCaptureItemClosed(winrt::Windows::Graphics::Capture::GraphicsCaptureItem const&, winrt::Windows::Foundation::IInspectable const&);
-        static HWND FindWindowFromCaptureItem(winrt::Windows::Graphics::Capture::GraphicsCaptureItem item, int& desktop_id);
 
     private:
         winrt::Windows::System::DispatcherQueue m_CaptureMainThread{ nullptr };

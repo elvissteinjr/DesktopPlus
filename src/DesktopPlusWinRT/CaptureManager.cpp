@@ -4,13 +4,10 @@
 #include "CaptureManager.h"
 
 #include "DesktopPlusWinRT.h"
-#include "WindowList.h"
-#include "PickerDummyWindow.h"
 
 namespace winrt
 {
     using namespace Windows::Storage;
-    using namespace Windows::Storage::Pickers;
     using namespace Windows::System;
     using namespace Windows::Foundation;
     using namespace Windows::UI;
@@ -88,63 +85,6 @@ winrt::GraphicsCaptureItem CaptureManager::StartCaptureFromMonitorHandle(HMONITO
     auto item = util::CreateCaptureItemForMonitor(hmon);
     StartCaptureFromItem(item);
     return item;
-}
-
-winrt::IAsyncOperation<winrt::GraphicsCaptureItem> CaptureManager::StartCaptureWithPickerAsync()
-{
-    auto cancellation = co_await winrt::get_cancellation_token();
-
-    auto capture_picker = winrt::GraphicsCapturePicker();
-    //Create dummy window to host the picker
-    auto capture_picker_dummy_window = PickerDummyWindow();
-    //Provide the window handle to the picker (explicit HWND initialization)
-    capture_picker_dummy_window.InitializeObjectWithWindowHandle(capture_picker);
-
-    auto item = co_await capture_picker.PickSingleItemAsync();
-
-    //If cancelled while the picker was up, don't process the item in any way (cancelling the picker itself would be cool... can't find how to do that though)
-    if (cancellation())
-        co_return item;
-
-    if (item)
-    {
-        //We might resume on a different thread, so let's resume execution on the main thread. This is important because OverlayCapture uses 
-        //Direct3D11CaptureFramePool::Create, which requires the existence of a DispatcherQueue. 
-        co_await m_CaptureMainThread;
-
-        //See if we can guess what window this item is
-        int desktop_id = -2;
-        HWND window_handle = FindWindowFromCaptureItem(item, desktop_id);
-
-        if (window_handle != nullptr)
-        {
-            m_ThreadData.SourceWindow = window_handle;
-
-            for (const auto& overlay : m_ThreadData.Overlays)
-            {
-                ::PostThreadMessage(m_GlobalMainThreadID, WM_DPLUSWINRT_SET_HWND, overlay.Handle, (LPARAM)window_handle);
-            }
-        }
-        else if (desktop_id != -2)
-        {
-            for (const auto& overlay : m_ThreadData.Overlays)
-            {
-                ::PostThreadMessage(m_GlobalMainThreadID, WM_DPLUSWINRT_SET_DESKTOP, overlay.Handle, desktop_id);
-            }
-        }
-
-        StartCaptureFromItem(item);
-    }
-    else //Picker was canceled, send status updates for overlays
-    {
-        co_await m_CaptureMainThread;
-        for (const auto& overlay : m_ThreadData.Overlays)
-        {
-            ::PostThreadMessage(m_GlobalMainThreadID, WM_DPLUSWINRT_CAPTURE_LOST, overlay.Handle, 0);
-        }
-    }
-
-    co_return item;
 }
 
 void CaptureManager::StartCaptureFromItem(winrt::GraphicsCaptureItem item)
@@ -226,35 +166,6 @@ void CaptureManager::StopCapture()
     {
         m_Capture = nullptr;
     }
-}
-
-HWND CaptureManager::FindWindowFromCaptureItem(winrt::Windows::Graphics::Capture::GraphicsCaptureItem item, int& desktop_id)
-{
-    //This is a guess that will only return the first match of a window title, so conflicts are possible
-    std::vector<WindowInfo> window_list = WindowInfo::CreateCapturableWindowList();
-
-    auto it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& info){ return (info.Title == item.DisplayName()); });
-
-    if (it != window_list.end())
-    {
-        return it->WindowHandle;
-    }
-
-    //Not a window from our list, so assume desktop
-    //However, the title is localized so we guess the desktop assuming the string ends with the desktop number, which is probably wrong for some languages, but this is just a fallback so whatever
-    std::string displayname_utf8 = winrt::to_string(item.DisplayName());
-    size_t pos = displayname_utf8.find_last_of(' ');
-
-    if ( (pos != std::string::npos) && (pos != displayname_utf8.length()) )
-    {
-        desktop_id = atoi(displayname_utf8.substr(pos).c_str()) - 1;
-
-        return nullptr;
-    }
-
-    //Couldn't find anything, assume combined desktop
-    desktop_id = -1;
-    return nullptr;
 }
 
 void CaptureManager::PixelFormat(winrt::DirectXPixelFormat pixel_format)

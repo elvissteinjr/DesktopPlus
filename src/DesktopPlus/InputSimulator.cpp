@@ -4,7 +4,22 @@
 #include "OutputManager.h"
 #include "Util.h"
 
-void InputSimulator::SetEventForMouseKeyCode(INPUT& input_event, unsigned char keycode, bool down) const
+//TODO Elevated forwarding is missing!
+
+enum KeyboardWin32KeystateFlags
+{
+    kbd_w32keystate_flag_shift_down       = 1 << 0,
+    kbd_w32keystate_flag_ctrl_down        = 1 << 1,
+    kbd_w32keystate_flag_alt_down         = 1 << 2
+};
+
+InputSimulator::InputSimulator() :
+    m_SpaceMultiplierX(1.0f), m_SpaceMultiplierY(1.0f), m_SpaceOffsetX(0), m_SpaceOffsetY(0), m_ForwardToElevatedModeProcess(false), m_ElevatedModeHasTextQueued(false)
+{
+    RefreshScreenOffsets();
+}
+
+void InputSimulator::SetEventForMouseKeyCode(INPUT& input_event, unsigned char keycode, bool down)
 {
     input_event.type = INPUT_MOUSE;
 
@@ -40,10 +55,31 @@ void InputSimulator::SetEventForMouseKeyCode(INPUT& input_event, unsigned char k
 
 }
 
-InputSimulator::InputSimulator() : 
-    m_SpaceMultiplierX(1.0f), m_SpaceMultiplierY(1.0f), m_SpaceOffsetX(0), m_SpaceOffsetY(0), m_ForwardToElevatedModeProcess(false), m_ElevatedModeHasTextQueued(false)
+bool InputSimulator::SetEventForKeyCode(INPUT& input_event, unsigned char keycode, bool down, bool skip_check)
 {
-    RefreshScreenOffsets();
+    //Check if the mouse buttons are swapped as this also affects SendInput
+    if ( ((keycode == VK_LBUTTON) || (keycode == VK_RBUTTON)) && (::GetSystemMetrics(SM_SWAPBUTTON) != 0) )
+    {
+        keycode = (keycode == VK_LBUTTON) ? VK_RBUTTON : VK_LBUTTON;
+    }
+
+    bool key_down = (::GetAsyncKeyState(keycode) < 0);
+
+    if ( (keycode == 0) || ((key_down == down) && (!skip_check)) )
+        return false;
+
+    if ((keycode <= 6) && (keycode != VK_CANCEL)) //Mouse buttons need to be handled differently
+    {
+        SetEventForMouseKeyCode(input_event, keycode, down);
+    }
+    else
+    {
+        input_event.type       = INPUT_KEYBOARD;
+        input_event.ki.dwFlags = (down) ? 0 : KEYEVENTF_KEYUP;
+        input_event.ki.wVk     = keycode;
+    }
+
+    return true;
 }
 
 void InputSimulator::RefreshScreenOffsets()
@@ -70,9 +106,9 @@ void InputSimulator::MouseMove(int x, int y)
 
     INPUT input_event = { 0 };
 
-    input_event.type = INPUT_MOUSE;
-    input_event.mi.dx = (x + m_SpaceOffsetX) * m_SpaceMultiplierX;
-    input_event.mi.dy = (y + m_SpaceOffsetY) * m_SpaceMultiplierY;
+    input_event.type       = INPUT_MOUSE;
+    input_event.mi.dx      = LONG((x + m_SpaceOffsetX) * m_SpaceMultiplierX);
+    input_event.mi.dy      = LONG((y + m_SpaceOffsetY) * m_SpaceMultiplierY);
     input_event.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK | MOUSEEVENTF_ABSOLUTE;
     
     ::SendInput(1, &input_event, sizeof(INPUT));
@@ -95,22 +131,34 @@ void InputSimulator::MouseSetMiddleDown(bool down)
 
 void InputSimulator::MouseWheelHorizontal(float delta)
 {
-    INPUT input_event = { 0 };
+    if (m_ForwardToElevatedModeProcess)
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_mouse_hwheel, *(LPARAM*)&delta);
+        return;
+    }
 
-    input_event.type = INPUT_MOUSE;
-    input_event.mi.dwFlags = MOUSEEVENTF_HWHEEL;
-    input_event.mi.mouseData = WHEEL_DELTA * delta;
+    INPUT input_event = {0};
+
+    input_event.type         = INPUT_MOUSE;
+    input_event.mi.dwFlags   = MOUSEEVENTF_HWHEEL;
+    input_event.mi.mouseData = DWORD(WHEEL_DELTA * delta);
 
     ::SendInput(1, &input_event, sizeof(INPUT));
 }
 
 void InputSimulator::MouseWheelVertical(float delta)
 {
-    INPUT input_event = { 0 };
+    if (m_ForwardToElevatedModeProcess)
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_mouse_vwheel, *(LPARAM*)&delta);
+        return;
+    }
 
-    input_event.type = INPUT_MOUSE;
-    input_event.mi.dwFlags = MOUSEEVENTF_WHEEL;
-    input_event.mi.mouseData = WHEEL_DELTA * delta;
+    INPUT input_event = {0};
+
+    input_event.type         = INPUT_MOUSE;
+    input_event.mi.dwFlags   = MOUSEEVENTF_WHEEL;
+    input_event.mi.mouseData = DWORD(WHEEL_DELTA * delta);
 
     ::SendInput(1, &input_event, sizeof(INPUT));
 }
@@ -129,29 +177,17 @@ void InputSimulator::KeyboardSetDown(unsigned char keycode)
         return;
     }
 
-    //Check if the mouse buttons are swapped as this also affects SendInput
-    if ( ((keycode == VK_LBUTTON) || (keycode == VK_RBUTTON)) && (::GetSystemMetrics(SM_SWAPBUTTON) != 0) )
+    INPUT input_event = {0};
+
+    if (SetEventForKeyCode(input_event, keycode, true))
     {
-        keycode = (keycode == VK_LBUTTON) ? VK_RBUTTON : VK_LBUTTON;
+        ::SendInput(1, &input_event, sizeof(INPUT));
     }
+}
 
-    INPUT input_event = { 0 };
-
-    if (GetAsyncKeyState(keycode) < 0)  //Only send if not already pressed
-        return;
-
-    if ((keycode <= 6) && (keycode != VK_CANCEL)) //Mouse buttons need to be handled differently
-    {
-        SetEventForMouseKeyCode(input_event, keycode, true);
-    }
-    else
-    {
-        input_event.type = INPUT_KEYBOARD;
-        input_event.ki.dwFlags = 0;
-        input_event.ki.wVk = keycode;
-    }
-
-    ::SendInput(1, &input_event, sizeof(INPUT));
+void InputSimulator::KeyboardSetDown(unsigned char keycode, bool down)
+{
+    (down) ? KeyboardSetDown(keycode) : KeyboardSetUp(keycode);
 }
 
 void InputSimulator::KeyboardSetUp(unsigned char keycode)
@@ -168,29 +204,12 @@ void InputSimulator::KeyboardSetUp(unsigned char keycode)
         return;
     }
 
-    //Check if the mouse buttons are swapped as this also affects SendInput
-    if ( ((keycode == VK_LBUTTON) || (keycode == VK_RBUTTON)) && (::GetSystemMetrics(SM_SWAPBUTTON) != 0) )
+    INPUT input_event = {0};
+
+    if (SetEventForKeyCode(input_event, keycode, false))
     {
-        keycode = (keycode == VK_LBUTTON) ? VK_RBUTTON : VK_LBUTTON;
+        ::SendInput(1, &input_event, sizeof(INPUT));
     }
-
-    INPUT input_event = { 0 };
-
-    if (GetAsyncKeyState(keycode) >= 0) //Only send if already down
-        return;
-
-    if ((keycode <= 6) && (keycode != VK_CANCEL)) //Mouse buttons need to be handled differently
-    {
-        SetEventForMouseKeyCode(input_event, keycode, false);
-    }
-    else
-    {
-        input_event.type = INPUT_KEYBOARD;
-        input_event.ki.dwFlags = KEYEVENTF_KEYUP;
-        input_event.ki.wVk = keycode;
-    }
-
-    ::SendInput(1, &input_event, sizeof(INPUT));
 }
 
 //Why so awfully specific, seems wasteful? Spamming the key events separately can confuse applications sometimes and we want to make sure the keys are really pressed at once
@@ -210,21 +229,7 @@ void InputSimulator::KeyboardSetDown(unsigned char keycodes[3])
     int used_event_count = 0;
     for (int i = 0; i < 3; ++i)
     {
-        if ( (keycodes[i] == 0) || (GetAsyncKeyState(keycodes[i]) < 0) )  //Most significant bit set, meaning pressed
-            continue; //Nothing to be done, skip
-
-        if ((keycodes[i] <= 6) && (keycodes[i] != VK_CANCEL)) //Mouse buttons need to be handled differently
-        {
-            SetEventForMouseKeyCode(input_event[used_event_count], keycodes[i], true);
-        }
-        else
-        {
-            input_event[used_event_count].type = INPUT_KEYBOARD;
-            input_event[used_event_count].ki.dwFlags = 0;
-            input_event[used_event_count].ki.wVk = keycodes[i];
-        }
-
-        used_event_count++;
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], keycodes[i], true);
     }
 
     if (used_event_count != 0)
@@ -249,21 +254,7 @@ void InputSimulator::KeyboardSetUp(unsigned char keycodes[3])
     int used_event_count = 0;
     for (int i = 0; i < 3; ++i)
     {
-        if ( (keycodes[i] == 0) || (GetAsyncKeyState(keycodes[i]) > 0) )    //Most significant bit not set, meaning not pressed
-            continue; //Nothing to be done, skip
-
-        if ((keycodes[i] <= 6) && (keycodes[i] != VK_CANCEL)) //Mouse buttons need to be handled differently
-        {
-            SetEventForMouseKeyCode(input_event[used_event_count], keycodes[i], false);
-        }
-        else
-        {
-            input_event[used_event_count].type = INPUT_KEYBOARD;
-            input_event[used_event_count].ki.dwFlags = KEYEVENTF_KEYUP;
-            input_event[used_event_count].ki.wVk = keycodes[i];
-        }
-
-        used_event_count++;
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], keycodes[i], false);
     }
 
     if (used_event_count != 0)
@@ -287,7 +278,7 @@ void InputSimulator::KeyboardToggleState(unsigned char keycode)
         return;
     }
 
-    if (GetAsyncKeyState(keycode) < 0)  //If already pressed, release key
+    if (IsKeyDown(keycode))  //If already pressed, release key
     {
         KeyboardSetUp(keycode);
     }
@@ -308,28 +299,12 @@ void InputSimulator::KeyboardToggleState(unsigned char keycodes[3])
         return;
     }
 
-    INPUT input_event[3] = { 0 };
-
+    INPUT input_event[3] = {0};
     int used_event_count = 0;
+
     for (int i = 0; i < 3; ++i)
     {
-        if (keycodes[i] == 0)
-            continue; //Nothing to be done, skip
-
-        bool already_down = (GetAsyncKeyState(keycodes[i]) < 0);    //Most significant bit set, meaning pressed
-
-        if ((keycodes[i] <= 6) && (keycodes[i] != VK_CANCEL)) //Mouse buttons need to be handled differently
-        {
-            SetEventForMouseKeyCode(input_event[used_event_count], keycodes[i], !already_down);
-        }
-        else
-        {
-            input_event[used_event_count].type = INPUT_KEYBOARD;
-            input_event[used_event_count].ki.dwFlags = (already_down) ? KEYEVENTF_KEYUP : 0;
-            input_event[used_event_count].ki.wVk = keycodes[i];
-        }
-
-        used_event_count++;
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], keycodes[i], !IsKeyDown(keycodes[i]));
     }
 
     if (used_event_count != 0)
@@ -340,44 +315,186 @@ void InputSimulator::KeyboardToggleState(unsigned char keycodes[3])
 
 void InputSimulator::KeyboardPressAndRelease(unsigned char keycode)
 {
+    if (keycode == 0)
+        return;
+
     if (m_ForwardToElevatedModeProcess)
     {
         IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_press_and_release, keycode);
         return;
     }
 
-    if (keycode == 0)
+    INPUT input_event[2] = {0};
+    int used_event_count = 0;
+
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], keycode, true);
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], keycode, false);
+
+    ::SendInput(used_event_count, input_event, sizeof(INPUT));
+}
+
+void InputSimulator::KeyboardSetToggleKey(unsigned char keycode, bool toggled)
+{
+    if (keycode == 0) 
         return;
 
-    INPUT input_event[2] = { 0 };
-
-    bool already_down = (GetAsyncKeyState(keycode) < 0);    //Most significant bit set, meaning pressed
-    int upid = 1 - already_down;
-
-    if ((keycode <= 6) && (keycode != VK_CANCEL)) //Mouse buttons need to be handled differently
+    if (m_ForwardToElevatedModeProcess)
     {
-        if (!already_down)  //Only send down event if not already pressed
-        {
-            SetEventForMouseKeyCode(input_event[0], keycode, true);
-        }
-
-        SetEventForMouseKeyCode(input_event[upid], keycode, false);
-    }
-    else
-    {
-        if (!already_down)  //Only send down event if not already pressed
-        {
-            input_event[0].type = INPUT_KEYBOARD;
-            input_event[0].ki.dwFlags = 0;
-            input_event[0].ki.wVk = keycode;
-        }
-
-        input_event[upid].type = INPUT_KEYBOARD;
-        input_event[upid].ki.dwFlags = KEYEVENTF_KEYUP;
-        input_event[upid].ki.wVk = keycode;
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_togglekey_set, MAKELPARAM(keycode, toggled));
+        return;
     }
 
-    ::SendInput(upid + 1, input_event, sizeof(INPUT));
+    bool is_toggled = ((::GetKeyState(keycode) & 0x0001) != 0);
+
+    if (toggled == is_toggled)
+        return;
+
+    INPUT input_event[3] = {0};
+    int used_event_count = 0;
+
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], keycode, false);       //Release if it happens to be down
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], keycode, true,  true); //Press...
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], keycode, false, true); //...and release, even if the state wouldn't change (last arg)
+
+    ::SendInput(used_event_count, input_event, sizeof(INPUT));
+}
+
+void InputSimulator::KeyboardSetFromWin32KeyState(unsigned short keystate, bool down)
+{
+    unsigned char keycode  = LOBYTE(keystate);
+    bool key_down = IsKeyDown(keycode);
+
+    if (key_down == down)
+        return; //Nothing to be done
+
+    if (m_ForwardToElevatedModeProcess)
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_keystate_w32_set, MAKELPARAM(keystate, down));
+        return;
+    }
+
+    unsigned char flags = HIBYTE(keystate);
+    bool flag_shift   = (flags & kbd_w32keystate_flag_shift_down);
+    bool flag_ctrl    = (flags & kbd_w32keystate_flag_ctrl_down);
+    bool flag_alt     = (flags & kbd_w32keystate_flag_alt_down);
+    bool caps_toggled = ((::GetKeyState(VK_CAPITAL) & 0x0001) != 0);
+
+    INPUT input_event[16] = { 0 };
+    int used_event_count = 0;
+
+    //Add events for modifier keys if needed
+    if (!flag_shift) 
+    {
+        //Try releasing both if any is down
+        if (IsKeyDown(VK_SHIFT))
+        {
+            used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_LSHIFT, false);
+            used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_RSHIFT, false);
+        }
+    }
+    else if (!IsKeyDown(VK_SHIFT)) //Only set the left key if none are down
+    {
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_LSHIFT, true);
+    }
+
+    if (!flag_ctrl)
+    { 
+        if (IsKeyDown(VK_CONTROL))
+        {
+            used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_LCONTROL, false);
+            used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_RCONTROL, false);
+        }
+    }
+    else if (!IsKeyDown(VK_CONTROL))
+    {
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_LCONTROL, true);
+    }
+
+    if (!flag_alt)
+    { 
+        if (IsKeyDown(VK_MENU))
+        {
+            used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_LMENU, false);
+            used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_RMENU, false);
+        }
+    }
+    else if (!IsKeyDown(VK_MENU))
+    {
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_LMENU, true);
+    }
+
+    //Add events to handle caps lock state
+    if (caps_toggled)
+    {
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_CAPITAL, false);       //Release if it happens to be down
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_CAPITAL, true,  true); //Press...
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_CAPITAL, false, true); //...and release, even if the state wouldn't change (last arg)
+    }
+
+    //Add event for actual keycode
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], keycode, down);
+
+    if (used_event_count != 0)
+    {
+        ::SendInput(used_event_count, input_event, sizeof(INPUT));
+    }
+}
+
+void InputSimulator::KeyboardSetKeyState(IPCKeyboardKeystateFlags flags, unsigned char keycode)
+{
+    if (m_ForwardToElevatedModeProcess)
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_keystate_set, MAKELPARAM(flags, keycode));
+        return;
+    }
+
+    INPUT input_event[10] = {0};
+    int used_event_count = 0;
+
+    //Add events for modifier keys if needed
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_LSHIFT,   (flags & kbd_keystate_flag_lshift_down));
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_RSHIFT,   (flags & kbd_keystate_flag_rshift_down));
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_LCONTROL, (flags & kbd_keystate_flag_lctrl_down));
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_RCONTROL, (flags & kbd_keystate_flag_rctrl_down));
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_LMENU,    (flags & kbd_keystate_flag_lalt_down));
+    used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_RMENU,    (flags & kbd_keystate_flag_ralt_down));
+
+    //Add events to handle caps lock state
+    bool caps_toggled = ((::GetKeyState(VK_CAPITAL) & 0x0001) != 0);
+    if (caps_toggled != bool(flags & kbd_keystate_flag_capslock_toggled))
+    {
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_CAPITAL, false);       //Release if it happens to be down
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_CAPITAL, true,  true); //Press...
+        used_event_count += SetEventForKeyCode(input_event[used_event_count], VK_CAPITAL, false, true); //...and release, even if the state wouldn't change (last arg)
+    }
+
+    //Add event for actual keycode, but skip keys handled by the keystate flags
+    switch (keycode)
+    {
+        case VK_SHIFT:
+        case VK_LSHIFT:
+        case VK_RSHIFT:
+        case VK_CONTROL:
+        case VK_LCONTROL:
+        case VK_RCONTROL:
+        case VK_MENU:
+        case VK_LMENU:
+        case VK_RMENU:
+        case VK_CAPITAL:
+        {
+            break;
+        }
+
+        default:
+        {
+            used_event_count += SetEventForKeyCode(input_event[used_event_count], keycode, (flags & kbd_keystate_flag_key_down));
+        }
+    }
+
+    if (used_event_count != 0)
+    {
+        ::SendInput(used_event_count, input_event, sizeof(INPUT));
+    }
 }
 
 void InputSimulator::KeyboardText(const char* str_utf8, bool always_use_unicode_event)
@@ -519,7 +636,7 @@ void InputSimulator::KeyboardTextFinish()
 
     if (!m_KeyboardTextQueue.empty())
     {
-        ::SendInput(m_KeyboardTextQueue.size(), m_KeyboardTextQueue.data(), sizeof(INPUT));
+        ::SendInput((UINT)m_KeyboardTextQueue.size(), m_KeyboardTextQueue.data(), sizeof(INPUT));
 
         m_KeyboardTextQueue.clear();
     }
@@ -528,4 +645,15 @@ void InputSimulator::KeyboardTextFinish()
 void InputSimulator::SetElevatedModeForwardingActive(bool do_forward)
 {
     m_ForwardToElevatedModeProcess = do_forward;
+}
+
+bool InputSimulator::IsKeyDown(unsigned char keycode)
+{
+    //Check if the mouse buttons are swapped
+    if ( ((keycode == VK_LBUTTON) || (keycode == VK_RBUTTON)) && (::GetSystemMetrics(SM_SWAPBUTTON) != 0) )
+    {
+        keycode = (keycode == VK_LBUTTON) ? VK_RBUTTON : VK_LBUTTON;
+    }
+
+    return (::GetAsyncKeyState(keycode) < 0);
 }

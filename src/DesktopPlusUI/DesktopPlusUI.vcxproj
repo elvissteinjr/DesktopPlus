@@ -179,11 +179,13 @@
     <ClCompile Include="..\Shared\ConfigManager.cpp" />
     <ClCompile Include="..\Shared\Ini.cpp" />
     <ClCompile Include="..\Shared\Matrices.cpp" />
+    <ClCompile Include="..\Shared\OverlayDragger.cpp" />
     <ClCompile Include="..\Shared\OverlayManager.cpp" />
     <ClCompile Include="..\Shared\Util.cpp" />
-    <ClCompile Include="..\Shared\WindowList.cpp" />
-    <ClCompile Include="DashboardUI.cpp" />
+    <ClCompile Include="..\Shared\WindowManager.cpp" />
+    <ClCompile Include="AuxUI.cpp" />
     <ClCompile Include="DesktopPlusUI.cpp" />
+    <ClCompile Include="FloatingWindow.cpp" />
     <ClCompile Include="FloatingUI.cpp" />
     <ClCompile Include="ImGuiExt.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
@@ -207,14 +209,17 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="NotificationIcon.cpp" />
+    <ClCompile Include="TranslationManager.cpp" />
+    <ClCompile Include="VRKeyboard.cpp" />
     <ClCompile Include="Win32PerformanceData.cpp" />
     <ClCompile Include="UIManager.cpp" />
-    <ClCompile Include="WindowKeyboardHelper.cpp" />
-    <ClCompile Include="WindowMainBar.cpp" />
+    <ClCompile Include="WindowKeyboard.cpp" />
+    <ClCompile Include="WindowFloatingUIBar.cpp" />
     <ClCompile Include="TextureManager.cpp" />
+    <ClCompile Include="WindowOverlayBar.cpp" />
+    <ClCompile Include="WindowOverlayProperties.cpp" />
     <ClCompile Include="WindowPerformance.cpp" />
     <ClCompile Include="WindowSettings.cpp" />
-    <ClCompile Include="WindowSideBar.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Shared\Actions.h" />
@@ -224,21 +229,25 @@
     <ClInclude Include="..\Shared\InterprocessMessaging.h" />
     <ClInclude Include="..\Shared\Matrices.h" />
     <ClInclude Include="..\Shared\openvr.h" />
+    <ClInclude Include="..\Shared\OverlayDragger.h" />
     <ClInclude Include="..\Shared\OverlayManager.h" />
     <ClInclude Include="..\Shared\Util.h" />
     <ClInclude Include="..\Shared\Vectors.h" />
-    <ClInclude Include="..\Shared\WindowList.h" />
+    <ClInclude Include="..\Shared\WindowManager.h" />
+    <ClInclude Include="AuxUI.h" />
+    <ClInclude Include="FloatingWindow.h" />
     <ClInclude Include="FloatingUI.h" />
-    <ClInclude Include="DashboardUI.h" />
     <ClInclude Include="ImGuiExt.h" />
     <ClInclude Include="implot\implot.h" />
     <ClInclude Include="implot\implot_internal.h" />
     <ClInclude Include="NotificationIcon.h" />
+    <ClInclude Include="TranslationManager.h" />
+    <ClInclude Include="VRKeyboard.h" />
     <ClInclude Include="Win32PerformanceData.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="UIManager.h" />
-    <ClInclude Include="WindowKeyboardHelper.h" />
-    <ClInclude Include="WindowMainBar.h" />
+    <ClInclude Include="WindowKeyboard.h" />
+    <ClInclude Include="WindowFloatingUIBar.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_internal.h" />
@@ -248,9 +257,10 @@
     <ClInclude Include="imgui_win32_dx11_openvr\imgui_impl_dx11_openvr.h" />
     <ClInclude Include="imgui_win32_dx11_openvr\imgui_impl_win32_openvr.h" />
     <ClInclude Include="TextureManager.h" />
+    <ClInclude Include="WindowOverlayBar.h" />
+    <ClInclude Include="WindowOverlayProperties.h" />
     <ClInclude Include="WindowPerformance.h" />
     <ClInclude Include="WindowSettings.h" />
-    <ClInclude Include="WindowSideBar.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="imgui_win32_dx11_openvr\PixelShaderImGui.hlsl">

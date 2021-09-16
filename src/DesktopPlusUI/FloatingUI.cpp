@@ -7,13 +7,14 @@
 
 FloatingUI::FloatingUI() : m_OvrlHandleCurrentUITarget(vr::k_ulOverlayHandleInvalid),
                            m_OvrlIDCurrentUITarget(0),
-                           m_Width(OVERLAY_WIDTH_METERS_DASHBOARD_UI),
+                           m_Width(1.0f),
                            m_Alpha(0.0f),
                            m_Visible(false),
                            m_IsSwitchingTarget(false),
-                           m_FadeOutDelayCount(0)
+                           m_FadeOutDelayCount(0.0f),
+                           m_AutoFitFrames(0)
 {
-    m_WindowActionBar.Hide(true); //Visible by default, so hide
+
 }
 
 void FloatingUI::Update()
@@ -22,7 +23,7 @@ void FloatingUI::Update()
     {
         vr::VROverlayHandle_t ovrl_handle_floating_ui = UIManager::Get()->GetOverlayHandleFloatingUI();
 
-        if (m_Alpha == 0.0f) //Overlay was hidden before
+        if ( (m_Alpha == 0.0f) && (m_AutoFitFrames == 0) ) //Overlay was hidden before
         {
             vr::VROverlay()->ShowOverlay(ovrl_handle_floating_ui);
 
@@ -31,21 +32,19 @@ void FloatingUI::Update()
             //Instantly adjust action bar visibility to overlay state before fading in
             if (overlay_data.ConfigBool[configid_bool_overlay_actionbar_enabled])
             {
-                //Hacky: We need to repeat frames in case action buttons were reordered or added/removed in some way, while still getting a smooth alpha fade
-                //We set the alpha just slightly above 0 and don't animate the fade during repeated frames to achieve this
-                UIManager::Get()->RepeatFrame();
-                m_Alpha = 0.0000001f;
-
                 m_WindowActionBar.Show(true);
             }
             else
             {
                 m_WindowActionBar.Hide(true);
             }
+
+            //Give ImGui its two auto-fit frames it typically needs to rearrange widgets properly should they have changed from the last time FloatingUI was visible
+            m_AutoFitFrames = 2;
         }
 
         //Alpha fade animation
-        if (!UIManager::Get()->GetRepeatFrame())
+        if ( (!UIManager::Get()->GetRepeatFrame()) && (m_AutoFitFrames == 0) )
             m_Alpha += (m_Visible) ? 0.1f : -0.1f;
 
         if (m_Alpha > 1.0f)
@@ -55,7 +54,7 @@ void FloatingUI::Update()
 
         vr::VROverlay()->SetOverlayAlpha(ovrl_handle_floating_ui, m_Alpha);
 
-        if (m_Alpha == 0.0f) //Overlay was visible before
+        if ( (m_Alpha == 0.0f) && (m_AutoFitFrames == 0) ) //Overlay was visible before
         {
             vr::VROverlay()->HideOverlay(ovrl_handle_floating_ui);
             m_WindowActionBar.Hide(true);
@@ -67,12 +66,12 @@ void FloatingUI::Update()
             //Request sync if drag-mode is still active while the UI is disappearing
             if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
             {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_sync);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_transform_sync, -1);
             }
         }
     }
 
-    if (m_Alpha != 0.0f)
+    if ( (m_Alpha != 0.0f) || (m_AutoFitFrames != 0) )
     {
         OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
 
@@ -87,7 +86,18 @@ void FloatingUI::Update()
         }
 
         m_WindowActionBar.Update(m_OvrlIDCurrentUITarget);
-        m_WindowSideBar.Update(m_WindowActionBar.GetSize().y, m_OvrlIDCurrentUITarget);
+        m_WindowMainBar.Update(m_WindowActionBar.GetSize().y, m_OvrlIDCurrentUITarget);
+
+        if (m_AutoFitFrames > 0)
+        {
+            m_AutoFitFrames--;
+            UIManager::Get()->RepeatFrame();
+
+            if (m_AutoFitFrames == 0)
+            {
+                m_Alpha += 0.1f;
+            }
+        }
     }
 }
 
@@ -98,7 +108,7 @@ void FloatingUI::UpdateUITargetState()
 
     //Find which overlay is being hovered
     vr::VROverlayHandle_t ovrl_handle_hover_target = (vr::VROverlay()->IsHoverTargetOverlay(ovrl_handle_floating_ui)) ? ovrl_handle_floating_ui : vr::k_ulOverlayHandleInvalid;
-    unsigned int ovrl_id_hover_target = k_ulOverlayID_Dashboard;  //Dashboard isn't a valid target, but it doesn't matter as it's the fallback either way
+    unsigned int ovrl_id_hover_target = k_ulOverlayID_None;
 
     //If previous target overlay is no longer visible
     if ( (m_OvrlHandleCurrentUITarget != vr::k_ulOverlayHandleInvalid) && (!vr::VROverlay()->IsOverlayVisible(m_OvrlHandleCurrentUITarget)) )
@@ -106,15 +116,17 @@ void FloatingUI::UpdateUITargetState()
         m_OvrlHandleCurrentUITarget = vr::k_ulOverlayHandleInvalid;
         ovrl_handle_hover_target = vr::k_ulOverlayHandleInvalid;
         m_Visible = false;
-        m_FadeOutDelayCount = 20;
+        m_FadeOutDelayCount = 100;
     }
+
+    const bool has_dashboard_device = (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid);
 
     //Don't show UI if ImGui popup is open (which blocks all input so just hide this)
     //ImGui::IsPopupOpen() doesn't just check for modals though so it could get in the way at some point
-    const bool has_dashboard_device = (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid);
-    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) )
+    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) && 
+         (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode_temp)) )
     {
-        for (unsigned int i = 1; i < OverlayManager::Get().GetOverlayCount(); ++i)
+        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
         {
             vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(i);
 
@@ -231,15 +243,8 @@ void FloatingUI::UpdateUITargetState()
         float offset_to_bottom = -( (aspect_ratio_new * width) - (aspect_ratio_orig * width) ) / 2.0f;
         offset_to_bottom -= height / 2.0f;
 
-        //Try to compensate for curvature (not correct, but good enough)
-        float curvature;
-        vr::VROverlay()->GetOverlayCurvature(m_OvrlHandleCurrentUITarget, &curvature);
-        curvature = std::min(curvature, 0.8f);
-        float offset_forward = std::min(width * 0.4f, width * curvature * 0.75f);
-        float offset_right = (curvature > 0.15f) ? -width * curvature * (curvature / 1.35f) : 0.0f;
-
         //Y-coordinate from this function is pretty much unpredictable if not pixel_height / 2
-        vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleCurrentUITarget, origin, { (float)ovrl_pixel_width, (float)ovrl_pixel_height/2.0f }, &matrix);
+        vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleCurrentUITarget, origin, { (float)ovrl_pixel_width/2.0f, (float)ovrl_pixel_height/2.0f }, &matrix);
 
         //If the Floating UI is just appearing, adjust overlay size based on the distance between HMD and overlay
         if (is_newly_visible)
@@ -258,27 +263,45 @@ void FloatingUI::UpdateUITargetState()
             }
         }
 
-        //Move to bottom first, vertically centering the floating UI overlay on the bottom end of the target overlay (previous function already got the X in a predictable spot)
-        //Forward and right offsets only compensate for curvature and are 0 when curvature is 0%
-        OffsetTransformFromSelf(matrix, offset_right, offset_to_bottom, offset_forward);
-        //Offset further to get the desired postion at the edge of the overlay
-        OffsetTransformFromSelf(matrix, -m_Width * 0.449f, m_Width * 0.0487f, clamp(m_Width * 0.005f, 0.0025f, 0.025f));
+        //When Performance Monitor, apply additional offset of the unused overlay space
+        if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
+        {
+            float height_new = aspect_ratio_new * width; //height uses aspect_ratio_orig, so calculate new height
+            offset_to_bottom += ( (cropped_height - UIManager::Get()->GetPerformanceWindow().GetSize().y) ) * ( (height_new / cropped_height) ) / 2.0f;
+        }
+
+        //Move to bottom, vertically centering the floating UI overlay on the bottom end of the target overlay (previous function already got the X centered)
+        const DPRect& rect_floating_ui = UITextureSpaces::Get().GetRect(ui_texspace_floating_ui);
+        const float floating_ui_height_m = m_Width * ((float)rect_floating_ui.GetHeight() / (float)rect_floating_ui.GetWidth());
+
+        offset_to_bottom -= floating_ui_height_m / 3.0f;
+
+        TransformOpenVR34TranslateRelative(matrix, 0.0f, offset_to_bottom, 0.0f);
 
         vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_floating_ui, origin, &matrix);
+
+        //Set floating UI curvature based on target overlay curvature
+        float curvature;
+        vr::VROverlay()->GetOverlayCurvature(m_OvrlHandleCurrentUITarget, &curvature);
+
+        vr::VROverlay()->SetOverlayCurvature(ovrl_handle_floating_ui, curvature * (m_Width / width) );
     }
 
     if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) || (m_OvrlHandleCurrentUITarget == vr::k_ulOverlayHandleInvalid) ) //If not even the UI itself is being hovered, fade out
     {
-        m_FadeOutDelayCount++;
-
-        //Delay normal fade in order to not flicker when switching hover target between mirror overlay and floating UI
-        if (m_FadeOutDelayCount > 20)
+        if (m_Visible)
         {
-            //Hide
-            m_Visible = false;
-            m_FadeOutDelayCount = 0;
+            m_FadeOutDelayCount += ImGui::GetIO().DeltaTime;
 
-            vr::VROverlay()->SetOverlayFlag(ovrl_handle_floating_ui, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, false);
+            //Delay normal fade in order to not flicker when switching hover target between mirror overlay and floating UI
+            if (m_FadeOutDelayCount > 0.8f)
+            {
+                //Hide
+                m_Visible = false;
+                m_FadeOutDelayCount = 0.0f;
+
+                vr::VROverlay()->SetOverlayFlag(ovrl_handle_floating_ui, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, false);
+            }
         }
     }
     else
@@ -290,4 +313,14 @@ void FloatingUI::UpdateUITargetState()
 bool FloatingUI::IsVisible() const
 {
     return ((m_Visible) || (m_Alpha != 0.0f));
+}
+
+float FloatingUI::GetAlpha() const
+{
+    return m_Alpha;
+}
+
+WindowFloatingUIMainBar& FloatingUI::GetMainBarWindow()
+{
+    return m_WindowMainBar;
 }

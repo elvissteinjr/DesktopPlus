@@ -12,7 +12,7 @@ Overlay::Overlay(unsigned int id) : m_ID(id),
                                     m_Visible(false),
                                     m_Opacity(1.0f),
                                     m_GlobalInteractive(false),
-                                    m_TextureSource(ovrl_texsource_desktop_duplication)
+                                    m_TextureSource(ovrl_texsource_invalid)
 {
     //Don't call InitOverlay when OpenVR isn't loaded yet. This happens during startup when loading the config and will be fixed up by OutputManager::InitOverlay() afterwards
     if (vr::VROverlay() != nullptr)
@@ -203,41 +203,34 @@ bool Overlay::ShouldBeVisible() const
     if (!data.ConfigBool[configid_bool_overlay_enabled])
         return false;
 
-    if (data.ConfigBool[configid_bool_overlay_detached])
-    {
-        OutputManager* outmgr = OutputManager::Get();
-        if (outmgr == nullptr)
-            return false;
+    OutputManager* outmgr = OutputManager::Get();
+    if (outmgr == nullptr)
+        return false;
 
-        switch (data.ConfigInt[configid_int_overlay_detached_display_mode])
-        {
-            case ovrl_dispmode_always:
-            {
-                should_be_visible = true;
-                break;
-            }
-            case ovrl_dispmode_dashboard:
-            {
-                //Our method for getting the dashboard transform only works after it has been manually been brought up once OR the Desktop+ tab has been shown
-                //In practice this means we won't be showing dashboard display mode overlays on the initial SteamVR dashboard that is active when booting up
-                should_be_visible = ( (outmgr->HasDashboardBeenActivatedOnce()) && (vr::VROverlay()->IsDashboardVisible()) );
-                break;
-            }
-            case ovrl_dispmode_scene:
-            {
-                should_be_visible = !vr::VROverlay()->IsDashboardVisible();
-                break;
-            }
-            case ovrl_dispmode_dplustab:
-            {
-                should_be_visible = (outmgr->IsDashboardTabActive());
-                break;
-            }
-        }
-    }
-    else
+    switch (data.ConfigInt[configid_int_overlay_display_mode])
     {
-        should_be_visible = ((OutputManager::Get() != nullptr) && (OutputManager::Get()->IsDashboardTabActive()));
+        case ovrl_dispmode_always:
+        {
+            should_be_visible = true;
+            break;
+        }
+        case ovrl_dispmode_dashboard:
+        {
+            //Our method for getting the dashboard transform only works after it has been manually been brought up once OR the Desktop+ tab has been shown
+            //In practice this means we won't be showing dashboard display mode overlays on the initial SteamVR dashboard that is active when booting up
+            should_be_visible = ( (outmgr->HasDashboardBeenActivatedOnce()) && (vr::VROverlay()->IsDashboardVisible()) );
+            break;
+        }
+        case ovrl_dispmode_scene:
+        {
+            should_be_visible = !vr::VROverlay()->IsDashboardVisible();
+            break;
+        }
+        case ovrl_dispmode_dplustab:
+        {
+            should_be_visible = (outmgr->IsDashboardTabActive());
+            break;
+        }
     }
 
     return should_be_visible;
@@ -267,10 +260,29 @@ void Overlay::UpdateValidatedCropRect()
 
     int x, y, width, height;
 
-    x              = std::min( std::max(0, data.ConfigInt[configid_int_overlay_crop_x]), data.ConfigInt[configid_int_overlay_state_content_width]);
-    y              = std::min( std::max(0, data.ConfigInt[configid_int_overlay_crop_y]), data.ConfigInt[configid_int_overlay_state_content_height]);
-    width          = data.ConfigInt[configid_int_overlay_crop_width];
-    height         = data.ConfigInt[configid_int_overlay_crop_height];
+    if (data.ConfigBool[configid_bool_overlay_crop_enabled])
+    {
+        x      = std::min( std::max(0, data.ConfigInt[configid_int_overlay_crop_x]), data.ConfigInt[configid_int_overlay_state_content_width]);
+        y      = std::min( std::max(0, data.ConfigInt[configid_int_overlay_crop_y]), data.ConfigInt[configid_int_overlay_state_content_height]);
+        width  = data.ConfigInt[configid_int_overlay_crop_width];
+        height = data.ConfigInt[configid_int_overlay_crop_height];
+    }
+    else //Fall back to default crop when cropping is disabled
+    {
+        //Current desktop cropping values for desktop duplication
+        if (m_TextureSource == ovrl_texsource_desktop_duplication)
+        {
+            outmgr->CropToDisplay(data.ConfigInt[configid_int_overlay_desktop_id], x, y, width, height);
+        }
+        else //Content size for everything else
+        {
+            x = 0;
+            y = 0;
+            width  = data.ConfigInt[configid_int_overlay_state_content_width];
+            height = data.ConfigInt[configid_int_overlay_state_content_height];
+        }
+    }
+
     int width_max  = std::max(data.ConfigInt[configid_int_overlay_state_content_width]  - x, 1);
     int height_max = std::max(data.ConfigInt[configid_int_overlay_state_content_height] - y, 1);
 

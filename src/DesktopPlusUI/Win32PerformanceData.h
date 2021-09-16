@@ -46,13 +46,3 @@ class Win32PerformanceData
         float GetVRAMTotalGB()       const;
         float GetVRAMUsedGB()        const;
 };
-
-class PerformanceDataOpenVR
-{
-
-};
-
-class PerformanceDataViveWireless
-{
-
-};

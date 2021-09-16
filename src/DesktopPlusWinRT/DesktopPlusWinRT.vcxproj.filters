@@ -6,10 +6,6 @@
     <ClCompile Include="..\Shared\Util.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
-    <ClCompile Include="..\Shared\WindowList.cpp">
-      <Filter>Shared</Filter>
-    </ClCompile>
-    <ClCompile Include="PickerDummyWindow.cpp" />
     <ClCompile Include="..\Shared\OUtoSBSConverter.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
@@ -39,10 +35,6 @@
     <ClInclude Include="..\Shared\Util.h">
       <Filter>Shared</Filter>
     </ClInclude>
-    <ClInclude Include="..\Shared\WindowList.h">
-      <Filter>Shared</Filter>
-    </ClInclude>
-    <ClInclude Include="PickerDummyWindow.h" />
     <ClInclude Include="util\direct3d11.interop.h">
       <Filter>Util</Filter>
     </ClInclude>

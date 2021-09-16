@@ -4,6 +4,7 @@
 #pragma once
 
 #include "imgui.h"
+#include <string>
 
 //More colors
 extern ImVec4 Style_ImGuiCol_TextNotification;
@@ -18,6 +19,7 @@ namespace ImGui
     bool SliderWithButtonsInt(const char* str_id, int& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
     // format is for int
     bool SliderWithButtonsFloatPercentage(const char* str_id, float& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
+    ImGuiID SliderWithButtonsGetSliderID(const char* str_id);
 
     //Like imgui_demo's HelpMarker, but with a fixed position tooltip
     void FixedHelpMarker(const char* desc, const char* marker_str = "(?)");
@@ -31,11 +33,17 @@ namespace ImGui
     bool BeginComboWithInputText(const char* str_id, char* str_buffer, size_t buffer_size, bool& out_buffer_changed,
                                  bool& persist_input_visible, bool& persist_input_activated, bool& persist_mouse_released_once, bool no_preview_text = false);
     void ComboWithInputTextActivationCheck(bool& persist_input_visible); //Always call after BeginComboWithInputText(), outside the if statement
-    bool ChoiceTest();
+
+    //BeginCombo(), but opening it is animated
+    bool BeginComboAnimated(const char* label, const char* preview_value, ImGuiComboFlags flags = 0);
 
     //Right-alinged Text(). Use offset_x if it's not supposed to take all of the available space. Note that text may not always be pixel-perfectly aligned with this
     void TextRight(float offset_x, const char* fmt, ...)           IM_FMTARGS(2);
     void TextRightV(float offset_x, const char* fmt, va_list args) IM_FMTLIST(2);
+    void TextRightUnformatted(float offset_x, const char* text, const char* text_end = nullptr);
+
+    //Shortcut for unformatted colored text
+    void TextColoredUnformatted(const ImVec4& col, const char* text, const char* text_end = nullptr);
 
     bool ColorEdit4Simple(const char* label, float col[4], ImGuiColorEditFlags flags = 0);
 
@@ -43,12 +51,79 @@ namespace ImGui
     void PushItemDisabled();
     void PopItemDisabled();
 
+    //Just straight up brought into the public API, use -1.0f on one axis to leave as-is
+    void SetNextWindowScroll(const ImVec2& scroll);
+
+    //Brought into the public API since we need only that one sometimes
+    void ClearActiveID();
+
+    //Get and set previous line height. Useful on complex layouts where a widget may take more height while not being supposed to push the next line further down
+    float GetPreviousLineHeight();
+    void SetPreviousLineHeight(float height);
+
     //Something loosely resembling an InputText context menu, except it doesn't operate on the current cursor position or selection at all. Returns if buffer was modified
     bool PopupContextMenuInputText(const char* str_id, char* str_buffer, size_t buffer_size, bool paste_remove_newlines = true);
 
     //Returns true if the hovered item has changed to a different one
     bool HasHoveredNewItem();
 
+    //Returns true if any item is or was active in the previous frame
+    bool IsAnyItemActiveOrDeactivated();
+
+    //Returns true if any mouse button is clicked
+    bool IsAnyMouseClicked();
+
+    //Scroll window horizontally from vertical mouse wheel input
+    void HScrollWindowFromMouseWheelV();
+
+    //Returns true if either scroll bar is visible
+    bool IsAnyScrollBarVisible();
+
+    //Adjusts cursor pos and clipping rect to enable custom title bar content (assumes default left-aligned title). Returns title bar screen rect as X, Y, X2, Y2 coordinates
+    ImVec4 BeginTitleBar();
+    void EndTitleBar();
+
     //Returns true if a character in the string is mapped in the active font
     bool StringContainsUnmappedCharacter(const char* str);
+
+    //Returns string shortened to fit width_max in the active font
+    std::string StringEllipsis(const char* str, float width_max);
+
+    //Very dirty hack. Allows storing and restoring the active widget state. Works fine for a bunch of buttons not interrupting an InputText(), but likely breaks for anything complex.
+    //A separate ImGuiContext would be the sane option, but that comes with its own complications.
+    class ActiveWidgetStateStorage
+    {
+        private:
+            bool    IsInitialized;
+
+            ImGuiID ActiveId;
+            ImGuiID ActiveIdIsAlive;
+            float   ActiveIdTimer;
+            bool    ActiveIdIsJustActivated;
+            bool    ActiveIdAllowOverlap;
+            bool    ActiveIdNoClearOnFocusLoss;
+            bool    ActiveIdHasBeenPressedBefore;
+            bool    ActiveIdHasBeenEditedBefore;
+            bool    ActiveIdHasBeenEditedThisFrame;
+            bool    ActiveIdUsingMouseWheel;
+            ImU32   ActiveIdUsingNavDirMask;
+            ImU32   ActiveIdUsingNavInputMask;
+            ImU64   ActiveIdUsingKeyInputMask;
+            ImVec2  ActiveIdClickOffset;
+            void*   ActiveIdWindow;
+            int     ActiveIdSource;
+            int     ActiveIdMouseButton;
+            ImGuiID ActiveIdPreviousFrame;
+            bool    ActiveIdPreviousFrameIsAlive;
+            bool    ActiveIdPreviousFrameHasBeenEditedBefore;
+            void*   ActiveIdPreviousFrameWindow;
+            ImGuiID LastActiveId;
+            float   LastActiveIdTimer;
+
+        public:
+            ActiveWidgetStateStorage();
+            void StoreCurrentState();
+            void ApplyState();
+            void AdvanceState();        //Advance state similar to what happens in ImGui::NewFrame();
+    };
 }

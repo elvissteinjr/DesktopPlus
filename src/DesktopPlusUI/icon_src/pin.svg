@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   width="48"
+   height="48"
+   id="svg2"
+   version="1.1"
+   viewBox="0 0 48 48">
+  <metadata
+     id="metadata11">
+    <rdf:RDF>
+      <cc:Work>
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+        <dc:title></dc:title>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <path
+     style="fill:#ffffff;stroke-width:0.999997"
+     d="m 20,38.000249 0.0063,-12.000003 c 0,0 0.267932,2e-6 -9.00625,2e-6 -1,0 -1,0 -1,-1 V 23.99927 c 0,-1.999023 0,-1.999023 2.007606,-2.010501 C 13.005066,21.992604 14,22.000247 14,22.000247 V 8.0002453 h -1 c -1,0 -1,0 -1,-1.0000002 V 5.0002448 c 0,-1.0000002 0,-1.0000002 1,-1.0000002 5.51803,8.33e-4 12.490718,-8.439e-4 18,0 1,0 1,0 1,1.0000002 v 2.0000003 c 0,1.0000002 0,1.0000002 -1,1.0000002 H 30 V 22.000247 c 1.596071,0 0.918421,1.3e-5 2,0 2,0 2,0 2,2.000001 v 1 c 0,1 0,1 -1,1 l -9,1e-6 -1e-6,12.000005 -2,5.999997 z"
+     id="path4198" />
+</svg>

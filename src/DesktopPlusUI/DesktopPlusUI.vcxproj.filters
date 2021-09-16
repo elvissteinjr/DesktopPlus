@@ -35,8 +35,7 @@
       <Filter>ImGui Win32/DX11/OpenVR</Filter>
     </ClCompile>
     <ClCompile Include="TextureManager.cpp" />
-    <ClCompile Include="WindowSettings.cpp" />
-    <ClCompile Include="WindowMainBar.cpp" />
+    <ClCompile Include="WindowFloatingUIBar.cpp" />
     <ClCompile Include="UIManager.cpp" />
     <ClCompile Include="..\Shared\Matrices.cpp">
       <Filter>Shared</Filter>
@@ -54,19 +53,13 @@
       <Filter>Shared</Filter>
     </ClCompile>
     <ClCompile Include="ImGuiExt.cpp" />
-    <ClCompile Include="WindowKeyboardHelper.cpp" />
     <ClCompile Include="..\Shared\Ini.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
     <ClCompile Include="..\Shared\OverlayManager.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
-    <ClCompile Include="WindowSideBar.cpp" />
     <ClCompile Include="FloatingUI.cpp" />
-    <ClCompile Include="DashboardUI.cpp" />
-    <ClCompile Include="..\Shared\WindowList.cpp">
-      <Filter>Shared</Filter>
-    </ClCompile>
     <ClCompile Include="WindowPerformance.cpp" />
     <ClCompile Include="implot\implot_items.cpp">
       <Filter>ImPlot</Filter>
@@ -79,6 +72,20 @@
     <ClCompile Include="imgui\imgui_tables.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="WindowOverlayBar.cpp" />
+    <ClCompile Include="WindowSettings.cpp" />
+    <ClCompile Include="..\Shared\OverlayDragger.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="FloatingWindow.cpp" />
+    <ClCompile Include="WindowKeyboard.cpp" />
+    <ClCompile Include="VRKeyboard.cpp" />
+    <ClCompile Include="TranslationManager.cpp" />
+    <ClCompile Include="WindowOverlayProperties.cpp" />
+    <ClCompile Include="..\Shared\WindowManager.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="AuxUI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imstb_truetype.h">
@@ -106,8 +113,7 @@
       <Filter>ImGui Win32/DX11/OpenVR</Filter>
     </ClInclude>
     <ClInclude Include="TextureManager.h" />
-    <ClInclude Include="WindowSettings.h" />
-    <ClInclude Include="WindowMainBar.h" />
+    <ClInclude Include="WindowFloatingUIBar.h" />
     <ClInclude Include="UIManager.h" />
     <ClInclude Include="..\Shared\Vectors.h">
       <Filter>Shared</Filter>
@@ -134,7 +140,6 @@
     <ClInclude Include="..\Shared\Actions.h">
       <Filter>Shared</Filter>
     </ClInclude>
-    <ClInclude Include="WindowKeyboardHelper.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="..\Shared\DPRect.h">
       <Filter>Shared</Filter>
@@ -142,12 +147,7 @@
     <ClInclude Include="..\Shared\OverlayManager.h">
       <Filter>Shared</Filter>
     </ClInclude>
-    <ClInclude Include="WindowSideBar.h" />
     <ClInclude Include="FloatingUI.h" />
-    <ClInclude Include="DashboardUI.h" />
-    <ClInclude Include="..\Shared\WindowList.h">
-      <Filter>Shared</Filter>
-    </ClInclude>
     <ClInclude Include="WindowPerformance.h" />
     <ClInclude Include="implot\implot.h">
       <Filter>ImPlot</Filter>
@@ -157,6 +157,20 @@
     </ClInclude>
     <ClInclude Include="Win32PerformanceData.h" />
     <ClInclude Include="NotificationIcon.h" />
+    <ClInclude Include="WindowOverlayBar.h" />
+    <ClInclude Include="WindowSettings.h" />
+    <ClInclude Include="..\Shared\OverlayDragger.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="FloatingWindow.h" />
+    <ClInclude Include="WindowKeyboard.h" />
+    <ClInclude Include="VRKeyboard.h" />
+    <ClInclude Include="TranslationManager.h" />
+    <ClInclude Include="WindowOverlayProperties.h" />
+    <ClInclude Include="..\Shared\WindowManager.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="AuxUI.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="imgui_win32_dx11_openvr\PixelShaderImGui.hlsl">

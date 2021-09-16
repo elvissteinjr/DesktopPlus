@@ -179,6 +179,16 @@ bool HandleIPCMessage(MSG msg)
                     input_sim.MouseMove(GET_X_LPARAM(msg.lParam), GET_Y_LPARAM(msg.lParam));
                     break;
                 };
+                case ipceact_mouse_hwheel:
+                {
+                    input_sim.MouseWheelHorizontal(*(float*)&msg.lParam);
+                    break;
+                };
+                case ipceact_mouse_vwheel:
+                {
+                    input_sim.MouseWheelVertical(*(float*)&msg.lParam);
+                    break;
+                };
                 case ipceact_key_down:
                 {
                     //Copy 3 keycodes from lparam
@@ -211,6 +221,21 @@ bool HandleIPCMessage(MSG msg)
                     input_sim.KeyboardPressAndRelease(msg.lParam);
                     break;
                 };
+                case ipceact_key_togglekey_set:
+                {
+                    input_sim.KeyboardSetToggleKey(LOWORD(msg.lParam), HIWORD(msg.lParam));
+                    break;
+                }
+                case ipceact_keystate_w32_set:
+                {
+                    input_sim.KeyboardSetFromWin32KeyState(LOWORD(msg.lParam), HIWORD(msg.lParam));
+                    break;
+                }
+                case ipceact_keystate_set:
+                {
+                    input_sim.KeyboardSetKeyState((IPCKeyboardKeystateFlags)LOWORD(msg.lParam), HIWORD(msg.lParam));
+                    break;
+                }
                 case ipceact_keyboard_text_finish:
                 {
                     input_sim.KeyboardTextFinish();
@@ -236,17 +261,6 @@ bool HandleIPCMessage(MSG msg)
                         ::ShellExecute(nullptr, nullptr, path_wstr.c_str(), arg_wstr.c_str(), nullptr, SW_SHOWNORMAL);
                     }
                     break;
-                }
-                case ipceact_keyboard_update_modifiers:
-                {
-                    static unsigned int modifiers_last = -1;
-                    unsigned int modifiers = GetKeyboardModifierState();
-
-                    if (modifiers != modifiers_last)
-                    {
-                        modifiers_last = modifiers;
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_modifiers), (int)modifiers);
-                    }
                 }
             }
         }

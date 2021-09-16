@@ -2,6 +2,7 @@
 //
 //Much of the code here is based on the Dear ImGui Win32 DirectX 11 sample
 
+#define NOMINMAX
 #include "imgui.h"
 #include "imgui_impl_win32_openvr.h"
 #include "imgui_impl_dx11_openvr.h"
@@ -18,10 +19,7 @@
 #include "UIManager.h"
 #include "TextureManager.h"
 #include "InterprocessMessaging.h"
-#include "WindowMainBar.h"
-#include "WindowSideBar.h"
 #include "WindowSettings.h"
-#include "WindowKeyboardHelper.h"
 #include "Util.h"
 #include "ImGuiExt.h"
 
@@ -75,6 +73,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     else
         hwnd = ::CreateWindow(wc.lpszClassName, L"Desktop+ UI", 0, 0, 0, 1, 1, HWND_MESSAGE, nullptr, wc.hInstance, nullptr);
 
+    //Init UITextureSpaces
+    UITextureSpaces::Get().Init(desktop_mode);
+
     //Init UIManager and load config
     UIManager ui_manager(desktop_mode);
     ConfigManager::Get().LoadConfigFromFile();
@@ -105,12 +106,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     if (desktop_mode)
     {
+        const DPRect& rect_total = UITextureSpaces::Get().GetRect(ui_texspace_total);
+
         //Set real window size
         RECT r;
         r.left   = 0;
         r.top    = 0;
-        r.right  = int(TEXSPACE_TOTAL_WIDTH         * ui_manager.GetUIScale());
-        r.bottom = int(TEXSPACE_DASHBOARD_UI_HEIGHT * ui_manager.GetUIScale());
+        r.right  = int(rect_total.GetWidth()  * ui_manager.GetUIScale());
+        r.bottom = int(rect_total.GetHeight() * ui_manager.GetUIScale());
 
         ::AdjustWindowRect(&r, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
         ::SetWindowPos(hwnd, NULL, 0, 0, r.right - r.left, r.bottom - r.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
@@ -122,9 +125,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     }
 
     ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-
-    //Windows
-    WindowKeyboardHelper window_kbdhelper;
 
     //Init WinRT DLL
     DPWinRT_Init();
@@ -145,17 +145,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         if (!desktop_mode)
         {
             vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &ovrl_handle_dplus);
-
-            if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
-            {
-                vr::EVROverlayError keyboard_error = ImGui_ImplOpenVR_InputResetVRKeyboard(ovrl_handle_dplus);
-                
-                //If InputResetVRKeyboard() failed to show the keyboard because it's already in use, hide that, but only if the keyboard was in use by Desktop+
-                if ( (keyboard_error == vr::VROverlayError_KeyboardAlreadyInUse) && (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1) )
-                {
-                    vr::VROverlay()->HideKeyboard();
-                }
-            }
         }
 
         //Poll and handle messages (inputs, window resize, etc.)
@@ -181,24 +170,33 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             bool do_quit = false;
 
             //Handle OpenVR events for the dashboard UI
-            while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandle(), &vr_event, sizeof(vr_event)))
+            while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleOverlayBar(), &vr_event, sizeof(vr_event)))
             {
                 ImGui_ImplOpenVR_InputEventHandler(vr_event);
-                
+
                 switch (vr_event.eventType)
                 {
+                    case vr::VREvent_MouseMove:
+                    {
+                        //Clamp coordinates to overlay texture space to avoid leaking into others while click dragging
+                        const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_overlay_bar);
+                        io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
+                        io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
+                        break;
+                    }
                     case vr::VREvent_FocusEnter:
                     {
                         //Adjust sort order so mainbar tooltips are displayed right
-                        vr::VROverlay()->SetOverlaySortOrder(ui_manager.GetOverlayHandle(), 1);
+                        vr::VROverlay()->SetOverlaySortOrder(ui_manager.GetOverlayHandleOverlayBar(), 1);
                         break;
                     }
                     case vr::VREvent_FocusLeave:
+                    case vr::VREvent_OverlayHidden:
                     {
                         //Reset adjustment so other overlays are not always behind the UI unless really needed
-                        if (!ui_manager.GetDashboardUI().GetSettingsWindow().IsShown())
+                        if (!ui_manager.GetOverlayBarWindow().IsAnyMenuVisible())
                         {
-                            vr::VROverlay()->SetOverlaySortOrder(ui_manager.GetOverlayHandle(), 0);
+                            vr::VROverlay()->SetOverlaySortOrder(ui_manager.GetOverlayHandleOverlayBar(), 0);
                         }
                         break;
                     }
@@ -231,35 +229,114 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             //Handle OpenVR events for the floating UI
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleFloatingUI(), &vr_event, sizeof(vr_event)))
             {
-                if (!ImGui_ImplOpenVR_InputEventHandler(vr_event))
-                {
-                    //Event was not handled by ImGui
-                    /*switch (vr_event.eventType)
-                    {
+                ImGui_ImplOpenVR_InputEventHandler(vr_event);
 
-                    }*/
+                switch (vr_event.eventType)
+                {
+                    case vr::VREvent_MouseMove:
+                    {
+                        //Clamp coordinates to overlay texture space
+                        const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_floating_ui);
+                        io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
+                        io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
+                        break;
+                    }
+                    case vr::VREvent_FocusEnter:
+                    {
+                        //Adjust sort order so tooltips are displayed right
+                        vr::VROverlay()->SetOverlaySortOrder(ui_manager.GetOverlayHandleFloatingUI(), 1);
+                        break;
+                    }
+                    case vr::VREvent_FocusLeave:
+                    {
+                        //Reset adjustment so other overlays are not always behind the UI unless really needed
+                        vr::VROverlay()->SetOverlaySortOrder(ui_manager.GetOverlayHandleFloatingUI(), 0);
+                        break;
+                    }
                 }
+                    
             }
 
-            //Handle OpenVR events for the keyboard helper
-            while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleKeyboardHelper(), &vr_event, sizeof(vr_event)))
+            //Handle OpenVR events for the floating settings
+            while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleSettings(), &vr_event, sizeof(vr_event)))
             {
-                if (!ImGui_ImplOpenVR_InputEventHandler(vr_event))
-                {
-                    //Event was not handled by ImGui
-                    /*switch (vr_event.eventType)
-                    {
+                ImGui_ImplOpenVR_InputEventHandler(vr_event);
 
-                    }*/
+                if (vr_event.eventType == vr::VREvent_MouseMove)
+                {
+                    //Clamp coordinates to overlay texture space
+                    const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_settings);
+                    io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
+                    io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
                 }
             }
 
-            ui_manager.PositionOverlay(window_kbdhelper);
-            ui_manager.GetFloatingUI().UpdateUITargetState();
-            ui_manager.GetPerformanceWindow().UpdateVisibleState();
+            //Handle OpenVR events for the floating settings
+            while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleOverlayProperties(), &vr_event, sizeof(vr_event)))
+            {
+                ImGui_ImplOpenVR_InputEventHandler(vr_event);
 
-            do_idle = ( (!ui_manager.IsOverlayVisible()) && (!ui_manager.IsOverlayKeyboardHelperVisible()) && (!ui_manager.GetFloatingUI().IsVisible()) && 
-                        (!ui_manager.GetPerformanceWindow().IsVisible()) );
+                if (vr_event.eventType == vr::VREvent_MouseMove)
+                {
+                    //Clamp coordinates to overlay texture space
+                    const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_overlay_properties);
+                    io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
+                    io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
+                }
+            }
+
+            //Handle OpenVR events for the floating settings
+            while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleKeyboard(), &vr_event, sizeof(vr_event)))
+            {
+                ImGui_ImplOpenVR_InputEventHandler(vr_event);
+
+                if (vr_event.eventType == vr::VREvent_MouseMove)
+                {
+                    //Clamp coordinates to overlay texture space
+                    const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_keyboard);
+                    io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
+                    io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
+                }
+            }
+
+            //Handle OpenVR events for the Aux UI
+            while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleAuxUI(), &vr_event, sizeof(vr_event)))
+            {
+                ImGui_ImplOpenVR_InputEventHandler(vr_event);
+
+                switch (vr_event.eventType)
+                {
+                    case vr::VREvent_MouseMove:
+                    {
+                        //Clamp coordinates to overlay texture space
+                        const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_aux_ui);
+                        io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
+                        io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
+
+                        break;
+                    }
+                    case vr::VREvent_DashboardActivated:
+                    case vr::VREvent_DashboardDeactivated:
+                    {
+                        ui_manager.GetAuxUI().HideTemporaryWindows();
+                        break;
+                    }
+                }
+            }
+
+            ui_manager.PositionOverlay();
+            ui_manager.GetFloatingUI().UpdateUITargetState();
+            ui_manager.GetSettingsWindow().UpdateVisibility();
+            ui_manager.GetOverlayPropertiesWindow().UpdateVisibility();
+            ui_manager.GetVRKeyboard().GetWindow().UpdateVisibility();
+
+            do_idle = ( (!ui_manager.IsOverlayBarOverlayVisible())                     &&
+                        (!ui_manager.GetFloatingUI().IsVisible())                      &&
+                        (!ui_manager.GetSettingsWindow().IsVisibleOrFading())          &&
+                        (!ui_manager.GetOverlayPropertiesWindow().IsVisibleOrFading()) &&
+                        (!ui_manager.GetPerformanceWindow().IsVisible())               &&
+                        (!ui_manager.GetVRKeyboard().GetWindow().IsVisibleOrFading())  &&
+                        (!ui_manager.GetAuxUI().IsActive()) );
 
             if (do_quit)
             {
@@ -271,8 +348,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             do_idle = ::IsIconic(hwnd);
         }
 
+        ui_manager.GetPerformanceWindow().UpdateVisibleState();
+
         //Do texture reload now if it had been scheduled
-        if (TextureManager::Get().GetReloadLaterFlag())
+        if ( (TextureManager::Get().GetReloadLaterFlag()) && (!ImGui::IsAnyItemActiveOrDeactivated()) ) //Do not reload texture while an item is active as the ID changes on ImageButtons
         {
             TextureManager::Get().LoadAllTexturesAndBuildFonts();
         }
@@ -291,54 +370,88 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             ImGui_ImplWin32_NewFrame();
         else
             ImGui_ImplOpenVR_NewFrame();
-        
+
+        ui_manager.GetVRKeyboard().OnImGuiNewFrame();
+
         ImGui::NewFrame();
+
+        //Handle delayed ICP messages that need to be handled within an ImGui frame now
+        ui_manager.HandleDelayedIPCMessages();
 
         if (!desktop_mode)
         {
             //Make ImGui think the surface is smaller than it is (a poor man's multi-viewport hack)
-            io.DisplaySize.y = TEXSPACE_DASHBOARD_UI_HEIGHT * ui_manager.GetUIScale();
+
+            //Overlay Bar (this and floating UI need no X adjustments)
+            io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_overlay_bar).GetBR().y;
             ImGui::GetMainViewport()->Size.y = io.DisplaySize.y;
 
-            ui_manager.GetDashboardUI().Update();
+            ui_manager.GetOverlayBarWindow().Update();
 
-            //Once again for the floating surface
-            io.DisplaySize.y += (TEXSPACE_VERTICAL_SPACING + TEXSPACE_FLOATING_UI_HEIGHT) * ui_manager.GetUIScale();
+            //Floating UI
+            io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_floating_ui).GetBR().y;
             ImGui::GetMainViewport()->Size.y = io.DisplaySize.y;
 
             ui_manager.GetFloatingUI().Update();
 
-            //And again for the keyboard helper
-            io.DisplaySize.y += (TEXSPACE_VERTICAL_SPACING + TEXSPACE_KEYBOARD_HELPER_HEIGHT) * ui_manager.GetUIScale();
+            //Overlay Properties
+            io.DisplaySize.x = (float)UITextureSpaces::Get().GetRect(ui_texspace_overlay_properties).GetBR().x;
+            ImGui::GetMainViewport()->Size.x = io.DisplaySize.x;
+            io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_overlay_properties).GetBR().y;
             ImGui::GetMainViewport()->Size.y = io.DisplaySize.y;
 
-            window_kbdhelper.Update();
+            ui_manager.GetOverlayPropertiesWindow().Update();
 
-            //Reset/full size for the performance monitor
-            io.DisplaySize.y = TEXSPACE_TOTAL_HEIGHT * ui_manager.GetUIScale();
+            //Settings
+            io.DisplaySize.x = (float)UITextureSpaces::Get().GetRect(ui_texspace_settings).GetBR().x;
+            ImGui::GetMainViewport()->Size.x = io.DisplaySize.x;
+            io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_settings).GetBR().y;
+            ImGui::GetMainViewport()->Size.y = io.DisplaySize.y;
+
+            ui_manager.GetSettingsWindow().Update();
+
+            //Keyboard
+            io.DisplaySize.x = (float)UITextureSpaces::Get().GetRect(ui_texspace_keyboard).GetBR().x;
+            ImGui::GetMainViewport()->Size.x = io.DisplaySize.x;
+            io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_keyboard).GetBR().y;
+            ImGui::GetMainViewport()->Size.y = io.DisplaySize.y;
+
+            ui_manager.GetVRKeyboard().GetWindow().Update();
+
+            //Performance Monitor
+            io.DisplaySize.x = (float)UITextureSpaces::Get().GetRect(ui_texspace_performance_monitor).GetBR().x;
+            ImGui::GetMainViewport()->Size.x = io.DisplaySize.x;
+            io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_performance_monitor).GetBR().y;
             ImGui::GetMainViewport()->Size.y = io.DisplaySize.y;
 
             ui_manager.GetPerformanceWindow().Update();
+
+            //Aux UI
+            io.DisplaySize.x = (float)UITextureSpaces::Get().GetRect(ui_texspace_aux_ui).GetBR().x;
+            ImGui::GetMainViewport()->Size.x = io.DisplaySize.x;
+            io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_aux_ui).GetBR().y;
+            ImGui::GetMainViewport()->Size.y = io.DisplaySize.y;
+
+            ui_manager.GetAuxUI().Update();
         }
         else
         {
-            ui_manager.GetDashboardUI().Update();
+            ui_manager.GetOverlayBarWindow().Update();
+            ui_manager.GetSettingsWindow().Update();
+            ui_manager.GetOverlayPropertiesWindow().Update();
+            ui_manager.GetVRKeyboard().GetWindow().Update();
+            ui_manager.GetAuxUI().Update();
         }
 
         //Haptic feedback for hovered items, like the rest of the SteamVR UI
-        if ( (!desktop_mode) && (ImGui::HasHoveredNewItem()) )
+        if ( (!desktop_mode) && ( (ImGui::HasHoveredNewItem()) || (ui_manager.GetVRKeyboard().GetWindow().HasHoveredNewItem()) ) )
         {
-            if (vr::VROverlay()->IsHoverTargetOverlay(ui_manager.GetOverlayHandle()))
+            for (const auto& overlay_handle : ui_manager.GetUIOverlayHandles())
             {
-                vr::VROverlay()->TriggerLaserMouseHapticVibration(ui_manager.GetOverlayHandle(), 0.0f, 1.0f, 0.16f);
-            }
-            else if (vr::VROverlay()->IsHoverTargetOverlay(ui_manager.GetOverlayHandleFloatingUI()))
-            {
-                vr::VROverlay()->TriggerLaserMouseHapticVibration(ui_manager.GetOverlayHandleFloatingUI(), 0.0f, 1.0f, 0.16f);
-            }
-            else if (vr::VROverlay()->IsHoverTargetOverlay(ui_manager.GetOverlayHandleKeyboardHelper()))
-            {
-                vr::VROverlay()->TriggerLaserMouseHapticVibration(ui_manager.GetOverlayHandleKeyboardHelper(), 0.0f, 1.0f, 0.16f);
+                if (vr::VROverlay()->IsHoverTargetOverlay(overlay_handle))
+                {
+                    vr::VROverlay()->TriggerLaserMouseHapticVibration(overlay_handle, 0.0f, 1.0f, 0.16f);
+                }
             }
         }
 
@@ -372,20 +485,19 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
                 //Set Overlay texture
-                if ((ui_manager.GetOverlayHandle() != vr::k_ulOverlayHandleInvalid) && (g_vrTex))
+                if ((ui_manager.GetOverlayHandleOverlayBar() != vr::k_ulOverlayHandleInvalid) && (g_vrTex))
                 {
                     vr::Texture_t vrtex;
                     vrtex.handle = g_vrTex;
                     vrtex.eType = vr::TextureType_DirectX;
                     vrtex.eColorSpace = vr::ColorSpace_Gamma;
 
-                    vr::VROverlay()->SetOverlayTexture(ui_manager.GetOverlayHandle(), &vrtex);
+                    vr::VROverlay()->SetOverlayTexture(ui_manager.GetOverlayHandleOverlayBar(), &vrtex);
                 }
 
                 //Set overlay intersection mask... there doesn't seem to be much overhead from doing this every frame, even though we only need to update this sometimes
-                ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(ui_manager.GetOverlayHandle());
-                ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(ui_manager.GetOverlayHandleFloatingUI());
-                ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(ui_manager.GetOverlayHandleKeyboardHelper());
+                auto overlay_handles = ui_manager.GetUIOverlayHandles();
+                ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(overlay_handles.data(), overlay_handles.size());
 
                 //Since we don't get vsync on our message-only window from a swapchain, we don't use any in non-desktop mode.
                 //While this is still synced to the desktop instead of the HMD, it's not using inaccurate timers at least and works well enough for this kind of content
@@ -527,12 +639,13 @@ void CleanupDeviceD3D()
 void CreateRenderTarget(bool desktop_mode)
 {
     HRESULT hr;
+    const DPRect& texrect_total = UITextureSpaces::Get().GetRect(ui_texspace_total);
 
     // Create overlay texture
     D3D11_TEXTURE2D_DESC TexD;
     RtlZeroMemory(&TexD, sizeof(D3D11_TEXTURE2D_DESC));
-    TexD.Width = TEXSPACE_TOTAL_WIDTH;
-    TexD.Height = TEXSPACE_TOTAL_HEIGHT;
+    TexD.Width  = texrect_total.GetWidth();
+    TexD.Height = texrect_total.GetHeight();
     TexD.MipLevels = 1;
     TexD.ArraySize = 1;
     TexD.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -598,8 +711,11 @@ void CleanupRenderTarget()
 void RefreshOverlayTextureSharing()
 {
     //Set up advanced texture sharing between the overlays
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandle(), UIManager::Get()->GetOverlayHandleFloatingUI(),     g_vrTex);
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandle(), UIManager::Get()->GetOverlayHandleKeyboardHelper(), g_vrTex);
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleFloatingUI(),        g_vrTex);
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleSettings(),          g_vrTex);
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleOverlayProperties(), g_vrTex);
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleKeyboard(),          g_vrTex);
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleAuxUI(),             g_vrTex);
     //Also schedule for performance overlays, in case there are any
     UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
 }
@@ -679,33 +795,75 @@ void InitImGui(HWND hwnd)
     //Setup Dear ImGui style
     ImGui::StyleColorsDark();
     //Do a bit of custom styling
-    //ImGui's default dark style is already close to what SteamVR... used to be going for. 
-    //Desktop+ was trying to fit in as well, but the new style is meh and not simple to replicate with just colors
-    //This is fine.
-    ImVec4* colors = ImGui::GetStyle().Colors;
-    colors[ImGuiCol_TextDisabled]           = ImVec4(0.36f, 0.38f, 0.41f, 1.00f);
-    colors[ImGuiCol_WindowBg]               = ImVec4(0.03f, 0.04f, 0.06f, 0.96f);
-    colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_PopupBg]                = ImVec4(0.03f, 0.04f, 0.06f, 0.94f);
-    colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.02f, 0.02f, 0.04f, 0.47f);
-    colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.16f, 0.29f, 0.48f, 1.00f);
-    colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);
-    colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
-    colors[ImGuiCol_CheckMark]              = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-    colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    Style_ImGuiCol_TextNotification         = ImVec4(0.64f, 0.97f, 0.26f, 1.00f);
-    Style_ImGuiCol_TextWarning              = ImVec4(0.98f, 0.81f, 0.26f, 1.00f);
-    Style_ImGuiCol_TextError                = ImVec4(0.97f, 0.33f, 0.33f, 1.00f);
-    Style_ImGuiCol_ButtonPassiveToggled     = ImVec4(0.180f, 0.349f, 0.580f, 0.404f);
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowRounding = 7.0f;
 
-    ImGui::GetStyle().WindowRounding = 7.0f;
+    style.FrameRounding = 4.0f;
+    style.GrabRounding = 3.0f;
+    style.IndentSpacing = style.ItemSpacing.x;
+
+    ImVec4* colors = style.Colors;
+    colors[ImGuiCol_Text]                  = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    colors[ImGuiCol_TextDisabled]          = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
+    colors[ImGuiCol_TextDisabled]          = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+    colors[ImGuiCol_WindowBg]              = ImVec4(0.085f, 0.135f, 0.155f, 0.96f);
+    colors[ImGuiCol_ChildBg]               = ImVec4(0.00f, 0.00f, 0.00f, 0.10f);
+    colors[ImGuiCol_PopupBg]               = ImVec4(0.088f, 0.138f, 0.158f, 0.96f);
+    colors[ImGuiCol_Border]                = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    colors[ImGuiCol_BorderShadow]          = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_FrameBg]               = ImVec4(0.185f, 0.245f, 0.285f, 1.00f);
+    colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.12f, 0.20f, 0.28f, 1.00f);
+    colors[ImGuiCol_FrameBgActive]         = ImVec4(0.109f, 0.175f, 0.224f, 1.000f);
+    colors[ImGuiCol_TitleBg]               = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
+    colors[ImGuiCol_TitleBgActive]         = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
+    colors[ImGuiCol_MenuBarBg]             = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
+    colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.02f, 0.02f, 0.02f, 0.08f);
+    colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.18f, 0.22f, 0.25f, 1.00f);
+    colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.09f, 0.21f, 0.31f, 1.00f);
+    colors[ImGuiCol_CheckMark]             = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    colors[ImGuiCol_SliderGrab]            = ImVec4(0.298f, 0.596f, 0.859f, 1.000f);
+    colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.333f, 0.616f, 1.000f, 1.000f);
+    colors[ImGuiCol_Button]                = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    colors[ImGuiCol_ButtonHovered]         = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
+    colors[ImGuiCol_ButtonActive]          = ImVec4(0.063f, 0.548f, 1.000f, 1.000f);
+    colors[ImGuiCol_Header]                = ImVec4(0.20f, 0.25f, 0.29f, 0.55f);
+    colors[ImGuiCol_HeaderHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
+    colors[ImGuiCol_HeaderActive]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    colors[ImGuiCol_Separator]             = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.10f, 0.40f, 0.75f, 0.78f);
+    colors[ImGuiCol_SeparatorActive]       = ImVec4(0.10f, 0.40f, 0.75f, 1.00f);
+    colors[ImGuiCol_ResizeGrip]            = ImVec4(0.26f, 0.59f, 0.98f, 0.25f);
+    colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
+    colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
+    colors[ImGuiCol_Tab]                   = ImVec4(0.28f, 0.305f, 0.3f, 0.25f);
+    colors[ImGuiCol_TabHovered]            = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
+    colors[ImGuiCol_TabActive]             = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    colors[ImGuiCol_TabUnfocused]          = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+    colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+    colors[ImGuiCol_PlotLines]             = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+    colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+    colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+    colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+    colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
+    colors[ImGuiCol_DragDropTarget]        = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+    colors[ImGuiCol_NavHighlight]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+    colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+    //colors[ImGuiCol_ModalWindowDimBg]    = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);*/
+    colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    Style_ImGuiCol_TextNotification        = ImVec4(0.64f, 0.97f, 0.26f, 1.00f);
+    Style_ImGuiCol_TextWarning             = ImVec4(0.98f, 0.81f, 0.26f, 1.00f);
+    Style_ImGuiCol_TextError               = ImVec4(0.97f, 0.33f, 0.33f, 1.00f);
+    Style_ImGuiCol_ButtonPassiveToggled    = ImVec4(0.180f, 0.349f, 0.580f, 0.404f);
 
     //Setup ImPlot style
     ImPlotStyle& plot_style = ImPlot::GetStyle();
     plot_style.PlotPadding      = {0.0f, 0.0f};
     plot_style.AntiAliasedLines = true;
     plot_style.FillAlpha        = 0.25f;
-    plot_style.Colors[ImPlotCol_FrameBg] = ImVec4(0.06f, 0.06f, 0.06f, 0.25f);
+    plot_style.Colors[ImPlotCol_FrameBg] = ImVec4(0.03f, 0.05f, 0.06f, 0.10f);
     plot_style.Colors[ImPlotCol_PlotBg]  = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
 
     //Setup Platform/Renderer bindings
@@ -719,7 +877,7 @@ void InitImGui(HWND hwnd)
         HMONITOR mon = ::MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
         UINT dpix, dpiy;
         ::GetDpiForMonitor(mon, MDT_EFFECTIVE_DPI, &dpix, &dpiy);   //X and Y will always be identical... interesting API
-        dpi_scale = (dpix / 96.0f) * 0.625f;  //Scaling based on 100% being the VR font at 32pt and desktop 100% DPI font being at 20pt
+        dpi_scale = (dpix / 96.0f) /** 0.625f*/;  //Scaling based on 100% being the VR font at 32pt and desktop 100% DPI font being at 20pt
     }
 
     UIManager::Get()->SetUIScale(dpi_scale);
@@ -727,20 +885,19 @@ void InitImGui(HWND hwnd)
     TextureManager::Get().LoadAllTexturesAndBuildFonts();
 
     //Set DPI-dependent style
-    ImGuiStyle& style = ImGui::GetStyle();
     style.LogSliderDeadzone = (float)int(58.0f * dpi_scale); //Force whole pixel size
 
     if (UIManager::Get()->IsInDesktopMode())
     {
-        io.DisplaySize.x = TEXSPACE_TOTAL_WIDTH  * dpi_scale;
-        io.DisplaySize.y = TEXSPACE_DASHBOARD_UI_HEIGHT * dpi_scale;
+        io.DisplaySize.x = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetWidth()  * dpi_scale;
+        io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetHeight() * dpi_scale;
 
         style.ScrollbarSize = (float)int(23.0f * dpi_scale); 
     }
     else
     {
-        io.DisplaySize.x = TEXSPACE_TOTAL_WIDTH;
-        io.DisplaySize.y = TEXSPACE_DASHBOARD_UI_HEIGHT;
+        io.DisplaySize.x = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetWidth();
+        io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetHeight();
 
         style.ScrollbarSize = (float)int(32.0f * dpi_scale);
 

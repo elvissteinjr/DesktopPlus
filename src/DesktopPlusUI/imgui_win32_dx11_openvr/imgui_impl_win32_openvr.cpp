@@ -610,6 +610,9 @@ IMGUI_IMPL_API bool ImGui_ImplOpenVR_InputEventHandler(const vr::VREvent_t& vr_e
         {
             //Pointer left the overlay
             io.MousePos = ImVec2(-FLT_MAX,-FLT_MAX);
+
+            //Release mouse buttons if they're still down (not the case in most situations)
+            std::fill(std::begin(io.MouseDown), std::end(io.MouseDown), false);
             return true;
         }
         case vr::VREvent_MouseButtonDown:
@@ -708,7 +711,7 @@ IMGUI_IMPL_API void ImGui_ImplOpenVR_InputOnVRKeyboardClosed()
     g_OnScreenKeyboardShown = false;
 }
 
-IMGUI_IMPL_API void ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(vr::VROverlayHandle_t overlay_handle)
+IMGUI_IMPL_API void ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(vr::VROverlayHandle_t* overlay_handles, size_t overlay_count)
 {
     ImGuiContext& g = *ImGui::GetCurrentContext();
 
@@ -734,7 +737,10 @@ IMGUI_IMPL_API void ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(vr::VROverla
         }
     }
 
-    vr::VROverlay()->SetOverlayIntersectionMask(overlay_handle, primitives.data(), (uint32_t)primitives.size());
+    for (size_t i = 0; i < overlay_count; ++i)
+    {
+        vr::VROverlay()->SetOverlayIntersectionMask(overlay_handles[i], primitives.data(), (uint32_t)primitives.size());
+    }
 }
 
 void ImGui_ImplOpenVR_AddInputFromOSK(const char* input)

@@ -19,35 +19,53 @@ namespace Gdiplus
 #include "Util.h"
 #include "UIManager.h"
 #include "OverlayManager.h"
+#include "WindowManager.h"
 #include "imgui_impl_dx11_openvr.h"
 
-const wchar_t* TextureManager::s_TextureFilenames[] =
+const wchar_t* TextureManager::s_TextureFilenames[tmtex_MAX] =
 {
     L"images/icons/desktop.png",
+    L"images/icons/desktop_all.png",
     L"images/icons/desktop_1.png",
     L"images/icons/desktop_2.png",
     L"images/icons/desktop_3.png",
     L"images/icons/desktop_4.png",
     L"images/icons/desktop_5.png",
     L"images/icons/desktop_6.png",
-    L"images/icons/desktop_all.png",
     L"images/icons/desktop_next.png",
     L"images/icons/desktop_previous.png",
+    L"images/icons/desktop_none.png",
+    L"images/icons/performance_monitor.png",
     L"images/icons/settings.png",
     L"images/icons/keyboard.png",
-    L"images/icons/small_close.png",
-    L"images/icons/small_move.png",
-    L"images/icons/small_actionbar.png",
-    L"images/icons/xsmall_desktop.png",
-    L"images/icons/xsmall_desktop_1.png",
-    L"images/icons/xsmall_desktop_2.png",
-    L"images/icons/xsmall_desktop_3.png",
-    L"images/icons/xsmall_desktop_4.png",
-    L"images/icons/xsmall_desktop_5.png",
-    L"images/icons/xsmall_desktop_6.png",
-    L"images/icons/xsmall_desktop_all.png",
-    L"images/icons/xsmall_desktop_none.png",
-    L"images/icons/xsmall_performance_monitor.png",
+    L"images/icons/add.png",
+    L"images/icons/window_overlay.png",
+    L"images/icons_small/small_close.png",
+    L"images/icons_small/small_move.png",
+    L"images/icons_small/small_add_window.png",
+    L"images/icons_small/small_actionbar.png",
+    L"images/icons_small/xsmall_desktop.png",
+    L"images/icons_small/xsmall_desktop_all.png",
+    L"images/icons_small/xsmall_desktop_1.png",
+    L"images/icons_small/xsmall_desktop_2.png",
+    L"images/icons_small/xsmall_desktop_3.png",
+    L"images/icons_small/xsmall_desktop_4.png",
+    L"images/icons_small/xsmall_desktop_5.png",
+    L"images/icons_small/xsmall_desktop_6.png",
+    L"images/icons_small/xsmall_desktop_none.png",
+    L"images/icons_small/xsmall_performance_monitor.png",
+    L"images/icons_small/xsmall_settings.png",
+    L"images/icons_small/xsmall_keyboard.png",
+    L"images/icons_small/xsmall_origin_playspace.png",
+    L"images/icons_small/xsmall_origin_hmd_pos.png",
+    L"images/icons_small/xsmall_origin_dashboard.png",
+    L"images/icons_small/xsmall_origin_hmd.png",
+    L"images/icons_small/xsmall_origin_controller_right.png",
+    L"images/icons_small/xsmall_origin_controller_left.png",
+    L"images/icons_small/xsmall_origin_aux.png",
+    L"images/icons_small/xxsmall_close.png",
+    L"images/icons_small/xxsmall_pin.png",
+    L"images/icons_small/xxsmall_unpin.png",
     L"",                                            //tmtex_icon_temp, blank
 };
 
@@ -104,10 +122,24 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         builder.AddText(OverlayManager::Get().GetConfigData(i).ConfigNameStr.c_str());
     }
 
+    for (const WindowInfo& window_info :  WindowManager::Get().WindowListGet()) //And window list
+    {
+        builder.AddText(window_info.GetListTitle().c_str());
+    }
+
     for (const std::string& str : m_FontBuilderExtraStrings) //And extra strings... yeah. This might not be the best way to tackle this issue
     {
         builder.AddText(str.c_str());
     }
+
+    //Characters from current translation
+    TranslationManager::Get().AddStringsToFontBuilder(builder);
+
+    //Characters used by the VR Keyboard
+    builder.AddText(UIManager::Get()->GetVRKeyboard().GetKeyLabelsString().c_str());
+
+    //Extra characters used by the UI directly
+    builder.AddText(k_pch_bold_exclamation_mark);
 
     builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
     builder.BuildRanges(&ranges);
@@ -136,10 +168,13 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
 
         if (font != nullptr)
         {
+            //Segoe UI doesn't have any CJK, use some fallbacks (loading this is actually pretty fast)
             config->MergeMode = true;
 
-            //Segoe UI doesn't have any CJK, use some fallbacks (loading this is actually pretty fast)
-            if (FileExists(L"C:\\Windows\\Fonts\\msgothic.ttc"))
+            //Prefer Meiryo over MS Gothic. The former isn't installed on non-japanese systems by default though
+            if (FileExists(L"C:\\Windows\\Fonts\\meiryo.ttc"))
+                io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\meiryo.ttc", font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);
+            else if (FileExists(L"C:\\Windows\\Fonts\\msgothic.ttc"))
                 io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\msgothic.ttc", font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);
 
             if (FileExists(L"C:\\Windows\\Fonts\\malgun.ttf"))
@@ -456,6 +491,31 @@ bool TextureManager::GetTextureInfo(const CustomAction& action, ImVec2& size, Im
     return false;
 }
 
+int TextureManager::GetWindowIconCacheID(HWND window_handle)
+{
+    WindowInfo const* info_ptr = WindowManager::Get().WindowListFindWindow(window_handle);
+
+    return (info_ptr != nullptr) ? GetWindowIconCacheID(info_ptr->GetIcon()) : -1;
+}
+
+int TextureManager::GetWindowIconCacheID(HWND window_handle, intptr_t& icon_handle_config)
+{
+    WindowInfo const* info_ptr = WindowManager::Get().WindowListFindWindow(window_handle);
+    HICON icon_handle = (info_ptr != nullptr) ? info_ptr->GetIcon() : nullptr;
+
+    if (icon_handle != nullptr)
+    {
+        icon_handle_config = (intptr_t)icon_handle;
+        return GetWindowIconCacheID(icon_handle);
+    }
+    else if (icon_handle_config != 0)
+    {
+        return GetWindowIconCacheID((HICON)icon_handle_config);
+    }
+
+    return -1;
+}
+
 int TextureManager::GetWindowIconCacheID(HICON icon_handle)
 {
     //Look if the icon is already loaded
@@ -499,7 +559,7 @@ int TextureManager::GetWindowIconCacheID(HICON icon_handle)
             {
                 //Even if we don't override biBitCount to 32, it's still returned as that for 24-bit and lower bit-depth icons (probably just the screen DC format)
                 //It seems the only way to check if the icon needs its mask applied is to see if the alpha channel is fully blank
-                //32-bit icons still come masks, but applying them means to override the alpha channel with a 1-bit one (and doing so is also wasteful)
+                //32-bit icons still come with masks, but applying them means to override the alpha channel with a 1-bit one (and doing so is also wasteful)
                 bool needs_mask = true;
                 BYTE* psrc = PixelData.get() + 3; //BGRA alpha pixel
                 const BYTE* const psrc_end = PixelData.get() + (icon_pixel_count * 4);
@@ -598,6 +658,25 @@ bool TextureManager::GetWindowIconTextureInfo(int icon_cache_id, ImVec2& size, I
     return false;
 }
 
+bool TextureManager::GetOverlayIconTextureInfo(OverlayConfigData& data, ImVec2& size, ImVec2& uv_min, ImVec2& uv_max, bool is_xsmall, bool* has_window_icon)
+{
+    if ( (is_xsmall) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) )
+    {
+        //XSmall returns the window icon itself
+        int cache_id = GetWindowIconCacheID((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd], data.ConfigIntPtr[configid_intptr_overlay_state_winrt_last_hicon]);
+
+        if (cache_id != -1)
+        {
+            if (has_window_icon != nullptr)
+                *has_window_icon = true;
+
+            return GetWindowIconTextureInfo(cache_id, size, uv_min, uv_max);
+        }
+    }
+
+    return GetTextureInfo(GetOverlayIconTextureID(data, is_xsmall, has_window_icon), size, uv_min, uv_max);
+}
+
 bool TextureManager::AddFontBuilderString(const char* str)
 {
     const std::string builder_string(str);
@@ -605,9 +684,65 @@ bool TextureManager::AddFontBuilderString(const char* str)
     //Add only if it's not already in the extra string list. Avoids duplicates and unnecessary texture rebuilds if the requested character can't be found in the loaded fonts
     if (std::find(m_FontBuilderExtraStrings.begin(), m_FontBuilderExtraStrings.end(), builder_string) == m_FontBuilderExtraStrings.end())
     {
-        m_FontBuilderExtraStrings.emplace_back(builder_string);
+        m_FontBuilderExtraStrings.push_back(builder_string);
         return true;
     }
 
     return false;
+}
+
+TMNGRTexID TextureManager::GetOverlayIconTextureID(const OverlayConfigData& data, bool is_xsmall, bool* has_window_icon)
+{
+    TMNGRTexID texture_id = (is_xsmall) ? tmtex_icon_xsmall_desktop : tmtex_icon_desktop;
+    int desktop_id = -2;
+
+    if (has_window_icon != nullptr)
+        *has_window_icon = false;
+
+    switch (data.ConfigInt[configid_int_overlay_capture_source])
+    {
+        case ovrl_capsource_desktop_duplication:
+        {
+            desktop_id = data.ConfigInt[configid_int_overlay_desktop_id];
+            break;
+        }
+        case ovrl_capsource_winrt_capture:
+        {
+            if (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0)
+            {
+                if (has_window_icon != nullptr)
+                    *has_window_icon = true;
+
+                texture_id = (is_xsmall) ? tmtex_icon_xsmall_desktop_none : tmtex_icon_window_overlay;
+            }
+            else if (data.ConfigInt[configid_int_overlay_winrt_desktop_id] != -2)
+            {
+                desktop_id = data.ConfigInt[configid_int_overlay_winrt_desktop_id];
+            }
+            else
+            {
+                texture_id = (is_xsmall) ? tmtex_icon_xsmall_desktop_none : tmtex_icon_desktop_none;
+            }
+            break;
+        }
+        case ovrl_capsource_ui:
+        {
+            texture_id = (is_xsmall) ? tmtex_icon_xsmall_performance_monitor : tmtex_icon_performance_monitor;
+            break;
+        }
+    }
+
+    if (desktop_id != -2)
+    {
+        if (is_xsmall)
+        {
+            texture_id = (tmtex_icon_xsmall_desktop_1 + desktop_id <= tmtex_icon_xsmall_desktop_6) ? (TMNGRTexID)(tmtex_icon_xsmall_desktop_1 + desktop_id) : tmtex_icon_xsmall_desktop;
+        }
+        else
+        {
+            texture_id = (tmtex_icon_desktop_1 + desktop_id <= tmtex_icon_desktop_6) ? (TMNGRTexID)(tmtex_icon_desktop_1 + desktop_id) : tmtex_icon_desktop;
+        }
+    }
+
+    return texture_id;
 }

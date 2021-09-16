@@ -1,4 +1,4 @@
-// Desktop+: Extended with Vector2Int
+// Desktop+: Extended with Vector2Int and for OpenVR compatibility 
 
 ///////////////////////////////////////////////////////////////////////////////
 // Vectors.h
@@ -18,6 +18,7 @@
 
 #include <cmath>
 #include <iostream>
+#include "openvr.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // 2D vector
@@ -75,6 +76,7 @@ struct Vector3
     // ctors
     Vector3() : x(0), y(0), z(0) {};
     Vector3(float x, float y, float z) : x(x), y(y), z(z) {};
+    Vector3(vr::HmdVector3_t hmd_v) : x(hmd_v.v[0]), y(hmd_v.v[1]), z(hmd_v.v[2]) {};
 
     // utils functions
     void        set(float x, float y, float z);

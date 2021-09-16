@@ -205,9 +205,10 @@
     <ClCompile Include="..\Shared\InterprocessMessaging.cpp" />
     <ClCompile Include="..\Shared\Matrices.cpp" />
     <ClCompile Include="..\Shared\OUtoSBSConverter.cpp" />
+    <ClCompile Include="..\Shared\OverlayDragger.cpp" />
     <ClCompile Include="..\Shared\OverlayManager.cpp" />
     <ClCompile Include="..\Shared\Util.cpp" />
-    <ClCompile Include="..\Shared\WindowList.cpp" />
+    <ClCompile Include="..\Shared\WindowManager.cpp" />
     <ClCompile Include="BackgroundOverlay.cpp" />
     <ClCompile Include="DesktopPlus.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -223,7 +224,6 @@
     <ClCompile Include="Overlays.cpp" />
     <ClCompile Include="ThreadManager.cpp" />
     <ClCompile Include="VRInput.cpp" />
-    <ClCompile Include="WindowManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Shared\Actions.h" />
@@ -234,10 +234,11 @@
     <ClInclude Include="..\Shared\Matrices.h" />
     <ClInclude Include="..\Shared\openvr.h" />
     <ClInclude Include="..\Shared\OUtoSBSConverter.h" />
+    <ClInclude Include="..\Shared\OverlayDragger.h" />
     <ClInclude Include="..\Shared\OverlayManager.h" />
     <ClInclude Include="..\Shared\Util.h" />
     <ClInclude Include="..\Shared\Vectors.h" />
-    <ClInclude Include="..\Shared\WindowList.h" />
+    <ClInclude Include="..\Shared\WindowManager.h" />
     <ClInclude Include="BackgroundOverlay.h" />
     <ClInclude Include="CommonTypes.h" />
     <ClInclude Include="DisplayManager.h" />
@@ -249,7 +250,6 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="ThreadManager.h" />
     <ClInclude Include="VRInput.h" />
-    <ClInclude Include="WindowManager.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="PixelShader.hlsl">

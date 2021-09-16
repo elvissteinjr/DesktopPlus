@@ -30,30 +30,38 @@ enum IPCMsgID
 enum IPCActionID
 {
     ipcact_nop,
-    ipcact_mirror_reset,            //Sent by dashboard application to itself when WndProc needs to trigger a mirror reset
-    ipcact_overlays_reset,          //Sent by dashboard application when all overlays were reset. No data in lParam
-    ipcact_overlay_position_reset,  //Sent by UI application to reset the detached overlay position. No data in lParam
-    ipcact_overlay_position_adjust, //Sent by UI application to adjust detached overlay position. lParam = IPCActionOverlayPosAdjustValue
-    ipcact_action_delete,           //Sent by UI application to delete an Action. lParam is Custom(!) Action ID
-    ipcact_action_do,               //Sent by UI application to do an Action. lParam is Action ID
-    ipcact_action_start,            //Sent by UI application to start an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
-    ipcact_action_stop,             //Sent by UI application to stop an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
-    ipcact_keyboard_helper,         //Sent by UI application in response to a keyboard helper button press. lParam is win32 key code
-    ipcact_vrkeyboard_closed,       //Sent by dashboard application when VREvent_Closed occured and the keyboard is open for the UI application. No data in lParam
-    ipcact_overlay_profile_load,    //Sent by UI application when loading a profile. lParam is IPCActionOverlayProfileLoadArg, profile name is stored in configid_str_state_profile_name_load beforehand
-    ipcact_crop_to_active_window,   //Sent by UI application to adjust crop values to the active window. No data in lParam
-    ipcact_overlay_new,             //Sent by UI application to add a new overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
-    ipcact_overlay_new_ui,          //Sent by UI application to add a new Ui overlay, also making it the active one. No data in lParam
-    ipcact_overlay_remove,          //Sent by UI application to remove a overlay. lParam is ID of overlay to remove (typically the active ID)
-    ipcact_overlay_creation_error,  //Sent by dashboard application when an error occured during overlay creation. lParam is EVROverlayError
-    ipcact_overlay_position_sync,   //Sent by the UI application to request a sync of all overlay's transforms. No data in lParam
-    ipcact_overlay_swap,            //Sent by the UI application to swap two overlays. lParam is the ID of overlay to swap with the current overlay
-    ipcact_overlay_gaze_fade_auto,  //Sent by the UI application to automatically configure gaze fade values. No data in lParam
-    ipcact_winrt_show_picker,       //Sent by the UI application to open the capture picker for Graphics Capture
-    ipcact_winrt_thread_error,      //Sent by dashboard application when an error occured in a Graphics Capture thread. lParam is HRESULT
-    ipcact_winmanager_drag_start,   //Sent by dashboard application's WindowManager thread to main thread to start an overlay drag. lParam is ID of overlay to drag
-    ipcact_sync_config_state,       //Sent by the UI application to request overlay and config state variables after a restart
-    ipcact_focus_window,            //Sent by the UI application to focus a window. lParam is HWND
+    ipcact_mirror_reset,              //Sent by dashboard application to itself when WndProc needs to trigger a mirror reset
+    ipcact_overlays_reset,            //Sent by dashboard application when all overlays were reset. No data in lParam
+    ipcact_overlay_position_reset,    //Sent by UI application to reset the detached overlay position. No data in lParam
+    ipcact_overlay_position_adjust,   //Sent by UI application to adjust detached overlay position. lParam = IPCActionOverlayPosAdjustValue
+    ipcact_action_delete,             //Sent by UI application to delete an Action. lParam is Custom(!) Action ID
+    ipcact_action_do,                 //Sent by UI application to do an Action. lParam is Action ID
+    ipcact_action_start,              //Sent by UI application to start an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
+    ipcact_action_stop,               //Sent by UI application to stop an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
+    ipcact_vrkeyboard_closed,         //Sent by dashboard application when VREvent_Closed occured and the keyboard is open for the UI application. No data in lParam
+    ipcact_overlay_profile_load,      //Sent by UI application when loading a profile. lParam is IPCActionOverlayProfileLoadArg, profile name is stored in configid_str_state_profile_name_load beforehand
+    ipcact_crop_to_active_window,     //Sent by UI application to adjust crop values to the active window. No data in lParam
+    ipcact_overlay_duplicate,         //Sent by UI application to duplicate an overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
+    ipcact_overlay_new_ui,            //Sent by UI application to add a new UI overlay, also making it the active one. No data in lParam
+    ipcact_overlay_new_drag,          //Sent by UI application to add a new overlay. lParam is desktop ID or -2 for HWND, -3 for UI overlay, + pointer distance * 100 (low/high word order, signed)
+                                      //HWND is stored in configid_intptr_state_arg_hwnd beforehand
+    ipcact_overlay_remove,            //Sent by UI or dashboard application to remove a overlay. lParam is ID of overlay to remove (typically the active ID)
+    ipcact_overlay_creation_error,    //Sent by dashboard application when an error occured during overlay creation. lParam is EVROverlayError
+    ipcact_overlay_transform_sync,    //Sent by the UI application to request a sync of overlay transforms. lParam is ID of overlay to sync transform of (or -1 for full sync)
+    ipcact_overlay_swap,              //Sent by the UI application to swap two overlays. lParam is the ID of overlay to swap with the current overlay
+    ipcact_overlay_swap_finish,       //Sent by the UI application to finish a swap process. no data in lParam
+    ipcact_overlay_gaze_fade_auto,    //Sent by the UI application to automatically configure gaze fade values. No data in lParam
+    ipcact_winrt_thread_error,        //Sent by dashboard application when an error occured in a Graphics Capture thread. lParam is HRESULT
+    ipcact_winmanager_drag_start,     //Sent by dashboard application's WindowManager thread to main thread to start an overlay drag. lParam is ID of overlay to drag
+    ipcact_winmanager_winlist_add,    //Sent by either application's WindowManager thread to main thread to add a window to the window list. lParam is HWND
+    ipcact_winmanager_winlist_update, //Sent by WindowManager thread to main thread to update a window from the window list. lParam is HWND
+    ipcact_winmanager_winlist_remove, //Sent by WindowManager thread to main thread to remove a window from the window list. lParam is HWND
+    ipcact_winmanager_focus_changed,  //Sent by dashboard application's WindowManager thread to UI app when the foreground window changed. No data in lParam
+    ipcact_sync_config_state,         //Sent by the UI application to request overlay and config state variables after a restart
+    ipcact_focus_window,              //Sent by the UI application to focus a window. lParam is HWND
+    ipcact_keyboard_show,             //Sent by dashboard application to show the VR keyboard. lParam is bool (true to show)
+    ipcact_keyboard_vkey,             //Sent by UI application in response of a VR keyboard press. lParam is IPCKeyboardKeystateFlags + Win32 key code (low/high word order)
+    ipcact_keyboard_wchar,            //Sent by UI application in response of a VR keyboard press. lParam is 1 wchar + key down bool (low/high word order)
     ipcact_MAX
 };
 
@@ -77,17 +85,34 @@ enum IPCActionOverlayProfileLoadArg
     ipcactv_ovrl_profile_multi_add
 };
 
+enum IPCKeyboardKeystateFlags : unsigned char
+{
+    kbd_keystate_flag_key_down         = 1 << 0,
+    kbd_keystate_flag_lshift_down      = 1 << 1,
+    kbd_keystate_flag_rshift_down      = 1 << 2,
+    kbd_keystate_flag_lctrl_down       = 1 << 3,
+    kbd_keystate_flag_rctrl_down       = 1 << 4,
+    kbd_keystate_flag_lalt_down        = 1 << 5,
+    kbd_keystate_flag_ralt_down        = 1 << 6,
+    kbd_keystate_flag_capslock_toggled = 1 << 7,
+    kbd_keystate_flag_MAX              = 1 << 7
+};
+
 enum IPCElevatedActionID
 {
     ipceact_refresh,                   //Prompts to refresh possibly changed data, such as InputSimulator screen offsets. No data in lParam
     ipceact_mouse_move,                //lParam = X & Y (in low/high word order, signed)
+    ipceact_mouse_hwheel,              //lParam = delta (float)
+    ipceact_mouse_vwheel,              //lParam = delta (float)
     ipceact_key_down,                  //lParam = Keycodes (3 unsigned chars)
     ipceact_key_up,                    //lParam = Keycodes (3 unsigned chars)
     ipceact_key_toggle,                //lParam = Keycodes (3 unsigned chars)
     ipceact_key_press_and_release,     //lParam = Keycode  (1 unsigned char)
+    ipceact_key_togglekey_set,         //lParam = Keycode & bool (low/high word order)
+    ipceact_keystate_w32_set,          //lParam = Win32 Keystate & bool (low/high word order)
+    ipceact_keystate_set,              //lParam = IPCKeyboardKeystateFlags & Keycode (low/high word order)
     ipceact_keyboard_text_finish,      //Finishes the keyboard text queue. Keyboard text is queued by sending strings with ipcestrid_keyboard_text*. No data in lParam
     ipceact_launch_application,        //Launches application previously defined by sending ipcestrid_launch_application_path and ipcestrid_launch_application_arg strings. No data in lParam
-    ipceact_keyboard_update_modifiers, //Updates the UI process with the current modifier state. Kind of spammy but the elevated process doesn't poll. No data in lParam
     ipceact_MAX
 };
 

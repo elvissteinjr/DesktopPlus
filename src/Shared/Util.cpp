@@ -64,7 +64,7 @@ std::wstring WStringConvertFromLocalEncoding(const char* str)
     return wstr;
 }
 
-void OffsetTransformFromSelf(vr::HmdMatrix34_t& matrix, float offset_right, float offset_up, float offset_forward)
+void TransformOpenVR34TranslateRelative(vr::HmdMatrix34_t& matrix, float offset_right, float offset_up, float offset_forward)
 {
 	matrix.m[0][3] += offset_right * matrix.m[0][0];
 	matrix.m[1][3] += offset_right * matrix.m[1][0];
@@ -79,7 +79,7 @@ void OffsetTransformFromSelf(vr::HmdMatrix34_t& matrix, float offset_right, floa
 	matrix.m[2][3] += offset_forward * matrix.m[2][2];
 }
 
-void OffsetTransformFromSelf(Matrix4& matrix, float offset_right, float offset_up, float offset_forward)
+void TransformOpenVR34TranslateRelative(Matrix4& matrix, float offset_right, float offset_up, float offset_forward)
 {
     matrix[12] += offset_right * matrix[0];
     matrix[13] += offset_right * matrix[1];
@@ -108,6 +108,59 @@ void TransformLookAt(Matrix4& matrix, const Vector3 pos_target, const Vector3 up
                y_axis.x, y_axis.y, y_axis.z, 0.0f,
                z_axis.x, z_axis.y, z_axis.z, 0.0f,
                pos.x,    pos.y,    pos.z,    1.0f };
+}
+
+bool ComputeOverlayIntersectionForDevice(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, vr::VROverlayIntersectionResults_t* results,
+                                         bool use_tip_offset)
+{
+    vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+
+    if ( (device_index >= vr::k_unMaxTrackedDeviceCount) || (!poses[device_index].bPoseIsValid) )
+        return false;
+
+    Matrix4 mat_device = poses[device_index].mDeviceToAbsoluteTracking;
+
+    if (use_tip_offset)
+    {
+        vr::ETrackedControllerRole controller_role = vr::VRSystem()->GetControllerRoleForTrackedDeviceIndex(device_index);
+
+        if ( (controller_role == vr::TrackedControllerRole_LeftHand) || (controller_role == vr::TrackedControllerRole_RightHand) )
+        {
+            mat_device = mat_device * GetControllerTipMatrix( (controller_role == vr::TrackedControllerRole_RightHand) );
+        }
+    } 
+  
+    //Set up intersection test
+    Vector3 v_pos = mat_device.getTranslation();
+    Vector3 forward = {mat_device[8], mat_device[9], mat_device[10]};
+    forward *= -1.0f;
+
+    vr::VROverlayIntersectionParams_t params = {0};
+    params.eOrigin    = tracking_origin;
+    params.vSource    = {v_pos.x, v_pos.y, v_pos.z};
+    params.vDirection = {forward.x, forward.y, forward.z};
+
+    return vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, results);
+}
+
+vr::TrackedDeviceIndex_t FindPointerDeviceForOverlay(vr::VROverlayHandle_t overlay_handle)
+{
+    vr::TrackedDeviceIndex_t device_index = vr::k_unTrackedDeviceIndexInvalid;
+
+    //Check left and right hand controller
+    for (int controller_role = vr::TrackedControllerRole_LeftHand; controller_role <= vr::TrackedControllerRole_RightHand; ++controller_role)
+    {
+        vr::TrackedDeviceIndex_t device_index_intersection = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole((vr::ETrackedControllerRole)controller_role);
+        vr::VROverlayIntersectionResults_t results;
+
+        if (ComputeOverlayIntersectionForDevice(overlay_handle, device_index_intersection, vr::TrackingUniverseStanding, &results))
+        {
+            device_index = device_index_intersection;
+        }
+    }
+
+    return device_index;
 }
 
 vr::TrackedDeviceIndex_t GetFirstVRTracker()
@@ -522,8 +575,50 @@ unsigned int GetKeyboardModifierState()
     return modifiers;
 }
 
+void StringReplaceAll(std::string& source, const std::string& from, const std::string& to)
+{
+    std::string new_string;
+    new_string.reserve(source.length());
+
+    std::string::size_type last_pos = 0;
+    std::string::size_type find_pos;
+
+    while ((find_pos = source.find(from, last_pos)) != std::string::npos)
+    {
+        new_string.append(source, last_pos, find_pos - last_pos);
+        new_string += to;
+        last_pos = find_pos + from.length();
+    }
+
+    //Append the remaining string
+    new_string.append(source, last_pos, source.length() - last_pos);
+
+    source.swap(new_string);
+}
+
+void WStringReplaceAll(std::wstring& source, const std::wstring& from, const std::wstring& to)
+{
+    std::wstring new_string;
+    new_string.reserve(source.length());
+
+    std::wstring::size_type last_pos = 0;
+    std::wstring::size_type find_pos;
+
+    while ((find_pos = source.find(from, last_pos)) != std::wstring::npos)
+    {
+        new_string.append(source, last_pos, find_pos - last_pos);
+        new_string += to;
+        last_pos = find_pos + from.length();
+    }
+
+    //Append the remaining string
+    new_string.append(source, last_pos, source.length() - last_pos);
+
+    source.swap(new_string);
+}
+
 //This ain't pretty, but GetKeyNameText() works with scancodes, which are not exactly the same and the output strings aren't that nice either (and always localized)
-//Those duplicate lines are optimized away to the same address by any sane compiler, nothing to worry about.
+//Should this be translatable?
 const char* g_VK_name[256] = 
 {
     "[None]",

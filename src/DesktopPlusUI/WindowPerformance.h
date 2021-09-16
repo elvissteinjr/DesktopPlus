@@ -44,6 +44,14 @@ struct ScrollingBufferFrameTime
     }
 };
 
+struct TrackerInfo
+{
+    vr::TrackedDeviceIndex_t DeviceIndex;
+    std::string Name;
+    std::string NameCompact;
+    float BatteryLevel;
+};
+
 class WindowPerformance
 {
     private:
@@ -67,6 +75,7 @@ class WindowPerformance
         ULONGLONG m_FPS_TickLast;
 
         //Offset values for cumulative counters
+        uint32_t m_OffsetFrameIndex;
         uint32_t m_OffsetFramesPresents;
         uint32_t m_OffsetReprojectedFrames;
         uint32_t m_OffsetDroppedFrames;
@@ -82,9 +91,10 @@ class WindowPerformance
         float m_ReprojectionRatio;
         uint32_t m_DroppedFrames;
 
+        float m_BatteryHMD;
         float m_BatteryLeft;
         float m_BatteryRight;
-        std::vector< std::pair<vr::TrackedDeviceIndex_t, float> > m_BatteryTrackers; //List updated in RefreshTrackerBatteryList(), called on devices connect/disconnect
+        std::vector<TrackerInfo> m_BatteryTrackers; //List updated in RefreshTrackerBatteryList(), called on devices connect/disconnect
 
         uint32_t m_FrameTimeLastIndex;
         float m_FrameTimeVsyncLimit;

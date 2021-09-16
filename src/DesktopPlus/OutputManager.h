@@ -9,12 +9,14 @@
 #include "openvr.h"
 #include "Matrices.h"
 
+#include "OverlayManager.h"
 #include "ConfigManager.h"
 #include "InputSimulator.h"
 #include "VRInput.h"
 #include "BackgroundOverlay.h"
 #include "OUtoSBSConverter.h"
 #include "InterprocessMessaging.h"
+#include "OverlayDragger.h"
 
 class Overlay;
 //
@@ -61,6 +63,7 @@ class OutputManager
         bool HasDashboardBeenActivatedOnce() const;
         bool IsDashboardTabActive() const;
         float GetDashboardScale() const;
+        float GetOverlayHeight(unsigned int overlay_id) const;
 
         void SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle);
         void SetOutputInvalid(); //Handles state when there's no valid output
@@ -76,6 +79,8 @@ class OutputManager
         const LARGE_INTEGER& GetUpdateLimiterDelay();
         //This updates the cached desktop rects and count and optionally chooses the adapters/desktop for desktop duplication (previously part of InitOutput())
         int EnumerateOutputs(int target_desktop_id = -1, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_preferred = nullptr, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_vr = nullptr);
+        void CropToDisplay(int display_id, int& crop_x, int& crop_y, int& crop_width, int& crop_height);
+        bool CropToActiveWindow(int& crop_x, int& crop_y, int& crop_width, int& crop_height);             //Returns true if values have changed
 
         void ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter);
 
@@ -91,14 +96,15 @@ class OutputManager
 
         bool HandleOpenVREvents();  //Returns true if quit event happened
         void OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned int& current_overlay_old);
-        void HandleKeyboardHelperMessage(LPARAM lparam);
+        void HandleKeyboardMessage(IPCActionID ipc_action_id, LPARAM lparam);
         bool HandleOverlayProfileLoadMessage(LPARAM lparam);
 
         void LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8);
         void ResetMouseLastLaserPointerPos();
         void CropToActiveWindow();
         void CropToDisplay(int display_id, bool do_not_apply_setting = false);
-        void AddOverlay(unsigned int base_id, bool is_ui_overlay = false);
+        void DuplicateOverlay(unsigned int base_id, bool is_ui_overlay = false);
+        unsigned int AddOverlayDrag(float source_distance, OverlayCaptureSource capture_source, int desktop_id = -2, HWND window_handle = nullptr, float overlay_width = 0.5f);
 
         void ApplySettingCaptureSource();
         void ApplySetting3DMode();
@@ -109,25 +115,24 @@ class OutputManager
         void ApplySettingKeyboardScale(float last_used_scale);
         void ApplySettingUpdateLimiter();
 
-        void DragStart(bool is_gesture_drag = false);
-        void DragUpdate();
-        void DragAddDistance(float distance);
-        Matrix4 DragGetBaseOffsetMatrix();
-        void DragFinish();
-
-        void DragGestureStart();
-        void DragGestureUpdate();
-        void DragGestureFinish();
-
+        void DetachedTransformSync(unsigned int overlay_id);
         void DetachedTransformSyncAll();
-        void DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref = vr::k_ulOverlayHandleInvalid);
+        void DetachedTransformReset(unsigned int overlay_id_ref = k_ulOverlayID_None);
         void DetachedTransformAdjust(unsigned int packed_value);
+        void DetachedTransformConvertOrigin(unsigned int overlay_id, OverlayOrigin origin_from, OverlayOrigin origin_to);
         void DetachedTransformUpdateHMDFloor();
 
         void DetachedInteractionAutoToggle();
         void DetachedOverlayGazeFade();
         void DetachedOverlayGazeFadeAutoConfigure();
         void DetachedOverlayGlobalHMDPointerAll();
+        void DetachedOverlayAutoDockingAll();
+
+        void DetachedTempDragStart(unsigned int overlay_id, float offset_forward = 0.5f);
+        void DetachedTempDragFinish();  //Calls OnDragFinish()
+        void OnDragFinish();            //Called before calling m_OverlayDragger.DragFinish() to handle OutputManager post drag state adjustments (like auto docking)
+
+        void OnSetOverlayWinRTCaptureWindow(unsigned int overlay_id); //Called when configid_intptr_overlay_state_winrt_hwnd changed
 
         void UpdateDashboardHMD_Y();
         bool HasDashboardMoved();
@@ -137,13 +142,12 @@ class OutputManager
         void RegisterHotkeys();
         void HandleHotkeys();
 
-        void UpdateKeyboardHelperModifierState();
-
     // ClassVars
         InputSimulator m_InputSim;
         VRInput m_VRInput;
         IPCManager m_IPCMan;
         BackgroundOverlay m_BackgroundOverlay;
+        OverlayDragger m_OverlayDragger;
 
     // Vars
         ID3D11Device* m_Device;
@@ -178,7 +182,6 @@ class OutputManager
 
         vr::VROverlayHandle_t m_OvrlHandleDashboardDummy;
         vr::VROverlayHandle_t m_OvrlHandleIcon;
-        vr::VROverlayHandle_t m_OvrlHandleMain;
         vr::VROverlayHandle_t m_OvrlHandleDesktopTexture;
         ID3D11Texture2D* m_OvrlTex;
         ID3D11RenderTargetView* m_OvrlRTV;
@@ -188,6 +191,7 @@ class OutputManager
         bool m_OvrlDashboardActive;
         bool m_OvrlInputActive;
         bool m_OvrlDetachedInteractiveAll;
+        ULONGLONG m_OvrlTempDragStartTick;
 
         ID3D11Texture2D* m_MouseTex;
         ID3D11ShaderResourceView* m_MouseShaderRes;
@@ -204,23 +208,13 @@ class OutputManager
         int m_MouseDefaultHotspotX;
         int m_MouseDefaultHotspotY;
         int m_MouseIgnoreMoveEventMissCount;
+        unsigned int m_MouseLeftDownOverlayID;
 
         bool m_IsFirstLaunch;
         bool m_ComInitDone;
 
-        int m_DragModeDeviceID;                 //-1 if not dragging
-        unsigned int m_DragModeOverlayID;
-        Matrix4 m_DragModeMatrixTargetStart;
-        Matrix4 m_DragModeMatrixSourceStart;
-        bool  m_DragGestureActive;
-        float m_DragGestureScaleDistanceStart;
-        float m_DragGestureScaleWidthStart;
-        float m_DragGestureScaleDistanceLast;
-        Matrix4 m_DragGestureRotateMatLast;
-
         bool m_DashboardActivatedOnce;
         Matrix4 m_DashboardTransformLast;       //This is only used to check if the dashboard has moved from events we can't detect otherwise
-        float m_DashboardHMD_Y;                 //The HMDs y-position when the dashboard was activated. Used for dashboard-relative positioning
 
         //These are only used when duplicating outputs from a different GPU
         ID3D11Device* m_MultiGPUTargetDevice;   //Target D3D11 device, meaning the one the HMD is connected to
