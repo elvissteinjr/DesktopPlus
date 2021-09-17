@@ -98,7 +98,7 @@ namespace ImGui
         //Deactivated flag for the slider gets swallowed up somewhere, but we really need it for the VR keyboard, so we tape it back on here
         if (has_slider_deactivated)
         {
-            ImGui::GetCurrentWindow()->DC.LastItemStatusFlags |= ImGuiItemStatusFlags_HasDeactivated | ImGuiItemStatusFlags_Deactivated;
+            ImGui::GetCurrentContext()->LastItemData.StatusFlags |= ImGuiItemStatusFlags_HasDeactivated | ImGuiItemStatusFlags_Deactivated;
         }
 
         //We generally don't want -0.0 to be a thing, so prevent it
@@ -187,7 +187,7 @@ namespace ImGui
         //Deactivated flag for the slider gets swallowed up somewhere, but we really need it for the VR keyboard, so we tape it back on here
         if (has_slider_deactivated)
         {
-            ImGui::GetCurrentWindow()->DC.LastItemStatusFlags |= ImGuiItemStatusFlags_HasDeactivated | ImGuiItemStatusFlags_Deactivated;
+            ImGui::GetCurrentContext()->LastItemData.StatusFlags |= ImGuiItemStatusFlags_HasDeactivated | ImGuiItemStatusFlags_Deactivated;
         }
 
         //Restore hack
@@ -516,7 +516,7 @@ namespace ImGui
                     popup_window->AutoPosLastDirection = ImGuiDir_Left; // "Below, Toward Left"
                 else
                     popup_window->AutoPosLastDirection = ImGuiDir_Down; // "Below, Toward Right (default)"
-                ImRect r_outer = GetWindowAllowedExtentRect(popup_window);
+                ImRect r_outer = GetPopupAllowedExtentRect(popup_window);
                 ImVec2 pos = FindBestWindowPosForPopupEx(frame_bb.GetBL(), size_expected, &popup_window->AutoPosLastDirection, r_outer, frame_bb, ImGuiPopupPositionPolicy_ComboBox);
 
 
@@ -723,7 +723,7 @@ namespace ImGui
                     // Store current color and open a picker
                     g.ColorPickerRef = col_v4;
                     OpenPopup("picker");
-                    SetNextWindowPos(window->DC.LastItemRect.GetBL() + ImVec2(-1, style.ItemSpacing.y));
+                    SetNextWindowPos(g.LastItemData.Rect.GetBL() + ImVec2(-1, style.ItemSpacing.y));
                 }
             }
 
@@ -739,8 +739,8 @@ namespace ImGui
                     TextEx(label, label_display_end);
                     Spacing();
                 }
-                ImGuiColorEditFlags picker_flags_to_forward = ImGuiColorEditFlags__DataTypeMask | ImGuiColorEditFlags__PickerMask | ImGuiColorEditFlags__InputMask | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
-                ImGuiColorEditFlags picker_flags = (flags & picker_flags_to_forward) | ImGuiColorEditFlags__DisplayMask | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaPreview;
+                ImGuiColorEditFlags picker_flags_to_forward = ImGuiColorEditFlags_DataTypeMask_ | ImGuiColorEditFlags_PickerMask_ | ImGuiColorEditFlags_InputMask_ | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
+                ImGuiColorEditFlags picker_flags = (flags & picker_flags_to_forward) | ImGuiColorEditFlags_DisplayMask_ | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaPreview;
                 SetNextItemWidth(square_sz * 12.0f); // Use 256 + bar sizes?
                 value_changed |= ColorPicker4("##picker", col, picker_flags, &g.ColorPickerRef.x);
 
@@ -770,10 +770,10 @@ namespace ImGui
 
         // When picker is being actively used, use its active id so IsItemActive() will function on ColorEdit4().
         if (picker_active_window && g.ActiveId != 0 && g.ActiveIdWindow == picker_active_window)
-            window->DC.LastItemId = g.ActiveId;
+            g.LastItemData.ID = g.ActiveId;
 
         if (value_changed)
-            MarkItemEdited(window->DC.LastItemId);
+            MarkItemEdited(g.LastItemData.ID);
 
         //Restore hack
         io.MouseClicked[ImGuiMouseButton_Left] = mouse_left_clicked_old;
