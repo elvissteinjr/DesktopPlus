@@ -563,7 +563,7 @@ void WindowOverlayBar::HideMenus()
     UIManager::Get()->RepeatFrame();
 
     //Reset sort order if the overlay already isn't hovered anymore
-    if (!vr::VROverlay()->IsHoverTargetOverlay(UIManager::Get()->GetOverlayHandleOverlayBar()))
+    if ( (UIManager::Get()->IsOpenVRLoaded()) && (!vr::VROverlay()->IsHoverTargetOverlay(UIManager::Get()->GetOverlayHandleOverlayBar())) )
     {
         vr::VROverlay()->SetOverlaySortOrder(UIManager::Get()->GetOverlayHandleOverlayBar(), 0);
     }
