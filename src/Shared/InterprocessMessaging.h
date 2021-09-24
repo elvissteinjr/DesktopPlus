@@ -44,7 +44,7 @@ enum IPCActionID
     ipcact_overlay_duplicate,         //Sent by UI application to duplicate an overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
     ipcact_overlay_new_ui,            //Sent by UI application to add a new UI overlay, also making it the active one. No data in lParam
     ipcact_overlay_new_drag,          //Sent by UI application to add a new overlay. lParam is desktop ID or -2 for HWND, -3 for UI overlay, + pointer distance * 100 (low/high word order, signed)
-                                      //HWND is stored in configid_intptr_state_arg_hwnd beforehand
+                                      //HWND is stored in configid_handle_state_arg_hwnd beforehand
     ipcact_overlay_remove,            //Sent by UI or dashboard application to remove a overlay. lParam is ID of overlay to remove (typically the active ID)
     ipcact_overlay_creation_error,    //Sent by dashboard application when an error occured during overlay creation. lParam is EVROverlayError
     ipcact_overlay_transform_sync,    //Sent by the UI application to request a sync of overlay transforms. lParam is ID of overlay to sync transform of (or -1 for full sync)

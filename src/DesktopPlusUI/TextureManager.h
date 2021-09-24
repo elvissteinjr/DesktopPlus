@@ -96,7 +96,7 @@ class TextureManager
         bool GetTextureInfo(const CustomAction& action, ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const;
 
         int  GetWindowIconCacheID(HWND window_handle); //Returns -1 on error
-        int  GetWindowIconCacheID(HWND window_handle, intptr_t& icon_handle_config); //Updates icon_handle_config when lookup with window_handle succeeds or falls back to icon_handle_config
+        int  GetWindowIconCacheID(HWND window_handle, uint64_t& icon_handle_config); //Updates icon_handle_config when lookup with window_handle succeeds or falls back to icon_handle_config
         int  GetWindowIconCacheID(HICON icon_handle);  //Returns -1 on error
         bool GetWindowIconTextureInfo(int icon_cache_id, ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const;
 

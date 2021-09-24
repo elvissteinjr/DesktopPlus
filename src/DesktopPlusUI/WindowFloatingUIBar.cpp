@@ -102,7 +102,7 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
 
     //Add current window as overlay (only show if desktop duplication or non-window WinRT capture)
     if (  (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) ||
-         ((overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (overlay_data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] == 0)) )
+         ((overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (overlay_data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == 0)) )
     {
         //If marked to need update, refresh actual state
         if (m_IsCurrentWindowCapturable == -1)
@@ -145,7 +145,7 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
             OverlayManager::Get().AddOverlay(ovrl_capsource_winrt_capture, -2, current_window);
 
             //Send to dashboard app
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_intptr_state_arg_hwnd), (LPARAM)current_window);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_arg_hwnd), (LPARAM)current_window);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new_drag, MAKELPARAM(-2, (source_distance * 100.0f)));
         }
 
@@ -421,8 +421,8 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
         //Reset window selection when switching to a desktop
         if (current_configid == configid_int_overlay_winrt_desktop_id)
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 0);
-            overlay_config.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] = 0;
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), 0);
+            overlay_config.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = 0;
         }
 
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), current_desktop);

@@ -450,7 +450,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                         default: capsource = ovrl_capsource_desktop_duplication;
                     }
 
-                    OverlayManager::Get().AddOverlay(capsource, desktop_id, (HWND)ConfigManager::Get().GetConfigIntPtr(configid_intptr_state_arg_hwnd));
+                    OverlayManager::Get().AddOverlay(capsource, desktop_id, (HWND)ConfigManager::Get().GetConfigHandle(configid_handle_state_arg_hwnd));
                     break;
                 }
                 case ipcact_overlay_remove:
@@ -505,7 +505,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                             {
                                 OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-                                if ( (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] == msg.lParam) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) )
+                                if ( (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == msg.lParam) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) )
                                 {
                                     data.ConfigStr[configid_str_overlay_winrt_last_window_title]      = StringConvertFromUTF16(window_info->GetTitle().c_str());
                                     data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] = StringConvertFromUTF16(window_info->GetWindowClassName().c_str());
@@ -539,7 +539,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     {
                         OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-                        if (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] == msg.lParam)
+                        if (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == msg.lParam)
                         {
                             data.ConfigStr[configid_str_overlay_winrt_last_window_title] = last_title;
                         }
@@ -636,7 +636,8 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
             else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX)
             {
                 ConfigID_Float float_id = (ConfigID_Float)(msg.wParam - configid_bool_MAX - configid_int_MAX);
-                ConfigManager::Get().SetConfigFloat(float_id, *(float*)&msg.lParam);    //Interpret lParam as a float variable
+                float value = *(float*)&msg.lParam; //Interpret lParam as a float variable
+                ConfigManager::Get().SetConfigFloat(float_id, value);
 
                 switch (float_id)
                 {
@@ -644,7 +645,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     {
                         if (m_TransformSyncValueCount < IM_ARRAYSIZE(m_TransformSyncValues))
                         {
-                            m_TransformSyncValues[m_TransformSyncValueCount] = *(float*)&msg.lParam;
+                            m_TransformSyncValues[m_TransformSyncValueCount] = value;
                             m_TransformSyncValueCount++;
                         }
 
@@ -662,19 +663,20 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     default: break;
                 }
             }
-            else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX + configid_intptr_MAX)
+            else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX + configid_handle_MAX)
             {
-                ConfigID_IntPtr intptr_id = (ConfigID_IntPtr)(msg.wParam - configid_bool_MAX - configid_int_MAX - configid_float_MAX);
-                ConfigManager::Get().SetConfigIntPtr(intptr_id, msg.lParam);
+                ConfigID_Handle handle_id = (ConfigID_Handle)(msg.wParam - configid_bool_MAX - configid_int_MAX - configid_float_MAX);
+                uint64_t value = *(uint64_t*)&msg.lParam; //Interpret lParam as a uint64_t variable
+                ConfigManager::Get().SetConfigHandle(handle_id, value);
 
-                switch (intptr_id)
+                switch (handle_id)
                 {
-                    case configid_intptr_overlay_state_winrt_hwnd:
+                    case configid_handle_overlay_state_winrt_hwnd:
                     {
                         const WindowInfo* window_info = nullptr;
 
-                        if (msg.lParam != 0)                           
-                            window_info = WindowManager::Get().WindowListFindWindow((HWND)msg.lParam);
+                        if (value != 0)
+                            window_info = WindowManager::Get().WindowListFindWindow((HWND)value);
 
                         //Set last known title and exe name from new handle
                         if (window_info != nullptr)
@@ -683,12 +685,12 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                             ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_class_name, StringConvertFromUTF16(window_info->GetWindowClassName().c_str()));
                             ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name,   window_info->GetExeName());
                         }
-                        else if (msg.lParam == 0) //Only clear if HWND is really null
+                        else if (value == 0) //Only clear if HWND is really null
                         {
                             ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title, "");
                             ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_class_name, "");
                             ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, "");
-                            ConfigManager::Get().SetConfigIntPtr(configid_intptr_overlay_state_winrt_last_hicon, 0);
+                            ConfigManager::Get().SetConfigHandle(configid_handle_overlay_state_winrt_last_hicon, 0);
                         }
 
                         OverlayManager::Get().SetCurrentOverlayNameAuto();

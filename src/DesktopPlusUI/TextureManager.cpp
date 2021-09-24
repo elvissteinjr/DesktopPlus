@@ -498,14 +498,14 @@ int TextureManager::GetWindowIconCacheID(HWND window_handle)
     return (info_ptr != nullptr) ? GetWindowIconCacheID(info_ptr->GetIcon()) : -1;
 }
 
-int TextureManager::GetWindowIconCacheID(HWND window_handle, intptr_t& icon_handle_config)
+int TextureManager::GetWindowIconCacheID(HWND window_handle, uint64_t& icon_handle_config)
 {
     WindowInfo const* info_ptr = WindowManager::Get().WindowListFindWindow(window_handle);
     HICON icon_handle = (info_ptr != nullptr) ? info_ptr->GetIcon() : nullptr;
 
     if (icon_handle != nullptr)
     {
-        icon_handle_config = (intptr_t)icon_handle;
+        icon_handle_config = (uint64_t)icon_handle;
         return GetWindowIconCacheID(icon_handle);
     }
     else if (icon_handle_config != 0)
@@ -660,10 +660,10 @@ bool TextureManager::GetWindowIconTextureInfo(int icon_cache_id, ImVec2& size, I
 
 bool TextureManager::GetOverlayIconTextureInfo(OverlayConfigData& data, ImVec2& size, ImVec2& uv_min, ImVec2& uv_max, bool is_xsmall, bool* has_window_icon)
 {
-    if ( (is_xsmall) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) )
+    if ( (is_xsmall) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) )
     {
         //XSmall returns the window icon itself
-        int cache_id = GetWindowIconCacheID((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd], data.ConfigIntPtr[configid_intptr_overlay_state_winrt_last_hicon]);
+        int cache_id = GetWindowIconCacheID((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], data.ConfigHandle[configid_handle_overlay_state_winrt_last_hicon]);
 
         if (cache_id != -1)
         {
@@ -708,7 +708,7 @@ TMNGRTexID TextureManager::GetOverlayIconTextureID(const OverlayConfigData& data
         }
         case ovrl_capsource_winrt_capture:
         {
-            if (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0)
+            if (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0)
             {
                 if (has_window_icon != nullptr)
                     *has_window_icon = true;

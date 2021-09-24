@@ -25,7 +25,7 @@ OverlayConfigData::OverlayConfigData()
     std::fill(std::begin(ConfigBool),   std::end(ConfigBool),   false);
     std::fill(std::begin(ConfigInt),    std::end(ConfigInt),    -1);
     std::fill(std::begin(ConfigFloat),  std::end(ConfigFloat),  0.0f);
-    std::fill(std::begin(ConfigIntPtr), std::end(ConfigIntPtr), 0);
+    std::fill(std::begin(ConfigHandle), std::end(ConfigHandle), 0);
 
     //Default the transform matrix to zero as an indicator to reset them when possible later
     float matrix_zero[16] = { 0.0f };
@@ -165,7 +165,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
         HWND window = WindowInfo::FindClosestWindowForTitle(data.ConfigStr[configid_str_overlay_winrt_last_window_title], data.ConfigStr[configid_str_overlay_winrt_last_window_class_name],
                                                             data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name], WindowManager::Get().WindowListGet());
 
-        data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] = (intptr_t)window;
+        data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = (intptr_t)window;
 
         //If we found a new match, adjust last window title and update the overlay name later (we want to keep the old name if the window is gone though)
         if (window != nullptr)
@@ -297,7 +297,7 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteString(section.c_str(), "Transform", data.ConfigTransform.toString().c_str());
 
     //Save WinRT Capture state
-    HWND window_handle = (HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd];
+    HWND window_handle = (HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd];
     std::string last_window_title, last_window_class_name, last_window_exe_name;
 
     if (window_handle != nullptr)
@@ -976,7 +976,7 @@ WPARAM ConfigManager::GetWParamForConfigID(ConfigID_Float id)
     return id + configid_bool_MAX + configid_int_MAX;
 }
 
-WPARAM ConfigManager::GetWParamForConfigID(ConfigID_IntPtr id)
+WPARAM ConfigManager::GetWParamForConfigID(ConfigID_Handle id)
 {
     return id + configid_bool_MAX + configid_int_MAX + configid_float_MAX;
 }
@@ -1005,9 +1005,12 @@ void ConfigManager::SetConfigFloat(ConfigID_Float id, float value)
         m_ConfigFloat[id] = value;
 }
 
-void ConfigManager::SetConfigIntPtr(ConfigID_IntPtr id, intptr_t value)
+void ConfigManager::SetConfigHandle(ConfigID_Handle id, uint64_t value)
 {
-    OverlayManager::Get().GetCurrentConfigData().ConfigIntPtr[id] = value;
+    if (id < configid_handle_overlay_MAX)
+        OverlayManager::Get().GetCurrentConfigData().ConfigHandle[id] = value;
+    else if (id < configid_handle_MAX)
+        m_ConfigHandle[id] = value;
 }
 
 void ConfigManager::SetConfigString(ConfigID_String id, const std::string& value)
@@ -1034,9 +1037,9 @@ float ConfigManager::GetConfigFloat(ConfigID_Float id) const
     return (id < configid_float_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigFloat[id] : m_ConfigFloat[id];
 }
 
-intptr_t ConfigManager::GetConfigIntPtr(ConfigID_IntPtr id) const
+uint64_t ConfigManager::GetConfigHandle(ConfigID_Handle id) const
 {
-    return OverlayManager::Get().GetCurrentConfigData().ConfigIntPtr[id];
+    return (id < configid_handle_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigHandle[id] : m_ConfigHandle[id];
 }
 
 const std::string& ConfigManager::GetConfigString(ConfigID_String id) const
@@ -1059,9 +1062,9 @@ float& ConfigManager::GetConfigFloatRef(ConfigID_Float id)
     return (id < configid_float_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigFloat[id] : m_ConfigFloat[id];
 }
 
-intptr_t& ConfigManager::GetConfigIntPtrRef(ConfigID_IntPtr id)
+uint64_t& ConfigManager::GetConfigHandleRef(ConfigID_Handle id)
 {
-    return OverlayManager::Get().GetCurrentConfigData().ConfigIntPtr[id];
+    return (id < configid_handle_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigHandle[id] : m_ConfigHandle[id];
 }
 
 void ConfigManager::ResetConfigStateValues()

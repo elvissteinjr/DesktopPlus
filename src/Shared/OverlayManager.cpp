@@ -81,7 +81,7 @@ unsigned int OverlayManager::AddOverlay(OverlayCaptureSource capture_source, int
         case ovrl_capsource_winrt_capture:
         {
             data.ConfigInt[configid_int_overlay_winrt_desktop_id]       = desktop_id; //This just so happens to be -2 (unset) if called from ipcact_overlay_new_drag with HWND
-            data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] = (intptr_t)window_handle;
+            data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = (intptr_t)window_handle;
            
             #ifdef DPLUS_UI
                 const WindowInfo* window_info = WindowManager::Get().WindowListFindWindow(window_handle);
@@ -541,7 +541,7 @@ void OverlayManager::SetOverlayNameAuto(unsigned int id, HWND window_handle)
             }
             case ovrl_capsource_winrt_capture:
             {
-                if (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0)
+                if (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0)
                 {
                     data.ConfigNameStr += data.ConfigStr[configid_str_overlay_winrt_last_window_title];
                 }
@@ -571,7 +571,7 @@ void OverlayManager::SetOverlayNamesAutoForWindow(HWND window_handle)
     {
         const OverlayConfigData& data = m_OverlayConfigData[i];
 
-        if ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && ((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] == window_handle) )
+        if ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && ((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == window_handle) )
         {
             SetOverlayNameAuto(i, window_handle);
         }

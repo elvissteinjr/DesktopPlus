@@ -1079,7 +1079,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         default: capsource = ovrl_capsource_desktop_duplication;
                     }
 
-                    AddOverlayDrag(pointer_distance, capsource, desktop_id, (HWND)ConfigManager::Get().GetConfigIntPtr(configid_intptr_state_arg_hwnd));
+                    AddOverlayDrag(pointer_distance, capsource, desktop_id, (HWND)ConfigManager::Get().GetConfigHandle(configid_handle_state_arg_hwnd));
                     break;
                 }
                 case ipcact_overlay_remove:
@@ -1156,7 +1156,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         {
                             OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-                            data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] = msg.lParam;
+                            data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = msg.lParam;
 
                             if (ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay)
                                 data.ConfigBool[configid_bool_overlay_enabled] = true;
@@ -1165,7 +1165,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                             //Send to UI
                             IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
-                            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), msg.lParam);
+                            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), msg.lParam);
 
                             if (ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay)
                                 IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), true);
@@ -1185,7 +1185,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-                        if (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] == msg.lParam)
+                        if (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == msg.lParam)
                         {
                             data.ConfigStr[configid_str_overlay_winrt_last_window_title] = last_title;
                         }
@@ -1209,11 +1209,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                                                              data.ConfigInt[configid_int_overlay_state_content_height]);
 
                         //Send over current HWND if there's an active capture
-                        if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0))
+                        if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0))
                         {
 
-                            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_intptr_overlay_state_winrt_hwnd), 
-                                                                 data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]);
+                            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), 
+                                                                 data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]);
                         }
 
                         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
@@ -1448,8 +1448,9 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
             {
                 ConfigID_Float float_id = (ConfigID_Float)(msg.wParam - configid_bool_MAX - configid_int_MAX);
 
+                float value = *(float*)&msg.lParam; //Interpret lParam as a float variable
                 float previous_value = ConfigManager::Get().GetConfigFloat(float_id);
-                ConfigManager::Get().SetConfigFloat(float_id, *(float*)&msg.lParam);    //Interpret lParam as a float variable
+                ConfigManager::Get().SetConfigFloat(float_id, value);
 
                 switch (float_id)
                 {
@@ -1478,18 +1479,19 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 }
 
             }
-            else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX + configid_intptr_MAX)
+            else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX + configid_handle_MAX)
             {
-                ConfigID_IntPtr intptr_id = (ConfigID_IntPtr)(msg.wParam - configid_bool_MAX - configid_int_MAX - configid_float_MAX);
+                ConfigID_Handle handle_id = (ConfigID_Handle)(msg.wParam - configid_bool_MAX - configid_int_MAX - configid_float_MAX);
 
-                intptr_t previous_value = ConfigManager::Get().GetConfigIntPtr(intptr_id);
-                ConfigManager::Get().SetConfigIntPtr(intptr_id, msg.lParam);
+                uint64_t value = *(uint64_t*)&msg.lParam; //Interpret lParam as a uint64_t variable
+                intptr_t previous_value = ConfigManager::Get().GetConfigHandle(handle_id);
+                ConfigManager::Get().SetConfigHandle(handle_id, value);
 
-                switch (intptr_id)
+                switch (handle_id)
                 {
-                    case configid_intptr_overlay_state_winrt_hwnd:
+                    case configid_handle_overlay_state_winrt_hwnd:
                     {
-                        if (msg.lParam != previous_value)
+                        if (value != previous_value)
                         {
                             OnSetOverlayWinRTCaptureWindow(OverlayManager::Get().GetCurrentOverlayID());
                         }
@@ -1538,7 +1540,7 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
 
             //Adaptive Size
             bool adaptive_size_apply = ( (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_size_overlay)) && (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && 
-                                         (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) && (data.ConfigInt[configid_int_overlay_state_content_width] != -1) && 
+                                         (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) && (data.ConfigInt[configid_int_overlay_state_content_width] != -1) && 
                                          (content_width != -1) );
 
             if (adaptive_size_apply)
@@ -3574,16 +3576,16 @@ bool OutputManager::HandleOpenVREvents()
                         }
 
                         //If it's a WinRT window capture, check for window management stuff
-                        if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) )
+                        if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) )
                         {
                             if ( (!m_MouseIgnoreMoveEvent) && (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus)) )
                             {
-                                WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd], &m_InputSim);
+                                WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], &m_InputSim);
                             }
 
                             if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_keep_on_screen))
                             {
-                                WindowManager::MoveWindowIntoWorkArea((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]);
+                                WindowManager::MoveWindowIntoWorkArea((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]);
                             }
                         }
                     }
@@ -3617,7 +3619,7 @@ bool OutputManager::HandleOpenVREvents()
                     if (!drag_or_select_mode_enabled)
                     {
                         //If leaving a WinRT window capture and the option is enabled, focus the active scene app
-                        if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) && 
+                        if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) && 
                              (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus_scene_app)) )
                         {
                             WindowManager::Get().FocusActiveVRSceneApp(&m_InputSim);
@@ -3810,7 +3812,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 }
                 else //Window capture
                 {
-                    HWND window_handle = (HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd];
+                    HWND window_handle = (HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd];
 
                     //Get position of the window
                     RECT window_rect = {0};
@@ -3850,9 +3852,9 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
             //Check if this mouse move would start a drag of a maximized window's title bar
             if ((ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_dragging_mode) != window_dragging_none) && 
-                (overlay_current.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0))
+                (overlay_current.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0))
             {
-                if (WindowManager::Get().WouldDragMaximizedTitleBar((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd],
+                if (WindowManager::Get().WouldDragMaximizedTitleBar((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd],
                                                                     m_MouseLastLaserPointerX, m_MouseLastLaserPointerY, pointer_x, pointer_y))
                 {
                     //Reset input and WindowManager state manually to block the drag but still move the cursor on the next mouse move event
@@ -3982,9 +3984,9 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
             //If a WindowManager drag event could occur, set the current window for it
             if ( (vr_event.data.mouse.button == vr::VRMouseButton_Left) && (overlay_current.GetTextureSource() == ovrl_texsource_winrt_capture) && 
-                 (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) )
+                 (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) )
             {
-                WindowManager::Get().SetTargetWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd], overlay_current.GetID());
+                WindowManager::Get().SetTargetWindow((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], overlay_current.GetID());
             }
 
             m_MouseLastClickTick = ::GetTickCount64();
@@ -4051,7 +4053,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
             //If there was a possible WindowManager drag event prepared for, reset the target window
             if ( (vr_event.data.mouse.button == vr::VRMouseButton_Left) && (overlay_current.GetTextureSource() == ovrl_texsource_winrt_capture) && 
-                (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0) )
+                (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) )
             {
                 WindowManager::Get().SetTargetWindow(nullptr);
             }
@@ -4076,7 +4078,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             if (vr_event.data.scroll.ydelta != 0.0f)
             {
                 bool is_desktop_overlay = (  (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) ||
-                                            ((data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] == 0)) );
+                                            ((data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == 0)) );
 
                 if ( (is_desktop_overlay) && (!m_OverlayDragger.IsDragActive()) && (m_MouseLeftDownOverlayID == overlay_current.GetID()) && (vr_event.data.scroll.ydelta <= -0.9f) )
                 {
@@ -4115,7 +4117,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_laser_pointer_device_hint), (int)device_index);
 
                         //Send to UI
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_intptr_state_arg_hwnd), (LPARAM)current_window);
+                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_arg_hwnd), (LPARAM)current_window);
                         IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlay_new_drag, MAKELPARAM(-2, 0 /*UI doesn't need distance*/));
 
                         //Reset input and WindowManager state manually since the overlay mouse up even will be consumed to finish the drag later
@@ -4443,10 +4445,10 @@ void OutputManager::ApplySettingCaptureSource()
                 {
                     OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
-                    if (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] != 0)
+                    if (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0)
                     {
                         //Set configid_str_overlay_winrt_last_* strings from window info so returning windows can be restored later
-                        const WindowInfo* window_info = WindowManager::Get().WindowListFindWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]);
+                        const WindowInfo* window_info = WindowManager::Get().WindowListFindWindow((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]);
 
                         if (window_info != nullptr)
                         {
@@ -4455,7 +4457,7 @@ void OutputManager::ApplySettingCaptureSource()
                             data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name]   = window_info->GetExeName();
                         }
 
-                        if (DPWinRT_StartCaptureFromHWND(overlay.GetHandle(), (HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd]))
+                        if (DPWinRT_StartCaptureFromHWND(overlay.GetHandle(), (HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]))
                         {
                             overlay.SetTextureSource(ovrl_texsource_winrt_capture);
                             ApplySetting3DMode(); //Syncs 3D state if needed
@@ -4468,7 +4470,7 @@ void OutputManager::ApplySettingCaptureSource()
 
                             if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus))
                             {
-                                WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd], &m_InputSim);
+                                WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], &m_InputSim);
                             }
                         }
                         break;
@@ -5841,7 +5843,7 @@ void OutputManager::OnSetOverlayWinRTCaptureWindow(unsigned int overlay_id)
     ResetCurrentOverlay();
 
     //Reset config_str_overlay_winrt_last_* strings when HWND was explicitly set to null
-    if (data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd] == 0)
+    if (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == 0)
     {
         data.ConfigStr[configid_str_overlay_winrt_last_window_title]      = "";
         data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] = "";

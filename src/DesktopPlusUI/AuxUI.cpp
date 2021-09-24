@@ -389,7 +389,7 @@ void WindowCaptureWindowSelect::Update()
                 OverlayManager::Get().AddOverlay(ovrl_capsource_winrt_capture, -2, window_handle);
 
                 //Send to dashboard app
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_intptr_state_arg_hwnd), (LPARAM)window_handle);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_arg_hwnd), (LPARAM)window_handle);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new_drag, MAKELPARAM(-2, (source_distance * 100.0f)));
             }
 

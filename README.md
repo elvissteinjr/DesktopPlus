@@ -64,8 +64,6 @@ For more detailed information on each setting, step-by-step examples for a few c
 Desktop+ only runs on Windows 8 or newer, as it uses the DXGI Desktop Duplication API which is not available on older versions of Windows.  
 Window mirroring through Graphics Capture requires at least Windows 10 1803 for basic support, Windows 10 2004 or newer for full support.
 
-Releases are only provided as 64-bit executables, but it can be built for 32-bit. Note that this configuration has not gone through testing, however.
-
 ## License
 
 This software is licensed under the GPL 3.0.  

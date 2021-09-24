@@ -165,13 +165,13 @@ enum ConfigID_Float
 	configid_float_MAX
 };
 
-enum ConfigID_IntPtr
+enum ConfigID_Handle
 {
-    configid_intptr_overlay_state_winrt_hwnd,               //HWNDs are technically always in 32-bit range, but avoiding truncation warnings and perhaps some other issues here
-    configid_intptr_overlay_state_winrt_last_hicon,         //HICON kept around for when window goes missing but the icon itself is still cached in UI app
-    configid_intptr_overlay_MAX,
-    configid_intptr_state_arg_hwnd,                         //Used when a HWND is needed as an ipcact message argument
-    configid_intptr_MAX
+    configid_handle_overlay_state_winrt_hwnd,               //HWNDs are technically always in 32-bit range, but avoiding truncation warnings and perhaps some other issues here
+    configid_handle_overlay_state_winrt_last_hicon,         //HICON kept around for when window goes missing but the icon itself is still cached in UI app
+    configid_handle_overlay_MAX,
+    configid_handle_state_arg_hwnd,                         //Used when a HWND is needed as an ipcact message argument
+    configid_handle_MAX
 };
 
 enum ConfigID_String
@@ -287,7 +287,7 @@ class OverlayConfigData
         bool ConfigBool[configid_bool_overlay_MAX];
         int ConfigInt[configid_int_overlay_MAX];
         float ConfigFloat[configid_float_overlay_MAX];
-        intptr_t ConfigIntPtr[configid_intptr_overlay_MAX];
+        uint64_t ConfigHandle[configid_handle_overlay_MAX];
         std::string ConfigStr[configid_str_overlay_MAX];
         Matrix4 ConfigTransform;
         std::vector<ActionMainBarOrderData> ConfigActionBarOrder;
@@ -301,7 +301,7 @@ class ConfigManager
 		bool m_ConfigBool[configid_bool_MAX];
 		int m_ConfigInt[configid_int_MAX];
 		float m_ConfigFloat[configid_float_MAX];
-        //No m_ConfigIntPtr as so far it only contains overlay-specific data
+        uint64_t m_ConfigHandle[configid_handle_MAX];
 		std::string m_ConfigString[configid_str_MAX];
 
         ActionManager m_ActionManager;
@@ -337,23 +337,23 @@ class ConfigManager
         static WPARAM GetWParamForConfigID(ConfigID_Bool id);
         static WPARAM GetWParamForConfigID(ConfigID_Int id);
         static WPARAM GetWParamForConfigID(ConfigID_Float id);
-        static WPARAM GetWParamForConfigID(ConfigID_IntPtr id);
+        static WPARAM GetWParamForConfigID(ConfigID_Handle id);
 
         void SetConfigBool(ConfigID_Bool id, bool value);
         void SetConfigInt(ConfigID_Int id, int value);
         void SetConfigFloat(ConfigID_Float id, float value);
-        void SetConfigIntPtr(ConfigID_IntPtr id, intptr_t value);
+        void SetConfigHandle(ConfigID_Handle id, uint64_t value);
         void SetConfigString(ConfigID_String id, const std::string& value);
         bool GetConfigBool(ConfigID_Bool id) const;
         int GetConfigInt(ConfigID_Int id) const;
         float GetConfigFloat(ConfigID_Float id) const;
-        intptr_t GetConfigIntPtr(ConfigID_IntPtr id) const;
+        uint64_t GetConfigHandle(ConfigID_Handle id) const;
         const std::string& GetConfigString(ConfigID_String id) const;
         //These are meant for direct use with ImGui widgets
         bool& GetConfigBoolRef(ConfigID_Bool id);
         int& GetConfigIntRef(ConfigID_Int id);
         float& GetConfigFloatRef(ConfigID_Float id);
-        intptr_t& GetConfigIntPtrRef(ConfigID_IntPtr id);
+        uint64_t& GetConfigHandleRef(ConfigID_Handle id);
         void ResetConfigStateValues();  //Reset all configid_*_state_* settings. Used when restarting a Desktop+ process
 
         ActionManager& GetActionManager();
