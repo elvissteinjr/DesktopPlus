@@ -23,6 +23,7 @@ class InputSimulator
         bool m_ElevatedModeHasTextQueued;
 
         void SetEventForMouseKeyCode(INPUT& input_event, unsigned char keycode, bool down) const;
+        void SetEventForKeyCode(INPUT& input_event, unsigned char keycode, bool down) const;
 
     public:
         InputSimulator();

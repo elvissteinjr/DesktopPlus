@@ -40,6 +40,56 @@ void InputSimulator::SetEventForMouseKeyCode(INPUT& input_event, unsigned char k
 
 }
 
+void InputSimulator::SetEventForKeyCode(INPUT& input_event, unsigned char keycode, bool down) const
+{
+    input_event.type = INPUT_KEYBOARD;
+
+    //Use scancodes if possible to increase compatibility (e.g. DirectInput games need scancodes)
+    UINT scancode = ::MapVirtualKey(keycode, MAPVK_VK_TO_VSC_EX);
+
+    //Pause/PrintScreen have a scancode too long for SendInput. May be possible to get to work with multiple input calls, but let's not bother for now
+    if ( (scancode != 0) || (keycode == VK_PAUSE) || (keycode == VK_SNAPSHOT) )
+    {
+        BYTE highbyte = HIBYTE(scancode);
+        bool is_extended = ((highbyte == 0xe0) || (highbyte == 0xe1));
+
+        //Not extended but needs to be for proper input simulation
+        if (!is_extended)
+        {
+            switch (keycode)
+            {
+                case VK_INSERT:
+                case VK_DELETE:
+                case VK_PRIOR:
+                case VK_NEXT:
+                case VK_END:
+                case VK_HOME:
+                case VK_LEFT:
+                case VK_UP:
+                case VK_RIGHT:
+                case VK_DOWN:
+                {
+                    is_extended = true;
+                }
+                default: break;
+            }
+        }
+
+        input_event.ki.dwFlags = (is_extended) ? KEYEVENTF_SCANCODE | KEYEVENTF_EXTENDEDKEY : KEYEVENTF_SCANCODE;
+        input_event.ki.wScan   = scancode;
+    }
+    else //No scancode, use keycode
+    {
+        input_event.ki.dwFlags = 0;
+        input_event.ki.wVk     = keycode;
+    }
+
+    if (!down)
+    {
+        input_event.ki.dwFlags |= KEYEVENTF_KEYUP;
+    }
+}
+
 InputSimulator::InputSimulator() : 
     m_SpaceMultiplierX(1.0f), m_SpaceMultiplierY(1.0f), m_SpaceOffsetX(0), m_SpaceOffsetY(0), m_ForwardToElevatedModeProcess(false), m_ElevatedModeHasTextQueued(false)
 {
@@ -146,9 +196,7 @@ void InputSimulator::KeyboardSetDown(unsigned char keycode)
     }
     else
     {
-        input_event.type = INPUT_KEYBOARD;
-        input_event.ki.dwFlags = 0;
-        input_event.ki.wVk = keycode;
+        SetEventForKeyCode(input_event, keycode, true);
     }
 
     ::SendInput(1, &input_event, sizeof(INPUT));
@@ -185,9 +233,7 @@ void InputSimulator::KeyboardSetUp(unsigned char keycode)
     }
     else
     {
-        input_event.type = INPUT_KEYBOARD;
-        input_event.ki.dwFlags = KEYEVENTF_KEYUP;
-        input_event.ki.wVk = keycode;
+        SetEventForKeyCode(input_event, keycode, false);
     }
 
     ::SendInput(1, &input_event, sizeof(INPUT));
@@ -219,9 +265,7 @@ void InputSimulator::KeyboardSetDown(unsigned char keycodes[3])
         }
         else
         {
-            input_event[used_event_count].type = INPUT_KEYBOARD;
-            input_event[used_event_count].ki.dwFlags = 0;
-            input_event[used_event_count].ki.wVk = keycodes[i];
+            SetEventForKeyCode(input_event[used_event_count], keycodes[i], true);
         }
 
         used_event_count++;
@@ -258,9 +302,7 @@ void InputSimulator::KeyboardSetUp(unsigned char keycodes[3])
         }
         else
         {
-            input_event[used_event_count].type = INPUT_KEYBOARD;
-            input_event[used_event_count].ki.dwFlags = KEYEVENTF_KEYUP;
-            input_event[used_event_count].ki.wVk = keycodes[i];
+            SetEventForKeyCode(input_event[used_event_count], keycodes[i], false);
         }
 
         used_event_count++;
@@ -324,9 +366,7 @@ void InputSimulator::KeyboardToggleState(unsigned char keycodes[3])
         }
         else
         {
-            input_event[used_event_count].type = INPUT_KEYBOARD;
-            input_event[used_event_count].ki.dwFlags = (already_down) ? KEYEVENTF_KEYUP : 0;
-            input_event[used_event_count].ki.wVk = keycodes[i];
+            SetEventForKeyCode(input_event[used_event_count], keycodes[i], !already_down);
         }
 
         used_event_count++;
@@ -367,14 +407,10 @@ void InputSimulator::KeyboardPressAndRelease(unsigned char keycode)
     {
         if (!already_down)  //Only send down event if not already pressed
         {
-            input_event[0].type = INPUT_KEYBOARD;
-            input_event[0].ki.dwFlags = 0;
-            input_event[0].ki.wVk = keycode;
+            SetEventForKeyCode(input_event[0], keycode, true);
         }
 
-        input_event[upid].type = INPUT_KEYBOARD;
-        input_event[upid].ki.dwFlags = KEYEVENTF_KEYUP;
-        input_event[upid].ki.wVk = keycode;
+        SetEventForKeyCode(input_event[upid], keycode, false);
     }
 
     ::SendInput(upid + 1, input_event, sizeof(INPUT));
@@ -409,18 +445,16 @@ void InputSimulator::KeyboardText(const char* str_utf8, bool always_use_unicode_
 
         if ((::GetKeyState(VK_CAPITAL) & 0x0001) != 0) //Turn off capslock if it's on
         {
-            input_event.ki.dwFlags = 0;
-            input_event.ki.wVk = VK_CAPITAL;
+            SetEventForKeyCode(input_event, VK_CAPITAL, true);
             m_KeyboardTextQueue.push_back(input_event);
 
-            input_event.ki.dwFlags = KEYEVENTF_KEYUP;
+            SetEventForKeyCode(input_event, VK_CAPITAL, false);
             m_KeyboardTextQueue.push_back(input_event);
         }
 
         if (::GetAsyncKeyState(VK_SHIFT) < 0) //Release shift if it's down
         {
-            input_event.ki.dwFlags = KEYEVENTF_KEYUP;
-            input_event.ki.wVk = VK_SHIFT;
+            SetEventForKeyCode(input_event, VK_SHIFT, false);
             m_KeyboardTextQueue.push_back(input_event);
         }
 
@@ -428,60 +462,53 @@ void InputSimulator::KeyboardText(const char* str_utf8, bool always_use_unicode_
         {
             if (current_char == '\b')   //Backspace, needs special handling
             {
-                input_event.ki.dwFlags = 0;
-                input_event.ki.wVk = VK_BACK;
+                SetEventForKeyCode(input_event, VK_BACK, true);
                 m_KeyboardTextQueue.push_back(input_event);
 
-                input_event.ki.dwFlags = KEYEVENTF_KEYUP;
+                SetEventForKeyCode(input_event, VK_BACK, false);
                 m_KeyboardTextQueue.push_back(input_event);
             }
             else if (current_char == '\n')  //Enter, needs special handling
             {
-                input_event.ki.dwFlags = 0;
-                input_event.ki.wVk = VK_RETURN;
+                SetEventForKeyCode(input_event, VK_RETURN, true);
                 m_KeyboardTextQueue.push_back(input_event);
 
-                input_event.ki.dwFlags = KEYEVENTF_KEYUP;
+                SetEventForKeyCode(input_event, VK_RETURN, false);
                 m_KeyboardTextQueue.push_back(input_event);
             }
             else if ( ((current_char >= '0') && (current_char <= '9')) || (current_char == ' ') ) //0 - 9 and space, simulate keydown/up                          
             {
-                input_event.ki.dwFlags = 0;
-                input_event.ki.wVk = current_char;
+                SetEventForKeyCode(input_event, current_char, true);
                 m_KeyboardTextQueue.push_back(input_event);
 
-                input_event.ki.dwFlags = KEYEVENTF_KEYUP;
+                SetEventForKeyCode(input_event, current_char, false);
                 m_KeyboardTextQueue.push_back(input_event);
             }
             else if ((current_char >= 'a') && (current_char <= 'z')) //a - z, simulate keydown/up  
             {
-                input_event.ki.dwFlags = 0;
-                input_event.ki.wVk = current_char - ('a' - 'A');
+                SetEventForKeyCode(input_event, current_char - ('a' - 'A'), true);
                 m_KeyboardTextQueue.push_back(input_event);
 
-                input_event.ki.dwFlags = KEYEVENTF_KEYUP;
+                SetEventForKeyCode(input_event, current_char - ('a' - 'A'), false);
                 m_KeyboardTextQueue.push_back(input_event);
             }
             else if ((current_char >= 'A') && (current_char <= 'Z')) //A - Z, simulate keydown/up  
             {
-                input_event.ki.dwFlags = 0;
-                input_event.ki.wVk = VK_SHIFT;
+                SetEventForKeyCode(input_event, VK_SHIFT, true);
                 m_KeyboardTextQueue.push_back(input_event);
 
-                input_event.ki.dwFlags = 0;
-                input_event.ki.wVk = current_char;
+                SetEventForKeyCode(input_event, current_char, true);
                 m_KeyboardTextQueue.push_back(input_event);
 
-                input_event.ki.dwFlags = KEYEVENTF_KEYUP;
+                SetEventForKeyCode(input_event, current_char, false);
                 m_KeyboardTextQueue.push_back(input_event);
 
-                input_event.ki.wVk = VK_SHIFT;
+                SetEventForKeyCode(input_event, VK_SHIFT, false);
                 m_KeyboardTextQueue.push_back(input_event);
             }
             else
             {
                 input_event.ki.dwFlags = KEYEVENTF_UNICODE;
-                input_event.ki.wVk = 0;
                 input_event.ki.wScan = current_char;
                 m_KeyboardTextQueue.push_back(input_event);
 
