@@ -238,6 +238,10 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     if (!transform_str.empty())
         data.ConfigDetachedTransform[ovrl_origin_hmd_floor] = transform_str;
 
+    transform_str = config.ReadString(section.c_str(), "DetachedTransformSeatedPosition");
+    if (!transform_str.empty())
+        data.ConfigDetachedTransform[ovrl_origin_seated_universe] = transform_str;
+
     transform_str = config.ReadString(section.c_str(), "DetachedTransformDashboard");
     if (!transform_str.empty())
         data.ConfigDetachedTransform[ovrl_origin_dashboard] = transform_str;
@@ -384,13 +388,14 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteBool(section.c_str(), "ShowActionBar",           data.ConfigBool[configid_bool_overlay_actionbar_enabled]);
     config.WriteBool(section.c_str(), "ActionBarOrderUseGlobal", data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]);
 
-    config.WriteString(section.c_str(), "DetachedTransformPlaySpace", data.ConfigDetachedTransform[ovrl_origin_room].toString().c_str());
-    config.WriteString(section.c_str(), "DetachedTransformHMDFloor",  data.ConfigDetachedTransform[ovrl_origin_hmd_floor].toString().c_str());
-    config.WriteString(section.c_str(), "DetachedTransformDashboard", data.ConfigDetachedTransform[ovrl_origin_dashboard].toString().c_str());
-    config.WriteString(section.c_str(), "DetachedTransformHMD",       data.ConfigDetachedTransform[ovrl_origin_hmd].toString().c_str());
-    config.WriteString(section.c_str(), "DetachedTransformRightHand", data.ConfigDetachedTransform[ovrl_origin_right_hand].toString().c_str());
-    config.WriteString(section.c_str(), "DetachedTransformLeftHand",  data.ConfigDetachedTransform[ovrl_origin_left_hand].toString().c_str());
-    config.WriteString(section.c_str(), "DetachedTransformAux",       data.ConfigDetachedTransform[ovrl_origin_aux].toString().c_str());
+    config.WriteString(section.c_str(), "DetachedTransformPlaySpace",      data.ConfigDetachedTransform[ovrl_origin_room].toString().c_str());
+    config.WriteString(section.c_str(), "DetachedTransformHMDFloor",       data.ConfigDetachedTransform[ovrl_origin_hmd_floor].toString().c_str());
+    config.WriteString(section.c_str(), "DetachedTransformSeatedPosition", data.ConfigDetachedTransform[ovrl_origin_seated_universe].toString().c_str());
+    config.WriteString(section.c_str(), "DetachedTransformDashboard",      data.ConfigDetachedTransform[ovrl_origin_dashboard].toString().c_str());
+    config.WriteString(section.c_str(), "DetachedTransformHMD",            data.ConfigDetachedTransform[ovrl_origin_hmd].toString().c_str());
+    config.WriteString(section.c_str(), "DetachedTransformRightHand",      data.ConfigDetachedTransform[ovrl_origin_right_hand].toString().c_str());
+    config.WriteString(section.c_str(), "DetachedTransformLeftHand",       data.ConfigDetachedTransform[ovrl_origin_left_hand].toString().c_str());
+    config.WriteString(section.c_str(), "DetachedTransformAux",            data.ConfigDetachedTransform[ovrl_origin_aux].toString().c_str());
 
     //Save WinRT Capture state
     HWND window_handle = (HWND)data.ConfigIntPtr[configid_intptr_overlay_state_winrt_hwnd];

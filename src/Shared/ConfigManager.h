@@ -202,6 +202,7 @@ enum OverlayOrigin
 {
     ovrl_origin_room,
     ovrl_origin_hmd_floor,
+    ovrl_origin_seated_universe,
     ovrl_origin_dashboard,
     ovrl_origin_hmd,
     ovrl_origin_right_hand,

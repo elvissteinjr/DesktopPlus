@@ -124,6 +124,7 @@ class OutputManager
         void DetachedTransformReset(vr::VROverlayHandle_t ovrl_handle_ref = vr::k_ulOverlayHandleInvalid);
         void DetachedTransformAdjust(unsigned int packed_value);
         void DetachedTransformUpdateHMDFloor();
+        void DetachedTransformUpdateSeatedPosition();
 
         void DetachedInteractionAutoToggle();
         void DetachedOverlayGazeFade();
@@ -222,6 +223,7 @@ class OutputManager
         bool m_DashboardActivatedOnce;
         Matrix4 m_DashboardTransformLast;       //This is only used to check if the dashboard has moved from events we can't detect otherwise
         float m_DashboardHMD_Y;                 //The HMDs y-position when the dashboard was activated. Used for dashboard-relative positioning
+        Matrix4 m_SeatedTransformLast;
 
         //These are only used when duplicating outputs from a different GPU
         ID3D11Device* m_MultiGPUTargetDevice;   //Target D3D11 device, meaning the one the HMD is connected to

@@ -808,28 +808,38 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
             ImGui::FixedHelpMarker("Dashboard origin is only an approximation");
         }
+        else if (mode_origin == ovrl_origin_seated_universe)
+        {
+            if ( (UIManager::Get()->IsOpenVRLoaded()) && (vr::VRCompositor()->GetTrackingSpace() != vr::TrackingUniverseSeated) )
+            {
+                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                ImGui::FixedHelpMarker("Current tracking space is not seated");
+            }
+        }
 
         ImGui::NextColumn();
 
         ImGui::SetNextItemWidth(-1);
 
-        const char* items_origin[] = {"Play Area", "HMD Floor Position", "Dashboard", "HMD", "Right Controller", "Left Controller", "Tracker #1"};
+        const char* items_origin[] = {"Play Area", "HMD Floor Position", "Seated Position", "Dashboard", "HMD", "Right Controller", "Left Controller", "Tracker #1"};
         if (ImGui::BeginCombo("##ComboDetachedOrigin", items_origin[mode_origin]))
         {
             int mode_origin_old = mode_origin;
 
             //Displays tracker option only when one is connected
-            if ( (ImGui::Selectable(items_origin[ovrl_origin_room],       (mode_origin == ovrl_origin_room))) )
+            if ( (ImGui::Selectable(items_origin[ovrl_origin_room],            (mode_origin == ovrl_origin_room))) )
                 mode_origin = ovrl_origin_room;
-            if ( (ImGui::Selectable(items_origin[ovrl_origin_hmd_floor],  (mode_origin == ovrl_origin_hmd_floor))) )
+            if ( (ImGui::Selectable(items_origin[ovrl_origin_hmd_floor],       (mode_origin == ovrl_origin_hmd_floor))) )
                 mode_origin = ovrl_origin_hmd_floor;
-            if ( (ImGui::Selectable(items_origin[ovrl_origin_dashboard],  (mode_origin == ovrl_origin_dashboard))) )
+            if ( (ImGui::Selectable(items_origin[ovrl_origin_seated_universe], (mode_origin == ovrl_origin_seated_universe))) )
+                mode_origin = ovrl_origin_seated_universe;
+            if ( (ImGui::Selectable(items_origin[ovrl_origin_dashboard],       (mode_origin == ovrl_origin_dashboard))) )
                 mode_origin = ovrl_origin_dashboard;
-            if ( (ImGui::Selectable(items_origin[ovrl_origin_hmd],        (mode_origin == ovrl_origin_hmd))) )
+            if ( (ImGui::Selectable(items_origin[ovrl_origin_hmd],             (mode_origin == ovrl_origin_hmd))) )
                 mode_origin = ovrl_origin_hmd;
-            if ( (ImGui::Selectable(items_origin[ovrl_origin_right_hand], (mode_origin == ovrl_origin_right_hand))) )
+            if ( (ImGui::Selectable(items_origin[ovrl_origin_right_hand],      (mode_origin == ovrl_origin_right_hand))) )
                 mode_origin = ovrl_origin_right_hand;
-            if ( (ImGui::Selectable(items_origin[ovrl_origin_left_hand],  (mode_origin == ovrl_origin_left_hand))) )
+            if ( (ImGui::Selectable(items_origin[ovrl_origin_left_hand],       (mode_origin == ovrl_origin_left_hand))) )
                 mode_origin = ovrl_origin_left_hand;
             if ( (is_generic_tracker_connected) && (ImGui::Selectable(items_origin[ovrl_origin_aux], (mode_origin == ovrl_origin_aux))) )
                 mode_origin = ovrl_origin_aux;
@@ -2991,7 +3001,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.5.4 Beta");
+        ImGui::Text("Desktop+ Version 2.5.5 Beta");
 
         ImGui::Columns(1);
     }
