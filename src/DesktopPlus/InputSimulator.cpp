@@ -74,9 +74,52 @@ bool InputSimulator::SetEventForKeyCode(INPUT& input_event, unsigned char keycod
     }
     else
     {
-        input_event.type       = INPUT_KEYBOARD;
-        input_event.ki.dwFlags = (down) ? 0 : KEYEVENTF_KEYUP;
-        input_event.ki.wVk     = keycode;
+        input_event.type = INPUT_KEYBOARD;
+
+        //Use scancodes if possible to increase compatibility (e.g. DirectInput games need scancodes)
+        UINT scancode = ::MapVirtualKey(keycode, MAPVK_VK_TO_VSC_EX);
+
+        //Pause/PrintScreen have a scancode too long for SendInput. May be possible to get to work with multiple input calls, but let's not bother for now
+        if ( (scancode != 0) || (keycode == VK_PAUSE) || (keycode == VK_SNAPSHOT) )
+        {
+            BYTE highbyte = HIBYTE(scancode);
+            bool is_extended = ((highbyte == 0xe0) || (highbyte == 0xe1));
+
+            //Not extended but needs to be for proper input simulation
+            if (!is_extended)
+            {
+                switch (keycode)
+                {
+                    case VK_INSERT:
+                    case VK_DELETE:
+                    case VK_PRIOR:
+                    case VK_NEXT:
+                    case VK_END:
+                    case VK_HOME:
+                    case VK_LEFT:
+                    case VK_UP:
+                    case VK_RIGHT:
+                    case VK_DOWN:
+                    {
+                        is_extended = true;
+                    }
+                    default: break;
+                }
+            }
+
+            input_event.ki.dwFlags = (is_extended) ? KEYEVENTF_SCANCODE | KEYEVENTF_EXTENDEDKEY : KEYEVENTF_SCANCODE;
+            input_event.ki.wScan   = scancode;
+        }
+        else //No scancode, use keycode
+        {
+            input_event.ki.dwFlags = 0;
+            input_event.ki.wVk     = keycode;
+        }
+
+        if (!down)
+        {
+            input_event.ki.dwFlags |= KEYEVENTF_KEYUP;
+        }
     }
 
     return true;
