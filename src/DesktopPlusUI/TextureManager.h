@@ -46,6 +46,7 @@ enum TMNGRTexID
     tmtex_icon_xsmall_keyboard,
     tmtex_icon_xsmall_origin_room,
     tmtex_icon_xsmall_origin_hmd_floor,
+    tmtex_icon_xsmall_origin_seated_space,
     tmtex_icon_xsmall_origin_dashboard,
     tmtex_icon_xsmall_origin_hmd,
     tmtex_icon_xsmall_origin_right_hand,

@@ -322,6 +322,11 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin)
             }
             break;
         }
+        case ovrl_origin_seated_universe:
+        {
+            matrix = vr::VRSystem()->GetSeatedZeroPoseToStandingAbsoluteTrackingPose();
+            break;
+        }
         case ovrl_origin_dashboard:
         {
             //This code is prone to break when Valve changes the entire dashboard once again

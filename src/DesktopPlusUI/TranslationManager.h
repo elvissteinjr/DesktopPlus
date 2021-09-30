@@ -68,6 +68,7 @@ enum TRMGRStrID
     tstr_OvrlPropsPositionOrigin,
     tstr_OvrlPropsPositionOriginRoom,
     tstr_OvrlPropsPositionOriginHMDXY,
+    tstr_OvrlPropsPositionOriginSeatedSpace,
     tstr_OvrlPropsPositionOriginDashboard,
     tstr_OvrlPropsPositionOriginHMD,
     tstr_OvrlPropsPositionOriginControllerR,

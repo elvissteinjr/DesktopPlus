@@ -3497,6 +3497,13 @@ bool OutputManager::HandleOpenVREvents()
                 //IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -1);
                 break;
             }
+            case vr::VREvent_SeatedZeroPoseReset:
+            case vr::VREvent_ChaperoneUniverseHasChanged:
+            case vr::VREvent_SceneApplicationChanged:
+            {
+                DetachedTransformUpdateSeatedPosition();
+                break;
+            }
             case vr::VREvent_Input_ActionManifestReloaded:
             case vr::VREvent_Input_BindingsUpdated:
             case vr::VREvent_Input_BindingLoadSuccessful:
@@ -4656,6 +4663,14 @@ void OutputManager::ApplySettingTransform()
             DetachedTransformUpdateHMDFloor();
             break;
         }
+        case ovrl_origin_seated_universe:
+        {
+            Matrix4 matrix = m_OverlayDragger.GetBaseOffsetMatrix() * ConfigManager::Get().GetOverlayDetachedTransform();
+
+            vr::HmdMatrix34_t matrix_ovr = matrix.toOpenVR34();
+            vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, vr::TrackingUniverseStanding, &matrix_ovr);
+            break;
+        }
         case ovrl_origin_dashboard:
         {
             Matrix4 matrix_base = m_OverlayDragger.GetBaseOffsetMatrix() * ConfigManager::Get().GetOverlayDetachedTransform();
@@ -5176,8 +5191,7 @@ void OutputManager::DetachedTransformReset(unsigned int overlay_id_ref)
         float ref_overlay_width;
         vr::VROverlay()->GetOverlayWidthInMeters(ovrl_handle_ref, &ref_overlay_width);
         float dashboard_scale = GetDashboardScale();
-        float overlay_width_scaled = /*(ovrl_handle_ref == m_OvrlHandleMain) ? data.ConfigFloat[configid_float_overlay_width] / dashboard_scale :*/ data.ConfigFloat[configid_float_overlay_width];
-        float x_offset_mul = ( (overlay_width_scaled / ref_overlay_width) / 2.0f) + 1.0f;
+        float x_offset_mul = ( (data.ConfigFloat[configid_float_overlay_width] / ref_overlay_width) / 2.0f) + 1.0f;
 
         //Put it next to the reference overlay so it can actually be seen
         vr::HmdVector2_t coordinate_offset = {mouse_scale.v[0] * x_offset_mul, mouse_scale.v[1] / 2.0f};
@@ -5257,6 +5271,11 @@ void OutputManager::DetachedTransformReset(unsigned int overlay_id_ref)
                 transform.scale(1.0f / GetDashboardScale());
                 transform.setTranslation(translation);
 
+                break;
+            }
+            case ovrl_origin_seated_universe:
+            {
+                transform.translate_relative(0.0f, 0.0f, -1.0f);
                 break;
             }
             case ovrl_origin_dashboard:
@@ -5449,6 +5468,34 @@ void OutputManager::DetachedTransformUpdateHMDFloor()
 
     vr::HmdMatrix34_t matrix_ovr = matrix.toOpenVR34();
     vr::VROverlay()->SetOverlayTransformAbsolute(OverlayManager::Get().GetCurrentOverlay().GetHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
+}
+
+void OutputManager::DetachedTransformUpdateSeatedPosition()
+{
+    Matrix4 mat_seated_zero = vr::VRSystem()->GetSeatedZeroPoseToStandingAbsoluteTrackingPose();
+
+    //Sounds stupid, but we can be too fast to react to position updates and get the old seated zero pose as a result... so let's wait once if that happens
+    if (mat_seated_zero == m_SeatedTransformLast)
+    {
+        ::Sleep(100);
+        mat_seated_zero = vr::VRSystem()->GetSeatedZeroPoseToStandingAbsoluteTrackingPose();
+    }
+
+    //Update transforms of relevant overlays
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        OverlayManager::Get().SetCurrentOverlayID(i);
+
+        if (ConfigManager::Get().GetConfigInt(configid_int_overlay_origin) == ovrl_origin_seated_universe)
+        {
+            ApplySettingTransform();
+        }
+    }
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
+    m_SeatedTransformLast = mat_seated_zero;
 }
 
 void OutputManager::DetachedInteractionAutoToggle()

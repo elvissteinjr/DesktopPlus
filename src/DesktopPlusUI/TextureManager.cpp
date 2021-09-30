@@ -58,6 +58,7 @@ const wchar_t* TextureManager::s_TextureFilenames[tmtex_MAX] =
     L"images/icons_small/xsmall_keyboard.png",
     L"images/icons_small/xsmall_origin_playspace.png",
     L"images/icons_small/xsmall_origin_hmd_pos.png",
+    L"images/icons_small/xsmall_origin_seated.png",
     L"images/icons_small/xsmall_origin_dashboard.png",
     L"images/icons_small/xsmall_origin_hmd.png",
     L"images/icons_small/xsmall_origin_controller_right.png",

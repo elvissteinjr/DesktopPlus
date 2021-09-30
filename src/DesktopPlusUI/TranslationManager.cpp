@@ -69,6 +69,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsPositionOrigin",
     "tstr_OvrlPropsPositionOriginRoom",
     "tstr_OvrlPropsPositionOriginHMDXY",
+    "tstr_OvrlPropsPositionOriginSeatedSpace",
     "tstr_OvrlPropsPositionOriginDashboard",
     "tstr_OvrlPropsPositionOriginHMD",
     "tstr_OvrlPropsPositionOriginControllerR",

@@ -121,6 +121,7 @@ class OutputManager
         void DetachedTransformAdjust(unsigned int packed_value);
         void DetachedTransformConvertOrigin(unsigned int overlay_id, OverlayOrigin origin_from, OverlayOrigin origin_to);
         void DetachedTransformUpdateHMDFloor();
+        void DetachedTransformUpdateSeatedPosition();
 
         void DetachedInteractionAutoToggle();
         void DetachedOverlayGazeFade();
@@ -215,6 +216,7 @@ class OutputManager
 
         bool m_DashboardActivatedOnce;
         Matrix4 m_DashboardTransformLast;       //This is only used to check if the dashboard has moved from events we can't detect otherwise
+        Matrix4 m_SeatedTransformLast;
 
         //These are only used when duplicating outputs from a different GPU
         ID3D11Device* m_MultiGPUTargetDevice;   //Target D3D11 device, meaning the one the HMD is connected to
