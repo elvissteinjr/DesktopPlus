@@ -543,8 +543,7 @@ KeyboardLayoutMetadata VRKeyboard::LoadLayoutMetadataFromFile(const std::string&
         metadata.HasCluster[kbdlayout_cluster_navigation] = layout_file.ReadBool("LayoutInfo", "HasClusterNavigation");
         metadata.HasCluster[kbdlayout_cluster_numpad]     = layout_file.ReadBool("LayoutInfo", "HasClusterNumpad");
         metadata.HasCluster[kbdlayout_cluster_extra]      = layout_file.ReadBool("LayoutInfo", "HasClusterExtra");
-
-        //"HasAltGr" is technically also metadata, but not needed here
+        metadata.HasAltGr                                 = layout_file.ReadBool("LayoutInfo", "HasAltGr");
     }
 
     return metadata;
