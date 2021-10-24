@@ -19,6 +19,9 @@ std::wstring WStringConvertFromLocalEncoding(const char* str);
 void TransformOpenVR34TranslateRelative(vr::HmdMatrix34_t& matrix, float offset_right, float offset_up, float offset_forward);
 void TransformLookAt(Matrix4& matrix, const Vector3 pos_target, const Vector3 up = {0.0f, 1.0f, 0.0f});
 
+//Returns false if the device has no valid pose
+bool GetOverlayIntersectionParamsForDevice(vr::VROverlayIntersectionParams_t& params, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, bool use_tip_offset = true);
+//Returns if intersection happened
 bool ComputeOverlayIntersectionForDevice(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, vr::VROverlayIntersectionResults_t* results, 
                                          bool use_tip_offset = true);
 

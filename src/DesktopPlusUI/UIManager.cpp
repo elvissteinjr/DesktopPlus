@@ -195,7 +195,7 @@ void UIManager::SetOverlayInputEnabled(bool is_enabled)
 {
     vr::VROverlayInputMethod input_method = (is_enabled) ? vr::VROverlayInputMethod_Mouse : vr::VROverlayInputMethod_None;
 
-    vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleOverlayBar,       input_method);
+    vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleOverlayBar,        input_method);
     vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleFloatingUI,        input_method);
     vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleSettings,          input_method);
     vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleOverlayProperties, input_method);
@@ -732,6 +732,9 @@ void UIManager::OnExit()
         //Save config, just in case (we don't need to do this when calling Restart())
         ConfigManager::Get().SaveConfigToFile();
     }
+
+    //Release any held down keys
+    m_VRKeyboard.ResetState();
 
     if (m_ComInitDone)
     {
@@ -1480,5 +1483,27 @@ void UIManager::HighlightOverlay(unsigned int overlay_id)
 
             colored_id = k_ulOverlayID_None;
         }
+    }
+}
+
+void UIManager::TriggerLaserPointerHaptics(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index) const
+{
+    if (!m_OpenVRLoaded)
+        return;
+
+    //Trigger directly when dashboard pointer is active as it's going to be the right device anyways
+    if ( (device_index == vr::k_unTrackedDeviceIndexInvalid) && (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid) )
+    {
+        vr::VROverlay()->TriggerLaserMouseHapticVibration(overlay_handle, 0.0f, 1.0f, 0.16f);
+    }
+    else  //Let dashboard app handle it as we'll need VR Input access
+    {
+        //If no device specified, get the primary laser pointer one
+        if (device_index == vr::k_unTrackedDeviceIndexInvalid)
+        {
+            device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
+        }
+
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_lpointer_trigger_haptics, device_index);
     }
 }

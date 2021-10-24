@@ -1,0 +1,29 @@
+{
+    "language_tag": "de_DE",
+
+    "/actions/shortcuts" : "Globale Kürzel",
+
+    "/actions/shortcuts/in/EnableGlobalLaserPointer" : "Aktiviere globalen Laser-Pointer",
+    "/actions/shortcuts/in/GlobalShortcut01" : "Globales Kürzel 1 ausführen",
+    "/actions/shortcuts/in/GlobalShortcut02" : "Globales Kürzel 2 ausführen",
+    "/actions/shortcuts/in/GlobalShortcut03" : "Globales Kürzel 3 ausführen",
+    "/actions/shortcuts/in/ToggleOverlayGroupEnabled01" : "Overlaygruppe 1 Sichtbarkeit umschalten",
+    "/actions/shortcuts/in/ToggleOverlayGroupEnabled02" : "Overlaygruppe 2 Sichtbarkeit umschalten",
+    "/actions/shortcuts/in/ToggleOverlayGroupEnabled03" : "Overlaygruppe 3 Sichtbarkeit umschalten",
+
+    "/actions/laserpointer" : "Laserpointer",
+
+    "/actions/laserpointer/in/LeftClick"   : "Linksklick",
+    "/actions/laserpointer/in/RightClick"  : "Rechtsklick",
+    "/actions/laserpointer/in/MiddleClick" : "Mittelklick",
+    "/actions/laserpointer/in/Aux01Click"  : "Extra 1-Klick",
+    "/actions/laserpointer/in/Aux02Click"  : "Extra 2-Klick",
+	
+	"/actions/scroll_discrete" : "Mausrad-Bildlauf",
+	
+    "/actions/scroll_discrete/in/ScrollDiscrete" : "Overlay scrollen",
+	
+	"/actions/scroll_smooth" : "Weicher Bildlauf",
+	
+    "/actions/scroll_smooth/in/ScrollSmooth"   : "Overlay scrollen"
+}

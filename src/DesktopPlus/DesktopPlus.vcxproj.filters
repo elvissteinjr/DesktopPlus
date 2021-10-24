@@ -46,6 +46,7 @@
     <ClCompile Include="..\Shared\WindowManager.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="LaserPointer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -98,6 +99,7 @@
     <ClInclude Include="..\Shared\WindowManager.h">
       <Filter>Shared</Filter>
     </ClInclude>
+    <ClInclude Include="LaserPointer.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DesktopPlus.rc" />

@@ -1,0 +1,29 @@
+{
+    "language_tag": "en_US",
+
+    "/actions/shortcuts" : "Global Shortcuts",
+
+    "/actions/shortcuts/in/EnableGlobalLaserPointer" : "Enable Global Laser Pointer",
+    "/actions/shortcuts/in/GlobalShortcut01" : "Do Global Shortcut 1",
+    "/actions/shortcuts/in/GlobalShortcut02" : "Do Global Shortcut 2",
+    "/actions/shortcuts/in/GlobalShortcut03" : "Do Global Shortcut 3",
+    "/actions/shortcuts/in/ToggleOverlayGroupEnabled01" : "Toggle Overlay Group 1 Enabled State",
+    "/actions/shortcuts/in/ToggleOverlayGroupEnabled02" : "Toggle Overlay Group 2 Enabled State",
+    "/actions/shortcuts/in/ToggleOverlayGroupEnabled03" : "Toggle Overlay Group 3 Enabled State",
+
+    "/actions/laserpointer" : "Laser Pointer",
+
+    "/actions/laserpointer/in/LeftClick"   : "Left Click",
+    "/actions/laserpointer/in/RightClick"  : "Right Click",
+    "/actions/laserpointer/in/MiddleClick" : "Middle Click",
+    "/actions/laserpointer/in/Aux01Click"  : "Auxiliary 1 Click",
+    "/actions/laserpointer/in/Aux02Click"  : "Auxiliary 2 Click",
+	
+	"/actions/scroll_discrete" : "Mousewheel Scrolling",
+	
+    "/actions/scroll_discrete/in/ScrollDiscrete" : "Scroll Overlay",
+	
+	"/actions/scroll_smooth" : "Smooth Scrolling",
+	
+    "/actions/scroll_smooth/in/ScrollSmooth"   : "Scroll Overlay"
+}

@@ -122,6 +122,7 @@
     <ClCompile Include="DuplicationManager.cpp" />
     <ClCompile Include="ElevatedMode.cpp" />
     <ClCompile Include="InputSimulator.cpp" />
+    <ClCompile Include="LaserPointer.cpp" />
     <ClCompile Include="OutputManager.cpp" />
     <ClCompile Include="Overlays.cpp" />
     <ClCompile Include="ThreadManager.cpp" />
@@ -147,6 +148,7 @@
     <ClInclude Include="DuplicationManager.h" />
     <ClInclude Include="ElevatedMode.h" />
     <ClInclude Include="InputSimulator.h" />
+    <ClInclude Include="LaserPointer.h" />
     <ClInclude Include="OutputManager.h" />
     <ClInclude Include="Overlays.h" />
     <ClInclude Include="resource.h" />

@@ -1,60 +1,109 @@
 {
   "actions": [
     {
-      "name": "/actions/shortcuts/in/SetDetachedInteractive",
+      "name": "/actions/shortcuts/in/EnableGlobalLaserPointer",
       "requirement": "optional",
       "type": "boolean"
     },
-	{
+    {
       "name": "/actions/shortcuts/in/GlobalShortcut01",
       "requirement": "optional",
       "type": "boolean"
     },
-	{
+    {
       "name": "/actions/shortcuts/in/GlobalShortcut02",
       "requirement": "optional",
       "type": "boolean"
     },
-	{
+    {
       "name": "/actions/shortcuts/in/GlobalShortcut03",
       "requirement": "optional",
       "type": "boolean"
     },
-	{
+    {
       "name": "/actions/shortcuts/in/ToggleOverlayGroupEnabled01",
       "requirement": "optional",
       "type": "boolean"
     },
-	{
+    {
       "name": "/actions/shortcuts/in/ToggleOverlayGroupEnabled02",
       "requirement": "optional",
       "type": "boolean"
     },
-	{
+    {
       "name": "/actions/shortcuts/in/ToggleOverlayGroupEnabled03",
       "requirement": "optional",
       "type": "boolean"
+    },
+    {
+      "name": "/actions/laserpointer/in/LeftClick",
+      "requirement" : "suggested",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/laserpointer/in/RightClick",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/laserpointer/in/MiddleClick",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/laserpointer/in/Aux01Click",
+      "requirement" : "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/laserpointer/in/Aux02Click",
+      "requirement" : "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/scroll_discrete/in/ScrollDiscrete",
+      "requirement" : "suggested",
+      "type": "vector2"
+    },
+    {
+      "name": "/actions/scroll_smooth/in/ScrollSmooth",
+      "requirement" : "suggested",
+      "type": "vector2"
+    },
+    {
+      "name": "/actions/laserpointer/out/Haptic",
+      "requirement" : "suggested",
+      "type": "vibration"
     }
   ],
   "action_sets": [
     {
       "name": "/actions/shortcuts",
       "usage": "leftright"
+    },
+    {
+      "name": "/actions/laserpointer",
+      "usage": "single"
+    },
+    {
+      "name": "/actions/scroll_discrete",
+      "usage": "single"
+    },
+    {
+      "name": "/actions/scroll_smooth",
+      "usage": "single"
     }
   ],
-  "localization" : [
+  "localization_files": {
+    "en_US" : "input/action_manifest_en.json",
+    "de_DE" : "input/action_manifest_de.json"
+  },
+  "default_bindings": [
     {
-		"language_tag": "en_US",
-
-		"/actions/shortcuts" : "Global Shortcuts",
-
-		"/actions/shortcuts/in/SetDetachedInteractive" : "Enable Floating Overlay Interaction",
-		"/actions/shortcuts/in/GlobalShortcut01" : "Do Global Shortcut 1",
-		"/actions/shortcuts/in/GlobalShortcut02" : "Do Global Shortcut 2",
-		"/actions/shortcuts/in/GlobalShortcut03" : "Do Global Shortcut 3",
-		"/actions/shortcuts/in/ToggleOverlayGroupEnabled01" : "Toggle Overlay Group 1 Enabled State",
-		"/actions/shortcuts/in/ToggleOverlayGroupEnabled02" : "Toggle Overlay Group 2 Enabled State",
-		"/actions/shortcuts/in/ToggleOverlayGroupEnabled03" : "Toggle Overlay Group 3 Enabled State"
+      "controller_type": "knuckles",
+      "binding_url": "input/action_bindings_knuckles.json"
     }
-  ]
+  ],
+  "version": 2,
+  "minimum_required_version": 2
 }

@@ -13,6 +13,8 @@ ImVec4 Style_ImGuiCol_TextNotification;
 ImVec4 Style_ImGuiCol_TextWarning;
 ImVec4 Style_ImGuiCol_TextError;
 ImVec4 Style_ImGuiCol_ButtonPassiveToggled;
+ImVec4 Style_ImGuiCol_SteamVRCursor;
+ImVec4 Style_ImGuiCol_SteamVRCursorBorder;
 
 namespace ImGui
 {
@@ -994,9 +996,125 @@ namespace ImGui
     }
 
 
+    ImGuiMouseState::ImGuiMouseState()
+    {
+        //Set everything to zero
+        memset(this, 0, sizeof(*this));
+        MousePos = MousePosPrev = ImVec2(-FLT_MAX,-FLT_MAX);
+    }
+
+    void ImGuiMouseState::SetFromGlobalState()
+    {
+        const ImGuiIO& io = ImGui::GetIO();
+
+        MousePos     = io.MousePos;
+        std::copy(std::begin(io.MouseDown), std::end(io.MouseDown), MouseDown);
+        MouseWheel   = io.MouseWheel;
+        MouseWheelH  = io.MouseWheelH;
+        MouseDelta   = io.MouseDelta;
+        MousePosPrev = io.MousePosPrev;
+        std::copy(std::begin(io.MouseClickedPos),         std::end(io.MouseClickedPos),         MouseClickedPos);
+        std::copy(std::begin(io.MouseClickedTime),        std::end(io.MouseClickedTime),        MouseClickedTime);
+        std::copy(std::begin(io.MouseClicked),            std::end(io.MouseClicked),            MouseClicked);
+        std::copy(std::begin(io.MouseDoubleClicked),      std::end(io.MouseDoubleClicked),      MouseDoubleClicked);
+        std::copy(std::begin(io.MouseReleased),           std::end(io.MouseReleased),           MouseReleased);
+        std::copy(std::begin(io.MouseDownOwned),          std::end(io.MouseDownOwned),          MouseDownOwned);
+        std::copy(std::begin(io.MouseDownWasDoubleClick), std::end(io.MouseDownWasDoubleClick), MouseDownWasDoubleClick);
+        std::copy(std::begin(io.MouseDownDuration),       std::end(io.MouseDownDuration),       MouseDownDuration);
+        std::copy(std::begin(io.MouseDownDurationPrev),   std::end(io.MouseDownDurationPrev),   MouseDownDurationPrev);
+        std::copy(std::begin(io.MouseDragMaxDistanceAbs), std::end(io.MouseDragMaxDistanceAbs), MouseDragMaxDistanceAbs);
+        std::copy(std::begin(io.MouseDragMaxDistanceSqr), std::end(io.MouseDragMaxDistanceSqr), MouseDragMaxDistanceSqr);
+    }
+
+    void ImGuiMouseState::ApplyToGlobalState()
+    {
+        ImGuiIO& io = ImGui::GetIO();
+
+        io.MousePos     = MousePos;
+        std::copy(std::begin(MouseDown), std::end(MouseDown), io.MouseDown);
+        io.MouseWheel   = MouseWheel;
+        io.MouseWheelH  = MouseWheelH;
+        io.MouseDelta   = MouseDelta;
+        io.MousePosPrev = MousePosPrev;
+        std::copy(std::begin(MouseClickedPos),         std::end(MouseClickedPos),         io.MouseClickedPos);
+        std::copy(std::begin(MouseClickedTime),        std::end(MouseClickedTime),        io.MouseClickedTime);
+        std::copy(std::begin(MouseClicked),            std::end(MouseClicked),            io.MouseClicked);
+        std::copy(std::begin(MouseDoubleClicked),      std::end(MouseDoubleClicked),      io.MouseDoubleClicked);
+        std::copy(std::begin(MouseReleased),           std::end(MouseReleased),           io.MouseReleased);
+        std::copy(std::begin(MouseDownOwned),          std::end(MouseDownOwned),          io.MouseDownOwned);
+        std::copy(std::begin(MouseDownWasDoubleClick), std::end(MouseDownWasDoubleClick), io.MouseDownWasDoubleClick);
+        std::copy(std::begin(MouseDownDuration),       std::end(MouseDownDuration),       io.MouseDownDuration);
+        std::copy(std::begin(MouseDownDurationPrev),   std::end(MouseDownDurationPrev),   io.MouseDownDurationPrev);
+        std::copy(std::begin(MouseDragMaxDistanceAbs), std::end(MouseDragMaxDistanceAbs), io.MouseDragMaxDistanceAbs);
+        std::copy(std::begin(MouseDragMaxDistanceSqr), std::end(MouseDragMaxDistanceSqr), io.MouseDragMaxDistanceSqr);
+    }
+
+    void ImGuiMouseState::Advance()
+    {
+        //This is almost just ImGui::UpdateMouseInputs(), but we don't touch any global state here
+        const ImGuiContext& g = *ImGui::GetCurrentContext();
+
+        // Round mouse position to avoid spreading non-rounded position (e.g. UpdateManualResize doesn't support them well)
+        if (IsMousePosValid(&MousePos))
+            MousePos = ImFloor(MousePos);
+
+        // If mouse just appeared or disappeared (usually denoted by -FLT_MAX components) we cancel out movement in MouseDelta
+        if (IsMousePosValid(&MousePos) && IsMousePosValid(&MousePosPrev))
+            MouseDelta = MousePos - MousePosPrev;
+        else
+            MouseDelta = ImVec2(0.0f, 0.0f);
+
+        MousePosPrev = MousePos;
+        for (int i = 0; i < IM_ARRAYSIZE(MouseDown); i++)
+        {
+            MouseClicked[i] = MouseDown[i] && MouseDownDuration[i] < 0.0f;
+            MouseReleased[i] = !MouseDown[i] && MouseDownDuration[i] >= 0.0f;
+            MouseDownDurationPrev[i] = MouseDownDuration[i];
+            MouseDownDuration[i] = MouseDown[i] ? (MouseDownDuration[i] < 0.0f ? 0.0f : MouseDownDuration[i] + g.IO.DeltaTime) : -1.0f;
+            MouseDoubleClicked[i] = false;
+            if (MouseClicked[i])
+            {
+                if ((float)(g.Time - MouseClickedTime[i]) < g.IO.MouseDoubleClickTime)
+                {
+                    ImVec2 delta_from_click_pos = IsMousePosValid(&MousePos) ? (MousePos - MouseClickedPos[i]) : ImVec2(0.0f, 0.0f);
+                    if (ImLengthSqr(delta_from_click_pos) < g.IO.MouseDoubleClickMaxDist * g.IO.MouseDoubleClickMaxDist)
+                        MouseDoubleClicked[i] = true;
+                    MouseClickedTime[i] = -g.IO.MouseDoubleClickTime * 2.0f; // Mark as "old enough" so the third click isn't turned into a double-click
+                }
+                else
+                {
+                    MouseClickedTime[i] = g.Time;
+                }
+                MouseClickedPos[i] = MousePos;
+                MouseDownWasDoubleClick[i] = MouseDoubleClicked[i];
+                MouseDragMaxDistanceAbs[i] = ImVec2(0.0f, 0.0f);
+                MouseDragMaxDistanceSqr[i] = 0.0f;
+            }
+            else if (MouseDown[i])
+            {
+                // Maintain the maximum distance we reaching from the initial click position, which is used with dragging threshold
+                ImVec2 delta_from_click_pos = IsMousePosValid(&MousePos) ? (MousePos - MouseClickedPos[i]) : ImVec2(0.0f, 0.0f);
+                MouseDragMaxDistanceSqr[i] = ImMax(MouseDragMaxDistanceSqr[i], ImLengthSqr(delta_from_click_pos));
+                MouseDragMaxDistanceAbs[i].x = ImMax(MouseDragMaxDistanceAbs[i].x, delta_from_click_pos.x < 0.0f ? -delta_from_click_pos.x : delta_from_click_pos.x);
+                MouseDragMaxDistanceAbs[i].y = ImMax(MouseDragMaxDistanceAbs[i].y, delta_from_click_pos.y < 0.0f ? -delta_from_click_pos.y : delta_from_click_pos.y);
+            }
+            if (!MouseDown[i] && !MouseReleased[i])
+                MouseDownWasDoubleClick[i] = false;
+        }
+    }
+
+
     ActiveWidgetStateStorage::ActiveWidgetStateStorage()
     {
         IsInitialized                            = false;
+        HoveredId                                = 0;
+        HoveredIdPreviousFrame                   = 0;
+        HoveredIdAllowOverlap                    = false;
+        HoveredIdUsingMouseWheel                 = false;
+        HoveredIdPreviousFrameUsingMouseWheel    = false;
+        HoveredIdDisabled                        = false;
+        HoveredIdTimer                           = 0.0f;
+        HoveredIdNotActiveTimer                  = 0.0f;
         ActiveId                                 = 0;
         ActiveIdIsAlive                          = 0;
         ActiveIdTimer                            = 0.0f;
@@ -1028,6 +1146,14 @@ namespace ImGui
 
         ImGuiContext& g = *ImGui::GetCurrentContext();
 
+        HoveredId                                = g.HoveredId;
+        HoveredIdPreviousFrame                   = g.HoveredIdPreviousFrame;
+        HoveredIdAllowOverlap                    = g.HoveredIdAllowOverlap;
+        HoveredIdUsingMouseWheel                 = g.HoveredIdUsingMouseWheel;
+        HoveredIdPreviousFrameUsingMouseWheel    = g.HoveredIdPreviousFrameUsingMouseWheel;
+        HoveredIdDisabled                        = g.HoveredIdDisabled;
+        HoveredIdTimer                           = g.HoveredIdTimer;
+        HoveredIdNotActiveTimer                  = g.HoveredIdNotActiveTimer;
         ActiveId                                 = g.ActiveId;
         ActiveIdIsAlive                          = g.ActiveIdIsAlive;
         ActiveIdTimer                            = g.ActiveIdTimer;
@@ -1061,6 +1187,14 @@ namespace ImGui
 
         ImGuiContext& g = *ImGui::GetCurrentContext();
 
+        g.HoveredId                                = HoveredId;
+        g.HoveredIdPreviousFrame                   = HoveredIdPreviousFrame;
+        g.HoveredIdAllowOverlap                    = HoveredIdAllowOverlap;
+        g.HoveredIdUsingMouseWheel                 = HoveredIdUsingMouseWheel;
+        g.HoveredIdPreviousFrameUsingMouseWheel    = HoveredIdPreviousFrameUsingMouseWheel;
+        g.HoveredIdDisabled                        = HoveredIdDisabled;
+        g.HoveredIdTimer                           = HoveredIdTimer;
+        g.HoveredIdNotActiveTimer                  = HoveredIdNotActiveTimer;
         g.ActiveId                                 = ActiveId;
         g.ActiveIdIsAlive                          = ActiveIdIsAlive;
         g.ActiveIdTimer                            = ActiveIdTimer;
@@ -1091,6 +1225,24 @@ namespace ImGui
         if (!IsInitialized)
             return;
 
+        const ImGuiIO& io = ImGui::GetIO();
+
+        // Update HoveredId data
+        if (!HoveredIdPreviousFrame)
+            HoveredIdTimer = 0.0f;
+        if (!HoveredIdPreviousFrame || (HoveredId && ActiveId == HoveredId))
+            HoveredIdNotActiveTimer = 0.0f;
+        if (HoveredId)
+            HoveredIdTimer += io.DeltaTime;
+        if (HoveredId && ActiveId != HoveredId)
+            HoveredIdNotActiveTimer += io.DeltaTime;
+        HoveredIdPreviousFrame = HoveredId;
+        HoveredIdPreviousFrameUsingMouseWheel = HoveredIdUsingMouseWheel;
+        HoveredId = 0;
+        HoveredIdAllowOverlap = false;
+        HoveredIdUsingMouseWheel = false;
+        HoveredIdDisabled = false;
+
         // Update ActiveId data (clear reference to active widget if the widget isn't alive anymore)
         if (ActiveIdIsAlive != ActiveId && ActiveIdPreviousFrame == ActiveId && ActiveId != 0)
         {
@@ -1112,9 +1264,9 @@ namespace ImGui
         }
 
         if (ActiveId)
-            ActiveIdTimer += ImGui::GetIO().DeltaTime;
+            ActiveIdTimer += io.DeltaTime;
 
-        LastActiveIdTimer                       += ImGui::GetIO().DeltaTime;
+        LastActiveIdTimer                       += io.DeltaTime;
         ActiveIdPreviousFrame                    = ActiveId;
         ActiveIdPreviousFrameWindow              = ActiveIdWindow;
         ActiveIdPreviousFrameHasBeenEditedBefore = ActiveIdHasBeenEditedBefore;

@@ -62,6 +62,7 @@ enum IPCActionID
     ipcact_keyboard_show,             //Sent by dashboard application to show the VR keyboard. lParam is bool (true to show)
     ipcact_keyboard_vkey,             //Sent by UI application in response of a VR keyboard press. lParam is IPCKeyboardKeystateFlags + Win32 key code (low/high word order)
     ipcact_keyboard_wchar,            //Sent by UI application in response of a VR keyboard press. lParam is 1 wchar + key down bool (low/high word order)
+    ipcact_lpointer_trigger_haptics,  //Sent by UI application to trigger laser pointer haptics (short UI interaction burst). lParam is tracked device index
     ipcact_MAX
 };
 

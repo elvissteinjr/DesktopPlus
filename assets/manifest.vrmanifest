@@ -1,7 +1,7 @@
 {
 	"source" : "builtin",
 	"applications": [{
-		"app_key": "elvissteinjr.DesktopPlus",
+		"app_key": "steam.overlay.1494460",
 		
 		"launch_type": "binary",
 		"binary_path_windows": "DesktopPlus.exe",

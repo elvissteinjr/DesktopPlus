@@ -17,6 +17,7 @@
 #include "OUtoSBSConverter.h"
 #include "InterprocessMessaging.h"
 #include "OverlayDragger.h"
+#include "LaserPointer.h"
 
 class Overlay;
 //
@@ -75,6 +76,8 @@ class OutputManager
 
         void ToggleOverlayGroupEnabled(int group_id);
 
+        VRInput& GetVRInput();
+
         void UpdatePerformanceStates();
         const LARGE_INTEGER& GetUpdateLimiterDelay();
         //This updates the cached desktop rects and count and optionally chooses the adapters/desktop for desktop duplication (previously part of InitOutput())
@@ -123,7 +126,7 @@ class OutputManager
         void DetachedTransformUpdateHMDFloor();
         void DetachedTransformUpdateSeatedPosition();
 
-        void DetachedInteractionAutoToggle();
+        void DetachedInteractionAutoToggleAll();
         void DetachedOverlayGazeFade();
         void DetachedOverlayGazeFadeAutoConfigure();
         void DetachedOverlayGlobalHMDPointerAll();
@@ -149,6 +152,7 @@ class OutputManager
         IPCManager m_IPCMan;
         BackgroundOverlay m_BackgroundOverlay;
         OverlayDragger m_OverlayDragger;
+        LaserPointer m_LaserPointer;
 
     // Vars
         ID3D11Device* m_Device;
@@ -191,7 +195,6 @@ class OutputManager
         int m_OvrlDesktopDuplActiveCount;
         bool m_OvrlDashboardActive;
         bool m_OvrlInputActive;
-        bool m_OvrlDetachedInteractiveAll;
         ULONGLONG m_OvrlTempDragStartTick;
 
         ID3D11Texture2D* m_MouseTex;

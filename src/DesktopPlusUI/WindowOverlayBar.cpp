@@ -416,7 +416,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
             //Get current pointer transform and set window transform from it
             if (UIManager::Get()->IsOpenVRLoaded())
             {
-                vr::TrackedDeviceIndex_t device_index = vr::VROverlay()->GetPrimaryDashboardDevice();
+                vr::TrackedDeviceIndex_t device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
 
                 //If no dashboard device, try finding one
                 if (device_index == vr::k_unTrackedDeviceIndexInvalid)
@@ -481,7 +481,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
         //Create new overlay if desktop or UI selectables were triggered
         if (new_overlay_desktop_id != -255)
         {
-            vr::TrackedDeviceIndex_t device_index = vr::VROverlay()->GetPrimaryDashboardDevice();
+            vr::TrackedDeviceIndex_t device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
 
             //If no dashboard device, try finding one
             if (device_index == vr::k_unTrackedDeviceIndexInvalid)
@@ -563,7 +563,7 @@ void WindowOverlayBar::HideMenus()
     UIManager::Get()->RepeatFrame();
 
     //Reset sort order if the overlay already isn't hovered anymore
-    if ( (UIManager::Get()->IsOpenVRLoaded()) && (!vr::VROverlay()->IsHoverTargetOverlay(UIManager::Get()->GetOverlayHandleOverlayBar())) )
+    if ( (UIManager::Get()->IsOpenVRLoaded()) && (!ConfigManager::Get().IsLaserPointerTargetOverlay(UIManager::Get()->GetOverlayHandleOverlayBar())) )
     {
         vr::VROverlay()->SetOverlaySortOrder(UIManager::Get()->GetOverlayHandleOverlayBar(), 0);
     }

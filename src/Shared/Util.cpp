@@ -110,13 +110,15 @@ void TransformLookAt(Matrix4& matrix, const Vector3 pos_target, const Vector3 up
                pos.x,    pos.y,    pos.z,    1.0f };
 }
 
-bool ComputeOverlayIntersectionForDevice(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, vr::VROverlayIntersectionResults_t* results,
-                                         bool use_tip_offset)
+bool GetOverlayIntersectionParamsForDevice(vr::VROverlayIntersectionParams_t& params, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, bool use_tip_offset)
 {
-    vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+    if (device_index >= vr::k_unMaxTrackedDeviceCount)
+        return false;
 
-    if ( (device_index >= vr::k_unMaxTrackedDeviceCount) || (!poses[device_index].bPoseIsValid) )
+    vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(tracking_origin, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+
+    if (!poses[device_index].bPoseIsValid)
         return false;
 
     Matrix4 mat_device = poses[device_index].mDeviceToAbsoluteTracking;
@@ -130,18 +132,28 @@ bool ComputeOverlayIntersectionForDevice(vr::VROverlayHandle_t overlay_handle, v
             mat_device = mat_device * GetControllerTipMatrix( (controller_role == vr::TrackedControllerRole_RightHand) );
         }
     } 
-  
+
     //Set up intersection test
     Vector3 v_pos = mat_device.getTranslation();
     Vector3 forward = {mat_device[8], mat_device[9], mat_device[10]};
     forward *= -1.0f;
 
-    vr::VROverlayIntersectionParams_t params = {0};
     params.eOrigin    = tracking_origin;
     params.vSource    = {v_pos.x, v_pos.y, v_pos.z};
     params.vDirection = {forward.x, forward.y, forward.z};
 
-    return vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, results);
+    return true;
+}
+
+bool ComputeOverlayIntersectionForDevice(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, vr::VROverlayIntersectionResults_t* results,
+                                         bool use_tip_offset)
+{
+    vr::VROverlayIntersectionParams_t params = {0};
+    
+    if (GetOverlayIntersectionParamsForDevice(params, device_index, tracking_origin, use_tip_offset))
+        return vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, results);
+
+    return false;
 }
 
 vr::TrackedDeviceIndex_t FindPointerDeviceForOverlay(vr::VROverlayHandle_t overlay_handle)

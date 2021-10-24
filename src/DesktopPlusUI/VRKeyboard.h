@@ -78,7 +78,6 @@ class VRKeyboard
         bool m_KeyboardHiddenLastFrame;
 
         unsigned char GetModifierFlags() const;
-        void ResetState();
 
     public:
         VRKeyboard();
@@ -98,6 +97,7 @@ class VRKeyboard
         void SetStringDown(const std::string text, bool down);
         void SetActionDown(ActionID action_id, bool down);
         bool IsCapsLockToggled() const;
+        void ResetState();
 
         void VRKeyboardInputBegin(const char* str_id);
         void VRKeyboardInputBegin(ImGuiID widget_id);

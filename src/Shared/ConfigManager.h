@@ -13,6 +13,7 @@
 #include "Matrices.h"
 #include "Actions.h"
 #include "Ini.h"
+#include "openvr.h"
 
 //Settings enums
 //These IDs are also passed via IPC
@@ -141,6 +142,7 @@ enum ConfigID_Int
     configid_int_state_interface_desktop_count,             //Count of desktops after optionally filtering virtual WMR displays
     configid_int_state_auto_docking_state,                  //0 = Off, 1 = Left Hand, 2 = Right Hand (matches ETrackedControllerRole). +2 for detaching
     configid_int_state_laser_pointer_device_hint,           //Used by dragging functions when laser pointer device can't be determined via other means (value is tracked device index)
+    configid_int_state_dplus_laser_pointer_device,          //Tracked device index for active Desktop+ laser pointer
 	configid_int_MAX
 };
 
@@ -167,10 +169,11 @@ enum ConfigID_Float
 
 enum ConfigID_Handle
 {
-    configid_handle_overlay_state_winrt_hwnd,               //HWNDs are technically always in 32-bit range, but avoiding truncation warnings and perhaps some other issues here
-    configid_handle_overlay_state_winrt_last_hicon,         //HICON kept around for when window goes missing but the icon itself is still cached in UI app
+    configid_handle_overlay_state_winrt_hwnd,                 //HWNDs are technically always in 32-bit range, but avoiding truncation warnings and perhaps some other issues here
+    configid_handle_overlay_state_winrt_last_hicon,           //HICON kept around for when window goes missing but the icon itself is still cached in UI app
     configid_handle_overlay_MAX,
-    configid_handle_state_arg_hwnd,                         //Used when a HWND is needed as an ipcact message argument
+    configid_handle_state_arg_hwnd,                           //Used when a HWND is needed as an ipcact message argument
+    configid_handle_state_dplus_laser_pointer_target_overlay, //Overlay handle for active Desktop+ laser pointer
     configid_handle_MAX
 };
 
@@ -223,8 +226,8 @@ enum OverlayOrigin
     ovrl_origin_seated_universe,
     ovrl_origin_dashboard,
     ovrl_origin_hmd,
-    ovrl_origin_right_hand,
     ovrl_origin_left_hand,
+    ovrl_origin_right_hand,
     ovrl_origin_aux,        //Tracker or whatever. No proper autodetection of additional devices yet, maybe in the future
     ovrl_origin_dplus_tab,  //Desktop+ dashboard dummy overlay, more reliable than dashboard origin. Not used by user overlays
     ovrl_origin_MAX
@@ -365,4 +368,6 @@ class ConfigManager
 		const std::string& GetApplicationPath() const;
 		const std::string& GetExecutableName() const;
         bool IsSteamInstall() const;
+        vr::TrackedDeviceIndex_t GetPrimaryLaserPointerDevice() const;                 //GetPrimaryDashboardDevice() but works with Desktop+'s laser pointer as well
+        bool IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayHandle) const; //IsHoverTargetOverlay() but works with Desktop+'s laser pointer as well
 };

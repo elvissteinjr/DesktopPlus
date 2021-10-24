@@ -107,7 +107,7 @@ void FloatingUI::UpdateUITargetState()
     vr::VROverlayHandle_t ovrl_handle_floating_ui = ui_manager.GetOverlayHandleFloatingUI();
 
     //Find which overlay is being hovered
-    vr::VROverlayHandle_t ovrl_handle_hover_target = (vr::VROverlay()->IsHoverTargetOverlay(ovrl_handle_floating_ui)) ? ovrl_handle_floating_ui : vr::k_ulOverlayHandleInvalid;
+    vr::VROverlayHandle_t ovrl_handle_hover_target = (ConfigManager::Get().IsLaserPointerTargetOverlay(ovrl_handle_floating_ui)) ? ovrl_handle_floating_ui : vr::k_ulOverlayHandleInvalid;
     unsigned int ovrl_id_hover_target = k_ulOverlayID_None;
 
     //If previous target overlay is no longer visible
@@ -119,7 +119,7 @@ void FloatingUI::UpdateUITargetState()
         m_FadeOutDelayCount = 100;
     }
 
-    const bool has_dashboard_device = (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid);
+    const bool has_pointer_device = (ConfigManager::Get().GetPrimaryLaserPointerDevice() != vr::k_unTrackedDeviceIndexInvalid);
 
     //Don't show UI if ImGui popup is open (which blocks all input so just hide this)
     //ImGui::IsPopupOpen() doesn't just check for modals though so it could get in the way at some point
@@ -130,29 +130,16 @@ void FloatingUI::UpdateUITargetState()
         {
             vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(i);
 
-            if ( (ovrl_handle != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsHoverTargetOverlay(ovrl_handle)) )
+            if ( (ovrl_handle != vr::k_ulOverlayHandleInvalid) && (ConfigManager::Get().IsLaserPointerTargetOverlay(ovrl_handle)) )
             {
                 const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-                if (data.ConfigBool[configid_bool_overlay_floatingui_enabled])
+                if ( (has_pointer_device) && (data.ConfigBool[configid_bool_overlay_floatingui_enabled]) )
                 {
-                    bool is_interactive = true;
+                    ovrl_handle_hover_target = ovrl_handle;
+                    ovrl_id_hover_target = i;
 
-                    //If there is no primary dashboard device, check if the overlay is interactive outside the dashboard
-                    //InteractiveIfVisible overlays usually cause a primary dashboard device to exist... but not always, so it's not reliable outside the actual dashboard
-                    if (!has_dashboard_device)
-                    {
-                        vr::VROverlay()->GetOverlayFlag(ovrl_handle, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, &is_interactive);
-                    }
-
-                    if (is_interactive)
-                    {
-                        ovrl_handle_hover_target = ovrl_handle;
-                        ovrl_id_hover_target = i;
-
-                        vr::VROverlay()->SetOverlayFlag(ovrl_handle_floating_ui, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, true);
-                        break;
-                    }
+                    break;
                 }
             }
         }
@@ -161,7 +148,8 @@ void FloatingUI::UpdateUITargetState()
     bool is_newly_visible = false;
 
     //Check if we're switching from another active overlay hover target, in which case we want to fade out completely first
-    if ( (m_OvrlHandleCurrentUITarget != vr::k_ulOverlayHandleInvalid) && (ovrl_handle_hover_target != vr::k_ulOverlayHandleInvalid) && (ovrl_handle_hover_target != ovrl_handle_floating_ui) && (ovrl_handle_hover_target != m_OvrlHandleCurrentUITarget) )
+    if ( (m_OvrlHandleCurrentUITarget != vr::k_ulOverlayHandleInvalid) && (ovrl_handle_hover_target != vr::k_ulOverlayHandleInvalid) && (ovrl_handle_hover_target != ovrl_handle_floating_ui) && 
+         (ovrl_handle_hover_target != m_OvrlHandleCurrentUITarget) )
     {
         m_IsSwitchingTarget = true;
         m_Visible = false;

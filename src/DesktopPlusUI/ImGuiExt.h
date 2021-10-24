@@ -11,6 +11,8 @@ extern ImVec4 Style_ImGuiCol_TextNotification;
 extern ImVec4 Style_ImGuiCol_TextWarning;
 extern ImVec4 Style_ImGuiCol_TextError;
 extern ImVec4 Style_ImGuiCol_ButtonPassiveToggled; //Toggled state for a button indicating a passive state, rather a full-on eye-catching active state
+extern ImVec4 Style_ImGuiCol_SteamVRCursor;        //Inner color used to mimic a SteamVR overlay cursor
+extern ImVec4 Style_ImGuiCol_SteamVRCursorBorder;  //Border color used to mimic a SteamVR overlay cursor
 
 namespace ImGui
 {
@@ -89,6 +91,35 @@ namespace ImGui
     //Returns string shortened to fit width_max in the active font
     std::string StringEllipsis(const char* str, float width_max);
 
+    //Stores an ImGui mouse state or something that would like to be one and can set from or apply to global state if needed. 
+    //Somewhat hacky, but pretty unproblematic when used correctly.
+    class ImGuiMouseState
+    {
+        public:
+            ImVec2 MousePos;
+            bool   MouseDown[5];
+            float  MouseWheel;
+            float  MouseWheelH;
+            ImVec2 MouseDelta;
+            ImVec2 MousePosPrev;
+            ImVec2 MouseClickedPos[5];
+            double MouseClickedTime[5];
+            bool   MouseClicked[5];
+            bool   MouseDoubleClicked[5];
+            bool   MouseReleased[5];
+            bool   MouseDownOwned[5];
+            bool   MouseDownWasDoubleClick[5];
+            float  MouseDownDuration[5];
+            float  MouseDownDurationPrev[5];
+            ImVec2 MouseDragMaxDistanceAbs[5];
+            float  MouseDragMaxDistanceSqr[5];
+
+            ImGuiMouseState();
+            void SetFromGlobalState();
+            void ApplyToGlobalState();
+            void Advance();        //Advance state similar to what happens in ImGui::NewFrame();
+    };
+
     //Very dirty hack. Allows storing and restoring the active widget state. Works fine for a bunch of buttons not interrupting an InputText(), but likely breaks for anything complex.
     //A separate ImGuiContext would be the sane option, but that comes with its own complications.
     class ActiveWidgetStateStorage
@@ -96,6 +127,14 @@ namespace ImGui
         private:
             bool    IsInitialized;
 
+            ImGuiID HoveredId;
+            ImGuiID HoveredIdPreviousFrame;
+            bool    HoveredIdAllowOverlap;
+            bool    HoveredIdUsingMouseWheel;
+            bool    HoveredIdPreviousFrameUsingMouseWheel;
+            bool    HoveredIdDisabled;
+            float   HoveredIdTimer;
+            float   HoveredIdNotActiveTimer; 
             ImGuiID ActiveId;
             ImGuiID ActiveIdIsAlive;
             float   ActiveIdTimer;

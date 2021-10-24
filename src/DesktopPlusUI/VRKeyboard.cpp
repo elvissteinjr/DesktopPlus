@@ -32,27 +32,6 @@ unsigned char VRKeyboard::GetModifierFlags() const
     return flags;
 }
 
-void VRKeyboard::ResetState()
-{
-    //Release any held down keys
-    for (int i = 0; i < 256; ++i) 
-    {
-        if (m_KeyDown[i])
-        {
-            SetKeyDown(i, false);
-        }
-    }
-
-    if (m_CapsLockToggled)
-    {
-        SetKeyDown(m_CapsLockToggled, true);
-        SetKeyDown(m_CapsLockToggled, false);
-        m_CapsLockToggled = false;
-    }
-
-    m_StringQueue = {}; //Clear
-}
-
 WindowKeyboard& VRKeyboard::GetWindow()
 {
     return m_WindowKeyboard;
@@ -380,6 +359,29 @@ bool VRKeyboard::IsCapsLockToggled() const
     return m_CapsLockToggled;
 }
 
+void VRKeyboard::ResetState()
+{
+    //Release any held down keys
+    for (int i = 0; i < 256; ++i) 
+    {
+        if (m_KeyDown[i])
+        {
+            SetKeyDown(i, false);
+        }
+    }
+
+    if (m_CapsLockToggled)
+    {
+        SetKeyDown(m_CapsLockToggled, true);
+        SetKeyDown(m_CapsLockToggled, false);
+        m_CapsLockToggled = false;
+    }
+
+    m_StringQueue = {}; //Clear
+
+    m_WindowKeyboard.ResetButtonState();
+}
+
 void VRKeyboard::VRKeyboardInputBegin(const char* str_id)
 {
     VRKeyboardInputBegin(ImGui::GetID(str_id));
@@ -469,8 +471,12 @@ void VRKeyboard::OnImGuiNewFrame()
         //If keyboard is visible for an overlay, just disable UI target
         //if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1)
         {
-            m_TargetIsUI = false;
-            m_WindowKeyboard.Show(); //Show() updates window title
+            if (m_TargetIsUI)
+            {
+                ResetState();
+                m_TargetIsUI = false;
+                m_WindowKeyboard.Show(); //Show() updates window title
+            }
         }
         /*else //Auto hide is problematic, maybe find a solution later
         {

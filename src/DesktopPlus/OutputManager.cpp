@@ -66,7 +66,6 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlDesktopDuplActiveCount(0),
     m_OvrlDashboardActive(false),
     m_OvrlInputActive(false),
-    m_OvrlDetachedInteractiveAll(false),
     m_OvrlTempDragStartTick(0),
     m_MouseTex(nullptr),
     m_MouseShaderRes(nullptr),
@@ -1119,7 +1118,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         OverlayManager::Get().SetCurrentOverlayID(overlay_id);
 
                         //Check if it's still being hovered since it could be off before the message is processed
-                        if (vr::VROverlay()->IsHoverTargetOverlay(OverlayManager::Get().GetCurrentOverlay().GetHandle()))
+                        if (ConfigManager::Get().IsLaserPointerTargetOverlay(OverlayManager::Get().GetCurrentOverlay().GetHandle()))
                         {
                             //Reset input and WindowManager state manually since the overlay mouse up even will be consumed to finish the drag later
                             m_InputSim.MouseSetLeftDown(false);
@@ -1228,12 +1227,21 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                                                          ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated));
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_started_by_steam),
                                                          ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam));
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_dplus_laser_pointer_device),
+                                                         ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device));
 
+                    //Sync usually means new UI process, so get new handles
+                    m_LaserPointer.RefreshCachedOverlayHandles();
                     break;
                 }
                 case ipcact_focus_window:
                 {
                     WindowManager::Get().RaiseAndFocusWindow((HWND)msg.lParam, &m_InputSim);
+                    break;
+                }
+                case ipcact_lpointer_trigger_haptics:
+                {
+                    m_LaserPointer.TriggerLaserPointerHaptics((vr::TrackedDeviceIndex_t)msg.lParam);
                     break;
                 }
             }
@@ -1774,7 +1782,7 @@ bool OutputManager::GetOverlayInputActive() const
 
 DWORD OutputManager::GetMaxRefreshDelay() const
 {
-    if ( (m_OvrlActiveCount != 0) || (m_OvrlDashboardActive) )
+    if ( (m_OvrlActiveCount != 0) || (m_OvrlDashboardActive) || (m_LaserPointer.IsActive()) )
     {
         //Actually causes extreme load while not really being necessary (looks nice tho)
         if ( (m_OvrlInputActive) && (ConfigManager::Get().GetConfigBool(configid_bool_performance_rapid_laser_pointer_updates)) )
@@ -1786,7 +1794,7 @@ DWORD OutputManager::GetMaxRefreshDelay() const
             return m_MaxActiveRefreshDelay;
         }
     }
-    else if ( (m_VRInput.IsAnyActionBound()) || (IsAnyOverlayUsingGazeFade()) || (m_IsAnyHotkeyActive) )
+    else if ( (m_VRInput.IsAnyGlobalActionBound()) || (IsAnyOverlayUsingGazeFade()) || (m_IsAnyHotkeyActive) )
     {
         return m_MaxActiveRefreshDelay * 2;
     }
@@ -2279,6 +2287,11 @@ void OutputManager::ToggleOverlayGroupEnabled(int group_id)
             IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
         }
     }
+}
+
+VRInput& OutputManager::GetVRInput()
+{
+    return m_VRInput;
 }
 
 void OutputManager::UpdatePerformanceStates()
@@ -3508,9 +3521,14 @@ bool OutputManager::HandleOpenVREvents()
             case vr::VREvent_Input_BindingsUpdated:
             case vr::VREvent_Input_BindingLoadSuccessful:
             case vr::VREvent_TrackedDeviceActivated:
+            {
+                m_VRInput.RefreshAnyGlobalActionBound();
+                break;
+            }
             case vr::VREvent_TrackedDeviceDeactivated:
             {
-                m_VRInput.RefreshAnyActionBound();
+                m_VRInput.RefreshAnyGlobalActionBound();
+                m_LaserPointer.RemoveDevice(vr_event.trackedDeviceIndex);
                 break;
             }
             case vr::VREvent_Quit:
@@ -3577,7 +3595,7 @@ bool OutputManager::HandleOpenVREvents()
 
                     if (!drag_or_select_mode_enabled)
                     {
-                        if (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd)
+                        if (ConfigManager::Get().GetPrimaryLaserPointerDevice() == vr::k_unTrackedDeviceIndex_Hmd)
                         {
                             ResetMouseLastLaserPointerPos();
                         }
@@ -3602,24 +3620,6 @@ bool OutputManager::HandleOpenVREvents()
                 case vr::VREvent_FocusLeave:
                 {
                     m_OvrlInputActive = false;
-
-                    //If input is active from the input binding, reset the flag for every overlay (except dashboard)
-                    if (!m_OverlayDragger.IsDragActive()) //Not during drag though, where SetGlobalInteractiveFlag() is used for in-scene tenp drags
-                    {
-                        if (m_OvrlDetachedInteractiveAll)
-                        {
-                            m_OvrlDetachedInteractiveAll = false;
-
-                            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
-                            {
-                                OverlayManager::Get().GetOverlay(i).SetGlobalInteractiveFlag(false);
-                            }
-                        }
-                        else
-                        {
-                            overlay.SetGlobalInteractiveFlag(false);
-                        }
-                    }
 
                     bool drag_or_select_mode_enabled = ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) );
 
@@ -3677,17 +3677,26 @@ bool OutputManager::HandleOpenVREvents()
     //Handle stuff coming from SteamVR Input
     m_VRInput.Update();
 
-    if (m_VRInput.GetSetDetachedInteractiveDown())
+    //Handle Enable Global Laser Pointer binding
+    vr::InputDigitalActionData_t enable_laser_pointer_state = m_VRInput.GetEnableGlobalLaserPointerState();
+    if (enable_laser_pointer_state.bChanged)
     {
-        if (!m_OvrlDetachedInteractiveAll) //This isn't a direct toggle since the laser pointer blocks the SteamVR Input Action Set
+        if (enable_laser_pointer_state.bState)
         {
-            m_OvrlDetachedInteractiveAll = true;
-
-            //Set flag for all overlays
-            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+            if (!m_LaserPointer.IsActive())  //Don't switch devices if the pointer is already active
             {
-                OverlayManager::Get().GetOverlay(i).SetGlobalInteractiveFlag(true);
+                //Get tracked device index from origin
+                vr::InputOriginInfo_t origin_info = {0};
+
+                if (vr::VRInput()->GetOriginTrackedDeviceInfo(enable_laser_pointer_state.activeOrigin, &origin_info, sizeof(vr::InputOriginInfo_t)) == vr::VRInputError_None)
+                {
+                    m_LaserPointer.SetActiveDevice(origin_info.trackedDeviceIndex, dplp_activation_origin_input_binding);
+                }
             }
+        }
+        else if (m_LaserPointer.GetActivationOrigin() == dplp_activation_origin_input_binding)
+        {
+            m_LaserPointer.ClearActiveDevice();
         }
     }
 
@@ -3738,8 +3747,6 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     ApplySettingTransform();
                 }
-
-                DetachedInteractionAutoToggle();
             }
 
             DetachedOverlayGazeFade();
@@ -3748,8 +3755,11 @@ bool OutputManager::HandleOpenVREvents()
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
+    DetachedInteractionAutoToggleAll();
     DetachedOverlayGlobalHMDPointerAll();
     DetachedOverlayAutoDockingAll();
+
+    m_LaserPointer.Update();
 
     return false;
 }
@@ -3759,7 +3769,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
     const Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
     const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
-    bool device_is_hmd = ((vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd) || (vr_event.trackedDeviceIndex == vr::k_unTrackedDeviceIndex_Hmd));
+    bool device_is_hmd = ((ConfigManager::Get().GetPrimaryLaserPointerDevice() == vr::k_unTrackedDeviceIndex_Hmd) || (vr_event.trackedDeviceIndex == vr::k_unTrackedDeviceIndex_Hmd));
 
     switch (vr_event.eventType)
     {
@@ -3996,14 +4006,23 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 WindowManager::Get().SetTargetWindow((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], overlay_current.GetID());
             }
 
-            m_MouseLastClickTick = ::GetTickCount64();
-            m_MouseLeftDownOverlayID = overlay_current.GetID();
+            if (vr_event.data.mouse.button <= vr::VRMouseButton_Middle)
+            {
+                m_MouseLastClickTick = ::GetTickCount64();
+
+                if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
+                {
+                    m_MouseLeftDownOverlayID = overlay_current.GetID();
+                }
+            }
 
             switch (vr_event.data.mouse.button)
             {
                 case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(true);   break;
                 case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(true);  break;
-                case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but supported in case it ever starts happening
+                case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but our own laser pointer supports this
+                case VRMouseButton_DP_Aux01:    DoStartAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id)); break;
+                case VRMouseButton_DP_Aux02:    DoStartAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id)); break;
             }
 
             break;
@@ -4056,6 +4075,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(false);   break;
                 case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(false);  break;
                 case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(false); break;
+                case VRMouseButton_DP_Aux01:    DoStopAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id)); break;
+                case VRMouseButton_DP_Aux02:    DoStopAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id)); break;
             }
 
             //If there was a possible WindowManager drag event prepared for, reset the target window
@@ -4065,7 +4086,10 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 WindowManager::Get().SetTargetWindow(nullptr);
             }
 
-            m_MouseLeftDownOverlayID = k_ulOverlayID_None;
+            if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
+            {
+                m_MouseLeftDownOverlayID = k_ulOverlayID_None;
+            }
 
             break;
         }
@@ -4093,7 +4117,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
                     if ( (WindowManager::Get().IsHoveringCapturableTitleBar(current_window, m_MouseLastLaserPointerX, m_MouseLastLaserPointerY)) )
                     {
-                        vr::TrackedDeviceIndex_t device_index = vr::VROverlay()->GetPrimaryDashboardDevice();
+                        vr::TrackedDeviceIndex_t device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
 
                         //If no dashboard device, try finding one
                         if (device_index == vr::k_unTrackedDeviceIndexInvalid)
@@ -4877,7 +4901,7 @@ void OutputManager::ApplySettingInputMode()
         if ((ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) || (drag_or_select_mode_enabled) )
         {
             //Don't activate drag mode for HMD origin when the pointer is also the HMD (or it's the dashboard overlay)
-            if ( ((vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd) && (ConfigManager::Get().GetConfigInt(configid_int_overlay_origin) == ovrl_origin_hmd)) )
+            if ( ((ConfigManager::Get().GetPrimaryLaserPointerDevice() == vr::k_unTrackedDeviceIndex_Hmd) && (ConfigManager::Get().GetConfigInt(configid_int_overlay_origin) == ovrl_origin_hmd)) )
             {
                 vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
             }
@@ -5498,60 +5522,39 @@ void OutputManager::DetachedTransformUpdateSeatedPosition()
     m_SeatedTransformLast = mat_seated_zero;
 }
 
-void OutputManager::DetachedInteractionAutoToggle()
+void OutputManager::DetachedInteractionAutoToggleAll()
 {
     //Don't change flags while any drag is currently active
-    if ((m_OverlayDragger.IsDragActive()) || (m_OverlayDragger.IsDragGestureActive()))
+    if ( (m_OverlayDragger.IsDragActive()) || (m_OverlayDragger.IsDragGestureActive()) )
         return;
-
-    Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
-    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
 
     float max_distance = ConfigManager::Get().GetConfigFloat(configid_float_input_detached_interaction_max_distance);
 
-    if ((overlay.IsVisible()) && (max_distance != 0.0f) && (!vr::VROverlay()->IsDashboardVisible()))
+    if ( (max_distance != 0.0f) && (!vr::VROverlay()->IsDashboardVisible()) )
     {
         bool do_set_interactive = false;
 
         //Add some additional distance for disabling interaction again
-        if (overlay.GetGlobalInteractiveFlag())
+        if (m_LaserPointer.IsActive())
         {
+            //...but abort if pointer wasn't activated by this function (not our job to deactivate it)
+            if (m_LaserPointer.GetActivationOrigin() != dplp_activation_origin_auto_toggle)
+                return;
+
             max_distance += 0.01f;
         }
 
-        vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+        vr::TrackedDeviceIndex_t device_index_hovering = m_LaserPointer.IsAnyOverlayHovered(max_distance);
 
-        OverlayOrigin origin = (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_origin);
-
-        //Check left and right hand controller
-        vr::ETrackedControllerRole controller_role = vr::TrackedControllerRole_LeftHand;
-        for (;;)
+        //Set pointer device if interaction not active yet and a device is hovering
+        if ( (!m_LaserPointer.IsActive()) && (device_index_hovering != vr::k_unTrackedDeviceIndexInvalid) )
         {
-            //Do not check controller if the overlay uses it as origin
-            if ( ( (origin != ovrl_origin_left_hand)  || (controller_role != vr::TrackedControllerRole_LeftHand)  ) &&
-                 ( (origin != ovrl_origin_right_hand) || (controller_role != vr::TrackedControllerRole_RightHand) ) )
-            {
-                vr::TrackedDeviceIndex_t device_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(controller_role);
-                vr::VROverlayIntersectionResults_t results;
-
-                if ( (ComputeOverlayIntersectionForDevice(ovrl_handle, device_index, vr::TrackingUniverseStanding, &results)) && (results.fDistance <= max_distance) )
-                {
-                    do_set_interactive = true;
-                }
-            }
-
-            if (controller_role == vr::TrackedControllerRole_LeftHand)
-            {
-                controller_role = vr::TrackedControllerRole_RightHand;
-            }
-            else
-            {
-                break;
-            }
+            m_LaserPointer.SetActiveDevice(device_index_hovering, dplp_activation_origin_auto_toggle);
         }
-
-        overlay.SetGlobalInteractiveFlag(do_set_interactive);
+        else if ( (m_LaserPointer.IsActive()) && (device_index_hovering == vr::k_unTrackedDeviceIndexInvalid) ) //Clear pointer device if interaction active and no device is hovering
+        {
+            m_LaserPointer.ClearActiveDevice();
+        }
     }
 }
 
@@ -5637,7 +5640,7 @@ void OutputManager::DetachedOverlayGazeFadeAutoConfigure()
 void OutputManager::DetachedOverlayGlobalHMDPointerAll()
 {
     //Don't do anything if setting disabled or a dashboard pointer is active
-    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_input_global_hmd_pointer)) || (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid) )
+    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_input_global_hmd_pointer)) || (ConfigManager::Get().GetPrimaryLaserPointerDevice() != vr::k_unTrackedDeviceIndexInvalid) )
         return;
 
     static vr::VROverlayHandle_t ovrl_last_enter = vr::k_ulOverlayHandleInvalid;
@@ -5807,13 +5810,16 @@ void OutputManager::DetachedTempDragStart(unsigned int overlay_id, float offset_
     m_OverlayDragger.DragStart(overlay_id);
 
     //Drag may fail when dashboard device goes missing
-    //Should not happen as the relevant function  relevant functions try their best to get an alternative before calling this, but avoid being stuck in temp drag mode
+    //Should not happen as the relevant functions try their best to get an alternative before calling this, but avoid being stuck in temp drag mode
     if (m_OverlayDragger.IsDragActive())
     {
         m_OverlayDragger.AbsoluteModeSet(true, offset_forward);
         m_OvrlTempDragStartTick = ::GetTickCount64();
 
-        OverlayManager::Get().GetOverlay(overlay_id).SetGlobalInteractiveFlag(true);
+        if (m_LaserPointer.IsActive())
+        {
+            m_LaserPointer.ForceTargetOverlay(OverlayManager::Get().GetOverlay(overlay_id).GetHandle());
+        }
 
         ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode_temp, true);
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_overlay_dragmode_temp), true);
@@ -5831,8 +5837,6 @@ void OutputManager::DetachedTempDragFinish()
         OverlayManager::Get().SetCurrentOverlayID(m_OverlayDragger.GetDragOverlayID());
 
         m_OverlayDragger.DragFinish();
-
-        OverlayManager::Get().GetCurrentOverlay().SetGlobalInteractiveFlag(false);
 
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_overlay_dragmode_temp), false);
         ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode_temp, false);

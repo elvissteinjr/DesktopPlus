@@ -271,7 +271,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 }
             }
 
-            //Handle OpenVR events for the floating settings
+            //Handle OpenVR events for the overlay properties
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleOverlayProperties(), &vr_event, sizeof(vr_event)))
             {
                 ImGui_ImplOpenVR_InputEventHandler(vr_event);
@@ -285,17 +285,21 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 }
             }
 
-            //Handle OpenVR events for the floating settings
+            //Handle OpenVR events for the VR keyboard
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleKeyboard(), &vr_event, sizeof(vr_event)))
             {
-                ImGui_ImplOpenVR_InputEventHandler(vr_event);
-
-                if (vr_event.eventType == vr::VREvent_MouseMove)
+                //Let the keyboard window handle events first for multi-laser support
+                if (!ui_manager.GetVRKeyboard().GetWindow().HandleOverlayEvent(vr_event))
                 {
-                    //Clamp coordinates to overlay texture space
-                    const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_keyboard);
-                    io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
-                    io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
+                    ImGui_ImplOpenVR_InputEventHandler(vr_event);
+
+                    if (vr_event.eventType == vr::VREvent_MouseMove)
+                    {
+                        //Clamp coordinates to overlay texture space
+                        const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_keyboard);
+                        io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
+                        io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
+                    }
                 }
             }
 
@@ -444,13 +448,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
 
         //Haptic feedback for hovered items, like the rest of the SteamVR UI
-        if ( (!desktop_mode) && ( (ImGui::HasHoveredNewItem()) || (ui_manager.GetVRKeyboard().GetWindow().HasHoveredNewItem()) ) )
+        if ( (!desktop_mode) && (ImGui::HasHoveredNewItem()) )
         {
             for (const auto& overlay_handle : ui_manager.GetUIOverlayHandles())
             {
-                if (vr::VROverlay()->IsHoverTargetOverlay(overlay_handle))
+                if (ConfigManager::Get().IsLaserPointerTargetOverlay(overlay_handle))
                 {
-                    vr::VROverlay()->TriggerLaserMouseHapticVibration(overlay_handle, 0.0f, 1.0f, 0.16f);
+                    ui_manager.TriggerLaserPointerHaptics(overlay_handle);
                 }
             }
         }
@@ -851,12 +855,14 @@ void InitImGui(HWND hwnd)
     colors[ImGuiCol_NavHighlight]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
     colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
     colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
-    //colors[ImGuiCol_ModalWindowDimBg]    = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);*/
+    //colors[ImGuiCol_ModalWindowDimBg]    = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
     colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     Style_ImGuiCol_TextNotification        = ImVec4(0.64f, 0.97f, 0.26f, 1.00f);
     Style_ImGuiCol_TextWarning             = ImVec4(0.98f, 0.81f, 0.26f, 1.00f);
     Style_ImGuiCol_TextError               = ImVec4(0.97f, 0.33f, 0.33f, 1.00f);
     Style_ImGuiCol_ButtonPassiveToggled    = ImVec4(0.180f, 0.349f, 0.580f, 0.404f);
+    Style_ImGuiCol_SteamVRCursor           = ImVec4(0.463f, 0.765f, 0.882f, 1.000f);
+    Style_ImGuiCol_SteamVRCursorBorder     = ImVec4(0.161f, 0.176f, 0.196f, 0.929f);
 
     //Setup ImPlot style
     ImPlotStyle& plot_style = ImPlot::GetStyle();

@@ -43,7 +43,8 @@ ConfigManager::ConfigManager() : m_IsSteamInstall(false)
     m_ConfigInt[configid_int_state_interface_desktop_count] = ::GetSystemMetrics(SM_CMONITORS);
 
     //Init laser pointer hint to HMD (not controllers since they could be disconnected)
-    m_ConfigInt[configid_int_state_laser_pointer_device_hint] = vr::k_unTrackedDeviceIndex_Hmd;
+    m_ConfigInt[configid_int_state_laser_pointer_device_hint]  = vr::k_unTrackedDeviceIndex_Hmd;
+    m_ConfigInt[configid_int_state_dplus_laser_pointer_device] = vr::k_unTrackedDeviceIndexInvalid;
 
     //Init application path
     int buffer_size = 1024;
@@ -1107,4 +1108,31 @@ const std::string& ConfigManager::GetExecutableName() const
 bool ConfigManager::IsSteamInstall() const
 {
     return m_IsSteamInstall;
+}
+
+vr::TrackedDeviceIndex_t ConfigManager::GetPrimaryLaserPointerDevice() const
+{
+    if (vr::VROverlay() == nullptr)
+        return vr::k_unTrackedDeviceIndexInvalid;
+
+    vr::TrackedDeviceIndex_t device_index = vr::VROverlay()->GetPrimaryDashboardDevice();
+
+    //No dashboard device, try Desktop+ laser pointer device
+    if (device_index == vr::k_unTrackedDeviceIndexInvalid)
+        return (vr::TrackedDeviceIndex_t)m_ConfigInt[configid_int_state_dplus_laser_pointer_device];
+
+    return device_index;
+}
+
+bool ConfigManager::IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayHandle) const
+{
+    if (vr::VROverlay() == nullptr)
+        return false;
+
+    bool ret = vr::VROverlay()->IsHoverTargetOverlay(ulOverlayHandle);
+
+    if (!ret)
+        return (ulOverlayHandle == m_ConfigHandle[configid_handle_state_dplus_laser_pointer_target_overlay]);
+
+    return ret;
 }

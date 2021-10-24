@@ -119,7 +119,7 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
 
         if (ImGui::IsItemActivated())
         {
-            vr::TrackedDeviceIndex_t device_index = vr::VROverlay()->GetPrimaryDashboardDevice();
+            vr::TrackedDeviceIndex_t device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
 
             //If no dashboard device, try finding one
             if (device_index == vr::k_unTrackedDeviceIndexInvalid)

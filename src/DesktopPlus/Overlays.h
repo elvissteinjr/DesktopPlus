@@ -31,7 +31,6 @@ class Overlay
         vr::VROverlayHandle_t m_OvrlHandle;
         bool m_Visible;                       //IVROverlay::IsOverlayVisible() is unreliable if the state changed during the same frame so we keep track ourselves
         float m_Opacity;                      //This is the opacity the overlay is currently set at, which may differ from what the config value is
-        bool m_GlobalInteractive;             //True if VROverlayFlags_MakeOverlaysInteractiveIfVisible is set for this overlay
         DPRect m_ValidatedCropRect;           //Validated cropping rectangle used in OutputManager::Update() to check against dirty update regions
         OverlayTextureSource m_TextureSource;
         OUtoSBSConverter m_OUtoSBSConverter;
@@ -55,9 +54,6 @@ class Overlay
         void SetVisible(bool visible);      //Call OutputManager::Show/HideOverlay() instead of this to properly manage duplication state based on active overlays
         bool IsVisible() const;
         bool ShouldBeVisible() const;
-
-        void SetGlobalInteractiveFlag(bool interactive);
-        bool GetGlobalInteractiveFlag();
 
         void UpdateValidatedCropRect();
         const DPRect& GetValidatedCropRect() const;

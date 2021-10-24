@@ -11,7 +11,6 @@ Overlay::Overlay(unsigned int id) : m_ID(id),
                                     m_OvrlHandle(vr::k_ulOverlayHandleInvalid),
                                     m_Visible(false),
                                     m_Opacity(1.0f),
-                                    m_GlobalInteractive(false),
                                     m_TextureSource(ovrl_texsource_invalid)
 {
     //Don't call InitOverlay when OpenVR isn't loaded yet. This happens during startup when loading the config and will be fixed up by OutputManager::InitOverlay() afterwards
@@ -46,7 +45,6 @@ Overlay& Overlay::operator=(Overlay&& b)
         m_Visible = b.m_Visible;
         m_Opacity = b.m_Opacity;
         m_ValidatedCropRect = b.m_ValidatedCropRect;
-        m_GlobalInteractive = b.m_GlobalInteractive;
         m_TextureSource = b.m_TextureSource;
         //m_OUtoSBSConverter should just be left alone, it only holds cached state anyways
 
@@ -234,20 +232,6 @@ bool Overlay::ShouldBeVisible() const
     }
 
     return should_be_visible;
-}
-
-void Overlay::SetGlobalInteractiveFlag(bool interactive)
-{
-    if (m_GlobalInteractive != interactive) //Avoid spamming flag changes
-    {
-        vr::VROverlay()->SetOverlayFlag(m_OvrlHandle, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, interactive);
-        m_GlobalInteractive = interactive;
-    }
-}
-
-bool Overlay::GetGlobalInteractiveFlag()
-{
-    return m_GlobalInteractive;
 }
 
 void Overlay::UpdateValidatedCropRect()

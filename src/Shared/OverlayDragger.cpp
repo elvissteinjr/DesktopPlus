@@ -31,7 +31,7 @@ void OverlayDragger::DragStartBase(bool is_gesture_drag)
 
     //This is also used by DragGestureStart() (with is_gesture_drag = true), but only to convert between overlay origins.
     //Doesn't need calls to the other DragUpdate() or DragFinish() functions in that case
-    vr::TrackedDeviceIndex_t device_index = vr::VROverlay()->GetPrimaryDashboardDevice();
+    vr::TrackedDeviceIndex_t device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
 
     vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
     vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);

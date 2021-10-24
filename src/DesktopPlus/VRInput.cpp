@@ -9,22 +9,33 @@
 #include "OutputManager.h"
 
 VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
-                     m_HandleActionSetDetachedInteractive(vr::k_ulInvalidActionHandle),
+                     m_HandleActionsetLaserPointer(vr::k_ulInvalidActionSetHandle),
+                     m_HandleActionsetScrollDiscrete(vr::k_ulInvalidActionSetHandle),
+                     m_HandleActionsetScrollSmooth(vr::k_ulInvalidActionSetHandle),
+                     m_HandleActionEnableGlobalLaserPointer(vr::k_ulInvalidActionHandle),
                      m_HandleActionDoGlobalShortcut01(vr::k_ulInvalidActionHandle),
                      m_HandleActionDoGlobalShortcut02(vr::k_ulInvalidActionHandle),
                      m_HandleActionDoGlobalShortcut03(vr::k_ulInvalidActionHandle),
                      m_HandleActionToggleOverlayGroupEnabled01(vr::k_ulInvalidActionHandle),
                      m_HandleActionToggleOverlayGroupEnabled02(vr::k_ulInvalidActionHandle),
                      m_HandleActionToggleOverlayGroupEnabled03(vr::k_ulInvalidActionHandle),
-                     m_IsAnyActionBound(false),
-                     m_IsAnyActionBoundStateValid(false)
+                     m_HandleActionLaserPointerLeftClick(vr::k_ulInvalidActionHandle),
+                     m_HandleActionLaserPointerRightClick(vr::k_ulInvalidActionHandle),
+                     m_HandleActionLaserPointerMiddleClick(vr::k_ulInvalidActionHandle),
+                     m_HandleActionLaserPointerAux01Click(vr::k_ulInvalidActionHandle),
+                     m_HandleActionLaserPointerAux02Click(vr::k_ulInvalidActionHandle),
+                     m_HandleActionLaserPointerScrollDiscrete(vr::k_ulInvalidActionHandle),
+                     m_HandleActionLaserPointerScrollSmooth(vr::k_ulInvalidActionHandle),
+                     m_HandleActionLaserPointerHaptic(vr::k_ulInvalidActionHandle),
+                     m_IsAnyGlobalActionBound(false),
+                     m_IsAnyGlobalActionBoundStateValid(false),
+                     m_IsLaserPointerInputActive(false),
+                     m_LaserPointerScrollMode(vrinput_scroll_none)
 {
 }
 
 bool VRInput::Init()
 {
-    bool ret = false;
-
     //Load manifest, this will fail with VRInputError_MismatchedActionManifest when a Steam configured manifest is already associated with the app key, but we can just ignore that
     vr::EVRInputError input_error = vr::VRInput()->SetActionManifestPath( (ConfigManager::Get().GetApplicationPath() + "action_manifest.json").c_str() );
 
@@ -36,7 +47,7 @@ bool VRInput::Init()
             return false;
 
         //Load actions (we assume that the files are not messed with and skip some error checking)
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/SetDetachedInteractive",      &m_HandleActionSetDetachedInteractive);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/EnableGlobalLaserPointer",    &m_HandleActionEnableGlobalLaserPointer);
         vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut01",            &m_HandleActionDoGlobalShortcut01);
         vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut02",            &m_HandleActionDoGlobalShortcut02);
         vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut03",            &m_HandleActionDoGlobalShortcut03);
@@ -44,10 +55,24 @@ bool VRInput::Init()
         vr::VRInput()->GetActionHandle("/actions/shortcuts/in/ToggleOverlayGroupEnabled02", &m_HandleActionToggleOverlayGroupEnabled02);
         vr::VRInput()->GetActionHandle("/actions/shortcuts/in/ToggleOverlayGroupEnabled03", &m_HandleActionToggleOverlayGroupEnabled03);
 
-        ret = true;
+        vr::VRInput()->GetActionSetHandle("/actions/laserpointer",                &m_HandleActionsetLaserPointer);
+        vr::VRInput()->GetActionHandle("/actions/laserpointer/in/LeftClick",      &m_HandleActionLaserPointerLeftClick);
+        vr::VRInput()->GetActionHandle("/actions/laserpointer/in/RightClick" ,    &m_HandleActionLaserPointerRightClick);
+        vr::VRInput()->GetActionHandle("/actions/laserpointer/in/MiddleClick",    &m_HandleActionLaserPointerMiddleClick);
+        vr::VRInput()->GetActionHandle("/actions/laserpointer/in/Aux01Click",     &m_HandleActionLaserPointerAux01Click);
+        vr::VRInput()->GetActionHandle("/actions/laserpointer/in/Aux02Click",     &m_HandleActionLaserPointerAux02Click);
+        vr::VRInput()->GetActionHandle("/actions/laserpointer/out/Haptic",        &m_HandleActionLaserPointerHaptic);
+
+        vr::VRInput()->GetActionSetHandle("/actions/scroll_discrete",                &m_HandleActionsetScrollDiscrete);
+        vr::VRInput()->GetActionHandle("/actions/scroll_discrete/in/ScrollDiscrete", &m_HandleActionLaserPointerScrollDiscrete);
+
+        vr::VRInput()->GetActionSetHandle("/actions/scroll_smooth",                &m_HandleActionsetScrollSmooth);
+        vr::VRInput()->GetActionHandle("/actions/scroll_smooth/in/ScrollSmooth",   &m_HandleActionLaserPointerScrollSmooth);
+
+        return true;
     }
 
-    return ret;
+    return false;
 }
 
 void VRInput::Update()
@@ -55,27 +80,44 @@ void VRInput::Update()
     if (m_HandleActionsetShortcuts == vr::k_ulInvalidActionSetHandle)
         return;
 
-    vr::VRActiveActionSet_t actionset_desc = { 0 };
-    actionset_desc.ulActionSet = m_HandleActionsetShortcuts;
-    actionset_desc.nPriority = 10;  //Random number, INT_MAX doesn't work
+    vr::VRActiveActionSet_t actionset_desc[3] = { 0 };
+    int actionset_active_count = 1;
+    actionset_desc[0].ulActionSet = m_HandleActionsetShortcuts;
+    actionset_desc[0].nPriority = 100; //Arbitrary number, but probably higher than the scene application's... if that even matters
 
-    vr::EVRInputError error = vr::VRInput()->UpdateActionState(&actionset_desc, sizeof(actionset_desc), 1);
+    if (m_IsLaserPointerInputActive)
+    {
+        actionset_active_count = 2;
+
+        actionset_desc[1].ulActionSet = m_HandleActionsetLaserPointer;
+        actionset_desc[1].nPriority = 101; //Laser pointer inputs should have priority over global shortcuts
+
+        if (m_LaserPointerScrollMode != vrinput_scroll_none)
+        {
+            actionset_active_count = 3;
+
+            actionset_desc[2].ulActionSet = (m_LaserPointerScrollMode == vrinput_scroll_discrete) ? m_HandleActionsetScrollDiscrete : m_HandleActionsetScrollSmooth;
+            actionset_desc[2].nPriority = 101;
+        }
+    }
+
+    vr::VRInput()->UpdateActionState(actionset_desc, sizeof(vr::VRActiveActionSet_t), actionset_active_count);
 
     //SteamVR Input is incredibly weird with the initial action state. The first couple attempts at getting any action state will fail. Probably some async loading stuff
     //However, SteamVR also does not send any events once the initial state goes valid (it does for binding state changes after this)
     //As we don't want to needlessly refresh the any-action-bound state on every update, we poll it until it succeeds once and then rely on events afterwards
-    if (!m_IsAnyActionBoundStateValid)
+    if (!m_IsAnyGlobalActionBoundStateValid)
     {
-        RefreshAnyActionBound();
+        RefreshAnyGlobalActionBound();
     }
 }
 
-void VRInput::RefreshAnyActionBound()
+void VRInput::RefreshAnyGlobalActionBound()
 {
-    //Doesn't trigger on app start since it's actions are not valid yet
+    //Doesn't trigger on app start since its actions are not valid yet
     vr::VRActionHandle_t action_handles[] = 
     {
-        m_HandleActionSetDetachedInteractive,
+        m_HandleActionEnableGlobalLaserPointer,
         m_HandleActionDoGlobalShortcut01,
         m_HandleActionDoGlobalShortcut02,
         m_HandleActionDoGlobalShortcut03,
@@ -85,7 +127,7 @@ void VRInput::RefreshAnyActionBound()
     };
 
     vr::VRInputValueHandle_t action_origin = vr::k_ulInvalidInputValueHandle;
-    m_IsAnyActionBound = false;
+    m_IsAnyGlobalActionBound = false;
 
     for (auto handle : action_handles)
     {
@@ -93,20 +135,20 @@ void VRInput::RefreshAnyActionBound()
 
         if (action_origin != vr::k_ulInvalidInputValueHandle) 
         { 
-            m_IsAnyActionBoundStateValid = true;
+            m_IsAnyGlobalActionBoundStateValid = true;
 
             vr::InputOriginInfo_t action_origin_info = {0};
             vr::EVRInputError error = vr::VRInput()->GetOriginTrackedDeviceInfo(action_origin, &action_origin_info, sizeof(vr::InputOriginInfo_t));
 
             if ( (error == vr::VRInputError_None) && (vr::VRSystem()->IsTrackedDeviceConnected(action_origin_info.trackedDeviceIndex)) )
             {
-                m_IsAnyActionBound = true;
+                m_IsAnyGlobalActionBound = true;
                 return;
             }
         }
         else
         {
-            m_IsAnyActionBoundStateValid = false;
+            m_IsAnyGlobalActionBoundStateValid = false;
         }
     }
 }
@@ -186,10 +228,15 @@ void VRInput::HandleGlobalOverlayGroupShortcuts(OutputManager& outmgr)
 
 }
 
+void VRInput::TriggerLaserPointerHaptics(vr::VRInputValueHandle_t restrict_to_device) const
+{
+    vr::VRInput()->TriggerHapticVibrationAction(m_HandleActionLaserPointerHaptic, 0.0f, 0.0f, 1.0f, 0.16f, restrict_to_device);
+}
+
 bool VRInput::GetSetDetachedInteractiveDown() const
 {
     vr::InputDigitalActionData_t data;
-    vr::EVRInputError input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionSetDetachedInteractive, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
+    vr::EVRInputError input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionEnableGlobalLaserPointer, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
 
     if (input_error == vr::VRInputError_None)
     {
@@ -199,7 +246,85 @@ bool VRInput::GetSetDetachedInteractiveDown() const
     return false;
 }
 
-bool VRInput::IsAnyActionBound() const
+vr::InputDigitalActionData_t VRInput::GetEnableGlobalLaserPointerState() const
 {
-    return m_IsAnyActionBound;
+    vr::InputDigitalActionData_t data;
+    vr::VRInput()->GetDigitalActionData(m_HandleActionEnableGlobalLaserPointer, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
+
+    return data;
+}
+
+std::vector<vr::InputOriginInfo_t> VRInput::GetLaserPointerDevicesInfo() const
+{
+    std::vector<vr::InputOriginInfo_t> devices_info;
+    vr::VRInputValueHandle_t input_value_handles[vr::k_unMaxTrackedDeviceCount];
+    vr::EVRInputError err = vr::VRInput()->GetActionOrigins(m_HandleActionsetLaserPointer, m_HandleActionLaserPointerLeftClick, input_value_handles, vr::k_unMaxTrackedDeviceCount);
+
+    vr::InputOriginInfo_t origin_info = {0};
+    for (auto input_value_handle : input_value_handles)
+    {
+        if ( (input_value_handle != vr::k_ulInvalidInputValueHandle) && (vr::VRInput()->GetOriginTrackedDeviceInfo(input_value_handle, &origin_info, sizeof(vr::InputOriginInfo_t)) == vr::VRInputError_None) )
+        {
+            devices_info.push_back(origin_info);
+        }
+    }
+
+    return devices_info;
+}
+
+vr::InputDigitalActionData_t VRInput::GetLaserPointerLeftClickState(vr::VRInputValueHandle_t restrict_to_device) const
+{
+    vr::InputDigitalActionData_t data;
+    vr::VRInput()->GetDigitalActionData(m_HandleActionLaserPointerLeftClick, &data, sizeof(data), restrict_to_device);
+
+    return data;
+}
+
+std::array<vr::InputDigitalActionData_t, 5> VRInput::GetLaserPointerClickState(vr::VRInputValueHandle_t restrict_to_device) const
+{
+    std::array<vr::InputDigitalActionData_t, 5> data = {0};
+
+    vr::VRInput()->GetDigitalActionData(m_HandleActionLaserPointerLeftClick,   &data[0], sizeof(vr::InputDigitalActionData_t), restrict_to_device);
+    vr::VRInput()->GetDigitalActionData(m_HandleActionLaserPointerRightClick,  &data[1], sizeof(vr::InputDigitalActionData_t), restrict_to_device);
+    vr::VRInput()->GetDigitalActionData(m_HandleActionLaserPointerMiddleClick, &data[2], sizeof(vr::InputDigitalActionData_t), restrict_to_device);
+    vr::VRInput()->GetDigitalActionData(m_HandleActionLaserPointerAux01Click,  &data[3], sizeof(vr::InputDigitalActionData_t), restrict_to_device);
+    vr::VRInput()->GetDigitalActionData(m_HandleActionLaserPointerAux02Click,  &data[4], sizeof(vr::InputDigitalActionData_t), restrict_to_device);
+
+    return data;
+}
+
+vr::InputAnalogActionData_t VRInput::GetLaserPointerScrollDiscreteState() const
+{
+    vr::InputAnalogActionData_t data = {0};
+    vr::VRInput()->GetAnalogActionData(m_HandleActionLaserPointerScrollDiscrete, &data, sizeof(vr::InputAnalogActionData_t), vr::k_ulInvalidInputValueHandle);
+
+    return data;
+}
+
+vr::InputAnalogActionData_t VRInput::GetLaserPointerScrollSmoothState() const
+{
+    vr::InputAnalogActionData_t data = {0};
+    vr::VRInput()->GetAnalogActionData(m_HandleActionLaserPointerScrollSmooth, &data, sizeof(vr::InputAnalogActionData_t), vr::k_ulInvalidInputValueHandle);
+
+    return data;
+}
+
+void VRInput::SetLaserPointerActive(bool is_active)
+{
+    m_IsLaserPointerInputActive = is_active;
+}
+
+void VRInput::SetLaserPointerScrollMode(VRInputScrollMode scroll_mode)
+{
+    m_LaserPointerScrollMode = scroll_mode;
+}
+
+VRInputScrollMode VRInput::GetLaserPointerScrollMode() const
+{
+    return m_LaserPointerScrollMode;
+}
+
+bool VRInput::IsAnyGlobalActionBound() const
+{
+    return m_IsAnyGlobalActionBound;
 }

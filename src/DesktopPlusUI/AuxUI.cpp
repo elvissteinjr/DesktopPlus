@@ -363,7 +363,7 @@ void WindowCaptureWindowSelect::Update()
         {
             if (UIManager::Get()->IsOpenVRLoaded())
             {
-                vr::TrackedDeviceIndex_t device_index = vr::VROverlay()->GetPrimaryDashboardDevice();
+                vr::TrackedDeviceIndex_t device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
 
                 //If no dashboard device, try finding one
                 if (device_index == vr::k_unTrackedDeviceIndexInvalid)
