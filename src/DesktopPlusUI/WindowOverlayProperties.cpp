@@ -1439,8 +1439,10 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
     ImGui::SetNextItemWidth(-1);
 
     //The way mapping max + 1 == -1 value into the slider is done is a bit convoluted, but it works
+    const char* text_alt_w = (crop_width == -1) ? TranslationManager::GetString(tstr_OvrlPropsAppearanceCropValueMax) : nullptr;
+
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("CropWidth") );
-    if (ImGui::SliderWithButtonsInt("CropWidth", crop_width_ui, 1, 1, 1, crop_width_max + 1, (crop_width == -1) ? TranslationManager::GetString(tstr_OvrlPropsAppearanceCropValueMax) : "%d px"))
+    if (ImGui::SliderWithButtonsInt("CropWidth", crop_width_ui, 1, 1, 1, crop_width_max + 1, (crop_width == -1) ? "" : "%d px", 0, nullptr, text_alt_w))
     {
         crop_width = clamp(crop_width_ui, 1, crop_width_max + 1);
 
@@ -1459,9 +1461,10 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
 
     ImGui::SetNextItemWidth(-1);
 
-    //FIXME: We're passing an externally loaded string as a format argument here (and above)... not ideal, but a pain to work around.
+    const char* text_alt_h = (crop_height == -1) ? TranslationManager::GetString(tstr_OvrlPropsAppearanceCropValueMax) : nullptr;
+
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("CropHeight") );
-    if (ImGui::SliderWithButtonsInt("CropHeight", crop_height_ui, 1, 1, 1, crop_height_max + 1, (crop_height == -1) ? TranslationManager::GetString(tstr_OvrlPropsAppearanceCropValueMax) : "%d px"))
+    if (ImGui::SliderWithButtonsInt("CropHeight", crop_height_ui, 1, 1, 1, crop_height_max + 1, (crop_height == -1) ? "" : "%d px", 0, nullptr, text_alt_h))
     {
         crop_height = clamp(crop_height_ui, 1, crop_height_max + 1);
 

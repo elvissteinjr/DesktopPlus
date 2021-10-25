@@ -19,7 +19,7 @@ ImVec4 Style_ImGuiCol_SteamVRCursorBorder;
 namespace ImGui
 {
     //Like InputFloat()'s buttons but with a slider instead. Not quite as flexible, though. Always takes as much space as available.
-    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float step_small, float min, float max, const char* format, ImGuiSliderFlags flags, bool* used_button)
+    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float step_small, float min, float max, const char* format, ImGuiSliderFlags flags, bool* used_button, const char* text_alt)
     {
         //Hacky solution to make right mouse enable text input on the slider while not touching ImGui code or generalizing it as ctrl press
         ImGuiIO& io = ImGui::GetIO();
@@ -52,6 +52,11 @@ namespace ImGui
         //Calulate slider width (GetContentRegionAvail() returns 1 more than when using -1 width to fill)
         ImGui::SetNextItemWidth((ImGui::GetContentRegionAvail().x - (ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x) * 2) - 1.0f);
         ImGui::SliderFloat("##Slider", &value, min, max, format, flags);
+
+        if (text_alt != nullptr)
+        {
+            ImGui::RenderTextClipped(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), text_alt, nullptr, nullptr, ImVec2(0.5f, 0.5f));
+        }
 
         bool has_slider_deactivated = false;
         if (ImGui::IsItemDeactivated())
@@ -118,7 +123,7 @@ namespace ImGui
         return (value != value_old);
     }
 
-    bool SliderWithButtonsInt(const char* str_id, int& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags, bool* used_button)
+    bool SliderWithButtonsInt(const char* str_id, int& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags, bool* used_button, const char* text_alt)
     {
         //Hacky solution to make right mouse enable text input on the slider while not touching ImGui code or generalizing it as ctrl press
         ImGuiIO& io = ImGui::GetIO();
@@ -151,6 +156,11 @@ namespace ImGui
         //Calulate slider width (GetContentRegionAvail() returns 1 more than when using -1 width to fill)
         ImGui::SetNextItemWidth((ImGui::GetContentRegionAvail().x - (ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x) * 2) - 1.0f);
         ImGui::SliderInt("##Slider", &value, min, max, format, flags);
+
+        if (text_alt != nullptr)
+        {
+            ImGui::RenderTextClipped(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), text_alt, nullptr, nullptr, ImVec2(0.5f, 0.5f));
+        }
 
         bool has_slider_deactivated = false;
         if (ImGui::IsItemDeactivated())
@@ -203,11 +213,11 @@ namespace ImGui
         return (value != value_old);
     }
 
-    bool SliderWithButtonsFloatPercentage(const char* str_id, float& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags, bool* used_button)
+    bool SliderWithButtonsFloatPercentage(const char* str_id, float& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags, bool* used_button, const char* text_alt)
     {
         int value_ui = int(value * 100.0f);
 
-        if (ImGui::SliderWithButtonsInt(str_id, value_ui, step, step_small, min, max, format, flags, used_button))
+        if (ImGui::SliderWithButtonsInt(str_id, value_ui, step, step_small, min, max, format, flags, used_button, text_alt))
         {
             value = value_ui / 100.0f;
 

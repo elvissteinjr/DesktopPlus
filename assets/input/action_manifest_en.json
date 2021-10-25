@@ -25,5 +25,5 @@
 	
 	"/actions/scroll_smooth" : "Smooth Scrolling",
 	
-    "/actions/scroll_smooth/in/ScrollSmooth"   : "Scroll Overlay"
+    "/actions/scroll_smooth/in/ScrollSmooth" : "Scroll Overlay"
 }

@@ -17,10 +17,14 @@ extern ImVec4 Style_ImGuiCol_SteamVRCursorBorder;  //Border color used to mimic 
 namespace ImGui
 {
     //Like InputFloat()'s buttons but with a slider instead. Not quite as flexible, though. Always takes as much space as available.
-    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float step_small, float min, float max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
-    bool SliderWithButtonsInt(const char* str_id, int& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
+    //alt_text is unformatted text rendered on top if set (for unsanitized translation strings). format shouldn't render anything then (use ##)
+    bool SliderWithButtonsFloat(const char* str_id, float& value, float step, float step_small, float min, float max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr, 
+                                const char* text_alt = nullptr);
+    bool SliderWithButtonsInt(const char* str_id, int& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr, 
+                              const char* text_alt = nullptr);
     // format is for int
-    bool SliderWithButtonsFloatPercentage(const char* str_id, float& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr);
+    bool SliderWithButtonsFloatPercentage(const char* str_id, float& value, int step, int step_small, int min, int max, const char* format, ImGuiSliderFlags flags = 0, bool* used_button = nullptr, 
+                                          const char* text_alt = nullptr);
     ImGuiID SliderWithButtonsGetSliderID(const char* str_id);
 
     //Like imgui_demo's HelpMarker, but with a fixed position tooltip

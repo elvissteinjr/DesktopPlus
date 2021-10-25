@@ -90,14 +90,16 @@ void VRInput::Update()
         actionset_active_count = 2;
 
         actionset_desc[1].ulActionSet = m_HandleActionsetLaserPointer;
-        actionset_desc[1].nPriority = 101; //Laser pointer inputs should have priority over global shortcuts
+        //+2 when blocking since OVRAS uses vr::k_nActionSetOverlayGlobalPriorityMin + 1 as priority for global input
+        //When not blocking laser pointer inputs should have priority over global shortcuts
+        actionset_desc[1].nPriority = ConfigManager::Get().GetConfigBool(configid_bool_input_laser_pointer_block_input) ? vr::k_nActionSetOverlayGlobalPriorityMin + 2 : 101;
 
         if (m_LaserPointerScrollMode != vrinput_scroll_none)
         {
             actionset_active_count = 3;
 
             actionset_desc[2].ulActionSet = (m_LaserPointerScrollMode == vrinput_scroll_discrete) ? m_HandleActionsetScrollDiscrete : m_HandleActionsetScrollSmooth;
-            actionset_desc[2].nPriority = 101;
+            actionset_desc[2].nPriority = actionset_desc[1].nPriority;
         }
     }
 

@@ -163,6 +163,7 @@ void WindowSettingsNew::UpdatePageMain()
     {
         tstr_SettingsCatInterface, 
         tstr_SettingsCatKeyboard,
+        tstr_SettingsCatLaserPointer,
         tstr_SettingsCatWindowOverlays,
         tstr_SettingsCatVersionInfo,
         tstr_SettingsCatWarnings,
@@ -332,12 +333,12 @@ void WindowSettingsNew::UpdatePageMainCatInterface()
 
 void WindowSettingsNew::UpdatePageMainCatInput()
 {
+    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
     //Keyboard
     {
         ImGui::Spacing();
         m_ScrollMainCatPos[wndsettings_cat_keyboard] = ImGui::GetCursorPosY();
-
-        VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatKeyboard)); 
         ImGui::Columns(2, "ColumnKeyboard", false);
@@ -382,6 +383,48 @@ void WindowSettingsNew::UpdatePageMainCatInput()
         ImGui::NextColumn();
 
         ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsKeyboardKeyRepeat), &ConfigManager::Get().GetConfigBoolRef(configid_bool_input_keyboard_key_repeat));
+
+        ImGui::Columns(1);
+    }
+
+    //Laser Pointer
+    {
+        ImGui::Spacing();
+        m_ScrollMainCatPos[wndsettings_cat_laser_pointer] = ImGui::GetCursorPosY();
+
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatLaserPointer));
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_SettingsLaserPointerTip));
+
+        ImGui::Indent();
+
+        bool& block_input = ConfigManager::Get().GetConfigBoolRef(configid_bool_input_laser_pointer_block_input);
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsLaserPointerBlockInput), &block_input))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_input_laser_pointer_block_input), block_input);
+        }
+
+        ImGui::Unindent();
+
+        ImGui::Columns(2, "ColumnLaserPointer", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsLaserPointerAutoToggleDistance));
+        ImGui::NextColumn();
+
+        float& distance = ConfigManager::Get().GetConfigFloatRef(configid_float_input_detached_interaction_max_distance);
+        const char* alt_text = (distance < 0.01f) ? TranslationManager::GetString(tstr_SettingsLaserPointerAutoToggleDistanceValueOff) : nullptr;
+
+        vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("LaserPointerMaxDistance") );
+        if (ImGui::SliderWithButtonsFloat("LaserPointerMaxDistance", distance, 0.05f, 0.01f, 0.0f, 3.0f, (distance < 0.01f) ? "##%.2f" : "%.2f m", ImGuiSliderFlags_Logarithmic, nullptr, alt_text))
+        {
+            if (distance < 0.01f)
+                distance = 0.0f;
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_input_detached_interaction_max_distance), *(LPARAM*)&distance);
+        }
+        vr_keyboard.VRKeyboardInputEnd();
 
         ImGui::Columns(1);
     }

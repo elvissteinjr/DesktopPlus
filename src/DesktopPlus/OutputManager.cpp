@@ -1305,6 +1305,15 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                         break;
                     }
+                    case configid_bool_input_laser_pointer_block_input:
+                    {
+                        //Set SteamVR setting to allow global overlay input as we need it for this to work. Messing with user settings is not ideal, but we're not the first to do so
+                        if ( (msg.lParam) && (!vr::VRSettings()->GetBool(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_AllowGlobalActionSetPriority)) )
+                        {
+                            vr::VRSettings()->SetBool(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_AllowGlobalActionSetPriority, true);
+                        }
+                        break;
+                    }
                     case configid_bool_windows_winrt_keep_on_screen:
                     {
                         WindowManager::Get().UpdateConfigState();

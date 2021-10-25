@@ -13,6 +13,7 @@ enum WindowSettingsMainCategory
 {
     wndsettings_cat_interface,
     wndsettings_cat_keyboard,
+    wndsettings_cat_laser_pointer,
     wndsettings_cat_window_overlays,
     wndsettings_cat_version_info,
     wndsettings_cat_warnings,
