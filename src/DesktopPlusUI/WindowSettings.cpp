@@ -162,6 +162,7 @@ void WindowSettingsNew::UpdatePageMain()
     const TRMGRStrID jumpto_strings[wndsettings_cat_MAX] = 
     {
         tstr_SettingsCatInterface, 
+        tstr_SettingsCatActions,
         tstr_SettingsCatKeyboard,
         tstr_SettingsCatLaserPointer,
         tstr_SettingsCatWindowOverlays,
@@ -210,6 +211,7 @@ void WindowSettingsNew::UpdatePageMain()
 
     //Page Content
     UpdatePageMainCatInterface();
+    UpdatePageMainCatActions();
     UpdatePageMainCatInput();
     UpdatePageMainCatWindows();
     UpdatePageMainCatMisc();
@@ -325,6 +327,26 @@ void WindowSettingsNew::UpdatePageMainCatInterface()
         if (ConfigManager::Get().GetConfigBool(configid_bool_interface_show_advanced_settings))
         {
             ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsInterfaceBlankSpaceDrag), &ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_blank_space_drag_enabled));
+        }
+
+        ImGui::Unindent();
+    }
+}
+
+void WindowSettingsNew::UpdatePageMainCatActions()
+{
+    //Actions (strings are not translatable here since this is just temp stuff)
+    {
+        ImGui::Spacing();
+        m_ScrollMainCatPos[wndsettings_cat_actions] = ImGui::GetCursorPosY();
+
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Actions");
+
+        ImGui::Indent();
+
+        if (ImGui::Button("Switch to Action Editor"))
+        {
+            UIManager::Get()->RestartIntoActionEditor();
         }
 
         ImGui::Unindent();

@@ -12,6 +12,7 @@ enum WindowSettingsPage
 enum WindowSettingsMainCategory
 {
     wndsettings_cat_interface,
+    wndsettings_cat_actions,
     wndsettings_cat_keyboard,
     wndsettings_cat_laser_pointer,
     wndsettings_cat_window_overlays,
@@ -49,6 +50,7 @@ class WindowSettingsNew : public FloatingWindow
 
         void UpdatePageMain();
         void UpdatePageMainCatInterface();
+        void UpdatePageMainCatActions();
         void UpdatePageMainCatInput();
         void UpdatePageMainCatWindows();
         void UpdatePageMainCatMisc();

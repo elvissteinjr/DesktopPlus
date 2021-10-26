@@ -44,6 +44,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void InitImGui(HWND hwnd);
 void ProcessCmdline(bool& force_desktop_mode);
 
+static bool g_ActionEditMode = false;
+
 // Main code
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ INT nCmdShow)
 {
@@ -52,7 +54,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     ProcessCmdline(force_desktop_mode);
 
     //Automatically use desktop mode if dashboard app isn't running
-    bool desktop_mode = ( (force_desktop_mode) || (!IPCManager::IsDashboardAppRunning()) );
+    bool desktop_mode = ( (force_desktop_mode) || (!IPCManager::IsDashboardAppRunning()) || (g_ActionEditMode) );
 
     //Make sure only one instance is running
     StopProcessByWindowClass(g_WindowClassNameUIApp);
@@ -440,11 +442,18 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
         else
         {
-            ui_manager.GetOverlayBarWindow().Update();
-            ui_manager.GetSettingsWindow().Update();
-            ui_manager.GetOverlayPropertiesWindow().Update();
-            ui_manager.GetVRKeyboard().GetWindow().Update();
-            ui_manager.GetAuxUI().Update();
+            if (g_ActionEditMode)  //Temporary action edit mode
+            {
+                ui_manager.GetSettingsActionEditWindow().Update();
+            }
+            else
+            {
+                ui_manager.GetOverlayBarWindow().Update();
+                ui_manager.GetSettingsWindow().Update();
+                ui_manager.GetOverlayPropertiesWindow().Update();
+                ui_manager.GetVRKeyboard().GetWindow().Update();
+                ui_manager.GetAuxUI().Update();
+            }
         }
 
         //Haptic feedback for hovered items, like the rest of the SteamVR UI
@@ -884,6 +893,10 @@ void InitImGui(HWND hwnd)
         UINT dpix, dpiy;
         ::GetDpiForMonitor(mon, MDT_EFFECTIVE_DPI, &dpix, &dpiy);   //X and Y will always be identical... interesting API
         dpi_scale = (dpix / 96.0f) /** 0.625f*/;  //Scaling based on 100% being the VR font at 32pt and desktop 100% DPI font being at 20pt
+
+        //Only apply proper scaling in action edit mode since the new UI doesn't scale properly yet
+        if (g_ActionEditMode)
+            dpi_scale *= 0.625f;
     }
 
     UIManager::Get()->SetUIScale(dpi_scale);
@@ -921,6 +934,12 @@ void ProcessCmdline(bool& force_desktop_mode)
             (strcmp(__argv[i], "/DesktopMode") == 0))
         {
             force_desktop_mode = true;
+        }
+
+        if ((strcmp(__argv[i], "-ActionEditor") == 0) ||
+            (strcmp(__argv[i], "/ActionEditor") == 0))
+        {
+            g_ActionEditMode = true;
         }
     }
 }

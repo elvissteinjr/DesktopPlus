@@ -23,6 +23,7 @@
 #include "WindowSettings.h"
 #include "WindowOverlayProperties.h"
 #include "WindowPerformance.h"
+#include "WindowSettingsActionEdit.h"
 
 //Overlay width definitions
 #define OVERLAY_WIDTH_METERS_DASHBOARD_UI 2.75f
@@ -68,6 +69,7 @@ class UIManager
         WindowSettingsNew m_WindowSettingsNew;
         WindowOverlayProperties m_WindowOverlayProperties;
         WindowPerformance m_WindowPerformance;
+        WindowSettingsActionEdit m_WindowSettingsActionEdit;
 
         HWND m_WindowHandle;
         NotificationIcon m_NotificationIcon;
@@ -136,6 +138,7 @@ class UIManager
         WindowSettingsNew& GetSettingsWindow();
         WindowOverlayProperties& GetOverlayPropertiesWindow();
         WindowPerformance& GetPerformanceWindow();
+        WindowSettingsActionEdit& GetSettingsActionEditWindow();
 
         void SetWindowHandle(HWND handle);
         HWND GetWindowHandle() const;
@@ -166,6 +169,7 @@ class UIManager
         void DisableRestartOnExit();
 
         void Restart(bool desktop_mode);
+        void RestartIntoActionEditor();
         void RestartDashboardApp(bool force_steam = false);
         void ElevatedModeEnter();
         void ElevatedModeLeave();

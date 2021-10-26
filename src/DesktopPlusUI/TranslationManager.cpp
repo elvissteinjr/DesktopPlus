@@ -11,6 +11,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsWindowTitle",
     "tstr_SettingsJumpTo",
     "tstr_SettingsCatInterface",
+    "tstr_SettingsCatActions",
     "tstr_SettingsCatKeyboard",
     "tstr_SettingsCatLaserPointer",
     "tstr_SettingsCatWindowOverlays",

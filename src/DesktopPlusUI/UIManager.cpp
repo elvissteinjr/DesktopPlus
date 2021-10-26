@@ -779,6 +779,11 @@ WindowPerformance& UIManager::GetPerformanceWindow()
     return m_WindowPerformance;
 }
 
+WindowSettingsActionEdit& UIManager::GetSettingsActionEditWindow()
+{
+    return m_WindowSettingsActionEdit;
+}
+
 void UIManager::SetWindowHandle(HWND handle)
 {
     m_WindowHandle = handle;
@@ -904,6 +909,26 @@ void UIManager::Restart(bool desktop_mode)
     WCHAR cmd[] = L"-DesktopMode";
 
     ::CreateProcess(path.c_str(), (desktop_mode) ? cmd : nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
+
+    //We don't care about these, so close right away
+    ::CloseHandle(pi.hProcess);
+    ::CloseHandle(pi.hThread);
+}
+
+void UIManager::RestartIntoActionEditor()
+{
+    ConfigManager::Get().SaveConfigToFile();
+
+    UIManager::Get()->DisableRestartOnExit();
+
+    STARTUPINFO si = {0};
+    PROCESS_INFORMATION pi = {0};
+    si.cb = sizeof(si);
+
+    std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlusUI.exe";
+    WCHAR cmd[] = L"-ActionEditor";
+
+    ::CreateProcess(path.c_str(), cmd, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
 
     //We don't care about these, so close right away
     ::CloseHandle(pi.hProcess);
