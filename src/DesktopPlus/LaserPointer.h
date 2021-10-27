@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DPRect.h"
 #include "openvr.h"
 
 #include <vector>
@@ -44,6 +45,10 @@ class LaserPointer
         bool m_IsForceTargetOverlayActive;
         vr::VROverlayHandle_t m_ForceTargetOverlayHandle;
 
+        Vector2Int m_UIMouseScale;
+        std::vector<DPRect> m_UIIntersectionMaskRects;
+        std::vector<DPRect> m_UIIntersectionMaskRectsPending;
+
         void CreateDeviceOverlay(vr::TrackedDeviceIndex_t device_index);
         void UpdateDeviceOverlay(vr::TrackedDeviceIndex_t device_index);
         void UpdateIntersection(vr::TrackedDeviceIndex_t device_index);
@@ -61,6 +66,11 @@ class LaserPointer
         void RefreshCachedOverlayHandles();
         void TriggerLaserPointerHaptics(vr::TrackedDeviceIndex_t device_index);
         void ForceTargetOverlay(vr::VROverlayHandle_t overlay_handle);      //Forces a different overlay to be current pointer target (only if there's currently one)
+
+        //ComputeOverlayIntersection() does not take intersection masks into account. It's a bit cumbersome, but we track the UI one ourselves to get around that.
+        void UIIntersectionMaskAddRect(DPRect& rect);
+        void UIIntersectionMaskFinish();
+        bool UIIntersectionMaskHitTest(vr::HmdVector2_t& uv) const;
 
         LaserPointerActivationOrigin GetActivationOrigin() const;
         bool IsActive() const;

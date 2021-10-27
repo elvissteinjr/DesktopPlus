@@ -157,6 +157,7 @@ class UIManager
         vr::VROverlayHandle_t GetOverlayHandleSystemUI()           const;
         std::array<vr::VROverlayHandle_t, 6> GetUIOverlayHandles() const;
         bool IsDummyOverlayTransformUnstable() const;
+        void SendUIIntersectionMaskToDashboardApp(std::vector<vr::VROverlayIntersectionMaskPrimitive_t>& primitives) const;
 
         //This can be called by functions knowingly making changes which will cause visible layout re-alignment due to ImGui's nature of intermediate UI
         //This will cause 2 extra frames to be calculated but thrown away instantly to be more pleasing to the eye.

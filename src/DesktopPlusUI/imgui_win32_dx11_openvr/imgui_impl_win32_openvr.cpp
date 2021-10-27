@@ -784,7 +784,7 @@ IMGUI_IMPL_API void ImGui_ImplOpenVR_InputOnVRKeyboardClosed()
     g_OnScreenKeyboardShown = false;
 }
 
-IMGUI_IMPL_API void ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(vr::VROverlayHandle_t* overlay_handles, size_t overlay_count)
+IMGUI_IMPL_API void ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(vr::VROverlayHandle_t* overlay_handles, size_t overlay_count, std::vector<vr::VROverlayIntersectionMaskPrimitive_t>* primitives_out)
 {
     ImGuiContext& g = *ImGui::GetCurrentContext();
 
@@ -813,6 +813,11 @@ IMGUI_IMPL_API void ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(vr::VROverla
     for (size_t i = 0; i < overlay_count; ++i)
     {
         vr::VROverlay()->SetOverlayIntersectionMask(overlay_handles[i], primitives.data(), (uint32_t)primitives.size());
+    }
+
+    if (primitives_out != nullptr)
+    {
+        *primitives_out = std::move(primitives);
     }
 }
 

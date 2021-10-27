@@ -37,6 +37,18 @@ public:
     void        ClipWith(const DPRect& r)           { Min = Vector2Int::vec_max(Min, r.Min); Max = Vector2Int::vec_min(Max, r.Max); }         // Simple version, may lead to an inverted rectangle, which is fine for Contains/Overlaps test but not for display.
     void        ClipWithFull(const DPRect& r)       { Min = Vector2Int::vec_clamp(Min, r.Min, r.Max); Max = Vector2Int::vec_clamp(Max, r.Min, r.Max); } // Full version, ensure both points are fully clipped.
     bool        IsInverted() const                  { return Min.x > Max.x || Min.y > Max.y; }
+    uint64_t    Pack16() const
+    {
+        uint64_t min_x = (uint16_t)Min.x, min_y = (uint16_t)Min.y, max_x = (uint16_t)Max.x, max_y = (uint16_t)Max.y;
+        return (min_x << 48) | (min_y << 32) | (max_x << 16) | max_y;
+    }
+    void        Unpack16(uint64_t value)
+    {
+        Min.x = int16_t((value & 0xFFFF000000000000) >> 48);
+        Min.y = int16_t((value & 0x0000FFFF00000000) >> 32);
+        Max.x = int16_t((value & 0x00000000FFFF0000) >> 16);
+        Max.y = int16_t (value & 0x000000000000FFFF);
+    }
 
     bool        operator==(const DPRect& r) const   { return r.Min == Min && r.Max == Max; }
 };

@@ -47,6 +47,7 @@ IMGUI_IMPL_API float    ImGui_ImplWin32_GetDpiScaleForMonitor(void* monitor); //
 // - Use together with e.g. clearing your framebuffer with zero-alpha.
 IMGUI_IMPL_API void     ImGui_ImplWin32_EnableAlphaCompositing(void* hwnd);   // HWND hwnd
 
+#include <vector>
 #include "openvr.h"
 
 // If this is called, do not call ImGui_ImplWin32_NewFrame(). ImGui_ImplWin32_NewFrame() can still be used for a normal desktop mode or similar.
@@ -69,5 +70,6 @@ IMGUI_IMPL_API void ImGui_ImplOpenVR_InputOnVRKeyboardClosed();
 // Exposed for application to call if the keyboard is handled by something else
 IMGUI_IMPL_API void ImGui_ImplOpenVR_AddInputFromOSK(const char* input);
 
-// Set overlay intersection mask from current top-level window outer rects
-IMGUI_IMPL_API void ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(vr::VROverlayHandle_t* overlay_handles, size_t overlay_count);
+// Set overlay intersection mask from current top-level window outer rects, optionally writes primitives sent to SteamVR into primitves_out
+IMGUI_IMPL_API void ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(vr::VROverlayHandle_t* overlay_handles, size_t overlay_count, 
+																	std::vector<vr::VROverlayIntersectionMaskPrimitive_t>* primitives_out = nullptr);

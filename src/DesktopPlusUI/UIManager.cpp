@@ -864,6 +864,27 @@ bool UIManager::IsDummyOverlayTransformUnstable() const
     return m_IsDummyOverlayTransformUnstable;
 }
 
+void UIManager::SendUIIntersectionMaskToDashboardApp(std::vector<vr::VROverlayIntersectionMaskPrimitive_t>& primitives) const
+{
+    static ULONGLONG last_tick = 0;
+
+    //Mask can change at any time, any frame. We don't really want to send too many messages either though, so we limit the rate and don't update at all if the pointer isn't active
+    if ( (ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device) != vr::k_unTrackedDeviceIndexInvalid) && (last_tick + 100 < ::GetTickCount64()) )
+        return;
+
+    for (const auto& rect : primitives)
+    {
+        DPRect dp_rect((int)rect.m_Primitive.m_Rectangle.m_flTopLeftX,  (int)rect.m_Primitive.m_Rectangle.m_flTopLeftY, 
+                       (int)rect.m_Primitive.m_Rectangle.m_flTopLeftX + (int)rect.m_Primitive.m_Rectangle.m_flWidth, (int)rect.m_Primitive.m_Rectangle.m_flTopLeftY + (int)rect.m_Primitive.m_Rectangle.m_flHeight);
+
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_lpointer_ui_mask_rect, (LPARAM)dp_rect.Pack16());
+    }
+
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_lpointer_ui_mask_rect, -1); //Mark end of mask
+
+    last_tick = ::GetTickCount64();
+}
+
 void UIManager::RepeatFrame()
 {
     m_RepeatFrame = 2;

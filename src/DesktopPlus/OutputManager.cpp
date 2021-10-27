@@ -1244,6 +1244,20 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     m_LaserPointer.TriggerLaserPointerHaptics((vr::TrackedDeviceIndex_t)msg.lParam);
                     break;
                 }
+                case ipcact_lpointer_ui_mask_rect:
+                {
+                    if (msg.lParam == -1)
+                    {
+                        m_LaserPointer.UIIntersectionMaskFinish();
+                    }
+                    else
+                    {
+                        DPRect rect;
+                        rect.Unpack16(msg.lParam);
+                        m_LaserPointer.UIIntersectionMaskAddRect(rect);
+                    }
+                    break;
+                }
             }
             break;
         }

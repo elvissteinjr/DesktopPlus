@@ -213,7 +213,7 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
             //Desktop+ UI overlays
             //
             //ComputeOverlayIntersection() does not take intersection masks into account. This has been reported under issue #1601 in the OpenVR repo.
-            //As masks can change any frame, sending them over all the time seems tedious and inefficient. Not super hopeful, but I decided to wait if anything happens first.
+            //As masks can change any frame, sending them over all the time seems tedious and inefficient... we're doing this for now though to work around that.
             for (vr::VROverlayHandle_t overlay_handle : m_OverlayHandlesUI)
             {
                 if (vr::VROverlay()->IsOverlayVisible(overlay_handle))
@@ -222,7 +222,8 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     vr::VROverlayInputMethod input_method = vr::VROverlayInputMethod_None;
                     vr::VROverlay()->GetOverlayInputMethod(overlay_handle, &input_method);
 
-                    if ( (input_method == vr::VROverlayInputMethod_Mouse) && (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && (results.fDistance < nearest_results.fDistance) )
+                    if ( (input_method == vr::VROverlayInputMethod_Mouse) && (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && 
+                         (results.fDistance < nearest_results.fDistance) && (UIIntersectionMaskHitTest(results.vUVs)) )
                     {
                         hit_multilaser         = false;
                         nearest_target_overlay = overlay_handle;
@@ -240,7 +241,8 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     vr::VROverlayInputMethod input_method = vr::VROverlayInputMethod_None;
                     vr::VROverlay()->GetOverlayInputMethod(overlay_handle, &input_method);
 
-                    if ( (input_method == vr::VROverlayInputMethod_Mouse) && (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && (results.fDistance < nearest_results.fDistance) )
+                    if ( (input_method == vr::VROverlayInputMethod_Mouse) && (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && 
+                         (results.fDistance < nearest_results.fDistance) && (UIIntersectionMaskHitTest(results.vUVs)) )
                     {
                         hit_multilaser         = true;
                         nearest_target_overlay = overlay_handle;
@@ -682,6 +684,15 @@ void LaserPointer::RefreshCachedOverlayHandles()
     {
         m_OverlayHandlesMultiLaser.push_back(overlay_handle);
     }
+
+    //Cache UI mouse scale, since it's not going to change
+    if (!m_OverlayHandlesUI.empty())
+    {
+        vr::HmdVector2_t mouse_scale;
+        vr::VROverlay()->GetOverlayMouseScale(m_OverlayHandlesUI[0], &mouse_scale);
+
+        m_UIMouseScale.set((int)mouse_scale.v[0], (int)mouse_scale.v[1]);
+    }
 }
 
 void LaserPointer::TriggerLaserPointerHaptics(vr::TrackedDeviceIndex_t device_index)
@@ -785,7 +796,7 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
             {
                 if (vr::VROverlay()->IsOverlayVisible(overlay_handle))
                 {
-                    if ( (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && (results.fDistance <= max_distance) )
+                    if ( (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && (results.fDistance <= max_distance) && (UIIntersectionMaskHitTest(results.vUVs)) )
                     {
                         return device_index;
                     }
@@ -797,7 +808,7 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
             {
                 if (vr::VROverlay()->IsOverlayVisible(overlay_handle))
                 {
-                    if ( (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && (results.fDistance <= max_distance) )
+                    if ( (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && (results.fDistance <= max_distance) && (UIIntersectionMaskHitTest(results.vUVs)) )
                     {
                         return device_index;
                     }
@@ -807,4 +818,30 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
     }
 
     return vr::k_unTrackedDeviceIndexInvalid;
+}
+
+bool LaserPointer::UIIntersectionMaskHitTest(vr::HmdVector2_t& uv) const
+{
+    Vector2Int point(int(uv.v[0] * m_UIMouseScale.x), int((-uv.v[1] + 1.0f) * m_UIMouseScale.y));
+
+    for (const auto& rect : m_UIIntersectionMaskRects)
+    {
+        if (rect.Contains(point))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void LaserPointer::UIIntersectionMaskAddRect(DPRect& rect)
+{
+    m_UIIntersectionMaskRectsPending.push_back(rect);
+}
+
+void LaserPointer::UIIntersectionMaskFinish()
+{
+    m_UIIntersectionMaskRects = m_UIIntersectionMaskRectsPending;
+    m_UIIntersectionMaskRectsPending.clear();
 }

@@ -510,7 +510,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
                 //Set overlay intersection mask... there doesn't seem to be much overhead from doing this every frame, even though we only need to update this sometimes
                 auto overlay_handles = ui_manager.GetUIOverlayHandles();
-                ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(overlay_handles.data(), overlay_handles.size());
+                std::vector<vr::VROverlayIntersectionMaskPrimitive_t> mask_primitives;
+                ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(overlay_handles.data(), overlay_handles.size(), &mask_primitives);
+                ui_manager.SendUIIntersectionMaskToDashboardApp(mask_primitives);
 
                 //Since we don't get vsync on our message-only window from a swapchain, we don't use any in non-desktop mode.
                 //While this is still synced to the desktop instead of the HMD, it's not using inaccurate timers at least and works well enough for this kind of content
