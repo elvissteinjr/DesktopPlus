@@ -305,7 +305,7 @@ void FloatingWindow::UpdateVisibility()
             vr::VROverlay()->SetOverlayTransformAbsolute(overlay_handle, origin, &matrix_ovr);
         }
 
-        if (vr::VROverlay()->IsOverlayVisible(ovrl_handle_dplus))
+        if ( (vr::VROverlay()->IsOverlayVisible(ovrl_handle_dplus)) || (m_IsPinned) )
         {
             if ((!m_OvrlVisible) && (m_Visible))
             {
@@ -318,7 +318,7 @@ void FloatingWindow::UpdateVisibility()
         {
             if ((m_OvrlVisible) && (!m_IsPinned))
             {
-                m_Visible = false;
+                Hide();
             }
         }
 

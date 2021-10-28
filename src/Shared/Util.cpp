@@ -149,11 +149,36 @@ bool ComputeOverlayIntersectionForDevice(vr::VROverlayHandle_t overlay_handle, v
                                          bool use_tip_offset)
 {
     vr::VROverlayIntersectionParams_t params = {0};
-    
+
     if (GetOverlayIntersectionParamsForDevice(params, device_index, tracking_origin, use_tip_offset))
         return vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, results);
 
     return false;
+}
+
+Matrix4 ComputeHMDFacingTransform(float distance)
+{
+    //This is based on dashboard positioning code posted by Valve on the OpenVR GitHub
+    static const Vector3 up = {0.0f, 1.0f, 0.0f};
+
+    vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0 /*don't predict anything here*/, poses, vr::k_unMaxTrackedDeviceCount);
+
+    Matrix4 mat_hmd(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
+    mat_hmd.translate_relative(0.0f, 0.0f, 0.10f);
+    Matrix4 mat_hmd_temp = mat_hmd;
+
+    Vector3 dashboard_start = mat_hmd_temp.translate_relative(0.0f, 0.0f, -distance).getTranslation();
+    Vector3 forward_temp    = (dashboard_start - mat_hmd.getTranslation()).normalize();
+    Vector3 right           = forward_temp.cross(up).normalize();
+    Vector3 forward         = up.cross(right).normalize();
+
+    dashboard_start = mat_hmd.getTranslation() + (distance * forward);
+
+    Matrix4 mat_dashboard(right, up, forward * -1.0f);
+    mat_dashboard.setTranslation(dashboard_start);
+
+    return mat_dashboard;
 }
 
 vr::TrackedDeviceIndex_t FindPointerDeviceForOverlay(vr::VROverlayHandle_t overlay_handle)

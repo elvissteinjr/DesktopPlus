@@ -40,6 +40,25 @@ void WindowKeyboard::Show(bool skip_fade)
     FloatingWindow::Show(skip_fade);
 
     m_WindowTitleStrID = (UIManager::Get()->GetVRKeyboard().IsTargetUI()) ? tstr_KeyboardWindowTitleSettings : tstr_KeyboardWindowTitle;
+
+    if (!m_IsPinned)
+    {
+        if (!UIManager::Get()->IsOpenVRLoaded())
+            return;
+
+        //Not pinned and no dplus dashboard overlay available to use a origin, reset transform and pin the window
+        if (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard()))
+        {
+            m_IsPinned = true;
+
+            //Reset transform to get something usable outside of the dashboard
+            ResetTransform();
+
+            //Set transform directly as we've changed the pinned state ourselves here
+            vr::HmdMatrix34_t matrix_ovr = m_Transform.toOpenVR34();
+            vr::VROverlay()->SetOverlayTransformAbsolute(GetOverlayHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
+        }
+    }
 }
 
 void WindowKeyboard::Hide(bool skip_fade)
@@ -976,6 +995,26 @@ void WindowKeyboard::ResetTransform()
     m_Transform.identity();
     m_Transform.rotateX(-45);
     m_Transform.translate_relative(0.0f, offset_up, 0.00f);
+
+    //If visible, pinned and dplus dashboard overlay not available, reset to transform useful outside of the dashboard
+    if ( (m_Visible) && (m_IsPinned) && (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard())) )
+    {
+        //Get dashboard-similar transform and adjust it down a bit
+        Matrix4 matrix_facing = ComputeHMDFacingTransform(1.15f);
+        matrix_facing.translate_relative(0.0f, -0.50f, 0.0f);
+
+        //dplus_tab origin contains dashboard scale, so get that scale and apply it to this transform to stay consistent in size
+        Matrix4 mat_origin = UIManager::Get()->GetOverlayDragger().GetBaseOffsetMatrix(ovrl_origin_dplus_tab);
+        Vector3 row_1(mat_origin[0], mat_origin[1], mat_origin[2]);
+
+        Vector3 translation = matrix_facing.getTranslation();
+        matrix_facing.setTranslation({0.0f, 0.0f, 0.0f});
+        matrix_facing.scale(row_1.length());
+        matrix_facing.setTranslation(translation);
+
+        //Apply facing transform to normal keyboard position
+        m_Transform = matrix_facing * m_Transform;
+    }
 }
 
 bool WindowKeyboard::IsHovered() const

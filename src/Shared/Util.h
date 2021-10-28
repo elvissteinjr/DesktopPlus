@@ -25,6 +25,9 @@ bool GetOverlayIntersectionParamsForDevice(vr::VROverlayIntersectionParams_t& pa
 bool ComputeOverlayIntersectionForDevice(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, vr::VROverlayIntersectionResults_t* results, 
                                          bool use_tip_offset = true);
 
+//Returns transform similar to the dashboard transform (not a perfect match, though)
+Matrix4 ComputeHMDFacingTransform(float distance);
+
 vr::TrackedDeviceIndex_t FindPointerDeviceForOverlay(vr::VROverlayHandle_t overlay_handle);
 vr::TrackedDeviceIndex_t GetFirstVRTracker();
 Matrix4 GetControllerTipMatrix(bool right_hand = true);
