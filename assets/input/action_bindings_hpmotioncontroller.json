@@ -1,0 +1,143 @@
+{
+   "action_manifest_version" : 2,
+   "alias_info" : {},
+   "app_key" : "steam.overlay.1494460",
+   "bindings" : {
+      "/actions/laserpointer" : {
+         "haptics" : [
+            {
+               "output" : "/actions/laserpointer/out/Haptic",
+               "path" : "/user/hand/left/output/haptic"
+            },
+            {
+               "output" : "/actions/laserpointer/out/Haptic",
+               "path" : "/user/hand/right/output/haptic"
+            }
+         ],
+         "sources" : [
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/LeftClick"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/right/input/trigger"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/LeftClick"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/left/input/trigger"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/RightClick"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/left/input/x"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/RightClick"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/right/input/a"
+            },
+			{
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/Aux01Click"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/left/input/grip"
+            },
+			{
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/Aux01Click"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/right/input/grip"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/Aux02Click"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/left/input/y"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/Aux02Click"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/right/input/b"
+            }
+         ]
+      },
+	  "/actions/scroll_discrete" : {
+         "sources" : [
+            {
+               "inputs" : {
+                  "scroll" : {
+                     "output" : "/actions/scroll_discrete/in/ScrollDiscrete"
+                  }
+               },
+               "mode" : "scroll",
+               "path" : "/user/hand/left/input/joystick"
+            },
+            {
+               "inputs" : {
+                  "scroll" : {
+                     "output" : "/actions/scroll_discrete/in/ScrollDiscrete"
+                  }
+               },
+               "mode" : "scroll",
+               "path" : "/user/hand/right/input/joystick"
+            }
+         ]
+      },
+	  "/actions/scroll_smooth" : {
+         "sources" : [
+            {
+               "inputs" : {
+                  "scroll" : {
+                     "output" : "/actions/scroll_smooth/in/ScrollSmooth"
+                  }
+               },
+               "mode" : "scroll",
+               "path" : "/user/hand/left/input/joystick"
+            },
+            {
+               "inputs" : {
+                  "scroll" : {
+                     "output" : "/actions/scroll_smooth/in/ScrollSmooth"
+                  }
+               },
+               "mode" : "scroll",
+               "path" : "/user/hand/right/input/joystick"
+            }
+         ]
+      }
+   },
+   "category" : "steamvr_input",
+   "controller_type" : "hpmotioncontroller",
+   "description" : "",
+   "name" : "Default Desktop+ bindings for HP Motion Controllers",
+   "options" : {},
+   "simulated_actions" : []
+}

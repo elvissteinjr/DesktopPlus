@@ -37,7 +37,7 @@
     },
     {
       "name": "/actions/laserpointer/in/LeftClick",
-      "requirement" : "suggested",
+      "requirement": "suggested",
       "type": "boolean"
     },
     {
@@ -102,6 +102,34 @@
     {
       "controller_type": "knuckles",
       "binding_url": "input/action_bindings_knuckles.json"
+    },
+    {
+      "controller_type": "hpmotioncontroller",
+      "binding_url": "input/action_bindings_hpmotioncontroller.json"
+    },
+    {
+      "controller_type": "holographic",
+      "binding_url": "input/action_bindings_holographic.json"
+    },
+	{
+      "controller_type": "oculus_touch",
+      "binding_url": "input/action_bindings_touch.json"
+    },
+    {
+      "controller_type": "vive_cosmos_controller",
+      "binding_url": "input/action_bindings_vive_cosmos.json"
+    },
+	{
+      "controller_type": "knuckles_ev1",
+      "binding_url": "input/action_bindings_knuckles_ev1.json"
+    },
+    {
+      "controller_type": "vive_controller",
+      "binding_url": "input/action_bindings_vive_controller.json"
+    },
+    {
+      "controller_type": "generic",
+      "binding_url": "input/action_bindings_generic.json"
     }
   ],
   "version": 2,
