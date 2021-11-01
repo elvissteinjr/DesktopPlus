@@ -166,7 +166,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
         HWND window = WindowInfo::FindClosestWindowForTitle(data.ConfigStr[configid_str_overlay_winrt_last_window_title], data.ConfigStr[configid_str_overlay_winrt_last_window_class_name],
                                                             data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name], WindowManager::Get().WindowListGet());
 
-        data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = (intptr_t)window;
+        data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = (uint64_t)window;
 
         //If we found a new match, adjust last window title and update the overlay name later (we want to keep the old name if the window is gone though)
         if (window != nullptr)
@@ -176,6 +176,10 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
             //Exe & class name is not gonna change
 
             do_set_auto_name = true;
+        }
+        else if (m_ConfigInt[configid_int_windows_winrt_capture_lost_behavior] == window_caplost_hide_overlay) //Treat not found windows as lost capture and hide them if setting active
+        {
+            data.ConfigBool[configid_bool_overlay_enabled] = false;
         }
     }
 
