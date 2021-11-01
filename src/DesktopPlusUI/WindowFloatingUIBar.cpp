@@ -243,6 +243,11 @@ void WindowFloatingUIMainBar::MarkCurrentWindowCapturableStateOutdated()
 
 
 //-WindowFloatingUIActionBar
+WindowFloatingUIActionBar::WindowFloatingUIActionBar() : m_Visible(false), m_Alpha(0.0f)
+{
+    m_Size.x = 32.0f;
+}
+
 void WindowFloatingUIActionBar::DisplayTooltipIfHovered(const char* text)
 {
     if (ImGui::IsItemHovered())
@@ -466,32 +471,36 @@ void WindowFloatingUIActionBar::UpdateActionButtons(unsigned int overlay_id)
 
             if (order_data.action_id < action_built_in_MAX) //Built-in action
             {
-                bool has_icon = true;
+                bool has_button_func = false;
+                bool has_icon = false;
 
-                //Button action is always the same but we want to use icons if available
+                //Some built-in actions use their own button function to adjust to current state
                 switch (order_data.action_id)
                 {
-                    case action_show_keyboard: TextureManager::Get().GetTextureInfo(tmtex_icon_keyboard, b_size, b_uv_min, b_uv_max); break;                     
+                    case action_show_keyboard: ButtonActionKeyboard(overlay_id, b_size_default); has_button_func = true; break;                     
                     default:                   has_icon = false;
                 }
 
-                if (has_icon)
+                if (!has_button_func)
                 {
-                    if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+                    if (has_icon)
                     {
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                        if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+                        {
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                        }
+                        DisplayTooltipIfHovered(ActionManager::Get().GetActionName(order_data.action_id));
                     }
-                    DisplayTooltipIfHovered(ActionManager::Get().GetActionName(order_data.action_id));
-                }
-                else
-                {
-                    if (ImGui::ButtonWithWrappedLabel(ActionManager::Get().GetActionButtonLabel(order_data.action_id), b_size_default))
+                    else
                     {
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                        if (ImGui::ButtonWithWrappedLabel(ActionManager::Get().GetActionButtonLabel(order_data.action_id), b_size_default))
+                        {
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                        }
                     }
                 }
             }
@@ -551,9 +560,43 @@ void WindowFloatingUIActionBar::UpdateActionButtons(unsigned int overlay_id)
     ImGui::PopID();
 }
 
-WindowFloatingUIActionBar::WindowFloatingUIActionBar() : m_Visible(false), m_Alpha(0.0f)
+void WindowFloatingUIActionBar::ButtonActionKeyboard(unsigned int overlay_id, ImVec2& b_size_default)
 {
-    m_Size.x = 32.0f;
+    FloatingWindow& keyboard_window = UIManager::Get()->GetVRKeyboard().GetWindow();
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 b_size, b_uv_min, b_uv_max;
+
+    TextureManager::Get().GetTextureInfo(tmtex_icon_keyboard, b_size, b_uv_min, b_uv_max);
+
+    if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+    {
+        if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 3.0f) //Don't do normal button behavior after reset was just triggered
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, action_show_keyboard);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+        }
+    }
+
+    //Reset tranform when holding the button for 3 or more seconds
+    TRMGRStrID tooltip_strid = (keyboard_window.IsVisible()) ? tstr_ActionKeyboardHide : tstr_ActionKeyboardShow;
+
+    if (ImGui::IsItemActive())  
+    {
+        if (io.MouseDownDuration[ImGuiMouseButton_Left] > 3.0f)
+        {
+            keyboard_window.SetPinned(false);
+            keyboard_window.ResetTransform();
+            io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so transform changes don't get blocked
+        }
+        else if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] > 0.5f)
+        {
+            tooltip_strid = tstr_OverlayBarTooltipResetHold;
+        }
+    }
+
+    //Show tooltip depending on current keyboard state
+    DisplayTooltipIfHovered( TranslationManager::GetString(tooltip_strid) );
 }
 
 void WindowFloatingUIActionBar::Show(bool skip_fade)

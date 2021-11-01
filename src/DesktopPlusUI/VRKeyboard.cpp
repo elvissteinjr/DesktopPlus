@@ -464,6 +464,13 @@ void VRKeyboard::OnImGuiNewFrame()
         {
             m_TargetIsUI = true;
             m_WindowKeyboard.Show();
+
+            //Assign keyboard to UI if it's not assigned to any overlay yet
+            if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) == -1)
+            {
+                ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -2);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -2);
+            }
         }
     }
     else if (m_WindowKeyboard.IsVisible())
@@ -482,6 +489,10 @@ void VRKeyboard::OnImGuiNewFrame()
         {
             m_WindowKeyboard.Hide();
         }*/
+        if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) == -2)
+        {
+            m_WindowKeyboard.Hide();
+        }
     }
 
     m_KeyboardHiddenLastFrame = false;

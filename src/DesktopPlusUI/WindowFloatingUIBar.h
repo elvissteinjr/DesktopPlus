@@ -39,6 +39,8 @@ class WindowFloatingUIActionBar
         void UpdateDesktopButtons(unsigned int overlay_id);
         void UpdateActionButtons(unsigned int overlay_id);
 
+        void ButtonActionKeyboard(unsigned int overlay_id, ImVec2& b_size_default);
+
     public:
         WindowFloatingUIActionBar();
 

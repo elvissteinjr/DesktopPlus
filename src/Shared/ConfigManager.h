@@ -138,7 +138,7 @@ enum ConfigID_Int
     configid_int_state_action_current_sub,                  //Target variable. 0 = Name, 1 = Function Type. Remaining values depend on the function. Not the cleanest way but easier
     configid_int_state_action_value_int,                    //to set up with existing IPC stuff
     configid_int_state_mouse_dbl_click_assist_duration_ms,  //Internally used value, which will replace -1 with the current double-click delay automatically
-    configid_int_state_keyboard_visible_for_overlay_id,     //-1 = None
+    configid_int_state_keyboard_visible_for_overlay_id,     //-1 = None, -2 = UI (only if newly shown for it)
     configid_int_state_performance_duplication_fps,
     configid_int_state_interface_desktop_count,             //Count of desktops after optionally filtering virtual WMR displays
     configid_int_state_auto_docking_state,                  //0 = Off, 1 = Left Hand, 2 = Right Hand (matches ETrackedControllerRole). +2 for detaching

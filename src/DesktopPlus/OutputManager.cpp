@@ -1495,11 +1495,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         ApplySettingTransform();
                         break;
                     }
-                    case configid_float_input_keyboard_detached_size:
-                    {
-                        ApplySettingKeyboardScale(previous_value);
-                        break;
-                    }
                     case configid_float_performance_update_limit_ms:
                     case configid_float_overlay_update_limit_override_ms:
                     {
@@ -1931,7 +1926,7 @@ void OutputManager::HideOverlay(unsigned int id)
 
     if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) == id) //Don't leave the keyboard open when hiding
     {
-        vr::VROverlay()->HideKeyboard();
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, false);
     }
 
     //Overlay could've affected update limiter, so apply setting
@@ -3521,18 +3516,6 @@ bool OutputManager::HandleOpenVREvents()
 
                 break;
             }
-            case vr::VREvent_KeyboardCharInput:
-            {
-                m_InputSim.KeyboardText(vr_event.data.keyboard.cNewInput);
-                break;
-            }
-            case vr::VREvent_KeyboardClosed:
-            {
-                //Tell UI that the keyboard helper should no longer be displayed
-                //ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -1);
-                //IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -1);
-                break;
-            }
             case vr::VREvent_SeatedZeroPoseReset:
             case vr::VREvent_ChaperoneUniverseHasChanged:
             case vr::VREvent_SceneApplicationChanged:
@@ -3594,19 +3577,6 @@ bool OutputManager::HandleOpenVREvents()
                     {
                         DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id));
                     }
-
-                    break;
-                }
-                case vr::VREvent_KeyboardCharInput:
-                {
-                    m_InputSim.KeyboardText(vr_event.data.keyboard.cNewInput);
-                    break;
-                }
-                case vr::VREvent_KeyboardClosed:
-                {
-                    //Tell UI that the keyboard helper should no longer be displayed
-                    //ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -1);
-                    //IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -1);
 
                     break;
                 }
@@ -5038,35 +5008,6 @@ void OutputManager::ApplySettingMouseInput()
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
-}
-
-void OutputManager::ApplySettingKeyboardScale(float last_used_scale)
-{
-    vr::VROverlayHandle_t ovrl_handle_keyboard = vr::k_ulOverlayHandleInvalid;
-    vr::VROverlay()->FindOverlay("system.keyboard", &ovrl_handle_keyboard);
-
-    if (ovrl_handle_keyboard != vr::k_ulOverlayHandleInvalid)
-    {
-        if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1)
-        {
-            vr::HmdMatrix34_t hmd_mat;
-            vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
-
-            vr::VROverlay()->GetOverlayTransformAbsolute(ovrl_handle_keyboard, &universe_origin, &hmd_mat);
-
-            Matrix4 mat = hmd_mat;
-            Vector3 translation = mat.getTranslation();
-
-            mat.setTranslation(Vector3(0.0f, 0.0f, 0.0f));
-            mat.scale(1.0 / last_used_scale);               //Undo last scale (not ideal, but this is a stopgap solution anyways)
-            mat.scale(ConfigManager::Get().GetConfigFloat(configid_float_input_keyboard_detached_size));
-            mat.setTranslation(translation);
-
-            hmd_mat = mat.toOpenVR34();
-
-            vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_keyboard, universe_origin, &hmd_mat);
-        }
-    }
 }
 
 void OutputManager::ApplySettingUpdateLimiter()

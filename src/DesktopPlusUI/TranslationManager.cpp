@@ -176,6 +176,8 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_FloatingUIWindowAddTip",
     "tstr_FloatingUIActionBarShowTip",
     "tstr_FloatingUIActionBarHideTip",
+    "tstr_ActionKeyboardShow",
+    "tstr_ActionKeyboardHide",
     "tstr_PerformanceMonitorCPU",
     "tstr_PerformanceMonitorGPU",
     "tstr_PerformanceMonitorRAM",

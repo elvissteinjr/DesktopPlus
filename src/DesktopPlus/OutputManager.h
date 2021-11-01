@@ -115,7 +115,6 @@ class OutputManager
         void ApplySettingCrop();
         void ApplySettingInputMode();
         void ApplySettingMouseInput();
-        void ApplySettingKeyboardScale(float last_used_scale);
         void ApplySettingUpdateLimiter();
 
         void DetachedTransformSync(unsigned int overlay_id);
