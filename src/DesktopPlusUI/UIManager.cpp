@@ -869,7 +869,7 @@ void UIManager::SendUIIntersectionMaskToDashboardApp(std::vector<vr::VROverlayIn
     static ULONGLONG last_tick = 0;
 
     //Mask can change at any time, any frame. We don't really want to send too many messages either though, so we limit the rate and don't update at all if the pointer isn't active
-    if ( (ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device) != vr::k_unTrackedDeviceIndexInvalid) && (last_tick + 100 < ::GetTickCount64()) )
+    if ( (ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device) != vr::k_unTrackedDeviceIndexInvalid) && (last_tick + 100 > ::GetTickCount64()) )
         return;
 
     for (const auto& rect : primitives)
