@@ -644,6 +644,7 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) != ovrl_capsource_ui)
         return;
 
+    ImGui::Spacing();
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatPerformanceMonitor));
     ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
     if ( (UIManager::Get()->IsOpenVRLoaded()) && (UIManager::Get()->IsInDesktopMode()) )
