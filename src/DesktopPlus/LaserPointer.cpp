@@ -11,6 +11,7 @@
 LaserPointer::LaserPointer() : m_ActivationOrigin(dplp_activation_origin_none), 
                                m_HadPrimaryPointerDevice(false), 
                                m_DeviceMaxActiveID(0), 
+                               m_LastPrimaryDeviceSwitchTick(0),
                                m_IsForceTargetOverlayActive(false),
                                m_ForceTargetOverlayHandle(vr::k_ulOverlayHandleInvalid)
 {
@@ -500,7 +501,10 @@ void LaserPointer::Update()
                 //Set device path here since we have it ready anyways
                 m_Devices[origin_info.trackedDeviceIndex].InputValueHandle = origin_info.devicePath;
 
-                SetActiveDevice(origin_info.trackedDeviceIndex);
+                //Store current tick to allow a grace period when switching devices while auto toggling is active and not actually hovering anything with the new pointer
+                m_LastPrimaryDeviceSwitchTick = ::GetTickCount64();
+
+                SetActiveDevice(origin_info.trackedDeviceIndex, m_ActivationOrigin);
             }
         }
     }
@@ -746,7 +750,8 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
 
         const LaserPointerDevice& lp_device = m_Devices[primary_pointer_device];
 
-        if ( (lp_device.OvrlHandleTargetLast != vr::k_ulOverlayHandleInvalid) && (lp_device.LaserLength <= max_distance) )
+        //Allow a 1500ms grace period after device switching even when not actually hovering anything
+        if ( (m_LastPrimaryDeviceSwitchTick + 1500 > ::GetTickCount64() ) || ( (lp_device.OvrlHandleTargetLast != vr::k_ulOverlayHandleInvalid) && (lp_device.LaserLength <= max_distance) ) )
         {
             return primary_pointer_device;
         }

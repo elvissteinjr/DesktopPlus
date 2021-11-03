@@ -40,6 +40,7 @@ class LaserPointer
         LaserPointerActivationOrigin m_ActivationOrigin;
         bool m_HadPrimaryPointerDevice;
         vr::TrackedDeviceIndex_t m_DeviceMaxActiveID;
+        ULONGLONG m_LastPrimaryDeviceSwitchTick;
 
         //State set by ForceTargetOverlay()
         bool m_IsForceTargetOverlayActive;
