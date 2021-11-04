@@ -204,9 +204,12 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     if ( (input_method == vr::VROverlayInputMethod_Mouse) && 
                          (vr::VROverlay()->ComputeOverlayIntersection(overlay.GetHandle(), &params, &results)) && (results.fDistance < nearest_results.fDistance) )
                     {
-                        hit_multilaser         = false;
-                        nearest_target_overlay = overlay.GetHandle();
-                        nearest_results        = results;
+                        //If Performance Montior, perform UI hit-test as described below
+                        if ( (OverlayManager::Get().GetConfigData(i).ConfigInt[configid_int_overlay_capture_source] != ovrl_capsource_ui) || (UIIntersectionMaskHitTest(results.vUVs)) )
+                        {
+                            nearest_target_overlay = overlay.GetHandle();
+                            nearest_results        = results;
+                        }
                     }
                 }
             }
@@ -226,7 +229,6 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     if ( (input_method == vr::VROverlayInputMethod_Mouse) && (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && 
                          (results.fDistance < nearest_results.fDistance) && (UIIntersectionMaskHitTest(results.vUVs)) )
                     {
-                        hit_multilaser         = false;
                         nearest_target_overlay = overlay_handle;
                         nearest_results        = results;
                     }
@@ -790,7 +792,11 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
                     if ( (input_method == vr::VROverlayInputMethod_Mouse) && 
                          (vr::VROverlay()->ComputeOverlayIntersection(overlay.GetHandle(), &params, &results)) && (results.fDistance <= max_distance) )
                     {
-                        return device_index;
+                        //If Performance Montior, perform UI hit-test as described below
+                        if ( (OverlayManager::Get().GetConfigData(i).ConfigInt[configid_int_overlay_capture_source] != ovrl_capsource_ui) || (UIIntersectionMaskHitTest(results.vUVs)) )
+                        {
+                            return device_index;
+                        }
                     }
                 }
             }
