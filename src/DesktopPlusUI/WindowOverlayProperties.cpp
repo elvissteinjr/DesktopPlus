@@ -276,6 +276,7 @@ void WindowOverlayProperties::UpdatePageMain()
     UpdatePageMainCatAppearance();
     UpdatePageMainCatCapture();
     UpdatePageMainCatPerformanceMonitor();
+    UpdatePageMainCatAdvanced();
 
     ImGui::EndChild();
 }
@@ -818,6 +819,51 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     }
 
     ImGui::Unindent();
+}
+
+void WindowOverlayProperties::UpdatePageMainCatAdvanced()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    ImGui::Spacing();
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatAdvanced));
+    ImGui::Columns(2, "ColumnAdvanced", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
+    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) != ovrl_capsource_ui) //Don't show 3D settings for UI source overlays
+    {
+        bool& is_3D_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_3D_enabled);
+        int& mode_3d = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_3D_mode);
+
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvanced3D), &is_3D_enabled))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_3D_enabled), is_3D_enabled);
+        }
+        ImGui::NextColumn();
+
+        if (!is_3D_enabled)
+            ImGui::PushItemDisabled();
+
+        ImGui::PushItemWidth(-1.0f);
+        if (ImGui::BeginComboAnimated("##Combo3DMode", TranslationManager::GetString( (TRMGRStrID)(tstr_OvrlPropsAdvancedHSBS + mode_3d) ) ))
+        {
+            for (int i = ovrl_3Dmode_hsbs; i < ovrl_3Dmode_MAX; ++i)
+            {
+                if (ImGui::Selectable(TranslationManager::GetString( (TRMGRStrID)(tstr_OvrlPropsAdvancedHSBS + i) ), (mode_3d == i)))
+                {
+                    mode_3d = i;
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_3D_mode), mode_3d);
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+
+        if (!is_3D_enabled)
+            ImGui::PopItemDisabled();
+    }
+
+    ImGui::Columns(1);
 }
 
 void WindowOverlayProperties::UpdatePagePositionChange()
@@ -1487,7 +1533,8 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
             //Have the dashboard app figure out how to do this as the UI doesn't have all data needed at hand
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_crop_to_active_window);
 
-            OverlayManager::Get().SetCurrentOverlayNameAuto(::GetForegroundWindow());
+            WindowInfo window_info(::GetForegroundWindow());
+            OverlayManager::Get().SetCurrentOverlayNameAuto(&window_info);
             SetActiveOverlayID(m_ActiveOverlayID);
         }
     }

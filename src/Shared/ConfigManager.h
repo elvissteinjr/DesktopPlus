@@ -24,6 +24,7 @@ enum ConfigID_Bool
     configid_bool_overlay_name_custom,
     configid_bool_overlay_enabled,
     configid_bool_overlay_crop_enabled,
+    configid_bool_overlay_3D_enabled,
     configid_bool_overlay_3D_swapped,
     configid_bool_overlay_gazefade_enabled,
     configid_bool_overlay_input_enabled,
@@ -204,11 +205,11 @@ enum OverlayCaptureSource
 
 enum Overlay3DMode
 {
-    ovrl_3Dmode_none,
     ovrl_3Dmode_hsbs,
     ovrl_3Dmode_sbs,
     ovrl_3Dmode_hou,
-    ovrl_3Dmode_ou
+    ovrl_3Dmode_ou,
+    ovrl_3Dmode_MAX
 };
 
 enum OverlayDisplayMode

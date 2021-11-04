@@ -1270,6 +1270,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                 switch (bool_id)
                 {
+                    case configid_bool_overlay_3D_enabled:
                     case configid_bool_overlay_3D_swapped:
                     {
                         ApplySetting3DMode();
@@ -4535,9 +4536,10 @@ void OutputManager::ApplySetting3DMode()
 {
     const Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
     vr::VROverlayHandle_t ovrl_handle = overlay_current.GetHandle();
-    int mode = (overlay_current.GetTextureSource() != ovrl_texsource_none) ? ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode) : ovrl_3Dmode_none;
+    bool is_enabled = (overlay_current.GetTextureSource() != ovrl_texsource_none) ? ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_enabled) : false;
+    int mode = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
 
-    if (mode != ovrl_3Dmode_none)
+    if (is_enabled)
     {
         if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_swapped))
         {
@@ -4549,6 +4551,27 @@ void OutputManager::ApplySetting3DMode()
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Parallel, true);
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Crossed, false);
         }
+
+        switch (mode)
+        {
+            case ovrl_3Dmode_hsbs:
+            {
+                vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 2.0f);
+                break;
+            }
+            case ovrl_3Dmode_sbs:
+            case ovrl_3Dmode_ou:  //Over-Under is converted to SBS
+            {
+                vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 1.0f);
+                break;
+            }
+            case ovrl_3Dmode_hou: //Half-Over-Under is converted to SBS with half height
+            {
+                vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 0.5f);
+                break;
+            }
+            default: break;
+        }
     }
     else
     {
@@ -4559,7 +4582,7 @@ void OutputManager::ApplySetting3DMode()
 
     if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
     {
-        if ((mode == ovrl_3Dmode_ou) || (mode == ovrl_3Dmode_hou))
+        if ( (is_enabled) && ((mode == ovrl_3Dmode_ou) || (mode == ovrl_3Dmode_hou)) )
         {
             OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_desktop_duplication_3dou_converted);
         }
@@ -4567,34 +4590,10 @@ void OutputManager::ApplySetting3DMode()
         {
             OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_desktop_duplication);
         }
-    }
-    //WinRT OU3D state is set in ApplySettingCrop since it needs cropping values
 
-    switch (mode)
-    {
-        case ovrl_3Dmode_hsbs:
-        {
-            vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 2.0f);
-            break;
-        }
-        case ovrl_3Dmode_sbs:
-        case ovrl_3Dmode_ou:  //Over-Under is converted to SBS
-        {
-            vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 1.0f);
-            break;
-        }
-        case ovrl_3Dmode_hou: //Half-Over-Under is converted to SBS with half height
-        {
-            vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 0.5f);
-            break;
-        }
-        default: break;
-    }
-
-    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
-    {
         RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
     }
+    //WinRT OU3D state is set in ApplySettingCrop since it needs cropping values
 
     ApplySettingCrop();
 }
@@ -4834,8 +4833,9 @@ void OutputManager::ApplySettingCrop()
     overlay.UpdateValidatedCropRect();
     const DPRect& crop_rect = overlay.GetValidatedCropRect();
 
+    const bool is_3d_enabled = ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_enabled);
     const int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
-    const bool is_ou3d = (mode_3d == ovrl_3Dmode_ou) || (mode_3d == ovrl_3Dmode_hou);
+    const bool is_ou3d = ( (is_3d_enabled) && ((mode_3d == ovrl_3Dmode_ou) || (mode_3d == ovrl_3Dmode_hou)) );
 
     //Use full texture if everything checks out or 3D mode is Over-Under (converted to a 1:1 fitting texture)
     if ( (is_ou3d) || ( (crop_rect.GetTL().x == 0) && (crop_rect.GetTL().y == 0) && (crop_rect.GetWidth() == content_width) && (crop_rect.GetHeight() == content_height) ) )

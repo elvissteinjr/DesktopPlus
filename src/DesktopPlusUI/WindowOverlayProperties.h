@@ -44,6 +44,7 @@ class WindowOverlayProperties : public FloatingWindow
         void UpdatePageMainCatAppearance();
         void UpdatePageMainCatCapture();
         void UpdatePageMainCatPerformanceMonitor();
+        void UpdatePageMainCatAdvanced();
 
         void UpdatePagePositionChange();
         void UpdatePageCropChange(bool only_restore_settings = false);

@@ -210,13 +210,16 @@ void FloatingUI::UpdateUITargetState()
         //Get 3D height factor
         float height_factor_3d = 1.0f;
 
-        if ( (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) )
+        if (data.ConfigBool[configid_bool_overlay_3D_enabled])
         {
-            height_factor_3d = 2.0f;
-        }
-        else if (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_ou)
-        {
-            height_factor_3d = 0.5f;
+            if ( (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) )
+            {
+                height_factor_3d = 2.0f;
+            }
+            else if (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_ou)
+            {
+                height_factor_3d = 0.5f;
+            }
         }
 
         //Attempt to calculate the correct offset to bottom, taking in account all the things GetTransformForOverlayCoordinates() does not
