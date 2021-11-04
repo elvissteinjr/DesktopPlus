@@ -511,7 +511,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                                     data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] = StringConvertFromUTF16(window_info->GetWindowClassName().c_str());
                                     data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name]   = window_info->GetExeName();
 
-                                    OverlayManager::Get().SetOverlayNameAuto(i, (HWND)msg.lParam);
+                                    OverlayManager::Get().SetOverlayNameAuto(i, window_info);
 
                                     //Update overlay properties title if this is the current overlay
                                     if (UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID() == i)

@@ -5,6 +5,7 @@
     #include "DesktopPlusWinRT.h"
 #else
     #include "UIManager.h"
+    #include "TranslationManager.h"
 #endif
 
 #include "WindowManager.h"
@@ -381,6 +382,7 @@ void OverlayManager::RemoveAllOverlays()
 }
 
 #ifndef DPLUS_UI
+
 std::vector<unsigned int> OverlayManager::FindInactiveOverlaysForWindow(const WindowInfo& window_info) const
 {
     std::vector<unsigned int> matching_overlay_ids;
@@ -487,14 +489,16 @@ std::vector<unsigned int> OverlayManager::FindInactiveOverlaysForWindow(const Wi
     return matching_overlay_ids;
 }
 
-#endif
+#endif //ifndef DPLUS_UI
 
-void OverlayManager::SetCurrentOverlayNameAuto(HWND window_handle)
+#ifdef DPLUS_UI
+
+void OverlayManager::SetCurrentOverlayNameAuto(const WindowInfo* window_info)
 {
-    SetOverlayNameAuto(m_CurrentOverlayID, window_handle);
+    SetOverlayNameAuto(m_CurrentOverlayID, window_info);
 }
 
-void OverlayManager::SetOverlayNameAuto(unsigned int id, HWND window_handle)
+void OverlayManager::SetOverlayNameAuto(unsigned int id, const WindowInfo* window_info)
 {
     if (id < m_OverlayConfigData.size())
     {
@@ -506,37 +510,18 @@ void OverlayManager::SetOverlayNameAuto(unsigned int id, HWND window_handle)
 
         data.ConfigNameStr = "";
 
-        //If override window handle passed, try to use that
-        if (window_handle != nullptr)
+        //If override window info passed, use that
+        if (window_info != nullptr)
         {
-            auto title_length = ::GetWindowTextLengthW(window_handle);
-            if (title_length > 0)
-            {
-                title_length++;
-
-                std::unique_ptr<WCHAR[]> title_buffer = std::unique_ptr<WCHAR[]>{ new WCHAR[title_length] };
-
-                if (::GetWindowTextW(window_handle, title_buffer.get(), title_length) != 0)
-                {
-                    data.ConfigNameStr += StringConvertFromUTF16(title_buffer.get());
-
-                    return;
-                }
-            }
+            data.ConfigNameStr += StringConvertFromUTF16(window_info->GetTitle().c_str());
+            return;
         }
 
         switch (data.ConfigInt[configid_int_overlay_capture_source])
         {
             case ovrl_capsource_desktop_duplication:
             {
-                int desktop_id = data.ConfigInt[configid_int_overlay_desktop_id];
-
-                if (desktop_id == -2) //Default value for desktop 0 that has yet to initialize cropping values
-                {
-                    desktop_id = 0;
-                }
-
-                data.ConfigNameStr += (data.ConfigInt[configid_int_overlay_desktop_id] == -1) ? "Combined Desktop" : "Desktop " + std::to_string(desktop_id + 1);
+                data.ConfigNameStr += TranslationManager::Get().GetDesktopIDString(data.ConfigInt[configid_int_overlay_desktop_id]);
                 break;
             }
             case ovrl_capsource_winrt_capture:
@@ -547,33 +532,34 @@ void OverlayManager::SetOverlayNameAuto(unsigned int id, HWND window_handle)
                 }
                 else if (data.ConfigInt[configid_int_overlay_winrt_desktop_id] != -2)
                 {
-                    data.ConfigNameStr += (data.ConfigInt[configid_int_overlay_winrt_desktop_id] == -1) ? "Combined Desktop" : 
-                                                                                                          "Desktop " + std::to_string(data.ConfigInt[configid_int_overlay_winrt_desktop_id] + 1);
+                    data.ConfigNameStr += TranslationManager::Get().GetDesktopIDString(data.ConfigInt[configid_int_overlay_winrt_desktop_id]);
                 }
                 else
                 {
-                    data.ConfigNameStr += "[No Capture Target]";
+                    data.ConfigNameStr += TranslationManager::GetString(tstr_SourceWinRTNone);
                 }
                 break;
             }
             case ovrl_capsource_ui:
             {
-                data.ConfigNameStr += "Performance Monitor"; //So far all UI overlays are just that
+                data.ConfigNameStr += TranslationManager::GetString(tstr_SourcePerformanceMonitor); //So far all UI overlays are just that
                 break;
             }
         }
     }
 }
 
-void OverlayManager::SetOverlayNamesAutoForWindow(HWND window_handle)
+void OverlayManager::SetOverlayNamesAutoForWindow(const WindowInfo& window_info)
 {
     for (unsigned int i = 0; i < m_OverlayConfigData.size(); ++i)
     {
         const OverlayConfigData& data = m_OverlayConfigData[i];
 
-        if ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && ((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == window_handle) )
+        if ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && ((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == window_info.GetWindowHandle()) )
         {
-            SetOverlayNameAuto(i, window_handle);
+            SetOverlayNameAuto(i, &window_info);
         }
     }
 }
+
+#endif //ifdef DPLUS_UI

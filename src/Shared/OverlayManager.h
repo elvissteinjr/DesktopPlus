@@ -59,7 +59,9 @@ class OverlayManager
             std::vector<unsigned int> FindInactiveOverlaysForWindow(const WindowInfo& window_info) const;
         #endif
 
-        void SetCurrentOverlayNameAuto(HWND window_handle = nullptr);
-        void SetOverlayNameAuto(unsigned int id, HWND window_handle = nullptr);    //window_handle is optional, can be passed as override for when the handle isn't stored
-        void SetOverlayNamesAutoForWindow(HWND window_handle);                     //Calls SetOverlayNameAuto() for all overlays current using window_handle as source
+        #ifdef DPLUS_UI
+            void SetCurrentOverlayNameAuto(const WindowInfo* window_info = nullptr);
+            void SetOverlayNameAuto(unsigned int id, const WindowInfo* window_info = nullptr); //window_info is optional, can be passed as override for when the handle isn't stored
+            void SetOverlayNamesAutoForWindow(const WindowInfo& window_info);                  //Calls SetOverlayNameAuto() for all overlays currently using window_handle as source
+        #endif
 };
