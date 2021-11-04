@@ -231,6 +231,12 @@ bool Overlay::ShouldBeVisible() const
         }
     }
 
+    //Also apply above when origin is dashboard
+    if ( (should_be_visible) && (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_dashboard) )
+    {
+        should_be_visible = outmgr->HasDashboardBeenActivatedOnce();
+    }
+
     return should_be_visible;
 }
 
