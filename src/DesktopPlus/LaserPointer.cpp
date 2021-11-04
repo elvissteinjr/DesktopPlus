@@ -750,8 +750,9 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
 
         const LaserPointerDevice& lp_device = m_Devices[primary_pointer_device];
 
-        //Allow a 1500ms grace period after device switching even when not actually hovering anything
-        if ( (m_LastPrimaryDeviceSwitchTick + 1500 > ::GetTickCount64() ) || ( (lp_device.OvrlHandleTargetLast != vr::k_ulOverlayHandleInvalid) && (lp_device.LaserLength <= max_distance) ) )
+        //Allow a 1500ms grace period after device switching even when not actually hovering anything & ignore distance if input is down
+        if ( (m_LastPrimaryDeviceSwitchTick + 1500 > ::GetTickCount64() ) || ( (lp_device.OvrlHandleTargetLast != vr::k_ulOverlayHandleInvalid) && (lp_device.LaserLength <= max_distance) ) || 
+             (lp_device.InputDownCount != 0) )
         {
             return primary_pointer_device;
         }
