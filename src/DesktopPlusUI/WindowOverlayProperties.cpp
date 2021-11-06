@@ -833,6 +833,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
     if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) != ovrl_capsource_ui) //Don't show 3D settings for UI source overlays
     {
         bool& is_3D_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_3D_enabled);
+        bool& is_3D_swapped = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_3D_swapped);
         int& mode_3d = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_3D_mode);
 
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvanced3D), &is_3D_enabled))
@@ -857,6 +858,14 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
             }
 
             ImGui::EndCombo();
+        }
+
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvanced3DSwap), &is_3D_swapped))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_3D_swapped), is_3D_swapped);
         }
 
         if (!is_3D_enabled)
