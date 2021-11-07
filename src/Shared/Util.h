@@ -46,6 +46,14 @@ template <typename T> int sgn(T val)
     return (T(0) < val) - (val < T(0));
 }
 
+template <typename T_out, typename T_in> inline typename std::enable_if_t<std::is_trivially_copyable_v<T_out> && std::is_trivially_copyable_v<T_in>, T_out> pun_cast(const T_in& value)
+{
+    //Do type punning, but actually legal
+    T_out value_out = T_out(0);
+    std::memcpy(&value_out, &value, (sizeof(value_out) < sizeof(value)) ? sizeof(value_out) : sizeof(value) );
+    return value_out;
+}
+
 inline float smoothstep(float step, float value_min, float value_max)
 {
     return ((step) * (step) * (3 - 2 * (step))) * (value_max - value_min) + value_min;

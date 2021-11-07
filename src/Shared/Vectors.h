@@ -161,10 +161,11 @@ struct Vector4
 inline float invSqrt(float x)
 {
     float xhalf = 0.5f * x;
-    int i = *(int*)&x;          // get bits for floating value
-    i = 0x5f3759df - (i>>1);    // gives initial guess
-    x = *(float*)&i;            // convert bits back to float
-    x = x * (1.5f - xhalf*x*x); // Newton step
+    int i = 0;
+    memcpy(&i, &x, sizeof(float)); // get bits for floating value
+    i = 0x5f3759df - (i>>1);       // gives initial guess
+    memcpy(&x, &i, sizeof(float)); // convert bits back to float
+    x = x * (1.5f - xhalf*x*x);    // Newton step
     return x;
 }
 

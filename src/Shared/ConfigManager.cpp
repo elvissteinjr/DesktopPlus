@@ -361,9 +361,8 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_interface_mainbar_desktop_listing]              = config.ReadInt(   "Interface", "DesktopButtonCyclingMode", mainbar_desktop_listing_individual);
     m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]        = config.ReadBool(  "Interface", "DesktopButtonIncludeAll", false);
 
-    //Read color string and store it interpreted as signed int
-    unsigned int rgba = std::stoul(config.ReadString("Interface", "EnvironmentBackgroundColor", "00000080"), nullptr, 16);
-    m_ConfigInt[configid_int_interface_background_color] = *(int*)&rgba;
+    //Read color string as unsigned int but store it as signed
+    m_ConfigInt[configid_int_interface_background_color] = pun_cast<unsigned int, int>( std::stoul(config.ReadString("Interface", "EnvironmentBackgroundColor", "00000080"), nullptr, 16) );
 
     m_ConfigInt[configid_int_interface_background_color_display_mode]        = config.ReadInt( "Interface", "EnvironmentBackgroundColorDisplayMode", ui_bgcolor_dispmode_never);
     m_ConfigBool[configid_bool_interface_dim_ui]                             = config.ReadBool("Interface", "DimUI", false);
@@ -726,7 +725,7 @@ void ConfigManager::SaveConfigToFile()
 
     //Write color string
     std::stringstream ss;
-    ss << std::setw(8) << std::setfill('0') << std::hex << *(unsigned int*)&m_ConfigInt[configid_int_interface_background_color];
+    ss << std::setw(8) << std::setfill('0') << std::hex << pun_cast<unsigned int, int>(m_ConfigInt[configid_int_interface_background_color]);
     config.WriteString("Interface", "EnvironmentBackgroundColor", ss.str().c_str());
 
     config.WriteInt( "Interface", "EnvironmentBackgroundColorDisplayMode", m_ConfigInt[configid_int_interface_background_color_display_mode]);

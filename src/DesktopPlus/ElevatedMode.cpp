@@ -181,12 +181,12 @@ bool HandleIPCMessage(MSG msg)
                 };
                 case ipceact_mouse_hwheel:
                 {
-                    input_sim.MouseWheelHorizontal(*(float*)&msg.lParam);
+                    input_sim.MouseWheelHorizontal(pun_cast<float, LPARAM>(msg.lParam));
                     break;
                 };
                 case ipceact_mouse_vwheel:
                 {
-                    input_sim.MouseWheelVertical(*(float*)&msg.lParam);
+                    input_sim.MouseWheelVertical(pun_cast<float, LPARAM>(msg.lParam));
                     break;
                 };
                 case ipceact_key_down:

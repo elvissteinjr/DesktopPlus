@@ -636,7 +636,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
             else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX)
             {
                 ConfigID_Float float_id = (ConfigID_Float)(msg.wParam - configid_bool_MAX - configid_int_MAX);
-                float value = *(float*)&msg.lParam; //Interpret lParam as a float variable
+                float value = pun_cast<float, LPARAM>(msg.lParam);
                 ConfigManager::Get().SetConfigFloat(float_id, value);
 
                 switch (float_id)
@@ -666,7 +666,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
             else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX + configid_handle_MAX)
             {
                 ConfigID_Handle handle_id = (ConfigID_Handle)(msg.wParam - configid_bool_MAX - configid_int_MAX - configid_float_MAX);
-                uint64_t value = *(uint64_t*)&msg.lParam; //Interpret lParam as a uint64_t variable
+                uint64_t value = pun_cast<uint64_t, LPARAM>(msg.lParam);
                 ConfigManager::Get().SetConfigHandle(handle_id, value);
 
                 switch (handle_id)

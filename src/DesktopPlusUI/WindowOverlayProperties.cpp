@@ -259,9 +259,9 @@ void WindowOverlayProperties::OverlayPositionReset()
     float& forward = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_forward);
     up = right = forward = 0.0f;
 
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_up),      *(LPARAM*)&up);
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_right),   *(LPARAM*)&right);
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_forward), *(LPARAM*)&forward);
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_up),      pun_cast<LPARAM, float>(up));
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_right),   pun_cast<LPARAM, float>(right));
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_forward), pun_cast<LPARAM, float>(forward));
 
     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
 }
@@ -430,7 +430,7 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
         if (width < 0.05f)
             width = 0.05f;
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_width), *(LPARAM*)&width);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_width), pun_cast<LPARAM, float>(width));
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -448,7 +448,7 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     {
         curve = clamp(curve, 0.0f, 1.0f);
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_curvature), *(LPARAM*)&curve);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_curvature), pun_cast<LPARAM, float>(curve));
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -466,7 +466,7 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     {
         opacity = clamp(opacity, 0.0f, 1.0f);
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_opacity), *(LPARAM*)&opacity);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_opacity), pun_cast<LPARAM, float>(opacity));
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -1178,7 +1178,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetUp") );
     if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
     {
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_up), *(LPARAM*)&up);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_up), pun_cast<LPARAM, float>(up));
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -1193,7 +1193,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetRight") );
     if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
     {
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_right), *(LPARAM*)&right);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_right), pun_cast<LPARAM, float>(right));
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -1208,7 +1208,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetForward") );
     if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
     {
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_forward), *(LPARAM*)&forward);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_forward), pun_cast<LPARAM, float>(forward));
     }
     vr_keyboard.VRKeyboardInputEnd();
 

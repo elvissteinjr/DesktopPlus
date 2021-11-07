@@ -78,8 +78,8 @@ struct ImGui_ImplWin32_Data
     HWND                        hWnd;
     HWND                        MouseHwnd;
     bool                        MouseTracked;
-    INT64                       Time;
-    INT64                       TicksPerSecond;
+    LARGE_INTEGER               Time;
+    LARGE_INTEGER               TicksPerSecond;
     ImGuiMouseCursor            LastMouseCursor;
     bool                        HasGamepad;
     bool                        WantUpdateHasGamepad;
@@ -115,10 +115,10 @@ bool    ImGui_ImplWin32_Init(void* hwnd)
     ImGuiIO& io = ImGui::GetIO();
     IM_ASSERT(io.BackendPlatformUserData == NULL && "Already initialized a platform backend!");
 
-    INT64 perf_frequency, perf_counter;
-    if (!::QueryPerformanceFrequency((LARGE_INTEGER*)&perf_frequency))
+    LARGE_INTEGER perf_frequency = {0}, perf_counter = {0};
+    if (!::QueryPerformanceFrequency(&perf_frequency))
         return false;
-    if (!::QueryPerformanceCounter((LARGE_INTEGER*)&perf_counter))
+    if (!::QueryPerformanceCounter(&perf_counter))
         return false;
 
     // Setup backend capabilities flags
@@ -328,9 +328,9 @@ void    ImGui_ImplWin32_NewFrame()
     io.DisplaySize = ImVec2((float)(rect.right - rect.left), (float)(rect.bottom - rect.top));
 
     // Setup time step
-    INT64 current_time = 0;
-    ::QueryPerformanceCounter((LARGE_INTEGER*)&current_time);
-    io.DeltaTime = (float)(current_time - bd->Time) / bd->TicksPerSecond;
+    LARGE_INTEGER current_time = {0};
+    ::QueryPerformanceCounter(&current_time);
+    io.DeltaTime = (float)(current_time.QuadPart - bd->Time.QuadPart) / bd->TicksPerSecond.QuadPart;
     bd->Time = current_time;
 
     // Update OS mouse position
@@ -634,9 +634,9 @@ IMGUI_IMPL_API void ImGui_ImplOpenVR_NewFrame()
     IM_ASSERT(bd != NULL && "Did you call ImGui_ImplWin32_Init()?");
 
     // Setup time step
-    INT64 current_time = 0;
-    ::QueryPerformanceCounter((LARGE_INTEGER*)&current_time);
-    io.DeltaTime = (float)(current_time - bd->Time) / bd->TicksPerSecond;
+    LARGE_INTEGER current_time = {0};
+    ::QueryPerformanceCounter(&current_time);
+    io.DeltaTime = (float)(current_time.QuadPart - bd->Time.QuadPart) / bd->TicksPerSecond.QuadPart;
     bd->Time = current_time;
 
     //No Gamepad support for now

@@ -176,7 +176,7 @@ void InputSimulator::MouseWheelHorizontal(float delta)
 {
     if (m_ForwardToElevatedModeProcess)
     {
-        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_mouse_hwheel, *(LPARAM*)&delta);
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_mouse_hwheel, pun_cast<LPARAM, float>(delta));
         return;
     }
 
@@ -193,7 +193,7 @@ void InputSimulator::MouseWheelVertical(float delta)
 {
     if (m_ForwardToElevatedModeProcess)
     {
-        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_mouse_vwheel, *(LPARAM*)&delta);
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_mouse_vwheel, pun_cast<LPARAM, float>(delta));
         return;
     }
 
@@ -213,10 +213,10 @@ void InputSimulator::KeyboardSetDown(unsigned char keycode)
 
     if (m_ForwardToElevatedModeProcess)
     {
-        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
-        elevated_keycodes[0] = keycode;
+        LPARAM elevated_keycodes = 0;
+        memcpy(&elevated_keycodes, &keycode, 1);
 
-        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_down, *(LPARAM*)&elevated_keycodes);
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_down, elevated_keycodes);
         return;
     }
 
@@ -240,10 +240,10 @@ void InputSimulator::KeyboardSetUp(unsigned char keycode)
 
     if (m_ForwardToElevatedModeProcess)
     {
-        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
-        elevated_keycodes[0] = keycode;
+        LPARAM elevated_keycodes = 0;
+        memcpy(&elevated_keycodes, &keycode, 1);
 
-        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_up, *(LPARAM*)&elevated_keycodes);
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_up, elevated_keycodes);
         return;
     }
 
@@ -260,10 +260,10 @@ void InputSimulator::KeyboardSetDown(unsigned char keycodes[3])
 {
     if (m_ForwardToElevatedModeProcess)
     {
-        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
-        std::copy(keycodes, keycodes + 3, elevated_keycodes);
+        LPARAM elevated_keycodes = 0;
+        memcpy(&elevated_keycodes, keycodes, 3);
 
-        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_down, *(LPARAM*)&elevated_keycodes);
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_down, elevated_keycodes);
         return;
     }
 
@@ -285,10 +285,10 @@ void InputSimulator::KeyboardSetUp(unsigned char keycodes[3])
 {
     if (m_ForwardToElevatedModeProcess)
     {
-        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
-        std::copy(keycodes, keycodes + 3, elevated_keycodes);
+        LPARAM elevated_keycodes = 0;
+        memcpy(&elevated_keycodes, keycodes, 3);
 
-        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_up, *(LPARAM*)&elevated_keycodes);
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_up, elevated_keycodes);
         return;
     }
 
@@ -314,10 +314,10 @@ void InputSimulator::KeyboardToggleState(unsigned char keycode)
     //GetAsyncKeyState is subject to UIPI, so always forward it
     if (m_ForwardToElevatedModeProcess)
     {
-        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
-        elevated_keycodes[0] = keycode;
+        LPARAM elevated_keycodes = 0;
+        memcpy(&elevated_keycodes, &keycode, 1);
 
-        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_toggle, *(LPARAM*)&elevated_keycodes);
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_toggle, elevated_keycodes);
         return;
     }
 
@@ -335,10 +335,10 @@ void InputSimulator::KeyboardToggleState(unsigned char keycodes[3])
 {
     if (m_ForwardToElevatedModeProcess)
     {
-        unsigned char elevated_keycodes[sizeof(LPARAM)] = {0};
-        std::copy(keycodes, keycodes + 3, elevated_keycodes);
+        LPARAM elevated_keycodes = 0;
+        memcpy(&elevated_keycodes, keycodes, 3);
 
-        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_toggle, *(LPARAM*)&elevated_keycodes);
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_key_toggle, elevated_keycodes);
         return;
     }
 

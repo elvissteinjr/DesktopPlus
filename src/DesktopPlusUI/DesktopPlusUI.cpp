@@ -126,7 +126,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         ::UpdateWindow(hwnd);
     }
 
-    ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    float clear_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
     //Init WinRT DLL
     DPWinRT_Init();
@@ -481,7 +481,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             if (desktop_mode)
             {
                 g_pd3dDeviceContext->OMSetRenderTargets(1, &g_desktopRenderTargetView, nullptr);
-                g_pd3dDeviceContext->ClearRenderTargetView(g_desktopRenderTargetView, (float*)&clear_color);
+                g_pd3dDeviceContext->ClearRenderTargetView(g_desktopRenderTargetView, clear_color);
                 ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
                 HRESULT res = g_pSwapChain->Present(1, 0); // Present with vsync
@@ -494,7 +494,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             else
             {
                 g_pd3dDeviceContext->OMSetRenderTargets(1, &g_vrRenderTargetView, nullptr);
-                g_pd3dDeviceContext->ClearRenderTargetView(g_vrRenderTargetView, (float*)&clear_color);
+                g_pd3dDeviceContext->ClearRenderTargetView(g_vrRenderTargetView, clear_color);
                 ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
                 //Set Overlay texture

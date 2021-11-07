@@ -444,7 +444,7 @@ void WindowSettingsNew::UpdatePageMainCatInput()
             if (distance < 0.01f)
                 distance = 0.0f;
 
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_input_detached_interaction_max_distance), *(LPARAM*)&distance);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_input_detached_interaction_max_distance), pun_cast<LPARAM, float>(distance));
         }
         vr_keyboard.VRKeyboardInputEnd();
 
