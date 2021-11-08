@@ -109,30 +109,33 @@ void WindowKeyboard::WindowUpdate()
     */
 
     //Render pointer blobs for any input that isn't already controller the mouse
-    vr::TrackedDeviceIndex_t primary_device = ConfigManager::Get().GetPrimaryLaserPointerDevice();
-    bool dashboard_device_exists = (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid);
-    for (auto& state : m_LaserInputStates)
+    if (!UIManager::Get()->IsInDesktopMode())
     {
-        if ( (state.DeviceIndex != vr::k_unTrackedDeviceIndexOther) && (state.DeviceIndex != primary_device) )
+        vr::TrackedDeviceIndex_t primary_device = ConfigManager::Get().GetPrimaryLaserPointerDevice();
+        bool dashboard_device_exists = (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid);
+        for (auto& state : m_LaserInputStates)
         {
-            //Overlay leave events are not processed when a dashboard device exists (dashboard pointer doesn't set device index), so make sure to get the pointers out of the way anyways
-            if (dashboard_device_exists)
+            if ( (state.DeviceIndex != vr::k_unTrackedDeviceIndexOther) && (state.DeviceIndex != primary_device) )
             {
-                //Pointer left the overlay
-                state.MouseState.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+                //Overlay leave events are not processed when a dashboard device exists (dashboard pointer doesn't set device index), so make sure to get the pointers out of the way anyways
+                if (dashboard_device_exists)
+                {
+                    //Pointer left the overlay
+                    state.MouseState.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
 
-                //Release mouse buttons if they're still down (not the case in most situations)
-                std::fill(std::begin(state.MouseState.MouseDown), std::end(state.MouseState.MouseDown), false);
+                    //Release mouse buttons if they're still down (not the case in most situations)
+                    std::fill(std::begin(state.MouseState.MouseDown), std::end(state.MouseState.MouseDown), false);
+                }
+
+                if (state.MouseState.MousePos.x != -FLT_MAX)
+                {
+                    ImGui::GetForegroundDrawList()->AddCircleFilled(state.MouseState.MousePos, 7.0f, ImGui::GetColorU32(Style_ImGuiCol_SteamVRCursorBorder));
+                    ImGui::GetForegroundDrawList()->AddCircleFilled(state.MouseState.MousePos, 5.0f, ImGui::GetColorU32(Style_ImGuiCol_SteamVRCursor));
+                }
+
+                //Also advance the mouse state as if it was managed by ImGui
+                state.MouseState.Advance();
             }
-
-            if (state.MouseState.MousePos.x != -FLT_MAX)
-            {
-                ImGui::GetForegroundDrawList()->AddCircleFilled(state.MouseState.MousePos, 7.0f, ImGui::GetColorU32(Style_ImGuiCol_SteamVRCursorBorder));
-                ImGui::GetForegroundDrawList()->AddCircleFilled(state.MouseState.MousePos, 5.0f, ImGui::GetColorU32(Style_ImGuiCol_SteamVRCursor));
-            }
-
-            //Also advance the mouse state as if it was managed by ImGui
-            state.MouseState.Advance();
         }
     }
 
