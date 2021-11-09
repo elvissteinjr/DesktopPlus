@@ -1,5 +1,7 @@
 #include "WindowSettings.h"
 
+#include <sstream>
+
 #include "ImGuiExt.h"
 #include "UIManager.h"
 #include "TranslationManager.h"
@@ -56,6 +58,12 @@ vr::VROverlayHandle_t WindowSettingsNew::GetOverlayHandle() const
     return UIManager::Get()->GetOverlayHandleSettings();
 }
 
+void WindowSettingsNew::ClearCachedTranslationStrings()
+{
+    m_WarningTextOverlayError = "";
+    m_WarningTextWinRTError = "";
+}
+
 void WindowSettingsNew::WindowUpdate()
 {
     ImGui::SetWindowSize(m_Size);
@@ -110,6 +118,8 @@ void WindowSettingsNew::WindowUpdate()
         m_PageAppearing = m_PageStack.back();
     }
 
+    UpdateWarnings();
+
     //Set up page offset and clipping
     ImGui::SetCursorPosX( ImGui::GetCursorPosX() + m_PageAnimationOffset);
 
@@ -154,6 +164,279 @@ void WindowSettingsNew::WindowUpdate()
     m_PageAppearing = wndsettings_page_none;
 
     ImGui::PopClipRect();
+}
+
+void WindowSettingsNew::UpdateWarnings()
+{
+    if (!UIManager::Get()->IsAnyWarningDisplayed())
+        return;
+
+    bool warning_displayed = false;
+    bool popup_visible = false;
+
+    static float popup_alpha = 0.0f;
+
+    //Compositor resolution warning
+    {
+        bool& hide_compositor_res_warning = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_compositor_res_hidden);
+
+        if ( (!hide_compositor_res_warning) && (UIManager::Get()->IsCompositorResolutionLow()) )
+        {
+            SelectableWarning("##WarningCompRes", "DontShowAgain", TranslationManager::GetString(tstr_SettingsWarningCompositorResolution));
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DontShowAgain"))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
+                {
+                    hide_compositor_res_warning = true;
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
+    //Compositor quality warning
+    {
+        bool& hide_compositor_quality_warning = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_compositor_quality_hidden);
+
+        if ( (!hide_compositor_quality_warning) && (UIManager::Get()->IsCompositorRenderQualityLow()) )
+        {
+            SelectableWarning("##WarningCompQuality", "DontShowAgain2", TranslationManager::GetString(tstr_SettingsWarningCompositorQuality));
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DontShowAgain2"))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
+                {
+                    hide_compositor_quality_warning = true;
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
+    //Dashboard app process elevation warning
+    {
+        bool& hide_process_elevation_warning = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_process_elevation_hidden);
+
+        if ( (!hide_process_elevation_warning) && (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated)) )
+        {
+            SelectableWarning("##WarningElevation", "DontShowAgain3", TranslationManager::GetString(tstr_SettingsWarningProcessElevated));
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DontShowAgain3"))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
+                {
+                    hide_process_elevation_warning = true;
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
+    //Elevated mode warning (this is different from elevated dashboard process)
+    {
+        bool& hide_elevated_mode_warning = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_elevated_mode_hidden);
+
+        if ( (!hide_elevated_mode_warning) && (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active)) )
+        {
+            SelectableWarning("##WarningElevatedMode", "DontShowAgain4", TranslationManager::GetString(tstr_SettingsWarningElevatedMode));
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DontShowAgain4"))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
+                {
+                    hide_elevated_mode_warning = true;
+                }
+                else if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsTroubleshootingElevatedModeLeave)))
+                {
+                    UIManager::Get()->ElevatedModeLeave();
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
+    //Focused process elevation warning
+    {
+        if (  (ConfigManager::Get().GetConfigBool(configid_bool_state_window_focused_process_elevated)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated)) && 
+             (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active))       && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)) )
+        {
+            SelectableWarning("##WarningElevation2", "FocusedElevatedContext", TranslationManager::GetString(tstr_SettingsWarningElevatedProcessFocus));
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("FocusedElevatedContext"))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuFocusTry)))
+                {
+                    UIManager::Get()->TryChangingWindowFocus();
+                    UIManager::Get()->RepeatFrame();
+                }
+                else if ((UIManager::Get()->IsElevatedTaskSetUp()) && ImGui::Selectable(TranslationManager::GetString(tstr_SettingsTroubleshootingElevatedModeEnter)))
+                {
+                    UIManager::Get()->ElevatedModeEnter();
+                    UIManager::Get()->RepeatFrame();
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
+    //UIAccess lost warning
+    {
+        if ( (ConfigManager::Get().GetConfigBool(configid_bool_misc_uiaccess_was_enabled)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)) )
+        {
+            SelectableWarning("##WarningUIAccess", "DontShowAgain6", TranslationManager::GetString(tstr_SettingsWarningUIAccessLost));
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DontShowAgain6"))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
+                {
+                    ConfigManager::Get().SetConfigBool(configid_bool_misc_uiaccess_was_enabled, false);
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
+    //Overlay error warning
+    {
+        vr::EVROverlayError overlay_error = UIManager::Get()->GetOverlayErrorLast();
+
+        if ( (overlay_error != vr::VROverlayError_None) && (UIManager::Get()->IsOpenVRLoaded()) )
+        {
+            if (overlay_error == vr::VROverlayError_OverlayLimitExceeded)
+            {
+                SelectableWarning("##WarningOverlayError", "DismissWarning", TranslationManager::GetString(tstr_SettingsWarningOverlayCreationErrorLimit));
+            }
+            else
+            {
+                static vr::EVROverlayError overlay_error_last = overlay_error;
+
+                //Format error string into cached translated string
+                if ( (m_WarningTextOverlayError.empty()) || (overlay_error != overlay_error_last) )
+                {
+                    m_WarningTextWinRTError = TranslationManager::GetString(tstr_SettingsWarningGraphicsCaptureError);
+                    StringReplaceAll(m_WarningTextOverlayError, "%ERRORNAME%", vr::VROverlay()->GetOverlayErrorNameFromEnum(overlay_error));
+
+                    overlay_error_last = overlay_error;
+                }
+
+                SelectableWarning("##WarningOverlayError", "DismissWarning", m_WarningTextOverlayError.c_str());
+            }
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DismissWarning"))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDismiss)))
+                {
+                    UIManager::Get()->ResetOverlayErrorLast();
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
+    //WinRT Capture error warning
+    {
+        HRESULT hr_error = UIManager::Get()->GetWinRTErrorLast();
+
+        if ( (hr_error != S_OK) && (UIManager::Get()->IsOpenVRLoaded()) )
+        {
+            static HRESULT hr_error_last = hr_error;
+
+            //Format error code into cached translated string
+            if ( (m_WarningTextWinRTError.empty()) || (hr_error != hr_error_last) )
+            {
+                std::stringstream ss;
+                ss << "0x" << std::hex << hr_error;
+
+                m_WarningTextWinRTError = TranslationManager::GetString(tstr_SettingsWarningGraphicsCaptureError);
+                StringReplaceAll(m_WarningTextWinRTError, "%ERRORCODE%", ss.str());
+
+                hr_error_last = hr_error;
+            }
+
+            SelectableWarning("##WarningWinRTError", "DismissWarning2", m_WarningTextWinRTError.c_str());
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DismissWarning2"))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDismiss)))
+                {
+                    UIManager::Get()->ResetWinRTErrorLast();
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
+    //Separate from the main content if a warning was actually displayed
+    if (warning_displayed)
+    {
+        ImGui::Separator();
+    }
+    else //...no warning displayed but UIManager still thinks there is one, so update that state
+    {
+        UIManager::Get()->UpdateAnyWarningDisplayedState();
+    }
+
+    //Animate fade-in if any of the popups is visible
+    if (popup_visible)
+    {
+        popup_alpha += ImGui::GetIO().DeltaTime * 10.0f;
+
+        if (popup_alpha > 1.0f)
+            popup_alpha = 1.0f;
+    }
+    else
+    {
+        popup_alpha = 0.0f;
+    }
 }
 
 void WindowSettingsNew::UpdatePageMain()
@@ -598,6 +881,8 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
             ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_process_elevation_hidden,  false);
             ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_elevated_mode_hidden,      false);
             ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_welcome_hidden,            false);
+
+            UIManager::Get()->UpdateAnyWarningDisplayedState();
         }
 
         ImGui::Columns(1);
@@ -949,4 +1234,37 @@ void WindowSettingsNew::PageGoBack()
 void WindowSettingsNew::PageGoHome()
 {
     m_PageStackPos = 0;
+}
+
+void WindowSettingsNew::SelectableWarning(const char* selectable_id, const char* popup_id, const char* text, bool show_warning_prefix, const ImVec4* text_color)
+{
+    float* selectable_height = ImGui::GetStateStorage()->GetFloatRef(ImGui::GetID(selectable_id), 1.0f);
+
+    //Use selectable stretching over the text area to make it clickable
+    if (ImGui::Selectable(selectable_id, ImGui::IsPopupOpen(popup_id), 0, {0.0f, *selectable_height}))
+    {
+        ImGui::OpenPopup(popup_id);
+    }
+    ImGui::SameLine(0.0f, 0.0f);
+
+    //Render text (with wrapping for the actual warning text)
+    ImGui::PushStyleColor(ImGuiCol_Text, (text_color != nullptr) ? *text_color : Style_ImGuiCol_TextWarning);
+
+    if (show_warning_prefix)
+    {
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsWarningPrefix));
+        ImGui::SameLine();
+    }
+
+    ImGui::PushTextWrapPos();
+    ImGui::TextUnformatted(text);
+    ImGui::PopTextWrapPos();
+
+    ImGui::PopStyleColor();
+
+    //Store height for the selectable for next time if window is being hovered (could get bogus value otherwise)
+    if (ImGui::IsWindowHovered())
+    {
+        *selectable_height = ImGui::GetItemRectSize().y;
+    }
 }

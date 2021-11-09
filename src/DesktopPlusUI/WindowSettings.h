@@ -46,7 +46,12 @@ class WindowSettingsNew : public FloatingWindow
 
         float m_Column0Width;
 
+        std::string m_WarningTextOverlayError;
+        std::string m_WarningTextWinRTError;
+
         virtual void WindowUpdate();
+
+        void UpdateWarnings();
 
         void UpdatePageMain();
         void UpdatePageMainCatInterface();
@@ -60,9 +65,13 @@ class WindowSettingsNew : public FloatingWindow
         void PageGoBack();
         void PageGoHome();
 
+        void SelectableWarning(const char* selectable_id, const char* popup_id, const char* text, bool show_warning_prefix = true, const ImVec4* text_color = nullptr);
+
     public:
         WindowSettingsNew();
         virtual void Hide(bool skip_fade = false);
         virtual void ResetTransform();
         virtual vr::VROverlayHandle_t GetOverlayHandle() const;
+
+        void ClearCachedTranslationStrings();
 };

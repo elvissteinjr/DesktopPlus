@@ -587,18 +587,20 @@ bool ConfigManager::LoadConfigFromFile()
     //Set WindowManager active (no longer gets deactivated during runtime)
     WindowManager::Get().SetActive(true);
 
+    //Query elevated mode state
+    m_ConfigBool[configid_bool_state_misc_elevated_mode_active] = IPCManager::IsElevatedModeProcessRunning();
+
     #ifdef DPLUS_UI
         UIManager::Get()->GetVRKeyboard().LoadCurrentLayout();
         UIManager::Get()->GetVRKeyboard().GetWindow().UpdateOverlaySize();
         TranslationManager::Get().LoadTranslationFromFile( m_ConfigString[configid_str_interface_language_file].c_str() );
-    #endif
 
-    //Query elevated mode state
-    m_ConfigBool[configid_bool_state_misc_elevated_mode_active] = IPCManager::IsElevatedModeProcessRunning();
+        UIManager::Get()->UpdateAnyWarningDisplayedState();
+    #endif
 
     //Load last used overlay config
     LoadMultiOverlayProfile(config);
-    
+
     return existed; //We use default values if it doesn't, but still return if the file existed
 }
 

@@ -108,6 +108,7 @@ UIManager::UIManager(bool desktop_mode) :
     m_FontLarge(nullptr),
     m_LowCompositorRes(false),
     m_LowCompositorQuality(false),
+    m_HasAnyWarning(false),
     m_OverlayErrorLast(vr::VROverlayError_None),
     m_WinRTErrorLast(S_OK),
     m_ElevatedTaskSetUp(false),
@@ -354,6 +355,7 @@ vr::EVRInitError UIManager::InitOverlay()
     m_LowCompositorRes = (vr::VRSettings()->GetFloat("GpuSpeed", "gpuSpeedRenderTargetScale") < 1.0f);
 
     UpdateDesktopOverlayPixelSize();
+    UpdateCompositorRenderQualityLow();
 
     m_VRKeyboard.GetWindow().UpdateOverlaySize();
     m_VRKeyboard.GetWindow().ResetTransform();
@@ -472,11 +474,13 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                 case ipcact_overlay_creation_error:
                 {
                     m_OverlayErrorLast = (vr::VROverlayError)msg.lParam;
+                    UpdateAnyWarningDisplayedState();
                     break;
                 }
                 case ipcact_winrt_thread_error:
                 {
                     m_WinRTErrorLast = (HRESULT)msg.lParam;
+                    UpdateAnyWarningDisplayedState();
                     break;
                 }
                 case ipcact_winmanager_winlist_add:
@@ -577,6 +581,14 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
 
                 switch (bool_id)
                 {
+                    case configid_bool_state_window_focused_process_elevated:
+                    case configid_bool_state_misc_process_elevated:
+                    case configid_bool_state_misc_elevated_mode_active:
+                    case configid_bool_state_misc_uiaccess_enabled:
+                    {
+                        UpdateAnyWarningDisplayedState();
+                        break;
+                    }
                     case configid_bool_state_overlay_dragmode_temp:
                     {
                         SetOverlayInputEnabled((msg.lParam == 0));
@@ -1081,6 +1093,7 @@ void UIManager::OnTranslationChanged()
     TextureManager::Get().ReloadAllTexturesLater();
 
     m_NotificationIcon.RefreshPopupMenu();
+    m_WindowSettingsNew.ClearCachedTranslationStrings();
     m_WindowOverlayProperties.SetActiveOverlayID(m_WindowOverlayProperties.GetActiveOverlayID(), true);
 
     RepeatFrame();
@@ -1117,6 +1130,84 @@ void UIManager::UpdateCompositorRenderQualityLow()
 
     int compositor_quality = vr::VRSettings()->GetInt32("steamvr", "overlayRenderQuality_2");
     m_LowCompositorQuality = ((compositor_quality > 0) && (compositor_quality < 3)); //0 is Auto (not sure if the result of that is accessible), 3 is High
+
+    UpdateAnyWarningDisplayedState();
+}
+
+bool UIManager::IsAnyWarningDisplayed() const
+{
+    return m_HasAnyWarning;
+}
+
+void UIManager::UpdateAnyWarningDisplayedState()
+{
+    m_HasAnyWarning = false;
+
+    //Check all possible warnings. This has to be in sync with what WindowSettings::UpdateWarnings() does to be correct.
+
+    //Compositor resolution warning
+    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_compositor_res_hidden)) && (m_LowCompositorRes) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //Compositor quality warning
+    if ( (!ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_compositor_quality_hidden)) && (m_LowCompositorQuality) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //Dashboard app process elevation warning
+    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_process_elevation_hidden)) && (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated)) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //Elevated mode warning (this is different from elevated dashboard process)
+    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_elevated_mode_hidden)) && (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active)) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //Focused process elevation warning
+    if (  (ConfigManager::Get().GetConfigBool(configid_bool_state_window_focused_process_elevated)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated)) && 
+         (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active))       && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //UIAccess lost warning
+    if ( (ConfigManager::Get().GetConfigBool(configid_bool_misc_uiaccess_was_enabled)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //Overlay error warning
+    if ( (m_OverlayErrorLast != vr::VROverlayError_None) && (m_OpenVRLoaded) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //WinRT Capture error warning
+    if ( (m_WinRTErrorLast != S_OK) && (m_OpenVRLoaded) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //Welcome "warning" (currently not implemented in settings window)
+    /*if (!ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_welcome_hidden))
+    {
+        m_HasAnyWarning = true;
+        return;
+    }*/
 }
 
 vr::EVROverlayError UIManager::GetOverlayErrorLast() const

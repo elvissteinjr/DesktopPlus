@@ -715,13 +715,16 @@ void WindowOverlayBar::Update()
         ImGui::PopStyleColor(); //ImGuiCol_Button
 
     //Warning/Error marker
-    /*ImVec2 p_max = {ImGui::GetItemRectMax().x - ImGui::GetStyle().ItemInnerSpacing.x, ImGui::GetItemRectMin().y + ImGui::GetStyle().ItemInnerSpacing.y};
-    ImVec2 p_min = p_max;
-    p_min.x -= ImGui::CalcTextSize(k_pch_bold_exclamation_mark).x;
-    p_max.y += ImGui::GetTextLineHeight();
+    if (UIManager::Get()->IsAnyWarningDisplayed())
+    {
+        ImVec2 p_max = {ImGui::GetItemRectMax().x - ImGui::GetStyle().ItemInnerSpacing.x, ImGui::GetItemRectMin().y + ImGui::GetStyle().ItemInnerSpacing.y};
+        ImVec2 p_min = p_max;
+        p_min.x -= ImGui::CalcTextSize(k_pch_bold_exclamation_mark).x;
+        p_max.y += ImGui::GetTextLineHeight();
 
-    ImGui::GetWindowDrawList()->AddRectFilled(p_min, p_max, ImGui::GetColorU32(Style_ImGuiCol_TextError), ImGui::GetStyle().WindowRounding); 
-    ImGui::GetWindowDrawList()->AddText(p_min, ImGui::GetColorU32(ImGui::GetStyleColorVec4(ImGuiCol_Text)), k_pch_bold_exclamation_mark);*/
+        ImGui::GetWindowDrawList()->AddRectFilled(p_min, p_max, ImGui::GetColorU32(Style_ImGuiCol_TextError), ImGui::GetStyle().WindowRounding);
+        ImGui::GetWindowDrawList()->AddText(p_min, ImGui::GetColorU32(ImGui::GetStyleColorVec4(ImGuiCol_Text)), k_pch_bold_exclamation_mark);
+    }
 
     right_buttons_width = (ImGui::GetItemRectSize().x * 2.0f) + ImGui::GetStyle().ItemSpacing.x;
 
