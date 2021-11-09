@@ -1076,6 +1076,16 @@ ImFont* UIManager::GetFontLarge() const
     return m_FontLarge;
 }
 
+void UIManager::OnTranslationChanged()
+{
+    TextureManager::Get().ReloadAllTexturesLater();
+
+    m_NotificationIcon.RefreshPopupMenu();
+    m_WindowOverlayProperties.SetActiveOverlayID(m_WindowOverlayProperties.GetActiveOverlayID(), true);
+
+    RepeatFrame();
+}
+
 void UIManager::UpdateOverlayDimming()
 {
     if (ConfigManager::Get().GetConfigBool(configid_bool_interface_dim_ui))

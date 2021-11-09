@@ -299,10 +299,7 @@ void WindowSettingsNew::UpdatePageMainCatInterface()
                 {
                     ConfigManager::Get().SetConfigString(configid_str_interface_language_file, item.first);
                     TranslationManager::Get().LoadTranslationFromFile(item.first);
-                    TextureManager::Get().ReloadAllTexturesLater();
-                    UIManager::Get()->GetNotificationIcon().RefreshPopupMenu();
-                    UIManager::Get()->GetOverlayPropertiesWindow().SetActiveOverlayID(UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID(), true);
-                    UIManager::Get()->RepeatFrame();
+                    UIManager::Get()->OnTranslationChanged();
 
                     list_id = i;
                 }
