@@ -266,6 +266,19 @@ void WindowKeyboard::WindowUpdate()
             if (!m_ManuallyStickingModifiers[GetModifierID(keycode)])
             {
                 vr_keyboard.SetKeyDown(keycode, false);
+
+                //Look up correct button state to remove IsDown state
+                int key_index = 0;
+                for (const auto& key : vr_keyboard.GetLayout(current_sublayout))
+                {
+                    if (key.KeyCode == keycode)
+                    {
+                        m_ButtonStates[key_index].IsDown = false;
+                        break;
+                    }
+
+                    key_index++;
+                }
             }
         }
 
