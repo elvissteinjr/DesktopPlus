@@ -477,12 +477,14 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     {
         bool& crop_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_crop_enabled);
 
+        ImGui::Spacing();
         ImGui::AlignTextToFramePadding();
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAppearanceCrop), &crop_enabled))
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_crop_enabled), crop_enabled);
         }
         ImGui::NextColumn();
+        ImGui::Spacing();
 
         //Build button string if empty
         if (m_CropButtonLabel.empty())
@@ -824,17 +826,19 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
 void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 {
     ImGuiStyle& style = ImGui::GetStyle();
+    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
     ImGui::Spacing();
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatAdvanced));
     ImGui::Columns(2, "ColumnAdvanced", false);
     ImGui::SetColumnWidth(0, m_Column0Width);
 
+    //3D
     if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) != ovrl_capsource_ui) //Don't show 3D settings for UI source overlays
     {
         bool& is_3D_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_3D_enabled);
         bool& is_3D_swapped = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_3D_swapped);
-        int& mode_3d = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_3D_mode);
+        int& mode_3d        = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_3D_mode);
 
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvanced3D), &is_3D_enabled))
         {
@@ -870,6 +874,103 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
         if (!is_3D_enabled)
             ImGui::PopItemDisabled();
+
+        ImGui::Spacing();
+        ImGui::NextColumn();
+    }
+
+    //Gaze Fade
+    {
+        bool& gazefade_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_gazefade_enabled);
+
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFade), &gazefade_enabled))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_gazefade_enabled), gazefade_enabled);
+        }
+        ImGui::NextColumn();
+
+        if (!UIManager::Get()->IsOpenVRLoaded())
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeAuto)))
+        {
+            if (!UIManager::Get()->GetAuxUI().IsActive())
+            {
+                //Show GazeFade Auto Hint window which will do the countdown and trigger auto-configuration in the dashboard app when done
+                UIManager::Get()->GetAuxUI().GetGazeFadeAutoHintWindow().SetTargetOverlay(m_ActiveOverlayID);
+                UIManager::Get()->GetAuxUI().GetGazeFadeAutoHintWindow().Show();
+            }
+        }
+        ImGui::NextColumn();
+
+        if (!UIManager::Get()->IsOpenVRLoaded())
+            ImGui::PopItemDisabled();
+
+        //Only show auto-configure when advanced settings are hidden
+        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_show_advanced_settings))
+        {
+            if (!gazefade_enabled)
+                ImGui::PushItemDisabled();
+
+            ImGui::Indent(ImGui::GetFrameHeightWithSpacing());
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeDistance));
+            ImGui::NextColumn();
+
+            float& distance = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_distance);
+            const char* alt_text = (distance < 0.01f) ? TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeDistanceValueInf) : nullptr;
+
+            vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("GazeFadeDistance") );
+            if (ImGui::SliderWithButtonsFloat("GazeFadeDistance", distance, 0.05f, 0.01f, 0.0f, 1.5f, (distance < 0.01f) ? "##%.2f" : "%.2f m", 0, nullptr, alt_text))
+            {
+                if (distance < 0.01f)
+                    distance = 0.0f;
+
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_gazefade_distance), *(LPARAM*)&distance);
+            }
+            vr_keyboard.VRKeyboardInputEnd();
+
+            ImGui::NextColumn();
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeSensitivity));
+            ImGui::NextColumn();
+
+            float& rate = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_rate);
+
+            vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("GazeFadeRate") );
+            if (ImGui::SliderWithButtonsFloat("GazeFadeRate", rate, 0.1f, 0.025f, 0.4f, 3.0f, "%.2fx", ImGuiSliderFlags_Logarithmic))
+            {
+                if (rate < 0.0f)
+                    rate = 0.0f;
+
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_gazefade_rate), *(LPARAM*)&rate);
+            }
+            vr_keyboard.VRKeyboardInputEnd();
+            ImGui::NextColumn();
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeOpacity));
+            ImGui::NextColumn();
+
+            float& target_opacity = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_opacity);
+
+            vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("GazeFadeOpacity") );
+            if (ImGui::SliderWithButtonsFloatPercentage("GazeFadeOpacity", target_opacity, 5, 1, 0, 100, "%d%%"))
+            {
+                target_opacity = clamp(target_opacity, 0.0f, 1.0f);
+
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_gazefade_opacity), *(LPARAM*)&target_opacity);
+            }
+            vr_keyboard.VRKeyboardInputEnd();
+
+            if (!gazefade_enabled)
+                ImGui::PopItemDisabled();
+
+            ImGui::NextColumn();
+
+            ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
+        }
     }
 
     ImGui::Columns(1);

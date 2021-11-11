@@ -595,6 +595,7 @@ void WindowSettingsNew::UpdatePageMainCatInterface()
 
         ImGui::Columns(1);
 
+        ImGui::Spacing();
         ImGui::Indent();
 
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsInterfaceAdvancedSettings), &ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_show_advanced_settings)))
@@ -787,6 +788,7 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
 
         if (ConfigManager::Get().GetConfigBool(configid_bool_interface_show_advanced_settings))
         {
+            ImGui::Spacing();
             ImGui::Columns(2, "ColumnWindows", false);
             ImGui::SetColumnWidth(0, m_Column0Width);
 

@@ -165,8 +165,10 @@ enum TRMGRStrID
     tstr_OvrlPropsAdvanced3DSwap,
     tstr_OvrlPropsAdvancedGazeFade,
     tstr_OvrlPropsAdvancedGazeFadeAuto,
-    tstr_OvrlPropsAdvancedGazeFadeDist,
-    tstr_OvrlPropsAdvancedGazeFadeSens,
+    tstr_OvrlPropsAdvancedGazeFadeDistance,
+    tstr_OvrlPropsAdvancedGazeFadeDistanceValueInf,
+    tstr_OvrlPropsAdvancedGazeFadeSensitivity,
+    tstr_OvrlPropsAdvancedGazeFadeOpacity,
     tstr_OvrlPropsAdvancedInput,
     tstr_OvrlPropsAdvancedInputAutoToggle,
     tstr_OvrlPropsAdvancedInputFloatingUI,
@@ -222,6 +224,8 @@ enum TRMGRStrID
     tstr_PerformanceMonitorEmpty,
     tstr_AuxUIDragHintDocking,
     tstr_AuxUIDragHintUndocking,
+    tstr_AuxUIGazeFadeAutoHint,           //%SECONDS% == Countdown seconds
+    tstr_AuxUIGazeFadeAutoHintSingular,   //^
     tstr_DialogOk,
     tstr_DialogCancel,
     tstr_DialogDone,

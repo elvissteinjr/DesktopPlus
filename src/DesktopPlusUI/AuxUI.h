@@ -15,6 +15,7 @@ enum AuxUIID
 {
     auxui_none,
     auxui_drag_hint,
+    auxui_gazefade_auto_hint,
     auxui_window_select
 };
 
@@ -62,6 +63,26 @@ class WindowDragHint : public AuxUIWindow
         void SetHintType(vr::ETrackedControllerRole controller_role, bool is_docking);
 };
 
+class WindowGazeFadeAutoHint : public AuxUIWindow
+{
+    private:
+        unsigned int m_TargetOverlay;
+        int m_Countdown;
+        double m_TickTime;
+        std::string m_Label;
+
+        void SetUpOverlay();
+        void UpdateOverlayPos();
+
+    public:
+        WindowGazeFadeAutoHint();
+
+        virtual bool Show();
+        virtual void Hide();
+        void Update();
+        void SetTargetOverlay(unsigned int overlay_id);
+};
+
 class WindowCaptureWindowSelect : public AuxUIWindow
 {
     private:
@@ -90,6 +111,7 @@ class AuxUI
         bool m_IsUIFadingOut;
 
         WindowDragHint m_WindowDragHint;
+        WindowGazeFadeAutoHint m_WindowGazeFadeAutoHint;
         WindowCaptureWindowSelect m_WindowCaptureWindowSelect;
 
         bool SetActiveUI(AuxUIID new_ui_id);        //May return false if higher priority UI is active
@@ -107,5 +129,6 @@ class AuxUI
         void HideTemporaryWindows();                //Called on certain OpenVR events to hide temporary windows when user interaction ended so they don't hang around needlessly
 
         WindowDragHint& GetDragHintWindow();
+        WindowGazeFadeAutoHint& GetGazeFadeAutoHintWindow();
         WindowCaptureWindowSelect& GetCaptureWindowSelectWindow();
 };

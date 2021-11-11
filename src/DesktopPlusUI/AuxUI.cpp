@@ -271,6 +271,127 @@ void WindowDragHint::SetHintType(vr::ETrackedControllerRole controller_role, boo
 }
 
 
+//--WindowGazeFadeAutoHint
+WindowGazeFadeAutoHint::WindowGazeFadeAutoHint() : AuxUIWindow(auxui_gazefade_auto_hint), m_TargetOverlay(k_ulOverlayID_None), m_Countdown(3), m_TickTime(0.0)
+{
+    //Leave 2 pixel padding around so interpolation doesn't cut off the pixel border
+    const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_aux_ui);
+    m_Pos  = {float(rect.GetTL().x + 2), float(rect.GetTL().y + 2)};
+    m_Size = {-1.0f, -1.0f};
+}
+
+void WindowGazeFadeAutoHint::SetUpOverlay()
+{
+    vr::VROverlayHandle_t overlay_handle = UIManager::Get()->GetOverlayHandleAuxUI();
+
+    vr::VROverlay()->SetOverlayWidthInMeters(overlay_handle, OVERLAY_WIDTH_METERS_AUXUI_GAZEFADE_AUTO_HINT);
+    vr::VROverlay()->SetOverlaySortOrder(overlay_handle, 100);
+    vr::VROverlay()->SetOverlayAlpha(overlay_handle, 0.0f);
+    vr::VROverlay()->SetOverlayInputMethod(overlay_handle, vr::VROverlayInputMethod_None);
+
+    SetUpTextureBounds();
+
+    vr::VROverlay()->ShowOverlay(overlay_handle);
+}
+
+void WindowGazeFadeAutoHint::UpdateOverlayPos()
+{
+    //Initial offset (somewhat centered inside controller model, for Index at least)
+    Matrix4 mat;
+    mat.translate_relative(0.0f, 0.0f, -1.00f);
+
+    //Set transform
+    vr::HmdMatrix34_t mat_ovr = mat.toOpenVR34();
+    vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(UIManager::Get()->GetOverlayHandleAuxUI(), vr::k_unTrackedDeviceIndex_Hmd, &mat_ovr);
+}
+
+bool WindowGazeFadeAutoHint::Show()
+{
+    m_Countdown = 3;
+    m_TickTime = 0.0;         //Triggers label update right away on Update()
+
+    //Deactivate GazeFade during the countdown so the overlay is visible to the user
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)m_TargetOverlay);
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_gazefade_enabled), false);
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+
+    return AuxUIWindow::Show();
+}
+
+void WindowGazeFadeAutoHint::Hide()
+{
+    //Trigger GazeFade auto-configure
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)m_TargetOverlay);
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_gaze_fade_auto);
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_gazefade_enabled), true);
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+
+    //Enable gaze fade if it isn't yet
+    OverlayManager::Get().GetConfigData(m_TargetOverlay).ConfigBool[configid_bool_overlay_gazefade_enabled] = true;
+
+    AuxUIWindow::Hide();
+}
+
+void WindowGazeFadeAutoHint::Update()
+{
+    bool render_window = WindowUpdateBase() || m_Size.x == -1.0f;
+
+    if (!render_window)
+        return;
+
+    if (m_TickTime + 1.0 < ImGui::GetTime())
+    {
+        if (m_Countdown == 0)
+        {
+            //Hide and keep the old label during fade-out
+            Hide();
+        }
+        else //Update label
+        {
+            m_Label = TranslationManager::GetString((m_Countdown != 1) ? tstr_AuxUIGazeFadeAutoHint : tstr_AuxUIGazeFadeAutoHintSingular);
+            StringReplaceAll(m_Label, "%SECONDS%", std::to_string(m_Countdown));
+
+            m_Countdown--;
+            m_TickTime = ImGui::GetTime();
+        }
+    }
+
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
+
+    if (!m_Visible)
+        flags |= ImGuiWindowFlags_NoInputs;
+
+    ImGui::SetNextWindowPos(m_Pos, ImGuiCond_Always);
+    ImGui::Begin("WindowGazeFadeAutoHint", nullptr, flags);
+
+    ImGui::TextUnformatted(m_Label.c_str());
+
+    m_Size = ImGui::GetWindowSize();
+    ImGui::End();
+
+    if ( (!UIManager::Get()->IsInDesktopMode()) && (!m_IsTransitionFading) )
+    {
+        UpdateOverlayPos();
+    }
+
+    if (m_AutoSizeFrames > 0)
+    {
+        m_AutoSizeFrames--;
+
+        if (m_AutoSizeFrames == 0)
+        {
+            if (!UIManager::Get()->IsInDesktopMode())
+                SetUpOverlay();
+        }
+    }
+}
+
+void WindowGazeFadeAutoHint::SetTargetOverlay(unsigned int overlay_id)
+{
+    m_TargetOverlay = overlay_id;
+}
+
+
 //--WindowCaptureWindowSelect
 WindowCaptureWindowSelect::WindowCaptureWindowSelect() : AuxUIWindow(auxui_window_select), m_WindowLastClicked(nullptr), m_HoveredTickLast(0)
 {
@@ -457,6 +578,7 @@ void AuxUI::Update()
 {
     //All Aux UI windows are updated even when not active
     m_WindowDragHint.Update();
+    m_WindowGazeFadeAutoHint.Update();
     m_WindowCaptureWindowSelect.Update();
 }
 
@@ -521,6 +643,11 @@ void AuxUI::SetFadeOutFinished()
 WindowDragHint& AuxUI::GetDragHintWindow()
 {
     return m_WindowDragHint;
+}
+
+WindowGazeFadeAutoHint& AuxUI::GetGazeFadeAutoHintWindow()
+{
+    return m_WindowGazeFadeAutoHint;
 }
 
 WindowCaptureWindowSelect& AuxUI::GetCaptureWindowSelectWindow()
