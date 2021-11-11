@@ -65,7 +65,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>d3d11.lib;dxgi.lib;openvr_api.lib;winmm.lib;dwmapi.lib;userenv.lib;DesktopPlusWinRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Shared\lib\x64;$(OutputPath)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Shared;$(OutputPath)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -95,7 +95,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>d3d11.lib;dxgi.lib;openvr_api.lib;winmm.lib;dwmapi.lib;userenv.lib;DesktopPlusWinRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Shared\lib\x64;$(OutputPath)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Shared;$(OutputPath)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
