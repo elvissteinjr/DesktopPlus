@@ -5795,7 +5795,20 @@ void OutputManager::DetachedOverlayGazeFade()
             gaze_distance = std::min(gaze_distance, 1.0f); //To get useful fading past 1m distance we'll have to limit the value to 1m here for the math below
 
             float alpha = clamp((distance * -fade_rate) + ((gaze_distance - 0.1f) * 10.0f), 0.0f, 1.0f); //There's nothing smart behind this, just trial and error
-            alpha *= ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity);
+
+            //Adapt alpha result from a 0.0 - 1.0 range to gazefade_opacity - overlay_opacity and invert if necessary
+            float max_alpha = ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity);
+            float min_alpha = ConfigManager::Get().GetConfigFloat(configid_float_overlay_gazefade_opacity);
+            float range_length = max_alpha - min_alpha;
+
+            if (range_length >= 0.0f)
+            {
+                alpha = (alpha * range_length) + min_alpha;
+            }
+            else //Gaze Fade target opacity higher than overlay opcacity, invert behavior
+            {
+                alpha = ((alpha - 1.0f) * range_length) + max_alpha;
+            }
             
             OverlayManager::Get().GetCurrentOverlay().SetOpacity(alpha);
         }

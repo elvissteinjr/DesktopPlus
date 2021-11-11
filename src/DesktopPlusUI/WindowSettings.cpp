@@ -1670,6 +1670,20 @@ void WindowSettings::UpdateCatOverlayTabAdvanced()
         }
         ImGui::NextColumn();
 
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Target Opacity");
+        ImGui::NextColumn();
+
+        float& target_opacity = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_opacity);
+
+        if (ImGui::SliderWithButtonsFloatPercentage("OverlayFadeGazeOpacity", target_opacity, 5, 1, 0, 100, "%d%%"))
+        {
+            target_opacity = clamp(target_opacity, 0.0f, 1.0f);
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_gazefade_opacity), *(LPARAM*)&target_opacity);
+        }
+        ImGui::NextColumn();
+
         if (!gazefade_enabled)
             ImGui::PopItemDisabled();
 

@@ -143,6 +143,7 @@ enum ConfigID_Float
     configid_float_overlay_offset_forward,
     configid_float_overlay_gazefade_distance,
     configid_float_overlay_gazefade_rate,
+    configid_float_overlay_gazefade_opacity,
     configid_float_overlay_update_limit_override_ms,
     configid_float_overlay_MAX,
     configid_float_input_keyboard_detached_size,
