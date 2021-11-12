@@ -286,14 +286,6 @@ void OverlayManager::RemoveOverlay(unsigned int id)
 {
     if (id < m_OverlayConfigData.size())
     {
-        #ifndef DPLUS_UI
-            //Hide overlay before removal to keep active count correct
-            if (OutputManager* outmgr = OutputManager::Get())
-            {
-                outmgr->HideOverlay(id);
-            }
-        #endif
-
         m_OverlayConfigData.erase(m_OverlayConfigData.begin() + id);
 
         #ifndef DPLUS_UI
@@ -329,7 +321,10 @@ void OverlayManager::RemoveOverlay(unsigned int id)
 
                             overlay.SetHandle(ovrl_handle);
 
-                            //Update cached visibility to new handle's state
+                            //Update cached visibility/opacity to new handle's state
+                            float alpha = 1.0f;
+                            vr::VROverlay()->GetOverlayAlpha(ovrl_handle, &alpha);
+                            overlay.SetOpacity(alpha);
                             overlay.SetVisible(vr::VROverlay()->IsOverlayVisible(ovrl_handle));
                         }
                     }
@@ -347,6 +342,12 @@ void OverlayManager::RemoveOverlay(unsigned int id)
             else //It's the last overlay so it can just be straight up erased and everything will be fine
             {
                 m_Overlays.erase(m_Overlays.begin() + id);
+
+                //Keep active count correct
+                if (OutputManager* outmgr = OutputManager::Get())
+                {
+                    outmgr->ResetOverlayActiveCount();
+                }
             }
         #endif
 
