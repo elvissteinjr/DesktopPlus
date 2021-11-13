@@ -96,23 +96,27 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
     m_ActiveOverlayID = overlay_id;
 
     OverlayManager::Get().SetCurrentOverlayID(overlay_id);
-    OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
-    m_WindowTitle = data.ConfigNameStr;
+    //k_ulOverlayID_None is used when fading out an overlay that got deleted, so keep old info around while fading out
+    if (overlay_id != k_ulOverlayID_None)
+    {
+        OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
-    bool has_win32_window_icon = false;
-    m_WindowIcon = TextureManager::Get().GetOverlayIconTextureID(data, true, &has_win32_window_icon);
+        m_WindowTitle = data.ConfigNameStr;
+
+        bool has_win32_window_icon = false;
+        m_WindowIcon = TextureManager::Get().GetOverlayIconTextureID(data, true, &has_win32_window_icon);
     
-    if (has_win32_window_icon)
-    {
-        m_WindowIconWin32IconCacheID = TextureManager::Get().GetWindowIconCacheID((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], 
-                                                                                  data.ConfigHandle[configid_handle_overlay_state_winrt_last_hicon]);
+        if (has_win32_window_icon)
+        {
+            m_WindowIconWin32IconCacheID = TextureManager::Get().GetWindowIconCacheID((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], 
+                                                                                      data.ConfigHandle[configid_handle_overlay_state_winrt_last_hicon]);
+        }
+        else
+        {
+            m_WindowIconWin32IconCacheID = -1;
+        }
     }
-    else
-    {
-        m_WindowIconWin32IconCacheID = -1;
-    }
-
 
     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), (int)overlay_id);
 }

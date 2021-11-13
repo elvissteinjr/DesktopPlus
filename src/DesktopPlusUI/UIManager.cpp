@@ -459,14 +459,18 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                 {
                     unsigned int overlay_id = (unsigned int)msg.lParam;
 
+                    OverlayManager::Get().RemoveOverlay(overlay_id);
+
                     //Hide properties window if it's open for this overlay
                     if (m_WindowOverlayProperties.GetActiveOverlayID() == overlay_id)
                     {
+                        m_WindowOverlayProperties.SetActiveOverlayID(k_ulOverlayID_None, true);
                         m_WindowOverlayProperties.Hide();
-                        m_WindowOverlayProperties.SetActiveOverlayID(k_ulOverlayID_None);
                     }
-
-                    OverlayManager::Get().RemoveOverlay(overlay_id);
+                    else if (m_WindowOverlayProperties.GetActiveOverlayID() > overlay_id) //Adjust properties window active overlay ID if it's open for an overlay that had its shifted
+                    {
+                        m_WindowOverlayProperties.SetActiveOverlayID(m_WindowOverlayProperties.GetActiveOverlayID() - 1, true);
+                    }
 
                     m_WindowOverlayBar.HideMenus();
                     break;

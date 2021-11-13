@@ -315,15 +315,19 @@ void WindowOverlayBar::MenuOverlayButton(unsigned int overlay_id, ImVec2 pos, bo
         {
             if (ImGui::Selectable(TranslationManager::GetString(tstr_OverlayBarOvrlRemoveConfirm), false))
             {
+                OverlayManager::Get().RemoveOverlay(overlay_id);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_remove, overlay_id);
+
                 //Hide properties window if it's open for this overlay
                 if (properties_window.GetActiveOverlayID() == overlay_id)
                 {
+                    properties_window.SetActiveOverlayID(k_ulOverlayID_None, true);
                     properties_window.Hide();
-                    properties_window.SetActiveOverlayID(k_ulOverlayID_None);
                 }
-
-                OverlayManager::Get().RemoveOverlay(overlay_id);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_remove, overlay_id);
+                else if (properties_window.GetActiveOverlayID() > overlay_id) //Adjust properties window active overlay ID if it's open for an overlay that had its shifted
+                {
+                    properties_window.SetActiveOverlayID(properties_window.GetActiveOverlayID() - 1, true);
+                }
 
                 HideMenus();
             }
