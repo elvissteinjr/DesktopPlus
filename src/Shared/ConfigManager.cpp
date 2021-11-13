@@ -160,7 +160,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigBool[configid_bool_overlay_actionbar_enabled]           = config.ReadBool(section.c_str(), "ShowActionBar", false);
     data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]  = config.ReadBool(section.c_str(), "ActionBarOrderUseGlobal", true);
 
-    bool do_set_auto_name = false;
+    bool do_set_auto_name = ( (!data.ConfigBool[configid_bool_overlay_name_custom]) && (data.ConfigNameStr.empty()) );
 
     //Restore WinRT Capture state if possible
     if ( (data.ConfigInt[configid_int_overlay_winrt_desktop_id] == -2) && (!data.ConfigStr[configid_str_overlay_winrt_last_window_title].empty()) )

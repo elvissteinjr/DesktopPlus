@@ -6,7 +6,8 @@ enum WindowSettingsPage
 {
     wndsettings_page_none,
     wndsettings_page_main,
-    wndsettings_page_keyboard
+    wndsettings_page_keyboard,
+    wndsettings_page_reset_confirm
 };
 
 enum WindowSettingsMainCategory
@@ -60,6 +61,7 @@ class WindowSettingsNew : public FloatingWindow
         void UpdatePageMainCatWindows();
         void UpdatePageMainCatMisc();
         void UpdatePageKeyboardLayout();
+        void UpdatePageResetConfirm();
 
         void PageGoForward(WindowSettingsPage new_page);
         void PageGoBack();

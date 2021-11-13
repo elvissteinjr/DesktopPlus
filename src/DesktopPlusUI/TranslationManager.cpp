@@ -77,6 +77,8 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsTroubleshootingElevatedModeEnter",
     "tstr_SettingsTroubleshootingElevatedModeLeave",
     "tstr_SettingsTroubleshootingSettingsReset",
+    "tstr_SettingsTroubleshootingSettingsResetConfirmDescription",
+    "tstr_SettingsTroubleshootingSettingsResetConfirmButton",
     "tstr_KeyboardWindowTitle",
     "tstr_KeyboardWindowTitleSettings",
     "tstr_OvrlPropsCatPosition",

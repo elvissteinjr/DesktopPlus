@@ -141,8 +141,9 @@ void WindowSettingsNew::WindowUpdate()
 
             switch (page_id)
             {
-                case wndsettings_page_main:      UpdatePageMain();            break;
-                case wndsettings_page_keyboard:  UpdatePageKeyboardLayout();  break;
+                case wndsettings_page_main:          UpdatePageMain();           break;
+                case wndsettings_page_keyboard:      UpdatePageKeyboardLayout(); break;
+                case wndsettings_page_reset_confirm: UpdatePageResetConfirm();   break;
                 default: break;
             }
         }
@@ -1010,12 +1011,12 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
 
         ImGui::Columns(1);
 
-        /*ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
 
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsReset)))
         {
-            ImGui::OpenPopup("SettingsResetPopup");
-        }*/
+            PageGoForward(wndsettings_page_reset_confirm);
+        }
     }
 }
 
@@ -1217,6 +1218,44 @@ void WindowSettingsNew::UpdatePageKeyboardLayout()
 
         vr_keyboard.LoadCurrentLayout();
 
+        PageGoBack();
+    }
+}
+
+void WindowSettingsNew::UpdatePageResetConfirm()
+{
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsReset) ); 
+    ImGui::Indent();
+
+    ImGui::PushTextWrapPos();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsResetConfirmDescription));
+    ImGui::PopTextWrapPos();
+
+    ImGui::Unindent();
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+
+    //Confirmation buttons
+    ImGui::Separator();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsResetConfirmButton))) 
+    {
+        //Do the reset
+        ConfigManager::Get().RestoreConfigFromDefault();
+
+        UIManager::Get()->Restart(UIManager::Get()->IsInDesktopMode()); //This shouldn't be necessary, but let's still do it to really ensure clean state
+
+        //We restart this after the UI since the new UI process needs to detect the dashboard app running first so it doesn't launch in desktop mode
+        if (IPCManager::IsDashboardAppRunning())
+        {
+            UIManager::Get()->RestartDashboardApp();
+        }
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
+    {
         PageGoBack();
     }
 }
