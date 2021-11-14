@@ -177,6 +177,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsAdvancedInputFloatingUI",
     "tstr_OvrlPropsInterfaceActions",
     "tstr_OvrlPropsInterfaceActionsEdit",
+    "tstr_OvrlPropsInterfaceDesktopButtons",
     "tstr_OverlayBarOvrlHide",
     "tstr_OverlayBarOvrlShow",
     "tstr_OverlayBarOvrlClone",

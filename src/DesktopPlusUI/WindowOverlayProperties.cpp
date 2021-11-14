@@ -281,6 +281,7 @@ void WindowOverlayProperties::UpdatePageMain()
     UpdatePageMainCatCapture();
     UpdatePageMainCatPerformanceMonitor();
     UpdatePageMainCatAdvanced();
+    UpdatePageMainCatInterface();
 
     ImGui::EndChild();
 }
@@ -975,6 +976,25 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
             ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
         }
+    }
+
+    ImGui::Columns(1);
+}
+
+void WindowOverlayProperties::UpdatePageMainCatInterface()
+{
+    //Don't show interface settings for UI source overlays at all for now
+    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_ui)
+        return;
+
+    ImGui::Spacing();
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatInterface));
+    ImGui::Columns(2, "ColumnInterface", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsInterfaceDesktopButtons), &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_desktops_enabled)))
+    {
+        UIManager::Get()->RepeatFrame();
     }
 
     ImGui::Columns(1);
