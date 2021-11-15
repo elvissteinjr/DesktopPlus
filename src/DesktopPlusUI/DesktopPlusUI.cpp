@@ -357,7 +357,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         ui_manager.GetPerformanceWindow().UpdateVisibleState();
 
         //Do texture reload now if it had been scheduled
-        if ( (TextureManager::Get().GetReloadLaterFlag()) && (!ImGui::IsAnyItemActiveOrDeactivated()) ) //Do not reload texture while an item is active as the ID changes on ImageButtons
+        //However, do not reload texture while an item is active as the ID changes on ImageButtons... but allow it if InputText is active to not have placeholder characters on user input
+        if ( (TextureManager::Get().GetReloadLaterFlag()) && ( (!ImGui::IsAnyItemActiveOrDeactivated()) || (ImGui::IsAnyInputTextActive()) ) )
         {
             TextureManager::Get().LoadAllTexturesAndBuildFonts();
         }

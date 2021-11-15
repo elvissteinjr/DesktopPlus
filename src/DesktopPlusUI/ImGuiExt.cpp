@@ -866,7 +866,7 @@ namespace ImGui
 
     bool HasHoveredNewItem()
     {
-        ImGuiContext& g = *GImGui;
+        const ImGuiContext& g = *GImGui;
         bool blocked_by_active_item = (g.ActiveId != 0 && !g.ActiveIdAllowOverlap);
 
         return ( (g.HoveredId != g.HoveredIdPreviousFrame) && (g.HoveredId != 0) && (!blocked_by_active_item) );
@@ -874,13 +874,19 @@ namespace ImGui
 
     bool IsAnyItemActiveOrDeactivated()
     {
-        ImGuiContext& g = *GImGui;
+        const ImGuiContext& g = *GImGui;
         return ( (g.ActiveId != 0) || (g.ActiveIdPreviousFrame != 0) );
+    }
+
+    bool IsAnyInputTextActive()
+    {
+        const ImGuiContext& g = *GImGui;
+        return ( (g.ActiveId != 0) && (g.ActiveId == g.InputTextState.ID) );
     }
 
     bool IsAnyMouseClicked()
     {
-        ImGuiContext& g = *GImGui;
+        const ImGuiContext& g = *GImGui;
         for (int n = 0; n < IM_ARRAYSIZE(g.IO.MouseDown); n++)
             if (g.IO.MouseClicked[n])
                 return true;

@@ -13,7 +13,8 @@ VRKeyboard::VRKeyboard() :
     m_ActiveInputText(0),
     m_InputBeginWidgetID(0),
     m_MouseLeftStateOldCached(false),
-    m_KeyboardHiddenLastFrame(false)
+    m_KeyboardHiddenLastFrame(false),
+    m_LastAutoHiddenTime(0.0)
 {
     std::fill_n(m_KeyDown, IM_ARRAYSIZE(m_KeyDown), 0);
 }
@@ -387,6 +388,11 @@ void VRKeyboard::VRKeyboardInputBegin(const char* str_id)
     VRKeyboardInputBegin(ImGui::GetID(str_id));
 }
 
+double VRKeyboard::GetLastAutoHiddenTime() const
+{
+    return m_LastAutoHiddenTime;
+}
+
 void VRKeyboard::VRKeyboardInputBegin(ImGuiID widget_id)
 {
     ImGuiContext& g = *GImGui;
@@ -455,12 +461,15 @@ void VRKeyboard::VRKeyboardInputEnd()
 
 void VRKeyboard::OnImGuiNewFrame()
 {
+    if (UIManager::Get()->IsInDesktopMode())
+        return;
+
     ImGuiIO& io = ImGui::GetIO();
 
     //Show keyboard for UI if needed
     if (io.WantTextInput)
     {
-        if (!m_KeyboardHiddenLastFrame)
+        if ( (!m_KeyboardHiddenLastFrame) && ( (!m_TargetIsUI) || (!m_WindowKeyboard.IsVisible()) ) )
         {
             m_TargetIsUI = true;
             m_WindowKeyboard.Show();
@@ -476,7 +485,7 @@ void VRKeyboard::OnImGuiNewFrame()
     else if (m_WindowKeyboard.IsVisible())
     {
         //If keyboard is visible for an overlay, just disable UI target
-        //if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1)
+        if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -2)
         {
             if (m_TargetIsUI)
             {
@@ -485,13 +494,10 @@ void VRKeyboard::OnImGuiNewFrame()
                 m_WindowKeyboard.Show(); //Show() updates window title
             }
         }
-        /*else //Auto hide is problematic, maybe find a solution later
+        else //Auto-hide when assigned to UI and no longer needed
         {
             m_WindowKeyboard.Hide();
-        }*/
-        if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) == -2)
-        {
-            m_WindowKeyboard.Hide();
+            m_LastAutoHiddenTime = ImGui::GetTime();
         }
     }
 

@@ -76,6 +76,9 @@ namespace ImGui
     //Returns true if any item is or was active in the previous frame
     bool IsAnyItemActiveOrDeactivated();
 
+    //Returns true if any InputText is active
+    bool IsAnyInputTextActive();
+
     //Returns true if any mouse button is clicked
     bool IsAnyMouseClicked();
 
