@@ -35,6 +35,7 @@ class WindowOverlayProperties : public FloatingWindow
 
         std::string m_CropButtonLabel;
         std::string m_WinRTSourceButtonLabel;
+        char m_BufferOverlayName[1024];
 
         virtual void WindowUpdate();
         void OverlayPositionReset();

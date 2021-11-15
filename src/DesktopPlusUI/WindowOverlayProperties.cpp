@@ -22,7 +22,8 @@ WindowOverlayProperties::WindowOverlayProperties() :
     m_PageAppearing(wndovrlprop_page_main),
     m_ActiveOverlayID(k_ulOverlayID_None),
     m_Column0Width(0.0f),
-    m_IsConfigDataModified(false)
+    m_IsConfigDataModified(false),
+    m_BufferOverlayName{0}
 {
     m_WindowIcon = tmtex_icon_xsmall_settings;
     m_OvrlWidth = OVERLAY_WIDTH_METERS_SETTINGS;
@@ -103,6 +104,17 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
         OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
         m_WindowTitle = data.ConfigNameStr;
+
+        //Update overlay name buffer
+        if (data.ConfigBool[configid_bool_overlay_name_custom])
+        {
+            size_t copied_length = m_WindowTitle.copy(m_BufferOverlayName, IM_ARRAYSIZE(m_BufferOverlayName) - 1);
+            m_BufferOverlayName[copied_length] = '\0';
+        }
+        else
+        {
+            m_BufferOverlayName[0] = '\0';
+        }
 
         bool has_win32_window_icon = false;
         m_WindowIcon = TextureManager::Get().GetOverlayIconTextureID(data, true, &has_win32_window_icon);
@@ -983,18 +995,56 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
 void WindowOverlayProperties::UpdatePageMainCatInterface()
 {
-    //Don't show interface settings for UI source overlays at all for now
-    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_ui)
-        return;
+    OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
     ImGui::Spacing();
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatInterface));
     ImGui::Columns(2, "ColumnInterface", false);
     ImGui::SetColumnWidth(0, m_Column0Width);
 
-    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsInterfaceDesktopButtons), &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_desktops_enabled)))
+    //Overlay Name
     {
-        UIManager::Get()->RepeatFrame();
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsInterfaceOverlayName));
+        ImGui::NextColumn();
+
+        ImGui::PushItemWidth(-1.0f);
+        vr_keyboard.VRKeyboardInputBegin("##InputOverlayName");
+        if (ImGui::InputTextWithHint("##InputOverlayName", TranslationManager::GetString(tstr_OvrlPropsInterfaceOverlayNameAuto), m_BufferOverlayName, 1024))
+        {
+            //If name buffer is not empty, set name from user input, otherwise fall back to auto naming
+            if (m_BufferOverlayName[0] != '\0')
+            {
+                data.ConfigBool[configid_bool_overlay_name_custom] = true;
+                data.ConfigNameStr = m_BufferOverlayName;
+
+                if (ImGui::StringContainsUnmappedCharacter(m_BufferOverlayName))
+                {
+                    TextureManager::Get().ReloadAllTexturesLater();
+                }
+            }
+            else
+            {
+                data.ConfigBool[configid_bool_overlay_name_custom] = false;
+                OverlayManager::Get().SetCurrentOverlayNameAuto();
+            }
+
+            m_WindowTitle = data.ConfigNameStr;
+        }
+        vr_keyboard.VRKeyboardInputEnd();
+
+        ImGui::Spacing();
+        ImGui::NextColumn();
+    }
+
+    //Don't show for UI source overlays
+    if (data.ConfigInt[configid_int_overlay_capture_source] != ovrl_capsource_ui)
+    {
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsInterfaceDesktopButtons), &data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled]))
+        {
+            UIManager::Get()->RepeatFrame();
+        }
     }
 
     ImGui::Columns(1);
