@@ -212,13 +212,16 @@ void FloatingUI::UpdateUITargetState()
 
         if (data.ConfigBool[configid_bool_overlay_3D_enabled])
         {
-            if ( (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) )
+            if ((data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) || (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_ou))
             {
-                height_factor_3d = 2.0f;
-            }
-            else if (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_ou)
-            {
-                height_factor_3d = 0.5f;
+                //Additionally check if the overlay is actually displaying 3D content right now (can be not the case when error texture is shown)
+                uint32_t ovrl_flags = 0;
+                vr::VROverlay()->GetOverlayFlags(m_OvrlHandleCurrentUITarget, &ovrl_flags);
+
+                if ((ovrl_flags & vr::VROverlayFlags_SideBySide_Parallel) || (ovrl_flags & vr::VROverlayFlags_SideBySide_Crossed))
+                {
+                    height_factor_3d = (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) ? 2.0f : 0.5f;
+                }
             }
         }
 

@@ -2074,13 +2074,16 @@ void OutputManager::SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle)
 {
     vr::EVROverlayError vr_error = vr::VROverlay()->SetOverlayFromFile(overlay_handle, (ConfigManager::Get().GetApplicationPath() + "images/output_error.png").c_str());    
 
-    vr::VRTextureBounds_t tex_bounds;
-    tex_bounds.uMin = 0.0f;
-    tex_bounds.vMin = 0.0f;
+    vr::VRTextureBounds_t tex_bounds = {0.0f};
     tex_bounds.uMax = 1.0f;
     tex_bounds.vMax = 1.0f;
 
     vr::VROverlay()->SetOverlayTextureBounds(overlay_handle, &tex_bounds);
+
+    //Make sure to remove 3D on the overlay too
+    vr::VROverlay()->SetOverlayFlag(overlay_handle, vr::VROverlayFlags_SideBySide_Parallel, false);
+    vr::VROverlay()->SetOverlayFlag(overlay_handle, vr::VROverlayFlags_SideBySide_Crossed,  false);
+    vr::VROverlay()->SetOverlayTexelAspect(overlay_handle, 1.0f);
 }
 
 void OutputManager::SetOutputInvalid()
@@ -4535,13 +4538,21 @@ void OutputManager::ApplySettingCaptureSource()
 void OutputManager::ApplySetting3DMode()
 {
     const Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
+    const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
     vr::VROverlayHandle_t ovrl_handle = overlay_current.GetHandle();
-    bool is_enabled = (overlay_current.GetTextureSource() != ovrl_texsource_none) ? ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_enabled) : false;
+    bool is_enabled = ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_enabled);
     int mode = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
+
+    //Override mode to none if texsource is none or the desktop duplication output is invalid
+    if ( (overlay_current.GetTextureSource() == ovrl_texsource_none) || ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) && (m_OutputInvalid) ) )
+    {
+        is_enabled = false;
+    }
 
     if (is_enabled)
     {
-        if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_swapped))
+        if (data.ConfigBool[configid_bool_overlay_3D_swapped])
         {
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Parallel, false);
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Crossed, true);
@@ -4580,7 +4591,7 @@ void OutputManager::ApplySetting3DMode()
         vr::VROverlay()->SetOverlayTexelAspect(ovrl_handle, 1.0f);
     }
 
-    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
+    if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
     {
         if ( (is_enabled) && ((mode == ovrl_3Dmode_ou) || (mode == ovrl_3Dmode_hou)) )
         {
