@@ -28,6 +28,7 @@ class WindowKeyboard : public FloatingWindow
     private:
         float m_WindowWidth;
         bool m_IsHovered;
+        bool m_IsAnyButtonHovered;
 
         bool m_IsIsoEnterDown;
         bool m_UnstickModifiersLater;
@@ -40,6 +41,8 @@ class WindowKeyboard : public FloatingWindow
         std::vector<LaserInputState> m_LaserInputStates;
 
         virtual void WindowUpdate();
+
+        virtual bool IsVirtualWindowItemHovered() const;
 
         void OnVirtualKeyDown(unsigned char keycode, bool block_modifiers = false);
         void OnVirtualKeyUp(unsigned char keycode, bool block_modifiers = false);

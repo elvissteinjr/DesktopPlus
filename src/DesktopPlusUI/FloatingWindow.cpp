@@ -182,7 +182,7 @@ void FloatingWindow::WindowUpdateBase()
 
     //Blank space drag
     if ( (ConfigManager::Get().GetConfigBool(configid_bool_interface_blank_space_drag_enabled)) && (m_Visible) && (UIManager::Get()->IsOpenVRLoaded()) && (!ImGui::IsAnyItemHovered()) &&
-         (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) )
+         (!IsVirtualWindowItemHovered()) && (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) )
     {
         if ( (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {
@@ -200,7 +200,12 @@ void FloatingWindow::WindowUpdateBase()
         ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
 }
 
-void FloatingWindow::HelpMarker(const char* desc, const char* marker_str)
+bool FloatingWindow::IsVirtualWindowItemHovered() const
+{
+    return false;
+}
+
+void FloatingWindow::HelpMarker(const char* desc, const char* marker_str) const
 {
     ImGui::TextDisabled(marker_str);
     if (ImGui::IsItemHovered())
@@ -253,7 +258,7 @@ void FloatingWindow::HelpMarker(const char* desc, const char* marker_str)
     }
 }
 
-bool FloatingWindow::TranslatedComboAnimated(const char* label, int& value, TRMGRStrID trstr_min, TRMGRStrID trstr_max)
+bool FloatingWindow::TranslatedComboAnimated(const char* label, int& value, TRMGRStrID trstr_min, TRMGRStrID trstr_max) const
 {
     bool ret = false;
 

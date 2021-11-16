@@ -15,6 +15,7 @@
 WindowKeyboard::WindowKeyboard() : 
     m_WindowWidth(-1.0f),
     m_IsHovered(false),
+    m_IsAnyButtonHovered(false),
     m_IsIsoEnterDown(false),
     m_UnstickModifiersLater(false),
     m_SubLayoutOverride(kbdlayout_sub_base),
@@ -284,6 +285,8 @@ void WindowKeyboard::WindowUpdate()
 
         m_UnstickModifiersLater = false;
     }
+
+    m_IsAnyButtonHovered = false;
 
     int key_index = 0;
     for (const auto& key : vr_keyboard.GetLayout(current_sublayout))
@@ -618,6 +621,11 @@ void WindowKeyboard::WindowUpdate()
     io.KeyRepeatDelay = key_repeat_delay_old;
 }
 
+bool WindowKeyboard::IsVirtualWindowItemHovered() const
+{
+    return m_IsAnyButtonHovered;
+}
+
 void WindowKeyboard::OnVirtualKeyDown(unsigned char keycode, bool block_modifiers)
 {
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
@@ -945,6 +953,11 @@ bool WindowKeyboard::ButtonLaser(const char* label, const ImVec2& size_arg, Butt
                     is_pressed = true;
                 }
             }
+        }
+
+        if ( (state.DeviceIndex == vr::k_unTrackedDeviceIndexOther) && ( (hovered) || (button_state.IsHeld) ) )
+        {
+            m_IsAnyButtonHovered = true;
         }
 
         if (hovered)
