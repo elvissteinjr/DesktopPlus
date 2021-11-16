@@ -1011,12 +1011,15 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
 
         ImGui::Columns(1);
 
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
+        ImGui::Spacing();
+        ImGui::Indent();
 
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsReset)))
         {
             PageGoForward(wndsettings_page_reset_confirm);
         }
+
+        ImGui::Unindent();
     }
 }
 
