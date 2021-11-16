@@ -4052,13 +4052,13 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 {
                     OnDragFinish();
                     m_OverlayDragger.DragFinish();
+
+                    ApplySettingTransform();
                 }
                 else if ((vr_event.data.mouse.button == vr::VRMouseButton_Right) && (m_OverlayDragger.IsDragGestureActive()))
                 {
                     m_OverlayDragger.DragGestureFinish();
                 }
-
-                ApplySettingTransform();
 
                 break;
             }

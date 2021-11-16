@@ -616,6 +616,18 @@ Matrix4 OverlayDragger::DragGestureFinish()
                                                   -data.ConfigFloat[configid_float_overlay_offset_up],
                                                   -data.ConfigFloat[configid_float_overlay_offset_forward]);
 
+        //Counteract origin offset for dashboard origin overlays
+        #ifndef DPLUS_UI
+        if (m_DragModeOverlayOrigin == ovrl_origin_dashboard)
+        {
+            if (OutputManager* outmgr = OutputManager::Get())
+            {
+                float height = outmgr->GetOverlayHeight(m_DragModeOverlayID);
+                matrix_target_relative.translate_relative(0.0f, height / -2.0f, 0.0f);
+            }
+        }
+        #endif
+
         data.ConfigTransform = matrix_target_relative;
     }
 
