@@ -3518,6 +3518,33 @@ bool OutputManager::HandleOpenVREvents()
                 //Finish a temp drag if one's going
                 DetachedTempDragFinish();
 
+                //If there is a drag going with a dashboard origin overlay (or related display mode), cancel or finish it to avoid the overlay ending up in a random spot
+                if ( (m_OverlayDragger.IsDragActive()) || (m_OverlayDragger.IsDragGestureActive()) )
+                {
+                    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_OverlayDragger.GetDragOverlayID());
+
+                    if ( (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_dashboard) || (data.ConfigInt[configid_int_overlay_display_mode] == ovrl_dispmode_dashboard) || 
+                         (data.ConfigInt[configid_int_overlay_display_mode] == ovrl_dispmode_dplustab) )
+                    { 
+                        if (m_OverlayDragger.IsDragActive())
+                        {
+                            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+                            OverlayManager::Get().SetCurrentOverlayID(m_OverlayDragger.GetDragOverlayID());
+
+                            OnDragFinish();
+                            m_OverlayDragger.DragCancel();  //Overlay can still disappear, so we just cancel the drag instead
+
+                            ApplySettingTransform();
+
+                            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+                        }
+                        else if (m_OverlayDragger.IsDragGestureActive())
+                        {
+                            m_OverlayDragger.DragGestureFinish();
+                        }
+                    }
+                }
+
                 break;
             }
             case vr::VREvent_SeatedZeroPoseReset:

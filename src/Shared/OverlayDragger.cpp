@@ -475,6 +475,15 @@ Matrix4 OverlayDragger::DragFinish()
     return matrix_target_relative;
 }
 
+void OverlayDragger::DragCancel()
+{
+    //Reset state
+    m_DragModeDeviceID      = -1;
+    m_DragModeOverlayID     = k_ulOverlayID_None;
+    m_DragModeOverlayHandle = vr::k_ulOverlayHandleInvalid;
+    m_AbsoluteModeActive    = false;
+}
+
 void OverlayDragger::DragGestureStartBase()
 {
     if ( (IsDragActive()) || (IsDragGestureActive()) )

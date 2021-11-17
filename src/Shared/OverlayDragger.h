@@ -44,6 +44,7 @@ class OverlayDragger
         void DragAddDistance(float distance);
         float DragAddWidth(float width);                            //Returns new width
         Matrix4 DragFinish();                                       //Returns new overlay origin-relative transform
+        void DragCancel();                                          //Stops drag without applying any changes
 
         void DragGestureStart(unsigned int overlay_id);
         void DragGestureStart(vr::VROverlayHandle_t overlay_handle, OverlayOrigin overlay_origin = ovrl_origin_room);
