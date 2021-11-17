@@ -175,7 +175,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsAdvancedGazeFadeSensitivity",
     "tstr_OvrlPropsAdvancedGazeFadeOpacity",
     "tstr_OvrlPropsAdvancedInput",
-    "tstr_OvrlPropsAdvancedInputAutoToggle",
+    "tstr_OvrlPropsAdvancedInputInGame",
     "tstr_OvrlPropsAdvancedInputFloatingUI",
     "tstr_OvrlPropsInterfaceOverlayName",
     "tstr_OvrlPropsInterfaceOverlayNameAuto",

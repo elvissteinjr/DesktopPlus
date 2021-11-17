@@ -193,9 +193,10 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
             //Desktop+ overlays
             for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
             {
-                const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
+                const Overlay& overlay        = OverlayManager::Get().GetOverlay(i);
+                const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-                if (overlay.IsVisible())
+                if ( (overlay.IsVisible()) && (data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]) )
                 {
                     //Check if input is enabled right now (could differ from config setting)
                     vr::VROverlayInputMethod input_method = vr::VROverlayInputMethod_None;
@@ -785,7 +786,7 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
                 const Overlay& overlay        = OverlayManager::Get().GetOverlay(i);
                 const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-                if ( (data.ConfigInt[configid_int_overlay_origin] != origin_avoid) && (overlay.IsVisible()) )
+                if ( (data.ConfigInt[configid_int_overlay_origin] != origin_avoid) && (overlay.IsVisible()) && (data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]) )
                 {
                     //Check if input is enabled right now (could differ from config setting)
                     vr::VROverlayInputMethod input_method = vr::VROverlayInputMethod_None;

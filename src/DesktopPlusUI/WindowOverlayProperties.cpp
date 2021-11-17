@@ -984,10 +984,51 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
             if (!gazefade_enabled)
                 ImGui::PopItemDisabled();
 
+            ImGui::Spacing();
             ImGui::NextColumn();
 
             ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
         }
+    }
+
+    //Laser Pointer Input
+    {
+        bool& input_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_input_enabled);
+
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedInput), &input_enabled))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_input_enabled), input_enabled);
+        }
+        ImGui::NextColumn();
+
+        if (!input_enabled)
+            ImGui::PushItemDisabled();
+
+        bool& input_dplus_lp_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_input_dplus_lp_enabled);
+        bool& floating_ui_enabled    = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled);
+
+        //Show disabled as unticked to avoid confusion
+        bool input_dplus_lp_enabled_visual = (!input_enabled) ? false : input_dplus_lp_enabled;
+        bool floating_ui_enabled_visual    = (!input_enabled) ? false : floating_ui_enabled;
+
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedInputInGame), &input_dplus_lp_enabled_visual))
+        {
+            input_dplus_lp_enabled = input_dplus_lp_enabled_visual;
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_input_dplus_lp_enabled), input_dplus_lp_enabled);
+        }
+
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+
+
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedInputFloatingUI), &floating_ui_enabled_visual))
+        {
+            floating_ui_enabled = floating_ui_enabled_visual;
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_floatingui_enabled), floating_ui_enabled);
+        }
+
+        if (!input_enabled)
+            ImGui::PopItemDisabled();
     }
 
     ImGui::Columns(1);

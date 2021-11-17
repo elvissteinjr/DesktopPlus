@@ -28,6 +28,7 @@ enum ConfigID_Bool
     configid_bool_overlay_3D_swapped,
     configid_bool_overlay_gazefade_enabled,
     configid_bool_overlay_input_enabled,
+    configid_bool_overlay_input_dplus_lp_enabled,
     configid_bool_overlay_update_invisible,
     configid_bool_overlay_floatingui_enabled,
     configid_bool_overlay_floatingui_desktops_enabled,

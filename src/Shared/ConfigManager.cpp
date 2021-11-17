@@ -152,6 +152,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigFloat[configid_float_overlay_update_limit_override_ms]  = config.ReadInt(section.c_str(),  "UpdateLimitMS", 0) / 100.0f;
     data.ConfigInt[configid_int_overlay_update_limit_override_fps]     = config.ReadInt(section.c_str(),  "UpdateLimitFPS", update_limit_fps_30);
     data.ConfigBool[configid_bool_overlay_input_enabled]               = config.ReadBool(section.c_str(), "InputEnabled", true);
+    data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]      = config.ReadBool(section.c_str(), "InputDPlusLPEnabled", true);
     data.ConfigInt[configid_int_overlay_group_id]                      = config.ReadInt(section.c_str(),  "GroupID", 0);
     data.ConfigBool[configid_bool_overlay_update_invisible]            = config.ReadBool(section.c_str(), "UpdateInvisible", false);
 
@@ -295,6 +296,7 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteInt( section.c_str(), "UpdateLimitMS",      int(data.ConfigFloat[configid_float_overlay_update_limit_override_ms] * 100.0f));
     config.WriteInt( section.c_str(), "UpdateLimitFPS",         data.ConfigInt[configid_int_overlay_update_limit_override_fps]);
     config.WriteBool(section.c_str(), "InputEnabled",           data.ConfigBool[configid_bool_overlay_input_enabled]);
+    config.WriteBool(section.c_str(), "InputDPlusLPEnabled",    data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]);
     config.WriteInt( section.c_str(), "GroupID",                data.ConfigInt[configid_int_overlay_group_id]);
     config.WriteBool(section.c_str(), "UpdateInvisible",        data.ConfigBool[configid_bool_overlay_update_invisible]);
 
