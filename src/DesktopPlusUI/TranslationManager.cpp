@@ -121,6 +121,8 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsPositionChangeOffsetUpDown",
     "tstr_OvrlPropsPositionChangeOffsetRightLeft",
     "tstr_OvrlPropsPositionChangeOffsetForwardBackward",
+    "tstr_OvrlPropsPositionChangeDragSettings",
+    "tstr_OvrlPropsPositionChangeDragSettingsForceUpright",
     "tstr_OvrlPropsAppearanceWidth",
     "tstr_OvrlPropsAppearanceCurve",
     "tstr_OvrlPropsAppearanceOpacity",

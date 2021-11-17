@@ -1118,10 +1118,12 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     }
 
     ImGui::Unindent();
+
+    //--Manual Adjustment
+    ImGui::Spacing();
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsPositionChangeManualAdjustment));
     ImGui::Indent();
 
-    //--Manual Adjustment
     ImGui::Columns(7, "ColumnManualAdjust", false);
 
     const ImVec2 arrow_button_size(ImGui::GetFrameHeight(), ImGui::GetFrameHeight());
@@ -1339,6 +1341,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     //--Additional Offset
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
+    ImGui::Spacing();
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffset));
 
     ImGui::Columns(2, "ColumnOffset", false);
@@ -1388,6 +1391,19 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     vr_keyboard.VRKeyboardInputEnd();
 
     ImGui::Columns(1);
+
+    //--Drag Settings
+    ImGui::Spacing();
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettings));
+
+    ImGui::Indent();
+
+    bool& force_upright = ConfigManager::Get().GetConfigBoolRef(configid_bool_input_drag_force_upright);
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsForceUpright), &force_upright))
+    {
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_input_drag_force_upright), force_upright);
+    }
 
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 

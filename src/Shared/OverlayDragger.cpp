@@ -195,6 +195,12 @@ void OverlayDragger::DragUpdate()
 
             m_DragModeMatrixTargetCurrent = matrix_source_current * matrix_target_new;
 
+            //Do axis locking if managed overlay and setting enabled
+            if ( (m_DragModeOverlayID != k_ulOverlayID_None) && (ConfigManager::Get().GetConfigBool(configid_bool_input_drag_force_upright)) )
+            {
+                TransformForceUpright(m_DragModeMatrixTargetCurrent);
+            }
+
             vr::HmdMatrix34_t vrmat = m_DragModeMatrixTargetCurrent.toOpenVR34();
             vr::VROverlay()->SetOverlayTransformAbsolute(m_DragModeOverlayHandle, vr::TrackingUniverseStanding, &vrmat);
         }
@@ -492,6 +498,23 @@ void OverlayDragger::DragGestureStartBase()
     m_DragGestureActive = true;
 }
 
+void OverlayDragger::TransformForceUpright(Matrix4& transform) const
+{
+    //Based off of ComputeHMDFacingTransform()... might not be the best way to do it, but it works.
+    static const Vector3 up = {0.0f, 1.0f, 0.0f};
+
+    Matrix4 matrix_temp  = transform;
+    Vector3 ovrl_start   = matrix_temp.translate_relative(0.0f, 0.0f, -0.001f).getTranslation();
+    Vector3 forward_temp = (ovrl_start - transform.getTranslation()).normalize();
+    Vector3 right        = forward_temp.cross(up).normalize();
+    Vector3 forward      = up.cross(right).normalize();
+
+    Matrix4 mat_upright(right, up, forward * -1.0f);
+    mat_upright.setTranslation(ovrl_start);
+
+    transform = mat_upright;
+}
+
 void OverlayDragger::DragGestureStart(unsigned int overlay_id)
 {
     if ( (IsDragActive()) || (IsDragGestureActive()) )
@@ -582,6 +605,12 @@ void OverlayDragger::DragGestureUpdate()
                 matrix_rotate_current_at_origin.setTranslation({0.0f, 0.0f, 0.0f});
 
                 Matrix4 matrix_rotate_diff = matrix_rotate_current_at_origin * matrix_rotate_last_inverse;
+
+                //Do axis locking if managed overlay and setting enabled
+                if ( (m_DragModeOverlayID != k_ulOverlayID_None) && (ConfigManager::Get().GetConfigBool(configid_bool_input_drag_force_upright)) )
+                {
+                    TransformForceUpright(matrix_rotate_diff);
+                }
 
                 //Apply difference
                 Matrix4& mat_overlay = m_DragModeMatrixTargetStart;

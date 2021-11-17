@@ -30,6 +30,8 @@ class OverlayDragger
         void DragStartBase(bool is_gesture_drag = false);
         void DragGestureStartBase();
 
+        void TransformForceUpright(Matrix4& transform) const;
+
     public:
         OverlayDragger();
 

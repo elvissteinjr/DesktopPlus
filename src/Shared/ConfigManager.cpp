@@ -417,6 +417,8 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigFloat[configid_float_input_detached_interaction_max_distance]   = config.ReadInt( "Input", "DetachedInteractionMaxDistance", 30) / 100.0f;
     m_ConfigBool[configid_bool_input_global_hmd_pointer]                    = config.ReadBool("Input", "GlobalHMDPointer", false);
     m_ConfigFloat[configid_float_input_global_hmd_pointer_max_distance]     = config.ReadInt( "Input", "GlobalHMDPointerMaxDistance", 0) / 100.0f;
+    m_ConfigBool[configid_bool_input_laser_pointer_block_input]             = config.ReadBool("Input", "LaserPointerBlockInput", false);
+    m_ConfigBool[configid_bool_input_drag_force_upright]                    = config.ReadBool("Input", "DragForceUpright", false);
 
     m_ConfigBool[configid_bool_input_mouse_render_cursor]                   = config.ReadBool("Mouse", "RenderCursor", true);
     m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]        = config.ReadBool("Mouse", "RenderIntersectionBlob", false);
@@ -775,6 +777,8 @@ void ConfigManager::SaveConfigToFile()
     config.WriteInt( "Input",  "DetachedInteractionMaxDistance", int(m_ConfigFloat[configid_float_input_detached_interaction_max_distance] * 100.0f));
     config.WriteBool("Input",  "GlobalHMDPointer",                   m_ConfigBool[configid_bool_input_global_hmd_pointer]);
     config.WriteInt( "Input",  "GlobalHMDPointerMaxDistance",    int(m_ConfigFloat[configid_float_input_global_hmd_pointer_max_distance] * 100.0f));
+    config.WriteBool("Input",  "LaserPointerBlockInput",             m_ConfigBool[configid_bool_input_laser_pointer_block_input]);
+    config.WriteBool("Input",  "DragForceUpright",                   m_ConfigBool[configid_bool_input_drag_force_upright]);
 
     config.WriteBool("Mouse", "RenderCursor",              m_ConfigBool[configid_bool_input_mouse_render_cursor]);
     config.WriteBool("Mouse", "RenderIntersectionBlob",    m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]);
