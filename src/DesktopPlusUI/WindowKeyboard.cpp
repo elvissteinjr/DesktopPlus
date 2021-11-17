@@ -64,6 +64,15 @@ void WindowKeyboard::Show(bool skip_fade)
 
 void WindowKeyboard::Hide(bool skip_fade)
 {
+    //Refuse to hide if window is currently being dragged and assign to global (remove assignment, but stay visible)
+    if ( (UIManager::Get()->GetOverlayDragger().IsDragActive()) && (UIManager::Get()->GetOverlayDragger().GetDragOverlayHandle() == GetOverlayHandle()) )
+    {
+        ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -3);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -3);
+
+        return;
+    }
+
     FloatingWindow::Hide(skip_fade);
 
     UIManager::Get()->GetVRKeyboard().OnWindowHidden();

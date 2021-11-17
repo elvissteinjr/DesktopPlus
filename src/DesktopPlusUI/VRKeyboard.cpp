@@ -497,7 +497,12 @@ void VRKeyboard::OnImGuiNewFrame()
         else //Auto-hide when assigned to UI and no longer needed
         {
             m_WindowKeyboard.Hide();
-            m_LastAutoHiddenTime = ImGui::GetTime();
+
+            //Keyboard window may refuse to hide, so check if it really did first
+            if (!m_WindowKeyboard.IsVisible())
+            {
+                m_LastAutoHiddenTime = ImGui::GetTime();
+            }
         }
     }
 
