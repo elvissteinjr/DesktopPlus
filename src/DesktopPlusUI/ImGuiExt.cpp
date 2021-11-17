@@ -869,7 +869,7 @@ namespace ImGui
         const ImGuiContext& g = *GImGui;
         bool blocked_by_active_item = (g.ActiveId != 0 && !g.ActiveIdAllowOverlap);
 
-        return ( (g.HoveredId != g.HoveredIdPreviousFrame) && (g.HoveredId != 0) && (!blocked_by_active_item) );
+        return ( (g.HoveredId != g.HoveredIdPreviousFrame) && (g.HoveredId != 0) && (!g.HoveredIdDisabled) && (!blocked_by_active_item) );
     }
 
     bool IsAnyItemActiveOrDeactivated()
