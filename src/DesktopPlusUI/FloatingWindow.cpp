@@ -109,6 +109,7 @@ void FloatingWindow::WindowUpdateBase()
     if (ImGui::ImageButton(io.Fonts->TexID, img_size, img_uv_min, img_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
     {
         SetPinned(!IsPinned());
+        OnWindowPinButtonPressed();
     }
     ImGui::PopID();
     ImGui::SameLine(0.0f, 0.0f);
@@ -198,6 +199,11 @@ void FloatingWindow::WindowUpdateBase()
 
     if (UIManager::Get()->IsInDesktopMode())
         ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
+}
+
+void FloatingWindow::OnWindowPinButtonPressed()
+{
+    //No-op
 }
 
 bool FloatingWindow::IsVirtualWindowItemHovered() const

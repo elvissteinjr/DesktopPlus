@@ -630,6 +630,16 @@ void WindowKeyboard::WindowUpdate()
     io.KeyRepeatDelay = key_repeat_delay_old;
 }
 
+void WindowKeyboard::OnWindowPinButtonPressed()
+{
+    //If newly pinned, assing to global space to not auto-close later
+    if (m_IsPinned)
+    {
+        ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -3);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -3);
+    }
+}
+
 bool WindowKeyboard::IsVirtualWindowItemHovered() const
 {
     return m_IsAnyButtonHovered;

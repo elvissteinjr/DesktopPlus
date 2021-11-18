@@ -33,6 +33,7 @@ class FloatingWindow
         void WindowUpdateBase();         //Sets up ImGui window with custom title bar, pinning and overlay-based dragging
         virtual void WindowUpdate() = 0; //Window content, called within an ImGui Begin()'d window
 
+        virtual void OnWindowPinButtonPressed();         //Called when the pin button is pressed, after updating m_IsPinned
         virtual bool IsVirtualWindowItemHovered() const; //Returns false by default, can be overridden to signal hover state of widgets that don't touch global ImGui state (used for blank space drag)
 
         void HelpMarker(const char* desc, const char* marker_str = "(?)") const;    //Help marker, but tooltip is fixed to top or bottom of the window
