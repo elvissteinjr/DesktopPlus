@@ -844,7 +844,7 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
         ImGui::Columns(2, "ColumnVersion", false);
         ImGui::SetColumnWidth(0, m_Column0Width);
 
-        ImGui::TextUnformatted("Desktop+ NewUI Preview 2");
+        ImGui::TextUnformatted("Desktop+ NewUI Preview 3");
 
         ImGui::Columns(1);
     }
@@ -894,7 +894,7 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
     //Startup
     bool& no_steam = ConfigManager::Get().GetConfigBoolRef(configid_bool_misc_no_steam);
 
-    if ( (ConfigManager::Get().IsSteamInstall()) || (UIManager::Get()->IsOpenVRLoaded()) ) //Only show Steam install or we can access OpenVR settings
+    if ( (ConfigManager::Get().IsSteamInstall()) || (UIManager::Get()->IsOpenVRLoaded()) ) //Only show if Steam install or we can access OpenVR settings
     {
         ImGui::Spacing();
         m_ScrollMainCatPos[wndsettings_cat_startup] = ImGui::GetCursorPosY();
@@ -917,7 +917,7 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_misc_no_steam), no_steam);
             }
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-            ImGui::FixedHelpMarker(TranslationManager::GetString(tstr_SettingsStartupSteamDisableTip));
+            HelpMarker(TranslationManager::GetString(tstr_SettingsStartupSteamDisableTip));
         }
 
         ImGui::Unindent();

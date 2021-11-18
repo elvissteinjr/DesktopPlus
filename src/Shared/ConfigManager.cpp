@@ -142,7 +142,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigInt[configid_int_overlay_crop_height]                   = config.ReadInt(section.c_str(),  "CroppingHeight", -1);
 
     data.ConfigBool[configid_bool_overlay_3D_enabled]                  = config.ReadBool(section.c_str(), "3DEnabled", false);
-    data.ConfigInt[configid_int_overlay_3D_mode]                       = config.ReadInt(section.c_str(),  "3DMode", ovrl_3Dmode_sbs);
+    data.ConfigInt[configid_int_overlay_3D_mode]                       = config.ReadInt(section.c_str(),  "3DMode", ovrl_3Dmode_hsbs);
     data.ConfigBool[configid_bool_overlay_3D_swapped]                  = config.ReadBool(section.c_str(), "3DSwapped", false);
     data.ConfigBool[configid_bool_overlay_gazefade_enabled]            = config.ReadBool(section.c_str(), "GazeFade", false);
     data.ConfigFloat[configid_float_overlay_gazefade_distance]         = config.ReadInt(section.c_str(),  "GazeFadeDistance", 0) / 100.0f;
@@ -416,7 +416,7 @@ bool ConfigManager::LoadConfigFromFile()
 	m_ConfigInt[configid_int_input_hotkey03_keycode]                        = config.ReadInt( "Input", "GlobalHotkey03KeyCode",   0);
 	m_ConfigInt[configid_int_input_hotkey03_action_id]                      = config.ReadInt( "Input", "GlobalHotkey03ActionID",  0);
 
-    m_ConfigFloat[configid_float_input_detached_interaction_max_distance]   = config.ReadInt( "Input", "DetachedInteractionMaxDistance", 30) / 100.0f;
+    m_ConfigFloat[configid_float_input_detached_interaction_max_distance]   = config.ReadInt( "Input", "DetachedInteractionMaxDistance", 200) / 100.0f;
     m_ConfigBool[configid_bool_input_global_hmd_pointer]                    = config.ReadBool("Input", "GlobalHMDPointer", false);
     m_ConfigFloat[configid_float_input_global_hmd_pointer_max_distance]     = config.ReadInt( "Input", "GlobalHMDPointerMaxDistance", 0) / 100.0f;
     m_ConfigBool[configid_bool_input_laser_pointer_block_input]             = config.ReadBool("Input", "LaserPointerBlockInput", false);
