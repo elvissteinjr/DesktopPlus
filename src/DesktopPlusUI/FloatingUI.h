@@ -28,4 +28,5 @@ class FloatingUI
         float GetAlpha() const;
 
         WindowFloatingUIMainBar& GetMainBarWindow();
+        WindowFloatingUIActionBar& GetActionBarWindow();
 };

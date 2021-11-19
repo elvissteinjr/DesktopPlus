@@ -1408,7 +1408,9 @@ void UIManager::PositionOverlay()
             anti_flicker_block_count++;
         }
 
-        m_IsDummyOverlayTransformUnstable = ((!anti_flicker_can_move) || (GetRepeatFrame()) || (ImGui::IsMouseDown(ImGuiMouseButton_Left))); //Also block transform updates when left mouse is held down
+        //Block transform updates on abrupt movements, repeated frames, mouse down and shortly after switching desktops
+        m_IsDummyOverlayTransformUnstable = ( (!anti_flicker_can_move) || (GetRepeatFrame()) || (ImGui::IsMouseDown(ImGuiMouseButton_Left)) || 
+                                              (m_FloatingUI.GetActionBarWindow().GetLastDesktopSwitchTime() + 0.1 >= ImGui::GetTime()) ); 
 
         if (!m_IsDummyOverlayTransformUnstable)
         {

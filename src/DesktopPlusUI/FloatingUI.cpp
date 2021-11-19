@@ -272,7 +272,10 @@ void FloatingUI::UpdateUITargetState()
 
         TransformOpenVR34TranslateRelative(matrix, 0.0f, offset_to_bottom, 0.0f);
 
-        vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_floating_ui, origin, &matrix);
+        if ( (is_newly_visible) || (!UIManager::Get()->IsDummyOverlayTransformUnstable()) )
+        {
+            vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_floating_ui, origin, &matrix);
+        }
 
         //Set floating UI curvature based on target overlay curvature
         float curvature;
@@ -317,4 +320,9 @@ float FloatingUI::GetAlpha() const
 WindowFloatingUIMainBar& FloatingUI::GetMainBarWindow()
 {
     return m_WindowMainBar;
+}
+
+WindowFloatingUIActionBar& FloatingUI::GetActionBarWindow()
+{
+    return m_WindowActionBar;
 }

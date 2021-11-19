@@ -35,6 +35,8 @@ class WindowFloatingUIActionBar
         bool m_Visible;
         float m_Alpha;
 
+        double m_LastDesktopSwitchTime;
+
         void DisplayTooltipIfHovered(const char* text);
         void UpdateDesktopButtons(unsigned int overlay_id);
         void UpdateActionButtons(unsigned int overlay_id);
@@ -51,4 +53,6 @@ class WindowFloatingUIActionBar
         const ImVec2& GetSize() const;
         bool IsVisible() const;
         float GetAlpha() const;
+
+        double GetLastDesktopSwitchTime() const;
 };

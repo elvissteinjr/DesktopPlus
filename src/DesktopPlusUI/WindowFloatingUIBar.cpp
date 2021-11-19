@@ -243,7 +243,7 @@ void WindowFloatingUIMainBar::MarkCurrentWindowCapturableStateOutdated()
 
 
 //-WindowFloatingUIActionBar
-WindowFloatingUIActionBar::WindowFloatingUIActionBar() : m_Visible(false), m_Alpha(0.0f)
+WindowFloatingUIActionBar::WindowFloatingUIActionBar() : m_Visible(false), m_Alpha(0.0f), m_LastDesktopSwitchTime(0.0)
 {
     m_Size.x = 32.0f;
 }
@@ -441,6 +441,12 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
         if (UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID() == overlay_id)
         {
             UIManager::Get()->GetOverlayPropertiesWindow().SetActiveOverlayID(overlay_id, true);
+        }
+
+        //Store last switch time for the anti-flicker code (only needed for dashboard origin)
+        if (overlay_config.ConfigInt[configid_int_overlay_origin] == ovrl_origin_dashboard)
+        {
+            m_LastDesktopSwitchTime = ImGui::GetTime();
         }
     }
 
@@ -696,4 +702,9 @@ bool WindowFloatingUIActionBar::IsVisible() const
 float WindowFloatingUIActionBar::GetAlpha() const
 {
     return m_Alpha;
+}
+
+double WindowFloatingUIActionBar::GetLastDesktopSwitchTime() const
+{
+    return m_LastDesktopSwitchTime;
 }
