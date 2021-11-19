@@ -1271,6 +1271,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 switch (bool_id)
                 {
                     case configid_bool_overlay_3D_enabled:
+                    {
+                        ApplySettingTransform();
+                        ApplySetting3DMode();
+                        break;
+                    }
                     case configid_bool_overlay_3D_swapped:
                     {
                         ApplySetting3DMode();
@@ -2035,12 +2040,14 @@ float OutputManager::GetOverlayHeight(unsigned int overlay_id) const
     const DPRect& crop_rect = overlay.GetValidatedCropRect();
     int crop_width = crop_rect.GetWidth(), crop_height = crop_rect.GetHeight();
 
+    bool is_3d_enabled = data.ConfigBool[configid_bool_overlay_3D_enabled];
     int mode_3d = data.ConfigInt[configid_int_overlay_3D_mode];
 
-    if (m_OutputInvalid) //No cropping on invalid output image
+    if ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) && (m_OutputInvalid) ) //No cropping on invalid output image
     {
         crop_width  = k_lOverlayOutputErrorTextureWidth;
         crop_height = k_lOverlayOutputErrorTextureHeight;
+        is_3d_enabled = false;
     }
     else if ( (overlay.GetTextureSource() == ovrl_texsource_none) || (crop_width <= 0) || (crop_height <= 0) )
     {
@@ -2056,15 +2063,17 @@ float OutputManager::GetOverlayHeight(unsigned int overlay_id) const
             crop_width  = k_lOverlayOutputErrorTextureWidth;
             crop_height = k_lOverlayOutputErrorTextureHeight;
         }
+
+        is_3d_enabled = false;
     }
-    else if ((mode_3d == ovrl_3Dmode_ou)) //Converted Over-Under changes texture dimensions, so adapt
+    else if ( (is_3d_enabled) && (mode_3d == ovrl_3Dmode_ou) ) //Converted Over-Under changes texture dimensions, so adapt
     {
         crop_width  *= 2;
         crop_height /= 2;
     }
 
     //Overlay is twice as tall when SBS3D/OU3D is active
-    if ((mode_3d == ovrl_3Dmode_sbs) || (mode_3d == ovrl_3Dmode_ou))
+    if ( (is_3d_enabled) && ( (mode_3d == ovrl_3Dmode_sbs) || (mode_3d == ovrl_3Dmode_ou) ) )
         crop_height *= 2;
 
 
