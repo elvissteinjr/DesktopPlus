@@ -386,6 +386,20 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     vr_event.data.mouse.button = mouse_button_id;
 
                     vr::VROverlayView()->PostOverlayEvent(nearest_target_overlay, &vr_event);
+
+                    //As VRInput::GetActionOrigins() isn't reliable for some reason, we may not have the input value handle yet... we grab it from here instead as a workaround
+                    if (lp_device.InputValueHandle == vr::k_ulInvalidInputValueHandle)
+                    {
+                        vr::InputOriginInfo_t origin_info = {0};
+
+                        if (vr::VRInput()->GetOriginTrackedDeviceInfo(input_data.activeOrigin, &origin_info, sizeof(vr::InputOriginInfo_t)) == vr::VRInputError_None)
+                        {
+                            if ( (origin_info.trackedDeviceIndex < vr::k_unMaxTrackedDeviceCount) )
+                            {
+                                m_Devices[origin_info.trackedDeviceIndex].InputValueHandle = origin_info.devicePath;
+                            }
+                        }
+                    }
                 }
 
                 if (input_data.bState)
@@ -704,7 +718,7 @@ void LaserPointer::RefreshCachedOverlayHandles()
     }
 }
 
-void LaserPointer::TriggerLaserPointerHaptics(vr::TrackedDeviceIndex_t device_index)
+void LaserPointer::TriggerLaserPointerHaptics(vr::TrackedDeviceIndex_t device_index) const
 {
     OutputManager::Get()->GetVRInput().TriggerLaserPointerHaptics((device_index < vr::k_unMaxTrackedDeviceCount) ? m_Devices[device_index].InputValueHandle : vr::k_ulInvalidInputValueHandle);
 }

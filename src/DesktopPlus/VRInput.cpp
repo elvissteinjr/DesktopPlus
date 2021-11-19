@@ -271,6 +271,25 @@ std::vector<vr::InputOriginInfo_t> VRInput::GetLaserPointerDevicesInfo() const
         }
     }
 
+    //If GetActionOrigins() did not return anything useful, try at least getting origins for left and right hand controllers
+    if (devices_info.empty())
+    {
+        for (int controller_role = vr::TrackedControllerRole_LeftHand; controller_role <= vr::TrackedControllerRole_RightHand; ++controller_role)
+        {
+            origin_info = {0};
+
+            origin_info.trackedDeviceIndex = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole((vr::ETrackedControllerRole)controller_role);
+
+            if (origin_info.trackedDeviceIndex != vr::k_unTrackedDeviceIndexInvalid)
+            {
+                vr::VRInputValueHandle_t input_value = vr::k_ulInvalidInputValueHandle;
+                vr::VRInput()->GetInputSourceHandle((controller_role == vr::TrackedControllerRole_LeftHand) ? "/user/hand/left" : "/user/hand/right", &origin_info.devicePath);
+
+                devices_info.push_back(origin_info);
+            }
+        }
+    }
+
     return devices_info;
 }
 

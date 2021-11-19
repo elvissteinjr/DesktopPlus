@@ -65,7 +65,7 @@ class LaserPointer
         void RemoveDevice(vr::TrackedDeviceIndex_t device_index);           //Clears device entry, called on device disconnect
 
         void RefreshCachedOverlayHandles();
-        void TriggerLaserPointerHaptics(vr::TrackedDeviceIndex_t device_index);
+        void TriggerLaserPointerHaptics(vr::TrackedDeviceIndex_t device_index) const;
         void ForceTargetOverlay(vr::VROverlayHandle_t overlay_handle);      //Forces a different overlay to be current pointer target (only if there's currently one)
 
         //ComputeOverlayIntersection() does not take intersection masks into account. It's a bit cumbersome, but we track the UI one ourselves to get around that.
