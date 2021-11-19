@@ -12,6 +12,7 @@ LaserPointer::LaserPointer() : m_ActivationOrigin(dplp_activation_origin_none),
                                m_HadPrimaryPointerDevice(false), 
                                m_DeviceMaxActiveID(0), 
                                m_LastPrimaryDeviceSwitchTick(0),
+                               m_DeviceHapticPending(vr::k_unTrackedDeviceIndexInvalid),
                                m_IsForceTargetOverlayActive(false),
                                m_ForceTargetOverlayHandle(vr::k_ulOverlayHandleInvalid)
 {
@@ -504,6 +505,13 @@ void LaserPointer::Update()
 
     VRInput& vr_input = OutputManager::Get()->GetVRInput();
 
+    //Trigger pending vibrations if we know the action set is now active
+    if ( (m_HadPrimaryPointerDevice) && (m_DeviceHapticPending != vr::k_unTrackedDeviceIndexInvalid) )
+    {
+        TriggerLaserPointerHaptics(m_DeviceHapticPending);
+        m_DeviceHapticPending = vr::k_unTrackedDeviceIndexInvalid;
+    }
+
     //Primary device switching
     if (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndexInvalid)
     {
@@ -604,7 +612,7 @@ void LaserPointer::SetActiveDevice(vr::TrackedDeviceIndex_t device_index, LaserP
     //Vibrate if this activates the Desktop+ pointer (not just switching)
     if (previous_active_device == vr::k_unTrackedDeviceIndexInvalid)
     {
-        TriggerLaserPointerHaptics(device_index);
+        m_DeviceHapticPending = device_index;   //Postpone the actual call until later since the relevant action set is not active yet
     }
 
     m_ActivationOrigin = activation_origin;

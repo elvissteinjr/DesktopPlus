@@ -41,6 +41,7 @@ class LaserPointer
         bool m_HadPrimaryPointerDevice;
         vr::TrackedDeviceIndex_t m_DeviceMaxActiveID;
         ULONGLONG m_LastPrimaryDeviceSwitchTick;
+        vr::TrackedDeviceIndex_t m_DeviceHapticPending;
 
         //State set by ForceTargetOverlay()
         bool m_IsForceTargetOverlayActive;
