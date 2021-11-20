@@ -140,6 +140,7 @@ class OutputManager
         void UpdateDashboardHMD_Y();
         bool HasDashboardMoved();
         void DimDashboard(bool do_dim);
+        void UpdatePendingDashboardDummyHeight();
         bool IsAnyOverlayUsingGazeFade() const;
 
         void RegisterHotkeys();
@@ -195,6 +196,8 @@ class OutputManager
         bool m_OvrlDashboardActive;
         bool m_OvrlInputActive;
         ULONGLONG m_OvrlTempDragStartTick;
+        float m_PendingDashboardDummyHeight;
+        ULONGLONG m_LastApplyTransformTick;
 
         ID3D11Texture2D* m_MouseTex;
         ID3D11ShaderResourceView* m_MouseShaderRes;

@@ -67,6 +67,8 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlDashboardActive(false),
     m_OvrlInputActive(false),
     m_OvrlTempDragStartTick(0),
+    m_PendingDashboardDummyHeight(0.0f),
+    m_LastApplyTransformTick(0),
     m_MouseTex(nullptr),
     m_MouseShaderRes(nullptr),
     m_MouseLastClickTick(0),
@@ -3794,6 +3796,12 @@ bool OutputManager::HandleOpenVREvents()
 
     m_LaserPointer.Update();
 
+    //Handle delayed dashboard dummy updates
+    if ( (m_PendingDashboardDummyHeight != 0.0f) && (m_LastApplyTransformTick + 100 < ::GetTickCount64()) )
+    {
+        UpdatePendingDashboardDummyHeight();
+    }
+
     return false;
 }
 
@@ -4094,6 +4102,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 else if ((vr_event.data.mouse.button == vr::VRMouseButton_Right) && (m_OverlayDragger.IsDragGestureActive()))
                 {
                     m_OverlayDragger.DragGestureFinish();
+
+                    ApplySettingTransform();
                 }
 
                 break;
@@ -4682,7 +4692,6 @@ void OutputManager::ApplySettingTransform()
     float width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
     float height = 0.0f;
     float dummy_height = 0.0f;
-    float dashboard_offset = 0.0f;
     OverlayOrigin overlay_origin = (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_origin);
 
     if (is_primary_dashboard_overlay)
@@ -4690,18 +4699,29 @@ void OutputManager::ApplySettingTransform()
         height = GetOverlayHeight(overlay.GetID());
         //Dashboard uses differently scaled transform depending on the current setting. We counteract that scaling to ensure the config value actually matches world scale
         dummy_height = height / GetDashboardScale();
-
-        //Setting the dashboard dummy width/height has some kind of race-condition and getting the transform coordinates below may use the old size
-        //So we instead calculate the offset the height change would cause and change the dummy height last
-        vr::VROverlay()->GetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, &dashboard_offset);
-        dashboard_offset = (dashboard_offset - (dummy_height + 0.20f)) / 2.0f;
     }
 
-    //Update Width
-    vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle, width);
+    //Dashboard dummy still needs correct width/height set for the top dashboard bar above it to be visible
+    if ( (is_primary_dashboard_overlay) || (primary_dashboard_overlay_id == k_ulOverlayID_None) )           //When no dashboard overlay exists we set this on every overlay, not ideal.
+    {
+        float old_dummy_height = 0.0f;
+        vr::VROverlay()->GetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, &old_dummy_height);
 
-    //Update Curvature
-    vr::VROverlay()->SetOverlayCurvature(ovrl_handle, ConfigManager::Get().GetConfigFloat(configid_float_overlay_curvature));
+        dummy_height = std::max(dummy_height + 0.30f, 1.5f); //Enforce minimum height to fit default height offset (which makes space for Floating UI)
+
+        //Sanity check. Things like inf can make the entire interface disappear
+        if (dummy_height > 20.0f)
+        {
+            dummy_height = 1.525f;
+        }
+
+        if (dummy_height != old_dummy_height)
+        {
+            //Delay setting the dummy height to after we made sure ApplySettingTransform() is not called right again
+            //Avoiding flicker properly unfortunately needs a sleep, so we can't call this right away or else we're just gonna stutter around
+            m_PendingDashboardDummyHeight = dummy_height;
+        }
+    }
 
     //Update transform
     vr::HmdMatrix34_t matrix = {0};
@@ -4834,19 +4854,14 @@ void OutputManager::ApplySettingTransform()
         }
     }
 
-    //Dashboard dummy still needs correct width/height set for the top dashboard bar above it to be visible
-    if ( (is_primary_dashboard_overlay) || (primary_dashboard_overlay_id == k_ulOverlayID_None) )           //When no dashboard overlay exists we set this on every overlay, not ideal.
-    {
-        dummy_height = std::max(dummy_height + 0.30f, 1.5f); //Enforce minimum height to fit default height offset (which makes space for Floating UI)
+    //Update Width
+    vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle, width);
 
-        //Sanity check. Things like inf can make the entire interface disappear
-        if (dummy_height > 20.0f)
-        {
-            dummy_height = 1.525f;
-        }
+    //Update Curvature
+    vr::VROverlay()->SetOverlayCurvature(ovrl_handle, ConfigManager::Get().GetConfigFloat(configid_float_overlay_curvature));
 
-        vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, dummy_height);
-    }
+    //Set last tick for dashboard dummy delayed update
+    m_LastApplyTransformTick = ::GetTickCount64();
 }
 
 void OutputManager::ApplySettingCrop()
@@ -5975,6 +5990,25 @@ void OutputManager::DimDashboard(bool do_dim)
         {
             vr::VROverlay()->SetOverlayColor(system_dashboard, 1.0f, 1.0f, 1.0f);
         }
+    }
+}
+
+void OutputManager::UpdatePendingDashboardDummyHeight()
+{
+    float old_dummy_height = 0.0f;
+    vr::VROverlay()->GetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, &old_dummy_height);
+
+    if (m_PendingDashboardDummyHeight != old_dummy_height)
+    {
+        vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, m_PendingDashboardDummyHeight);
+
+        //Perform tactical sleep to avoid flickering caused by dummy adjustments not being done in time when dashboard overlay positioning depends on it
+        if (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleDashboardDummy))
+        {
+            ::Sleep(100);
+        }
+
+        m_PendingDashboardDummyHeight = 0.0f;
     }
 }
 
