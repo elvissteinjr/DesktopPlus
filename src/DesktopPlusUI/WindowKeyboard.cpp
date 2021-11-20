@@ -1045,7 +1045,7 @@ void WindowKeyboard::ResetTransform()
     m_Transform.translate_relative(0.0f, offset_up, 0.00f);
 
     //If visible, pinned and dplus dashboard overlay not available, reset to transform useful outside of the dashboard
-    if ( (m_Visible) && (m_IsPinned) && (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard())) )
+    if ( (m_Visible) && (m_IsPinned) && (UIManager::Get()->IsOpenVRLoaded()) && (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard())) )
     {
         //Get dashboard-similar transform and adjust it down a bit
         Matrix4 matrix_facing = ComputeHMDFacingTransform(1.15f);
@@ -1062,6 +1062,10 @@ void WindowKeyboard::ResetTransform()
 
         //Apply facing transform to normal keyboard position
         m_Transform = matrix_facing * m_Transform;
+
+        //Set transform directly as it may not be updated automatically
+        vr::HmdMatrix34_t matrix_ovr = m_Transform.toOpenVR34();
+        vr::VROverlay()->SetOverlayTransformAbsolute(GetOverlayHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
     }
 }
 

@@ -596,7 +596,12 @@ void WindowFloatingUIActionBar::ButtonActionKeyboard(unsigned int overlay_id, Im
     {
         if (io.MouseDownDuration[ImGuiMouseButton_Left] > 3.0f)
         {
-            keyboard_window.SetPinned(false);
+            //Unpin if dashboard overlay is available
+            if ( (UIManager::Get()->IsOpenVRLoaded()) && (vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard())) )
+            {
+                keyboard_window.SetPinned(false);
+            }
+
             keyboard_window.ResetTransform();
             io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so transform changes don't get blocked
         }
