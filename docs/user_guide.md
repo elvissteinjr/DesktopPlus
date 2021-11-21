@@ -139,13 +139,15 @@ In that case, a "(!)" warning is displayed next to this section's title and it's
   Swaps which eye gets each split up part of the overlay image.
 
 - **Gaze Fade** (Other Overlays)  
-Gaze Fade gradually fades the overlay to 0% opacity when not looking at it. When the overlay is at 0% opacity it is considered inactive and will not react to laser pointer input.
+Gaze Fade gradually fades the overlay to the target opacity when not looking at it. When the overlay is at 0% opacity it is considered inactive and will not react to laser pointer input.
   - **Gaze Fade Active**:  
   Activates Gaze Fade for the overlay.
   - **Gaze Distance**:  
   Distance of the gaze point from the HMD. Put the slider to the leftmost value to set it to "Infinite".
   - **Fade Rate**:  
   Rate at which the fading occurs. As Gaze Fade only takes the center point of the overlay in account, adjusting this value depending on the overlay size is recommended.
+  - **Target Opacity**:  
+  Opacity to fade towards. If this is set higher than the overlay's opacity, it inverts the Gaze Fade behavior (fading in when looking away).
   - **[Set from Gaze]**:  
   Configure Gaze Distance and Fade Rate values automatically from the current gaze and overlay settings. After clicking, a pop-up will appear asking to look at the overlay for 3 seconds.
 
@@ -262,8 +264,10 @@ Custom icons for these actions can be added by putting PNG files in the "images/
   - **Interaction Auto-Toggle Max Distance**:  
   Maximum allowed distance between overlay and pointing controller to automatically toggle interaction mode while the dashboard is closed. Set this to "Off" when using the global controller binding toggle.
   - **Global HMD-Pointer**:  
-  Enables using HMD gaze to point at Desktop+ overlays while the dashboard is closed. The Interaction Auto-Toggle Max Distance value is used here as well to limit the maximum pointing distance.  
+  Enables using HMD gaze to point at Desktop+ overlays while the dashboard is closed.  
   This option only allows to move the mouse cursor with the HMD gaze, no other inputs. It is mainly useful to change focus, get the cursor to window overlays and then use the physical mouse to continue the interaction.
+  - **Global HMD-Pointer Max Distance**:  
+  Maximum allowed distance between overlay and HMD when Global HMD-Pointer is enabled. Put the slider to the leftmost value to set it to "Infinite".
   
 #### Windows
 
@@ -411,24 +415,26 @@ For this to work, the following conditions have to be met:
 
 - Application has to run in exclusive fullscreen mode
 - VSync has to be disabled
-- Fullscreen optimizations have to be disabled*
+- Fullscreen optimizations have to be disabled<sup>1</sup>
 
-<sub>* May not be required for certain games using OpenGL or Vulkan to render.</sub>
+<sub><sup>1</sup> May not be required for certain games using OpenGL or Vulkan to render.</sub>
 
 Fullscreen optimizations can be disabled on a per-application basis in the Compatibility tab of the executable's properties window on Windows 10 version 1803 or newer.
 
 #### Graphics Capture
 
-- Supported on systems with Windows 10 version 1803 and newer*
+- Supported on systems with Windows 10 version 1803 and newer<sup>1</sup>
 - Mirrors desktops or windows
-- Cursor movement at source monitor refresh rate
+- Cursor movement at source monitor refresh rate<sup>2</sup>
 - Always updates at monitor refresh rate
 - Supports direct mirroring of occluded windows
 - Additional Desktop+ features for window overlays
-- Draws yellow rectangle over mirrored sources (not visible in the capture)
+- Draws yellow rectangle over mirrored sources (not visible in the capture)<sup>3</sup>
 - More efficient than Desktop Duplication
 
-<sub>* Windows 10 version 1803 is required for limited support, version 2004 for full support.</sub>
+<sup><sup>1</sup> Windows 10 version 1803 is required for limited support, version 2004 for full support.</sup>  
+<sup><sup>2</sup> Active Graphics Capture by any application on the system disables the hardware cursor, limiting cursor updates for Desktop Duplication captures as well.</sup>  
+<sup><sup>3</sup> Not the case on Windows 11 or newer</sup>  
 
 ##### Graphics Capture Feature Support
 
