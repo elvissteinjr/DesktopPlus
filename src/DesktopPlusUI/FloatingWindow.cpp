@@ -182,7 +182,7 @@ void FloatingWindow::WindowUpdateBase()
     }
 
     //Blank space drag
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_interface_blank_space_drag_enabled)) && (m_Visible) && (UIManager::Get()->IsOpenVRLoaded()) && (!ImGui::IsAnyItemHovered()) &&
+    if ( (ConfigManager::GetValue(configid_bool_interface_blank_space_drag_enabled)) && (m_Visible) && (UIManager::Get()->IsOpenVRLoaded()) && (!ImGui::IsAnyItemHovered()) &&
          (!IsVirtualWindowItemHovered()) && (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) )
     {
         if ( (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )

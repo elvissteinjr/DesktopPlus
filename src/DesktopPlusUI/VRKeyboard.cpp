@@ -64,10 +64,10 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
         const bool cluster_enabled[kbdlayout_cluster_MAX] = 
         {
             true, 
-            ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_cluster_function_enabled),
-            ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_cluster_navigation_enabled),
-            ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_cluster_numpad_enabled),
-            ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_cluster_extra_enabled)
+            ConfigManager::GetValue(configid_bool_input_keyboard_cluster_function_enabled),
+            ConfigManager::GetValue(configid_bool_input_keyboard_cluster_navigation_enabled),
+            ConfigManager::GetValue(configid_bool_input_keyboard_cluster_numpad_enabled),
+            ConfigManager::GetValue(configid_bool_input_keyboard_cluster_extra_enabled)
         };
 
         unsigned int sublayout_id = kbdlayout_sub_base;
@@ -205,7 +205,7 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
 
 void VRKeyboard::LoadCurrentLayout()
 {
-    LoadLayoutFromFile(ConfigManager::Get().GetConfigString(configid_str_input_keyboard_layout_file));
+    LoadLayoutFromFile(ConfigManager::GetValue(configid_str_input_keyboard_layout_file));
 }
 
 const KeyboardLayoutMetadata& VRKeyboard::GetLayoutMetadata() const
@@ -475,9 +475,9 @@ void VRKeyboard::OnImGuiNewFrame()
             m_WindowKeyboard.Show();
 
             //Assign keyboard to UI if it's not assigned to any overlay yet
-            if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) == -1)
+            if (ConfigManager::GetValue(configid_int_state_keyboard_visible_for_overlay_id) == -1)
             {
-                ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -2);
+                ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -2);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -2);
             }
         }
@@ -485,7 +485,7 @@ void VRKeyboard::OnImGuiNewFrame()
     else if (m_WindowKeyboard.IsVisible())
     {
         //If keyboard is visible for an overlay, just disable UI target
-        if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -2)
+        if (ConfigManager::GetValue(configid_int_state_keyboard_visible_for_overlay_id) != -2)
         {
             if (m_TargetIsUI)
             {
@@ -525,7 +525,7 @@ void VRKeyboard::OnWindowHidden()
     }
 
     //Remove overlay assignment, if any
-    ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -1);
+    ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -1);
     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -1);
 
     m_KeyboardHiddenLastFrame = true; //Widgets will request the keyboard for the next frame anyways, so we prevent showing it again right away with this flag

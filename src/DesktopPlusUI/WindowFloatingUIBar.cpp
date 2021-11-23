@@ -137,7 +137,7 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
             }
 
             //Set pointer hint in case dashboard app needs it
-            ConfigManager::Get().SetConfigInt(configid_int_state_laser_pointer_device_hint, (int)device_index);
+            ConfigManager::SetValue(configid_int_state_laser_pointer_device_hint, (int)device_index);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_laser_pointer_device_hint), (int)device_index);
 
             //Add overlay
@@ -163,7 +163,7 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     ImGui::SameLine();
 
     //Drag-Mode Toggle Button (this is a global state)
-    bool& is_dragmode_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_overlay_dragmode);
+    bool& is_dragmode_enabled = ConfigManager::GetRef(configid_bool_state_overlay_dragmode);
     bool dragmode_was_enabled = is_dragmode_enabled;
 
     if (dragmode_was_enabled)
@@ -310,7 +310,7 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
     int& current_desktop = overlay_config.ConfigInt[current_configid];
     int current_desktop_new = current_desktop;
 
-    if (ConfigManager::Get().GetConfigBool(configid_bool_interface_mainbar_desktop_include_all))
+    if (ConfigManager::GetValue(configid_bool_interface_mainbar_desktop_include_all))
     {
         if (disable_combined)
             ImGui::PushItemDisabled();
@@ -323,7 +323,7 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
         if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
         {
             //Don't change to same value to avoid flicker from mirror reset
-            if ( (current_desktop != -1) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )
+            if ( (current_desktop != -1) || (!ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring)) )
             {
                 current_desktop_new = -1;
             }
@@ -339,12 +339,12 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
             ImGui::PopItemDisabled();
     }
 
-    int desktop_count = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
+    int desktop_count = ConfigManager::GetValue(configid_int_state_interface_desktop_count);
 
     if (disable_normal)
         ImGui::PushItemDisabled();
 
-    switch (ConfigManager::Get().GetConfigInt(configid_int_interface_mainbar_desktop_listing))
+    switch (ConfigManager::GetValue(configid_int_interface_mainbar_desktop_listing))
     {
         case mainbar_desktop_listing_individual:
         {
@@ -367,7 +367,7 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
                 if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
                 {
                     //Don't change to same value to avoid flicker from mirror reset
-                    if ( (i != current_desktop) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )
+                    if ( (i != current_desktop) || (!ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring)) )
                     {
                         current_desktop_new = i;
                     }

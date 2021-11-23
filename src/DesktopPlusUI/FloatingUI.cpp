@@ -64,7 +64,7 @@ void FloatingUI::Update()
             m_OvrlIDCurrentUITarget = 0;
 
             //Request sync if drag-mode is still active while the UI is disappearing
-            if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+            if (ConfigManager::GetValue(configid_bool_state_overlay_dragmode))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_transform_sync, -1);
             }
@@ -123,8 +123,7 @@ void FloatingUI::UpdateUITargetState()
 
     //Don't show UI if ImGui popup is open (which blocks all input so just hide this)
     //ImGui::IsPopupOpen() doesn't just check for modals though so it could get in the way at some point
-    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) && 
-         (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode_temp)) )
+    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) && (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) )
     {
         for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
         {

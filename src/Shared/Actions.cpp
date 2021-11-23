@@ -30,8 +30,8 @@ const char* g_ActionButtonLabel[] =
 
 void CustomAction::ApplyIntFromConfig()
 {
-    const int sub = ConfigManager::Get().GetConfigInt(configid_int_state_action_current_sub);
-    const int value = ConfigManager::Get().GetConfigInt(configid_int_state_action_value_int);
+    const int sub = ConfigManager::GetValue(configid_int_state_action_current_sub);
+    const int value = ConfigManager::GetValue(configid_int_state_action_value_int);
 
     if (sub == 1)
     {
@@ -65,8 +65,8 @@ void CustomAction::ApplyIntFromConfig()
 
 void CustomAction::ApplyStringFromConfig()
 {
-    const int sub = ConfigManager::Get().GetConfigInt(configid_int_state_action_current_sub);
-    const std::string& value = ConfigManager::Get().GetConfigString(configid_str_state_action_value_string);
+    const int sub = ConfigManager::GetValue(configid_int_state_action_current_sub);
+    const std::string& value = ConfigManager::GetValue(configid_str_state_action_value_string);
 
     if (sub == 0)
     {
@@ -266,13 +266,13 @@ void ActionManager::EraseCustomAction(int custom_action_id)
         }
 
         //Set button binding to none if it was bound before
-        if (ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id) == action_id)
+        if (ConfigManager::GetValue(configid_int_input_go_home_action_id) == action_id)
         {
-            ConfigManager::Get().SetConfigInt(configid_int_input_go_home_action_id, action_none);
+            ConfigManager::SetValue(configid_int_input_go_home_action_id, action_none);
         }
-        if (ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id) == action_id)
+        if (ConfigManager::GetValue(configid_int_input_go_back_action_id) == action_id)
         {
-            ConfigManager::Get().SetConfigInt(configid_int_input_go_back_action_id, action_none);
+            ConfigManager::SetValue(configid_int_input_go_back_action_id, action_none);
         }
     }
 }

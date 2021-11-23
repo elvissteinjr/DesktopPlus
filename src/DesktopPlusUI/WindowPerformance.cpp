@@ -67,7 +67,7 @@ void WindowPerformance::Update(bool show_as_popup)
         ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, ImGui::GetStyle().WindowRounding);
         bool is_popup_rounding_pushed = true;
 
-        const bool ui_large_style = ((ConfigManager::Get().GetConfigBool(configid_bool_interface_large_style)) && (!UIManager::Get()->IsInDesktopMode()));
+        const bool ui_large_style = ((ConfigManager::GetValue(configid_bool_interface_large_style)) && (!UIManager::Get()->IsInDesktopMode()));
 
         if (ui_large_style)
         {
@@ -90,7 +90,7 @@ void WindowPerformance::Update(bool show_as_popup)
                 UIManager::Get()->RepeatFrame();
             }
 
-            if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_large_style))
+            if (ConfigManager::GetValue(configid_bool_performance_monitor_large_style))
             {
                 DisplayStatsLarge();
             }
@@ -131,7 +131,7 @@ void WindowPerformance::Update(bool show_as_popup)
         ImGui::Begin("WindowPerformance", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
                                                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
 
-        if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_large_style))
+        if (ConfigManager::GetValue(configid_bool_performance_monitor_large_style))
         {
             DisplayStatsLarge();
         }
@@ -166,7 +166,7 @@ void WindowPerformance::UpdateVisibleState()
     {
         if (!was_visible)
         {
-            m_PerfData.EnableCounters(!ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_disable_gpu_counters));
+            m_PerfData.EnableCounters(!ConfigManager::GetValue(configid_bool_performance_monitor_disable_gpu_counters));
         }
     }
     else
@@ -209,16 +209,16 @@ void WindowPerformance::DisplayStatsLarge()
     ImGui::PopStyleVar();
     ImGui::SetCursorPos({graph_pos_x, cursor_pos_prev.y + ImGui::GetStyle().FramePadding.y});
 
-    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_graphs))
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_graphs))
     {
         //-CPU Frame Time Graph
-        if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu))
+        if (ConfigManager::GetValue(configid_bool_performance_monitor_show_cpu))
         {
             DrawFrameTimeGraphCPU(graph_size, plot_xmin, plot_xmax, plot_ymax);
         }
 
         //-GPU Frame Time Graph
-        if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu))
+        if (ConfigManager::GetValue(configid_bool_performance_monitor_show_gpu))
         {
             ImGui::SetCursorPos({graph_pos_x, row_gpu_y + ImGui::GetStyle().FramePadding.y});
 
@@ -247,7 +247,7 @@ void WindowPerformance::DisplayStatsLarge()
     float right_border_offset = -ImGui::GetStyle().FramePadding.x;
 
     //--Table CPU
-    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu))
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_cpu))
     {
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_PerformanceMonitorCPU));
         ImGui::NextColumn();
@@ -297,7 +297,7 @@ void WindowPerformance::DisplayStatsLarge()
     }
 
     //--Table GPU
-    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu))
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_gpu))
     {
         row_gpu_y = ImGui::GetCursorPosY();
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_PerformanceMonitorGPU));
@@ -324,7 +324,7 @@ void WindowPerformance::DisplayStatsLarge()
         ImGui::NextColumn();
         ImGui::NextColumn();
 
-        if (!ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_disable_gpu_counters)) //No point in showing it all if it's not updating
+        if (!ConfigManager::GetValue(configid_bool_performance_monitor_disable_gpu_counters)) //No point in showing it all if it's not updating
         {
             //-GPU Load
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorLoad));
@@ -345,7 +345,7 @@ void WindowPerformance::DisplayStatsLarge()
     }
 
     //-Table SteamVR
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_fps)) || (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_battery)) )
+    if ( (ConfigManager::GetValue(configid_bool_performance_monitor_show_fps)) || (ConfigManager::GetValue(configid_bool_performance_monitor_show_battery)) )
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "SteamVR");
         ImGui::NextColumn();
@@ -353,14 +353,14 @@ void WindowPerformance::DisplayStatsLarge()
         ImGui::NextColumn();
 
         //-Time
-        if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_time))
+        if (ConfigManager::GetValue(configid_bool_performance_monitor_show_time))
         {
             ImGui::TextRightUnformatted(right_border_offset, m_TimeStr.c_str());
         }
 
         ImGui::NextColumn();
 
-        if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_fps))
+        if (ConfigManager::GetValue(configid_bool_performance_monitor_show_fps))
         {
             //-FPS
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorFPS));
@@ -399,7 +399,7 @@ void WindowPerformance::DisplayStatsLarge()
                 ImGui::PopItemDisabled();
         }
 
-        if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_battery))
+        if (ConfigManager::GetValue(configid_bool_performance_monitor_show_battery))
         {
             //-Battery Left
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorBatteryLeft));
@@ -475,7 +475,7 @@ void WindowPerformance::DisplayStatsLarge()
             float right_offset;
 
             //-Battery Trackers
-            if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_trackers))
+            if (ConfigManager::GetValue(configid_bool_performance_monitor_show_trackers))
             {
                 unsigned int tracker_number = 1;
                 for (const auto& tracker_info : m_BatteryTrackers)
@@ -511,7 +511,7 @@ void WindowPerformance::DisplayStatsLarge()
             }
 
             //-Vive Wireless
-            if ( (m_ViveWirelessLogPathExists) && (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_vive_wireless)) )
+            if ( (m_ViveWirelessLogPathExists) && (ConfigManager::GetValue(configid_bool_performance_monitor_show_vive_wireless)) )
             {
                 //Reduce horizontal spacing on the right column
                 if (ImGui::GetColumnIndex() == 2)
@@ -609,17 +609,17 @@ void WindowPerformance::DisplayStatsCompact()
 
     //Shared offsets
     //Show both graphs if showing CPU and GPU stats or none of them (if graphs themselves are still active)
-    bool show_both_graphs = (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu) == ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu));
+    bool show_both_graphs = (ConfigManager::GetValue(configid_bool_performance_monitor_show_cpu) == ConfigManager::GetValue(configid_bool_performance_monitor_show_gpu));
     const ImVec2 graph_size = {(show_both_graphs) ? floorf( (width_total_fps - item_spacing_prev) / 2.0f) : width_total_fps, ImGui::GetFontSize() * 2.0f};
 
     double plot_xmin = (m_FrameTimeLastIndex > (uint32_t)m_FrameTimeCPUHistory.MaxSize) ? m_FrameTimeLastIndex - m_FrameTimeCPUHistory.MaxSize + 0.5f : 0.5f;
     double plot_xmax = m_FrameTimeLastIndex - 0.75f;
     double plot_ymax = ceilf(m_FrameTimeVsyncLimit * 1.4f); 
 
-    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_graphs))
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_graphs))
     {
         //-CPU Frame Time Graph
-        if ( (show_both_graphs) || (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu)) )
+        if ( (show_both_graphs) || (ConfigManager::GetValue(configid_bool_performance_monitor_show_cpu)) )
         {
             DrawFrameTimeGraphCPU(graph_size, plot_xmin, plot_xmax, plot_ymax);
 
@@ -630,14 +630,14 @@ void WindowPerformance::DisplayStatsCompact()
         }
 
         //-GPU Frame Time Graph
-        if ( (show_both_graphs) || (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu)) )
+        if ( (show_both_graphs) || (ConfigManager::GetValue(configid_bool_performance_monitor_show_gpu)) )
         {
             DrawFrameTimeGraphGPU(graph_size, plot_xmin, plot_xmax, plot_ymax);
         }
     }
 
     //CPU/GPU columns
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu)) || (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu)) )
+    if ( (ConfigManager::GetValue(configid_bool_performance_monitor_show_cpu)) || (ConfigManager::GetValue(configid_bool_performance_monitor_show_gpu)) )
     {
         ImGui::Columns(4, "ColumnStatsCompact", false);
         ImGui::SetColumnWidth(0, column_width_0);
@@ -647,7 +647,7 @@ void WindowPerformance::DisplayStatsCompact()
     }
 
     //--Row CPU
-    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_cpu))
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_cpu))
     {
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_PerformanceMonitorCompactCPU));
         ImGui::NextColumn();
@@ -680,7 +680,7 @@ void WindowPerformance::DisplayStatsCompact()
     }
 
     //--Row GPU
-    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_gpu))
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_gpu))
     {
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_PerformanceMonitorCompactGPU));
         ImGui::NextColumn();
@@ -697,7 +697,7 @@ void WindowPerformance::DisplayStatsCompact()
         if (m_FrameTimeGPU > frame_time_warning_limit)
             ImGui::PopStyleColor();
 
-        if (!ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_disable_gpu_counters)) //No point in showing it all if it's not updating
+        if (!ConfigManager::GetValue(configid_bool_performance_monitor_disable_gpu_counters)) //No point in showing it all if it's not updating
         {
             //-GPU Load
             ImGui::TextRight(text_percent_width, "%.2f", m_PerfData.GetGPULoadPrecentage());
@@ -715,7 +715,7 @@ void WindowPerformance::DisplayStatsCompact()
     }
 
     //--Row FPS
-    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_fps))
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_fps))
     {
         ImGui::Columns(5, "ColumnStatsCompactFPS", false);
         ImGui::SetColumnWidth(0, column_width_0);
@@ -758,7 +758,7 @@ void WindowPerformance::DisplayStatsCompact()
     }
 
     //--Row BAT
-    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_battery))
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_battery))
     {
         ImGui::Columns(1);  //Reset columns or else it won't treat it as a sepearate layout
         ImGui::Columns(5, "ColumnStatsCompactBAT", false);
@@ -838,7 +838,7 @@ void WindowPerformance::DisplayStatsCompact()
         ImGui::NextColumn();
 
         //-Battery Trackers
-        if (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_trackers))
+        if (ConfigManager::GetValue(configid_bool_performance_monitor_show_trackers))
         {
             unsigned int tracker_number = 1;
             for (const auto& tracker_info : m_BatteryTrackers)
@@ -868,7 +868,7 @@ void WindowPerformance::DisplayStatsCompact()
         }
 
         //-Vive Wireless
-        if ( (m_ViveWirelessLogPathExists) && (ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_vive_wireless)) )
+        if ( (m_ViveWirelessLogPathExists) && (ConfigManager::GetValue(configid_bool_performance_monitor_show_vive_wireless)) )
         {
             //Skip first column
             if (ImGui::GetColumnIndex() == 0)
@@ -1096,7 +1096,7 @@ void WindowPerformance::UpdateStatValuesViveWireless()
     //Reading is done every 5 seconds
 
     //Don't update if the path doesn't exist or it's not even enabled
-    if ( (!m_ViveWirelessLogPathExists) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_monitor_show_vive_wireless)) )
+    if ( (!m_ViveWirelessLogPathExists) || (!ConfigManager::GetValue(configid_bool_performance_monitor_show_vive_wireless)) )
         return;
 
     if (m_ViveWirelessTickLast + 5000 <= ::GetTickCount64())

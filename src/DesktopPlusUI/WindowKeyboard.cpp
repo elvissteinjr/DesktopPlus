@@ -67,7 +67,7 @@ void WindowKeyboard::Hide(bool skip_fade)
     //Refuse to hide if window is currently being dragged and assign to global (remove assignment, but stay visible)
     if ( (UIManager::Get()->GetOverlayDragger().IsDragActive()) && (UIManager::Get()->GetOverlayDragger().GetDragOverlayHandle() == GetOverlayHandle()) )
     {
-        ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -3);
+        ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -3);
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -3);
 
         return;
@@ -164,7 +164,7 @@ void WindowKeyboard::WindowUpdate()
     m_KeyboardWidgetState.ApplyState();
 
     //Enable button repeat if setting is enabled
-    bool use_key_repeat = ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_key_repeat);
+    bool use_key_repeat = ConfigManager::GetValue(configid_bool_input_keyboard_key_repeat);
     if (use_key_repeat)
         ImGui::PushButtonRepeat(true);
 
@@ -207,7 +207,7 @@ void WindowKeyboard::WindowUpdate()
         std::vector<ButtonLaserState> button_states_prev = m_ButtonStates;
         std::fill(m_ButtonStates.begin(), m_ButtonStates.end(), ButtonLaserState());
 
-        bool sticky_modifiers_enabled = ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_sticky_modifiers);
+        bool sticky_modifiers_enabled = ConfigManager::GetValue(configid_bool_input_keyboard_sticky_modifiers);
 
         int key_index = 0;
         for (const auto& key : vr_keyboard.GetLayout(m_LastSubLayout))
@@ -635,7 +635,7 @@ void WindowKeyboard::OnWindowPinButtonPressed()
     //If newly pinned, assing to global space to not auto-close later
     if (m_IsPinned)
     {
-        ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -3);
+        ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -3);
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -3);
     }
 }
@@ -682,7 +682,7 @@ void WindowKeyboard::HandleUnstickyModifiers(unsigned char source_keycode)
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
     //Skip if modifiers are set to be sticky
-    if (ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_sticky_modifiers))
+    if (ConfigManager::GetValue(configid_bool_input_keyboard_sticky_modifiers))
         return;
 
     //Schedule releasing modifier keys next frame if this wasn't called for any of them
@@ -1038,7 +1038,7 @@ void WindowKeyboard::ResetTransform()
 {
     //Offset keyboard position depending on the scaled size
     float overlay_height_m = (m_Size.y / m_Size.x) * OVERLAY_WIDTH_METERS_KEYBOARD;
-    float offset_up = -0.55f - ((overlay_height_m * ConfigManager::Get().GetConfigFloat(configid_float_input_keyboard_detached_size)) / 2.0f);
+    float offset_up = -0.55f - ((overlay_height_m * ConfigManager::GetValue(configid_float_input_keyboard_detached_size)) / 2.0f);
 
     m_Transform.identity();
     m_Transform.rotateX(-45);
@@ -1080,7 +1080,7 @@ void WindowKeyboard::UpdateOverlaySize() const
         return;
 
     if (GetOverlayHandle() != vr::k_ulOverlayHandleInvalid)
-        vr::VROverlay()->SetOverlayWidthInMeters(GetOverlayHandle(), OVERLAY_WIDTH_METERS_KEYBOARD * ConfigManager::Get().GetConfigFloat(configid_float_input_keyboard_detached_size));
+        vr::VROverlay()->SetOverlayWidthInMeters(GetOverlayHandle(), OVERLAY_WIDTH_METERS_KEYBOARD * ConfigManager::GetValue(configid_float_input_keyboard_detached_size));
 }
 
 void WindowKeyboard::ResetButtonState()

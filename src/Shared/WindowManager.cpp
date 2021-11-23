@@ -235,7 +235,7 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string& title_str, const s
     std::wstring class_wstr = WStringConvertFromUTF8(class_str.c_str());
 
     //Just straight look for a complete match when strict matching is enabled
-    if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_window_matching_strict))
+    if (ConfigManager::GetValue(configid_bool_windows_winrt_window_matching_strict))
     {
         auto it = std::find_if(window_list.begin(), window_list.end(), 
                                [&](const auto& info){ return ( (info.GetWindowClassName() == class_wstr) && (info.GetExeName() == exe_str) && (info.GetTitle() == title_wstr) ); });
@@ -302,9 +302,9 @@ WindowManager& WindowManager::Get()
 void WindowManager::UpdateConfigState()
 {
     WindowManagerThreadData thread_data_new;
-    thread_data_new.BlockDrag       = ((m_IsOverlayActive) && (ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_dragging_mode) != window_dragging_none));
-    thread_data_new.DoOverlayDrag   = ((m_IsOverlayActive) && (ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_dragging_mode) == window_dragging_overlay));
-    thread_data_new.KeepOnScreen    = ((m_IsOverlayActive) &&  ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_keep_on_screen));
+    thread_data_new.BlockDrag       = ((m_IsOverlayActive) && (ConfigManager::GetValue(configid_int_windows_winrt_dragging_mode) != window_dragging_none));
+    thread_data_new.DoOverlayDrag   = ((m_IsOverlayActive) && (ConfigManager::GetValue(configid_int_windows_winrt_dragging_mode) == window_dragging_overlay));
+    thread_data_new.KeepOnScreen    = ((m_IsOverlayActive) &&  ConfigManager::GetValue(configid_bool_windows_winrt_keep_on_screen));
     thread_data_new.TargetWindow    = m_TargetWindow;
     thread_data_new.TargetOverlayID = m_TargetOverlayID;
 

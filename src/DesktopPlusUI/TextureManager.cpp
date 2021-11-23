@@ -156,7 +156,7 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     ImFont* font_compact = nullptr;
     ImFont* font_large = nullptr;
     float font_base_size = 32.0f;
-    bool load_large_font = ( (ConfigManager::Get().GetConfigBool(configid_bool_interface_large_style)) && (!UIManager::Get()->IsInDesktopMode()) );
+    bool load_large_font = ( (ConfigManager::GetValue(configid_bool_interface_large_style)) && (!UIManager::Get()->IsInDesktopMode()) );
 
     //Loop to do the same for the large font if needed
     for (;;)

@@ -18,7 +18,7 @@ BackgroundOverlay::~BackgroundOverlay()
 
 void BackgroundOverlay::Update()
 {
-    InterfaceBGColorDisplayMode display_mode = (InterfaceBGColorDisplayMode)ConfigManager::Get().GetConfigInt(configid_int_interface_background_color_display_mode);
+    InterfaceBGColorDisplayMode display_mode = (InterfaceBGColorDisplayMode)ConfigManager::GetValue(configid_int_interface_background_color_display_mode);
     if (display_mode == ui_bgcolor_dispmode_never)
     {
         //Don't keep the overlay around if it's absolutely not needed (which is the case most of the time)
@@ -67,7 +67,7 @@ void BackgroundOverlay::Update()
         if (display_overlay)
         {
             //Unpack color value
-            unsigned int rgba = pun_cast<unsigned int, int>(ConfigManager::Get().GetConfigInt(configid_int_interface_background_color));
+            unsigned int rgba = pun_cast<unsigned int, int>(ConfigManager::GetValue(configid_int_interface_background_color));
             float r = ((rgba & 0xFF000000) >> 24) / 255.0f;
             float g = ((rgba & 0x00FF0000) >> 16) / 255.0f;
             float b = ((rgba & 0x0000FF00) >> 8)  / 255.0f;

@@ -132,7 +132,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     DPWinRT_Init();
 
     //Init notification icon if OpenVR is running (no need for it in pure desktop mode without switching back)
-    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_interface_no_notification_icon)) && (ui_manager.IsOpenVRLoaded()) )
+    if ( (!ConfigManager::GetValue(configid_bool_interface_no_notification_icon)) && (ui_manager.IsOpenVRLoaded()) )
     {
         ui_manager.GetNotificationIcon().Init(hInstance);
     }

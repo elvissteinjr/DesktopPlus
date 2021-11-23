@@ -997,90 +997,89 @@ WPARAM ConfigManager::GetWParamForConfigID(ConfigID_Handle id)
     return id + configid_bool_MAX + configid_int_MAX + configid_float_MAX;
 }
 
-void ConfigManager::SetConfigBool(ConfigID_Bool id, bool value)
+void ConfigManager::SetValue(ConfigID_Bool configid, bool value)
 {
-    if (id < configid_bool_overlay_MAX)
-        OverlayManager::Get().GetCurrentConfigData().ConfigBool[id] = value;
-    else if (id < configid_bool_MAX)
-        m_ConfigBool[id] = value;
+    if (configid < configid_bool_overlay_MAX)
+        OverlayManager::Get().GetCurrentConfigData().ConfigBool[configid] = value;
+    else if (configid < configid_bool_MAX)
+        Get().m_ConfigBool[configid] = value;
 }
 
-void ConfigManager::SetConfigInt(ConfigID_Int id, int value)
+void ConfigManager::SetValue(ConfigID_Int configid, int value)
 {
-    if (id < configid_int_overlay_MAX)
-        OverlayManager::Get().GetCurrentConfigData().ConfigInt[id] = value;
-    else if (id < configid_int_MAX)
-        m_ConfigInt[id] = value;
+    if (configid < configid_int_overlay_MAX)
+        OverlayManager::Get().GetCurrentConfigData().ConfigInt[configid] = value;
+    else if (configid < configid_int_MAX)
+        Get().m_ConfigInt[configid] = value;
 }
 
-void ConfigManager::SetConfigFloat(ConfigID_Float id, float value)
+void ConfigManager::SetValue(ConfigID_Float configid, float value)
 {
-    if (id < configid_float_overlay_MAX)
-        OverlayManager::Get().GetCurrentConfigData().ConfigFloat[id] = value;
-    else if (id < configid_float_MAX)
-        m_ConfigFloat[id] = value;
+    if (configid < configid_float_overlay_MAX)
+        OverlayManager::Get().GetCurrentConfigData().ConfigFloat[configid] = value;
+    else if (configid < configid_float_MAX)
+        Get().m_ConfigFloat[configid] = value;
 }
 
-void ConfigManager::SetConfigHandle(ConfigID_Handle id, uint64_t value)
+void ConfigManager::SetValue(ConfigID_Handle configid, uint64_t value)
 {
-    if (id < configid_handle_overlay_MAX)
-        OverlayManager::Get().GetCurrentConfigData().ConfigHandle[id] = value;
-    else if (id < configid_handle_MAX)
-        m_ConfigHandle[id] = value;
+    if (configid < configid_handle_overlay_MAX)
+        OverlayManager::Get().GetCurrentConfigData().ConfigHandle[configid] = value;
+    else if (configid < configid_handle_MAX)
+        Get().m_ConfigHandle[configid] = value;
 }
 
-void ConfigManager::SetConfigString(ConfigID_String id, const std::string& value)
+void ConfigManager::SetValue(ConfigID_String configid, const std::string& value)
 {
-    if (id < configid_str_overlay_MAX)
-        OverlayManager::Get().GetCurrentConfigData().ConfigStr[id] = value;
-    else if (id < configid_str_MAX)
-        m_ConfigString[id] = value;
+    if (configid < configid_str_overlay_MAX)
+        OverlayManager::Get().GetCurrentConfigData().ConfigStr[configid] = value;
+    else if (configid < configid_str_MAX)
+        Get().m_ConfigString[configid] = value;
 }
 
-//The GetConfig*() functions assume the caller knows what they're doing and don't shove *_MAX or an unchecked cast in there. For performance
-bool ConfigManager::GetConfigBool(ConfigID_Bool id) const
+bool ConfigManager::GetValue(ConfigID_Bool configid)
 {
-    return (id < configid_bool_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigBool[id] : m_ConfigBool[id];
+    return (configid < configid_bool_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigBool[configid] : Get().m_ConfigBool[configid];
 }
 
-int ConfigManager::GetConfigInt(ConfigID_Int id) const
+int ConfigManager::GetValue(ConfigID_Int configid)
 {
-    return (id < configid_int_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigInt[id] : m_ConfigInt[id];
+    return (configid < configid_int_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigInt[configid] : Get().m_ConfigInt[configid];
 }
 
-float ConfigManager::GetConfigFloat(ConfigID_Float id) const
+float ConfigManager::GetValue(ConfigID_Float configid)
 {
-    return (id < configid_float_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigFloat[id] : m_ConfigFloat[id];
+    return (configid < configid_float_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigFloat[configid] : Get().m_ConfigFloat[configid];
 }
 
-uint64_t ConfigManager::GetConfigHandle(ConfigID_Handle id) const
+uint64_t ConfigManager::GetValue(ConfigID_Handle configid)
 {
-    return (id < configid_handle_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigHandle[id] : m_ConfigHandle[id];
+    return (configid < configid_handle_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigHandle[configid] : Get().m_ConfigHandle[configid];
 }
 
-const std::string& ConfigManager::GetConfigString(ConfigID_String id) const
+const std::string& ConfigManager::GetValue(ConfigID_String configid)
 {
-    return (id < configid_str_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigStr[id] : m_ConfigString[id];
+    return (configid < configid_str_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigStr[configid] : Get().m_ConfigString[configid];
 }
 
-bool& ConfigManager::GetConfigBoolRef(ConfigID_Bool id)
+bool& ConfigManager::GetRef(ConfigID_Bool configid)
 {
-    return (id < configid_bool_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigBool[id] : m_ConfigBool[id];
+    return (configid < configid_bool_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigBool[configid] : Get().m_ConfigBool[configid];
 }
 
-int& ConfigManager::GetConfigIntRef(ConfigID_Int id)
+int& ConfigManager::GetRef(ConfigID_Int configid)
 {
-    return (id < configid_int_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigInt[id] : m_ConfigInt[id];
+    return (configid < configid_int_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigInt[configid] : Get().m_ConfigInt[configid];
 }
 
-float& ConfigManager::GetConfigFloatRef(ConfigID_Float id)
+float& ConfigManager::GetRef(ConfigID_Float configid)
 {
-    return (id < configid_float_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigFloat[id] : m_ConfigFloat[id];
+    return (configid < configid_float_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigFloat[configid] : Get().m_ConfigFloat[configid];
 }
 
-uint64_t& ConfigManager::GetConfigHandleRef(ConfigID_Handle id)
+uint64_t& ConfigManager::GetRef(ConfigID_Handle configid)
 {
-    return (id < configid_handle_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigHandle[id] : m_ConfigHandle[id];
+    return (configid < configid_handle_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigHandle[configid] : Get().m_ConfigHandle[configid];
 }
 
 void ConfigManager::ResetConfigStateValues()

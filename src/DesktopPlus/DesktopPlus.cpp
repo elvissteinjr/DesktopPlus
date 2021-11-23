@@ -271,7 +271,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     UINT OutputCount;
 
     //Start up UI process unless disabled or already running
-    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_interface_no_ui)) && (!IPCManager::IsUIAppRunning()) )
+    if ( (!ConfigManager::GetValue(configid_bool_interface_no_ui)) && (!IPCManager::IsUIAppRunning()) )
     {
         std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlusUI.exe";
         SpawnProcessWithDefaultEnv(path.c_str());
@@ -366,7 +366,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                     Ret = DUPL_RETURN_ERROR_UNEXPECTED;
                     break;
                 }
-                else if ( (ConfigManager::Get().GetConfigBool(configid_bool_misc_no_steam)) && (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam)) )
+                else if ( (ConfigManager::GetValue(configid_bool_misc_no_steam)) && (ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam)) )
                 {
                     //Was started by Steam but running through it was turned off, so restart without
                     std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";

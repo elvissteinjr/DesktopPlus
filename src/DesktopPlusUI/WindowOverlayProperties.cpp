@@ -270,9 +270,9 @@ void WindowOverlayProperties::WindowUpdate()
 
 void WindowOverlayProperties::OverlayPositionReset()
 {
-    float& up      = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_up);
-    float& right   = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_right);
-    float& forward = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_forward);
+    float& up      = ConfigManager::GetRef(configid_float_overlay_offset_up);
+    float& right   = ConfigManager::GetRef(configid_float_overlay_offset_right);
+    float& forward = ConfigManager::GetRef(configid_float_overlay_offset_forward);
     up = right = forward = 0.0f;
 
     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_up),      pun_cast<LPARAM, float>(up));
@@ -311,7 +311,7 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionOrigin));
     ImGui::NextColumn();
 
-    int& mode_origin = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_origin);
+    int& mode_origin = ConfigManager::GetRef(configid_int_overlay_origin);
 
     const ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
     ImVec2 img_size, img_uv_min, img_uv_max;
@@ -379,7 +379,7 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionDispMode));
     ImGui::NextColumn();
 
-    int& mode_display = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_display_mode);
+    int& mode_display = ConfigManager::GetRef(configid_int_overlay_display_mode);
 
     ImGui::PushItemWidth(-1.0f);
 
@@ -438,8 +438,8 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAppearanceWidth));
     ImGui::NextColumn();
 
-    float& width = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_width);
-    const float width_slider_max = (ConfigManager::Get().GetConfigIntRef(configid_int_overlay_origin) >= ovrl_origin_right_hand) ? 1.5f : 5.0f;
+    float& width = ConfigManager::GetRef(configid_float_overlay_width);
+    const float width_slider_max = (ConfigManager::GetRef(configid_int_overlay_origin) >= ovrl_origin_right_hand) ? 1.5f : 5.0f;
 
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayWidth") );
     if (ImGui::SliderWithButtonsFloat("OverlayWidth", width, 0.1f, 0.01f, 0.05f, width_slider_max, "%.2f m", ImGuiSliderFlags_Logarithmic))
@@ -458,7 +458,7 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAppearanceCurve));
     ImGui::NextColumn();
 
-    float& curve = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_curvature);
+    float& curve = ConfigManager::GetRef(configid_float_overlay_curvature);
 
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayCurvature") );
     if (ImGui::SliderWithButtonsFloatPercentage("OverlayCurvature", curve, 5, 1, 0, 35, "%d%%"))
@@ -476,7 +476,7 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAppearanceOpacity));
     ImGui::NextColumn();
 
-    float& opacity = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_opacity);
+    float& opacity = ConfigManager::GetRef(configid_float_overlay_opacity);
 
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOpacity") );
     if (ImGui::SliderWithButtonsFloatPercentage("OverlayOpacity", opacity, 5, 1, 0, 100, "%d%%"))
@@ -490,9 +490,9 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     ImGui::NextColumn();
 
     //Crop
-    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) != ovrl_capsource_ui) //Don't show crop settings for UI source overlays
+    if (ConfigManager::GetValue(configid_int_overlay_capture_source) != ovrl_capsource_ui) //Don't show crop settings for UI source overlays
     {
-        bool& crop_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_crop_enabled);
+        bool& crop_enabled = ConfigManager::GetRef(configid_bool_overlay_crop_enabled);
 
         ImGui::Spacing();
         ImGui::AlignTextToFramePadding();
@@ -506,11 +506,11 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
         //Build button string if empty
         if (m_CropButtonLabel.empty())
         {
-            int crop_width  = ConfigManager::Get().GetConfigInt(configid_int_overlay_crop_width);
-            int crop_height = ConfigManager::Get().GetConfigInt(configid_int_overlay_crop_height);
+            int crop_width  = ConfigManager::GetValue(configid_int_overlay_crop_width);
+            int crop_height = ConfigManager::GetValue(configid_int_overlay_crop_height);
 
             std::stringstream ss;
-            ss << ConfigManager::Get().GetConfigInt(configid_int_overlay_crop_x) << ", " << ConfigManager::Get().GetConfigInt(configid_int_overlay_crop_y) << " | ";
+            ss << ConfigManager::GetValue(configid_int_overlay_crop_x) << ", " << ConfigManager::GetValue(configid_int_overlay_crop_y) << " | ";
             (crop_width  == -1) ? ss << TranslationManager::GetString(tstr_OvrlPropsAppearanceCropValueMax) << " " : ss << crop_width;
             ss << "x";
             (crop_height == -1) ? ss << " " << TranslationManager::GetString(tstr_OvrlPropsAppearanceCropValueMax) : ss << crop_height;
@@ -530,21 +530,21 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
 void WindowOverlayProperties::UpdatePageMainCatCapture()
 {
     //All capture settings are considered advanced
-    if (!ConfigManager::Get().GetConfigBool(configid_bool_interface_show_advanced_settings))
+    if (!ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
         return;
 
     ImGuiStyle& style = ImGui::GetStyle();
 
     static float winrt_source_label_width = 0.0f;
 
-    int& capture_method = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_capture_source);
+    int& capture_method = ConfigManager::GetRef(configid_int_overlay_capture_source);
 
     //Don't show capture settings for UI source overlays
     if (capture_method == ovrl_capsource_ui)
         return;
 
-    int& winrt_selected_desktop = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_winrt_desktop_id);
-    HWND winrt_selected_window  = (HWND)ConfigManager::Get().GetConfigHandle(configid_handle_overlay_state_winrt_hwnd);
+    int& winrt_selected_desktop = ConfigManager::GetRef(configid_int_overlay_winrt_desktop_id);
+    HWND winrt_selected_window  = (HWND)ConfigManager::GetValue(configid_handle_overlay_state_winrt_hwnd);
 
     if (m_WinRTSourceButtonLabel.empty())
     {
@@ -613,8 +613,8 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
 
     if (capture_method == ovrl_capsource_desktop_duplication)
     {
-        int desktop_count = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
-        int& selected_desktop = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_desktop_id);
+        int desktop_count = ConfigManager::GetValue(configid_int_state_interface_desktop_count);
+        int& selected_desktop = ConfigManager::GetRef(configid_int_overlay_desktop_id);
 
         ImGui::PushItemWidth(-1.0f);
         if (ImGui::BeginComboAnimated("##ComboDesktopSource", TranslationManager::Get().GetDesktopIDString(selected_desktop) ))
@@ -661,7 +661,7 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
 void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
 {
     //Don't show performance monitor settings for non-UI source overlays
-    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) != ovrl_capsource_ui)
+    if (ConfigManager::GetValue(configid_int_overlay_capture_source) != ovrl_capsource_ui)
         return;
 
     ImGui::Spacing();
@@ -683,7 +683,7 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyle));
     ImGui::NextColumn();
 
-    bool& use_large_style = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_large_style);
+    bool& use_large_style = ConfigManager::GetRef(configid_bool_performance_monitor_large_style);
 
     if (ImGui::RadioButton(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleCompact), !use_large_style))
     {
@@ -708,15 +708,15 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     ImGui::SetColumnWidth(0, m_Column0Width);
     ImGui::SetColumnWidth(1, m_Column0Width);
 
-    bool& show_cpu             = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_cpu);
-    bool& show_gpu             = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_gpu);
-    bool& show_graphs          = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_graphs);
-    bool& show_fps             = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_fps);
-    bool& show_battery         = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_battery);
-    bool& show_time            = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_time);
-    bool& show_trackers        = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_trackers);
-    bool& show_vive_wireless   = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_show_vive_wireless);
-    bool& disable_gpu_counters = ConfigManager::Get().GetConfigBoolRef(configid_bool_performance_monitor_disable_gpu_counters);
+    bool& show_cpu             = ConfigManager::GetRef(configid_bool_performance_monitor_show_cpu);
+    bool& show_gpu             = ConfigManager::GetRef(configid_bool_performance_monitor_show_gpu);
+    bool& show_graphs          = ConfigManager::GetRef(configid_bool_performance_monitor_show_graphs);
+    bool& show_fps             = ConfigManager::GetRef(configid_bool_performance_monitor_show_fps);
+    bool& show_battery         = ConfigManager::GetRef(configid_bool_performance_monitor_show_battery);
+    bool& show_time            = ConfigManager::GetRef(configid_bool_performance_monitor_show_time);
+    bool& show_trackers        = ConfigManager::GetRef(configid_bool_performance_monitor_show_trackers);
+    bool& show_vive_wireless   = ConfigManager::GetRef(configid_bool_performance_monitor_show_vive_wireless);
+    bool& disable_gpu_counters = ConfigManager::GetRef(configid_bool_performance_monitor_disable_gpu_counters);
 
     //Keep unavailable options as enabled but show the check boxes as unticked to avoid confusion
     bool show_graphs_visual        = ( (use_large_style) && ((!show_cpu) && (!show_gpu)) ) ? false : show_graphs;
@@ -807,7 +807,7 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
 
     ImGui::Indent();
 
-    if (ConfigManager::Get().GetConfigBool(configid_bool_interface_show_advanced_settings))
+    if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
     {
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonDisableGPUCounter), &disable_gpu_counters))
         {
@@ -851,11 +851,11 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
     ImGui::SetColumnWidth(0, m_Column0Width);
 
     //3D
-    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) != ovrl_capsource_ui) //Don't show 3D settings for UI source overlays
+    if (ConfigManager::GetValue(configid_int_overlay_capture_source) != ovrl_capsource_ui) //Don't show 3D settings for UI source overlays
     {
-        bool& is_3D_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_3D_enabled);
-        bool& is_3D_swapped = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_3D_swapped);
-        int& mode_3d        = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_3D_mode);
+        bool& is_3D_enabled = ConfigManager::GetRef(configid_bool_overlay_3D_enabled);
+        bool& is_3D_swapped = ConfigManager::GetRef(configid_bool_overlay_3D_swapped);
+        int& mode_3d        = ConfigManager::GetRef(configid_int_overlay_3D_mode);
 
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvanced3D), &is_3D_enabled))
         {
@@ -898,7 +898,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
     //Gaze Fade
     {
-        bool& gazefade_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_gazefade_enabled);
+        bool& gazefade_enabled = ConfigManager::GetRef(configid_bool_overlay_gazefade_enabled);
 
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFade), &gazefade_enabled))
         {
@@ -924,7 +924,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
             ImGui::PopItemDisabled();
 
         //Only show auto-configure when advanced settings are hidden
-        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_show_advanced_settings))
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
         {
             if (!gazefade_enabled)
                 ImGui::PushItemDisabled();
@@ -935,7 +935,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeDistance));
             ImGui::NextColumn();
 
-            float& distance = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_distance);
+            float& distance = ConfigManager::GetRef(configid_float_overlay_gazefade_distance);
             const char* alt_text = (distance < 0.01f) ? TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeDistanceValueInf) : nullptr;
 
             vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("GazeFadeDistance") );
@@ -953,7 +953,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeSensitivity));
             ImGui::NextColumn();
 
-            float& rate = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_rate);
+            float& rate = ConfigManager::GetRef(configid_float_overlay_gazefade_rate);
 
             vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("GazeFadeRate") );
             if (ImGui::SliderWithButtonsFloat("GazeFadeRate", rate, 0.1f, 0.025f, 0.4f, 3.0f, "%.2fx", ImGuiSliderFlags_Logarithmic))
@@ -970,7 +970,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeOpacity));
             ImGui::NextColumn();
 
-            float& target_opacity = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_gazefade_opacity);
+            float& target_opacity = ConfigManager::GetRef(configid_float_overlay_gazefade_opacity);
 
             vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("GazeFadeOpacity") );
             if (ImGui::SliderWithButtonsFloatPercentage("GazeFadeOpacity", target_opacity, 5, 1, 0, 100, "%d%%"))
@@ -993,7 +993,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
     //Laser Pointer Input
     {
-        bool& input_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_input_enabled);
+        bool& input_enabled = ConfigManager::GetRef(configid_bool_overlay_input_enabled);
 
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedInput), &input_enabled))
         {
@@ -1004,8 +1004,8 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
         if (!input_enabled)
             ImGui::PushItemDisabled();
 
-        bool& input_dplus_lp_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_input_dplus_lp_enabled);
-        bool& floating_ui_enabled    = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_floatingui_enabled);
+        bool& input_dplus_lp_enabled = ConfigManager::GetRef(configid_bool_overlay_input_dplus_lp_enabled);
+        bool& floating_ui_enabled    = ConfigManager::GetRef(configid_bool_overlay_floatingui_enabled);
 
         //Show disabled as unticked to avoid confusion
         bool input_dplus_lp_enabled_visual = (!input_enabled) ? false : input_dplus_lp_enabled;
@@ -1135,7 +1135,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
             }
 
-            bool& is_changing_position = ConfigManager::Get().GetConfigBoolRef(configid_bool_state_overlay_dragmode);
+            bool& is_changing_position = ConfigManager::GetRef(configid_bool_state_overlay_dragmode);
             is_changing_position = true;
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragselectmode_show_hidden), is_changing_position);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_changing_position);
@@ -1392,7 +1392,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffsetUpDown));
     ImGui::NextColumn();
 
-    float& up = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_up);
+    float& up = ConfigManager::GetRef(configid_float_overlay_offset_up);
 
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetUp") );
     if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
@@ -1407,7 +1407,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffsetRightLeft));
     ImGui::NextColumn();
 
-    float& right = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_right);
+    float& right = ConfigManager::GetRef(configid_float_overlay_offset_right);
 
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetRight") );
     if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
@@ -1422,7 +1422,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffsetForwardBackward));
     ImGui::NextColumn();
 
-    float& forward = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_offset_forward);
+    float& forward = ConfigManager::GetRef(configid_float_overlay_offset_forward);
 
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetForward") );
     if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
@@ -1439,7 +1439,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
 
     ImGui::Indent();
 
-    bool& force_upright = ConfigManager::Get().GetConfigBoolRef(configid_bool_input_drag_force_upright);
+    bool& force_upright = ConfigManager::GetRef(configid_bool_input_drag_force_upright);
 
     if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsForceUpright), &force_upright))
     {
@@ -1592,11 +1592,11 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
 {
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
-    bool& crop_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_crop_enabled);
-    int& crop_x        = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
-    int& crop_y        = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
-    int& crop_width    = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
-    int& crop_height   = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
+    bool& crop_enabled = ConfigManager::GetRef(configid_bool_overlay_crop_enabled);
+    int& crop_x        = ConfigManager::GetRef(configid_int_overlay_crop_x);
+    int& crop_y        = ConfigManager::GetRef(configid_int_overlay_crop_y);
+    int& crop_width    = ConfigManager::GetRef(configid_int_overlay_crop_width);
+    int& crop_height   = ConfigManager::GetRef(configid_int_overlay_crop_height);
 
     if ( (only_restore_settings) && (m_IsConfigDataModified) )
     {
@@ -1635,14 +1635,14 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
 
     int ovrl_width, ovrl_height;
 
-    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
+    if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
     {
         UIManager::Get()->GetDesktopOverlayPixelSize(ovrl_width, ovrl_height);
     }
     else //This would also work for desktop duplication except the above works without the dashboard app running while this doesn't
     {
-        ovrl_width  = ConfigManager::Get().GetConfigInt(configid_int_overlay_state_content_width);
-        ovrl_height = ConfigManager::Get().GetConfigInt(configid_int_overlay_state_content_height);
+        ovrl_width  = ConfigManager::GetValue(configid_int_overlay_state_content_width);
+        ovrl_height = ConfigManager::GetValue(configid_int_overlay_state_content_height);
 
         //If overlay width and height are uninitialized, set them to the crop values at least
         if ((ovrl_width == -1) && (ovrl_height == -1))
@@ -1650,8 +1650,8 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
             ovrl_width  = crop_width  + crop_x;
             ovrl_height = crop_height + crop_y;
 
-            ConfigManager::Get().SetConfigInt(configid_int_overlay_state_content_width,  ovrl_width);
-            ConfigManager::Get().SetConfigInt(configid_int_overlay_state_content_height, ovrl_height);
+            ConfigManager::SetValue(configid_int_overlay_state_content_width,  ovrl_width);
+            ConfigManager::SetValue(configid_int_overlay_state_content_height, ovrl_height);
         }
     }
 
@@ -1767,7 +1767,7 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
     ImGui::NextColumn();
 
     //Needs dashboard app to be running
-    if ( (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication) && (UIManager::Get()->IsOpenVRLoaded()) )
+    if ( (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication) && (UIManager::Get()->IsOpenVRLoaded()) )
     {
         if (ImGui::Button(TranslationManager::GetString(tstr_OvrlPropsCropToWindow)))
         {
@@ -1811,8 +1811,8 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
 
     if (ImGui::Button(TranslationManager::GetString(tstr_OvrlPropsPositionReset)))
     {
-        if ((ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) != ovrl_capsource_desktop_duplication) || 
-            (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) || (!UIManager::Get()->IsOpenVRLoaded()))
+        if ( (ConfigManager::GetValue(configid_int_overlay_capture_source) != ovrl_capsource_desktop_duplication) || (ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring)) || 
+             (!UIManager::Get()->IsOpenVRLoaded()) )
         {
             crop_x = 0;
             crop_y = 0;
@@ -1828,7 +1828,7 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
         {
             //Have the dashboard figure out the right crop by changing the desktop ID to the current value again
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id),
-                                                        ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id));
+                                                        ConfigManager::GetValue(configid_int_overlay_desktop_id));
         }
 
         OverlayManager::Get().SetCurrentOverlayNameAuto();
@@ -1840,9 +1840,9 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
 
 void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_settings)
 {
-    int desktop_count           = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
-    int& winrt_selected_desktop = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_winrt_desktop_id);
-    HWND winrt_selected_window  = (HWND)ConfigManager::Get().GetConfigHandle(configid_handle_overlay_state_winrt_hwnd);
+    int desktop_count           = ConfigManager::GetValue(configid_int_state_interface_desktop_count);
+    int& winrt_selected_desktop = ConfigManager::GetRef(configid_int_overlay_winrt_desktop_id);
+    HWND winrt_selected_window  = (HWND)ConfigManager::GetValue(configid_handle_overlay_state_winrt_hwnd);
 
     if (only_restore_settings)
     {
@@ -1889,11 +1889,11 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
     {
         winrt_selected_desktop = -2;
         winrt_selected_window = nullptr;
-        ConfigManager::Get().SetConfigHandle(configid_handle_overlay_state_winrt_hwnd, 0);
-        ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title, "");
-        ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_class_name, "");
-        ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, "");
-        ConfigManager::Get().SetConfigHandle(configid_handle_overlay_state_winrt_last_hicon, 0);
+        ConfigManager::SetValue(configid_handle_overlay_state_winrt_hwnd, 0);
+        ConfigManager::SetValue(configid_str_overlay_winrt_last_window_title, "");
+        ConfigManager::SetValue(configid_str_overlay_winrt_last_window_class_name, "");
+        ConfigManager::SetValue(configid_str_overlay_winrt_last_window_exe_name, "");
+        ConfigManager::SetValue(configid_handle_overlay_state_winrt_last_hicon, 0);
 
         OverlayManager::Get().SetCurrentOverlayNameAuto();
         SetActiveOverlayID(m_ActiveOverlayID);
@@ -1925,11 +1925,11 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
         {
             winrt_selected_desktop = -1;
             winrt_selected_window = nullptr;
-            ConfigManager::Get().SetConfigHandle(configid_handle_overlay_state_winrt_hwnd, 0);
-            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title, "");
-            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_class_name, "");
-            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, "");
-            ConfigManager::Get().SetConfigHandle(configid_handle_overlay_state_winrt_last_hicon, 0);
+            ConfigManager::SetValue(configid_handle_overlay_state_winrt_hwnd, 0);
+            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_title, "");
+            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_class_name, "");
+            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_exe_name, "");
+            ConfigManager::SetValue(configid_handle_overlay_state_winrt_last_hicon, 0);
 
             OverlayManager::Get().SetCurrentOverlayNameAuto();
             SetActiveOverlayID(m_ActiveOverlayID);
@@ -1960,11 +1960,11 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
         {
             winrt_selected_desktop = i;
             winrt_selected_window = nullptr;
-            ConfigManager::Get().SetConfigHandle(configid_handle_overlay_state_winrt_hwnd, 0);
-            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title, "");
-            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_class_name, "");
-            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, "");
-            ConfigManager::Get().SetConfigHandle(configid_handle_overlay_state_winrt_last_hicon, 0);
+            ConfigManager::SetValue(configid_handle_overlay_state_winrt_hwnd, 0);
+            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_title, "");
+            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_class_name, "");
+            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_exe_name, "");
+            ConfigManager::SetValue(configid_handle_overlay_state_winrt_last_hicon, 0);
 
             OverlayManager::Get().SetCurrentOverlayNameAuto();
             SetActiveOverlayID(m_ActiveOverlayID);
@@ -1998,10 +1998,10 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
             winrt_selected_desktop = -2;
             winrt_selected_window = window_info.GetWindowHandle();
 
-            ConfigManager::Get().SetConfigHandle(configid_handle_overlay_state_winrt_hwnd, (intptr_t)winrt_selected_window);
-            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,      StringConvertFromUTF16(window_info.GetTitle().c_str())); //No need to sync these
-            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_class_name, StringConvertFromUTF16(window_info.GetWindowClassName().c_str()));
-            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name,   window_info.GetExeName());
+            ConfigManager::SetValue(configid_handle_overlay_state_winrt_hwnd, (uint64_t)winrt_selected_window);
+            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_title,       StringConvertFromUTF16(window_info.GetTitle().c_str())); //No need to sync these
+            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_class_name,  StringConvertFromUTF16(window_info.GetWindowClassName().c_str()));
+            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_exe_name,    window_info.GetExeName());
 
             OverlayManager::Get().SetCurrentOverlayNameAuto();
             SetActiveOverlayID(m_ActiveOverlayID);
@@ -2073,7 +2073,7 @@ std::string WindowOverlayProperties::GetStringForWinRTSource(HWND source_window,
         }
         else
         {
-            const std::string& last_title = ConfigManager::Get().GetConfigString(configid_str_overlay_winrt_last_window_title);
+            const std::string& last_title = ConfigManager::GetValue(configid_str_overlay_winrt_last_window_title);
             source_str = (last_title.empty()) ? TranslationManager::GetString(tstr_SourceWinRTUnknown) : TranslationManager::GetString(tstr_SourceWinRTClosed) + std::string(" " + last_title);
         }
     }
@@ -2140,7 +2140,7 @@ void WindowOverlayProperties::OnPageLeaving(WindowOverlayPropertiesPage previous
         case wndovrlprop_page_position_change:
         {
             //Disable dragmode when leaving page
-            ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode, false);
+            ConfigManager::SetValue(configid_bool_state_overlay_dragmode, false);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragselectmode_show_hidden), false);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode),                   false);
             break;

@@ -364,7 +364,7 @@ vr::EVRInitError UIManager::InitOverlay()
     m_WindowPerformance.RefreshTrackerBatteryList();
 
     //Check if it's a WMR system and set up for that if needed
-    SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens));
+    SetConfigForWMR(ConfigManager::GetRef(configid_int_interface_wmr_ignore_vscreens));
 
     if ((ovrl_error == vr::VROverlayError_None))
         return vr::VRInitError_None;
@@ -384,7 +384,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
         {
             //Apply overlay id override if needed
             unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-            int overlay_override_id = ConfigManager::Get().GetConfigInt(configid_int_state_overlay_current_id_override);
+            int overlay_override_id = ConfigManager::GetValue(configid_int_state_overlay_current_id_override);
 
             if (overlay_override_id != -1)
             {
@@ -394,7 +394,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
             std::string copystr((char*)pcds->lpData, pcds->cbData); //We rely on the data length. The data is sent without the NUL byte
 
             ConfigID_String str_id = (ConfigID_String)pcds->dwData;
-            ConfigManager::Get().SetConfigString(str_id, copystr);
+            ConfigManager::SetValue(str_id, copystr);
 
             switch (str_id)
             {
@@ -452,7 +452,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                         default: capsource = ovrl_capsource_desktop_duplication;
                     }
 
-                    OverlayManager::Get().AddOverlay(capsource, desktop_id, (HWND)ConfigManager::Get().GetConfigHandle(configid_handle_state_arg_hwnd));
+                    OverlayManager::Get().AddOverlay(capsource, desktop_id, (HWND)ConfigManager::GetValue(configid_handle_state_arg_hwnd));
                     break;
                 }
                 case ipcact_overlay_remove:
@@ -571,7 +571,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
         {
             //Apply overlay id override if needed
             unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-            int overlay_override_id = ConfigManager::Get().GetConfigInt(configid_int_state_overlay_current_id_override);
+            int overlay_override_id = ConfigManager::GetValue(configid_int_state_overlay_current_id_override);
 
             if (overlay_override_id != -1)
             {
@@ -581,7 +581,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
             if (msg.wParam < configid_bool_MAX)
             {
                 ConfigID_Bool bool_id = (ConfigID_Bool)msg.wParam;
-                ConfigManager::Get().SetConfigBool(bool_id, (msg.lParam != 0) );
+                ConfigManager::SetValue(bool_id, (msg.lParam != 0) );
 
                 switch (bool_id)
                 {
@@ -603,7 +603,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
             else if (msg.wParam < configid_bool_MAX + configid_int_MAX)
             {
                 ConfigID_Int int_id = (ConfigID_Int)(msg.wParam - configid_bool_MAX);
-                ConfigManager::Get().SetConfigInt(int_id, (int)msg.lParam);
+                ConfigManager::SetValue(int_id, (int)msg.lParam);
 
                 switch (int_id)
                 {
@@ -653,7 +653,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
             {
                 ConfigID_Float float_id = (ConfigID_Float)(msg.wParam - configid_bool_MAX - configid_int_MAX);
                 float value = pun_cast<float, LPARAM>(msg.lParam);
-                ConfigManager::Get().SetConfigFloat(float_id, value);
+                ConfigManager::SetValue(float_id, value);
 
                 switch (float_id)
                 {
@@ -667,7 +667,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
 
                         if (m_TransformSyncValueCount >= IM_ARRAYSIZE(m_TransformSyncValues))
                         {
-                            OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)ConfigManager::Get().GetConfigInt(configid_int_state_overlay_transform_sync_target_id));
+                            OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)ConfigManager::GetValue(configid_int_state_overlay_transform_sync_target_id));
                             data.ConfigTransform.set(m_TransformSyncValues);
 
                             m_TransformSyncValueCount = 0;
@@ -683,7 +683,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
             {
                 ConfigID_Handle handle_id = (ConfigID_Handle)(msg.wParam - configid_bool_MAX - configid_int_MAX - configid_float_MAX);
                 uint64_t value = pun_cast<uint64_t, LPARAM>(msg.lParam);
-                ConfigManager::Get().SetConfigHandle(handle_id, value);
+                ConfigManager::SetValue(handle_id, value);
 
                 switch (handle_id)
                 {
@@ -697,16 +697,16 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                         //Set last known title and exe name from new handle
                         if (window_info != nullptr)
                         {
-                            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title,      StringConvertFromUTF16(window_info->GetTitle().c_str()));
-                            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_class_name, StringConvertFromUTF16(window_info->GetWindowClassName().c_str()));
-                            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name,   window_info->GetExeName());
+                            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_title,      StringConvertFromUTF16(window_info->GetTitle().c_str()));
+                            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_class_name, StringConvertFromUTF16(window_info->GetWindowClassName().c_str()));
+                            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_exe_name,   window_info->GetExeName());
                         }
                         else if (value == 0) //Only clear if HWND is really null
                         {
-                            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_title, "");
-                            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_class_name, "");
-                            ConfigManager::Get().SetConfigString(configid_str_overlay_winrt_last_window_exe_name, "");
-                            ConfigManager::Get().SetConfigHandle(configid_handle_overlay_state_winrt_last_hicon, 0);
+                            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_title, "");
+                            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_class_name, "");
+                            ConfigManager::SetValue(configid_str_overlay_winrt_last_window_exe_name, "");
+                            ConfigManager::SetValue(configid_handle_overlay_state_winrt_last_hicon, 0);
                         }
 
                         OverlayManager::Get().SetCurrentOverlayNameAuto();
@@ -739,7 +739,7 @@ void UIManager::OnExit()
 {
     //Re-launch in VR when we were in desktop mode and probably got switched from VR mode before
     //This is likely more intuitive than just removing the UI entirely when clicking X
-    if ( (m_DesktopMode) && (IPCManager::Get().IsDashboardAppRunning()) && (!ConfigManager::Get().GetConfigBool(configid_bool_interface_no_ui)) && (!m_NoRestartOnExit) )
+    if ( (m_DesktopMode) && (IPCManager::Get().IsDashboardAppRunning()) && (!ConfigManager::GetValue(configid_bool_interface_no_ui)) && (!m_NoRestartOnExit) )
     {
         Restart(false);
     }
@@ -885,7 +885,7 @@ void UIManager::SendUIIntersectionMaskToDashboardApp(std::vector<vr::VROverlayIn
     static ULONGLONG last_tick = 0;
 
     //Mask can change at any time, any frame. We don't really want to send too many messages either though, so we limit the rate and don't update at all if the pointer isn't active
-    if ( (ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device) != vr::k_unTrackedDeviceIndexInvalid) && (last_tick + 100 > ::GetTickCount64()) )
+    if ( (ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device) != vr::k_unTrackedDeviceIndexInvalid) && (last_tick + 100 > ::GetTickCount64()) )
         return;
 
     for (const auto& rect : primitives)
@@ -977,7 +977,7 @@ void UIManager::RestartDashboardApp(bool force_steam)
     ConfigManager::Get().ResetConfigStateValues();
     ConfigManager::Get().SaveConfigToFile();
 
-    bool use_steam = ( (force_steam) || (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam)) );
+    bool use_steam = ( (force_steam) || (ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam)) );
 
     //LaunchDashboardOverlay() technically also launches the non-Steam version if it's registered, but there's no reason to use it in that case
     if (use_steam)
@@ -1011,7 +1011,7 @@ void UIManager::RestartDashboardApp(bool force_steam)
     {
         std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";
 
-        if (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)) //UIAccess enabled executable doesn't run straight from CreateProcess()
+        if (ConfigManager::GetValue(configid_bool_state_misc_uiaccess_enabled)) //UIAccess enabled executable doesn't run straight from CreateProcess()
         {
             if (!m_ComInitDone) //Let's only do this if really needed
             {
@@ -1067,7 +1067,7 @@ void UIManager::SetUIScale(float scale)
 
     if (!m_DesktopMode)
     {
-        ConfigManager::Get().SetConfigFloat(configid_float_interface_last_vr_ui_scale, scale);
+        ConfigManager::SetValue(configid_float_interface_last_vr_ui_scale, scale);
     }
 }
 
@@ -1105,7 +1105,7 @@ void UIManager::OnTranslationChanged()
 
 void UIManager::UpdateOverlayDimming()
 {
-    if (ConfigManager::Get().GetConfigBool(configid_bool_interface_dim_ui))
+    if (ConfigManager::GetValue(configid_bool_interface_dim_ui))
     {
         vr::VROverlay()->SetOverlayColor(m_OvrlHandleOverlayBar, 0.05f, 0.05f, 0.05f);
         ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 1.0f; //Set window bg alpha to 100% to not have the contrast be even worse on light backgrounds
@@ -1150,43 +1150,43 @@ void UIManager::UpdateAnyWarningDisplayedState()
     //Check all possible warnings. This has to be in sync with what WindowSettings::UpdateWarnings() does to be correct.
 
     //Compositor resolution warning
-    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_compositor_res_hidden)) && (m_LowCompositorRes) )
+    if ( (!ConfigManager::GetValue(configid_bool_interface_warning_compositor_res_hidden)) && (m_LowCompositorRes) )
     {
         m_HasAnyWarning = true;
         return;
     }
 
     //Compositor quality warning
-    if ( (!ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_compositor_quality_hidden)) && (m_LowCompositorQuality) )
+    if ( (!ConfigManager::GetValue(configid_bool_interface_warning_compositor_quality_hidden)) && (m_LowCompositorQuality) )
     {
         m_HasAnyWarning = true;
         return;
     }
 
     //Dashboard app process elevation warning
-    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_process_elevation_hidden)) && (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated)) )
+    if ( (!ConfigManager::GetValue(configid_bool_interface_warning_process_elevation_hidden)) && (ConfigManager::GetValue(configid_bool_state_misc_process_elevated)) )
     {
         m_HasAnyWarning = true;
         return;
     }
 
     //Elevated mode warning (this is different from elevated dashboard process)
-    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_elevated_mode_hidden)) && (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active)) )
+    if ( (!ConfigManager::GetValue(configid_bool_interface_warning_elevated_mode_hidden)) && (ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active)) )
     {
         m_HasAnyWarning = true;
         return;
     }
 
     //Focused process elevation warning
-    if (  (ConfigManager::Get().GetConfigBool(configid_bool_state_window_focused_process_elevated)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated)) && 
-         (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active))       && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)) )
+    if (  (ConfigManager::GetValue(configid_bool_state_window_focused_process_elevated)) && (!ConfigManager::GetValue(configid_bool_state_misc_process_elevated)) && 
+         (!ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active))       && (!ConfigManager::GetValue(configid_bool_state_misc_uiaccess_enabled)) )
     {
         m_HasAnyWarning = true;
         return;
     }
 
     //UIAccess lost warning
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_misc_uiaccess_was_enabled)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)) )
+    if ( (ConfigManager::GetValue(configid_bool_misc_uiaccess_was_enabled)) && (!ConfigManager::GetValue(configid_bool_state_misc_uiaccess_enabled)) )
     {
         m_HasAnyWarning = true;
         return;
@@ -1207,7 +1207,7 @@ void UIManager::UpdateAnyWarningDisplayedState()
     }
 
     //Welcome "warning" (currently not implemented in settings window)
-    /*if (!ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_welcome_hidden))
+    /*if (!ConfigManager::GetValue(configid_bool_interface_warning_welcome_hidden))
     {
         m_HasAnyWarning = true;
         return;
@@ -1322,14 +1322,14 @@ void UIManager::UpdateDesktopOverlayPixelSize()
     }
     else //What we get here may not reflect the real values, but let's do some good guesswork
     {
-        int& desktop_id = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_desktop_id);
+        int& desktop_id = ConfigManager::GetRef(configid_int_overlay_desktop_id);
 
-        if (desktop_id >= ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count))
+        if (desktop_id >= ConfigManager::GetValue(configid_int_state_interface_desktop_count))
             desktop_id = -1;
         else if (desktop_id == -2)  //-2 tell the dashboard application to crop it to desktop 0 and the value changes afterwards, though that doesn't happen when it's not running
             desktop_id = 0;
 
-        if ( (desktop_id == -1) || (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) )   //All desktops, get virtual screen dimensions
+        if ( (desktop_id == -1) || (!ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring)) )   //All desktops, get virtual screen dimensions
         {
             m_OvrlPixelWidth  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
             m_OvrlPixelHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
@@ -1558,7 +1558,7 @@ void UIManager::UpdateOverlayDrag()
                 //Adjust persistent width settings after changing width
                 if (drag_overlay_handle == m_OvrlHandleKeyboard)
                 {
-                     ConfigManager::Get().SetConfigFloat(configid_float_input_keyboard_detached_size, new_width / OVERLAY_WIDTH_METERS_KEYBOARD);
+                     ConfigManager::SetValue(configid_float_input_keyboard_detached_size, new_width / OVERLAY_WIDTH_METERS_KEYBOARD);
                 }
             }
         }
@@ -1591,7 +1591,7 @@ void UIManager::UpdateOverlayDrag()
             else if (drag_overlay_handle == m_OvrlHandleKeyboard)
             {
                 m_VRKeyboard.GetWindow().SetTransform(matrix_relative_offset);
-                ConfigManager::Get().SetConfigFloat(configid_float_input_keyboard_detached_size, new_width / OVERLAY_WIDTH_METERS_KEYBOARD);
+                ConfigManager::SetValue(configid_float_input_keyboard_detached_size, new_width / OVERLAY_WIDTH_METERS_KEYBOARD);
             }
         }
         else

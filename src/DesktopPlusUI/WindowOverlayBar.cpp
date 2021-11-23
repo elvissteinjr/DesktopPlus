@@ -397,7 +397,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
             HideMenus();
         }
 
-        int desktop_count = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
+        int desktop_count = ConfigManager::GetValue(configid_int_state_interface_desktop_count);
 
         int new_overlay_desktop_id = -255;
 
@@ -506,7 +506,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
             }
 
             //Set pointer hint in case dashboard app needs it
-            ConfigManager::Get().SetConfigInt(configid_int_state_laser_pointer_device_hint, (int)device_index);
+            ConfigManager::SetValue(configid_int_state_laser_pointer_device_hint, (int)device_index);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_laser_pointer_device_hint), (int)device_index);
 
             //Add overlay and sent to dashboard app

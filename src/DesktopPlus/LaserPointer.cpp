@@ -105,7 +105,7 @@ void LaserPointer::UpdateDeviceOverlay(vr::TrackedDeviceIndex_t device_index)
     vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(lp_device.OvrlHandle, device_index, &transform_openvr);
 
     //Adjust pointer alpha/brightness
-    bool is_primary_device = (device_index == (vr::TrackedDeviceIndex_t)ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device));
+    bool is_primary_device = (device_index == (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
     if (is_primary_device)
     {
         vr::VROverlay()->SetOverlayAlpha(lp_device.OvrlHandle, 1.0f);
@@ -142,7 +142,7 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
         return;
 
     LaserPointerDevice& lp_device = m_Devices[device_index];
-    bool is_primary_device = (device_index == (vr::TrackedDeviceIndex_t)ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device));
+    bool is_primary_device = (device_index == (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
     bool was_active_for_multilaser_input = lp_device.IsActiveForMultiLaserInput;
     bool skip_intersection_test = ( (vr::VROverlay()->IsDashboardVisible()) || (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid) );
     bool skip_input = skip_intersection_test;
@@ -474,7 +474,7 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
 
         if (is_primary_device)
         {
-            ConfigManager::Get().SetConfigHandle(configid_handle_state_dplus_laser_pointer_target_overlay, lp_device.OvrlHandleTargetLast);
+            ConfigManager::SetValue(configid_handle_state_dplus_laser_pointer_target_overlay, lp_device.OvrlHandleTargetLast);
             IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_dplus_laser_pointer_target_overlay), 
                                                  pun_cast<LPARAM, vr::VROverlayHandle_t>(lp_device.OvrlHandleTargetLast));
         }
@@ -498,7 +498,7 @@ void LaserPointer::Update()
         RefreshCachedOverlayHandles();
     }
 
-    vr::TrackedDeviceIndex_t primary_pointer_device = (vr::TrackedDeviceIndex_t)ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device);
+    vr::TrackedDeviceIndex_t primary_pointer_device = (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device);
 
     if ( (primary_pointer_device == vr::k_unTrackedDeviceIndexInvalid) && (!m_HadPrimaryPointerDevice) )
         return;
@@ -567,7 +567,7 @@ void LaserPointer::SetActiveDevice(vr::TrackedDeviceIndex_t device_index, LaserP
     if (device_index >= vr::k_unMaxTrackedDeviceCount)
         return;
 
-    vr::TrackedDeviceIndex_t previous_active_device = (vr::TrackedDeviceIndex_t)ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device);
+    vr::TrackedDeviceIndex_t previous_active_device = (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device);
 
     if (previous_active_device == device_index)
         return;
@@ -617,10 +617,10 @@ void LaserPointer::SetActiveDevice(vr::TrackedDeviceIndex_t device_index, LaserP
 
     m_ActivationOrigin = activation_origin;
 
-    ConfigManager::Get().SetConfigInt(configid_int_state_dplus_laser_pointer_device, device_index);
+    ConfigManager::SetValue(configid_int_state_dplus_laser_pointer_device, device_index);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_dplus_laser_pointer_device), device_index);
 
-    ConfigManager::Get().SetConfigHandle(configid_handle_state_dplus_laser_pointer_target_overlay, lp_device.OvrlHandleTargetLast);
+    ConfigManager::SetValue(configid_handle_state_dplus_laser_pointer_target_overlay, lp_device.OvrlHandleTargetLast);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_dplus_laser_pointer_target_overlay), 
                                          pun_cast<LPARAM, vr::VROverlayHandle_t>(lp_device.OvrlHandleTargetLast));
 }
@@ -628,7 +628,7 @@ void LaserPointer::SetActiveDevice(vr::TrackedDeviceIndex_t device_index, LaserP
 void LaserPointer::ClearActiveDevice()
 {
     //Clear last overlay cursor override
-    vr::TrackedDeviceIndex_t previous_active_device = (vr::TrackedDeviceIndex_t)ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device);
+    vr::TrackedDeviceIndex_t previous_active_device = (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device);
 
     if (previous_active_device < vr::k_unMaxTrackedDeviceCount)
     {
@@ -642,10 +642,10 @@ void LaserPointer::ClearActiveDevice()
 
     m_ActivationOrigin = dplp_activation_origin_none;
 
-    ConfigManager::Get().SetConfigInt(configid_int_state_dplus_laser_pointer_device, vr::k_unTrackedDeviceIndexInvalid);
+    ConfigManager::SetValue(configid_int_state_dplus_laser_pointer_device, vr::k_unTrackedDeviceIndexInvalid);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_dplus_laser_pointer_device), vr::k_unTrackedDeviceIndexInvalid);
 
-    ConfigManager::Get().SetConfigHandle(configid_handle_state_dplus_laser_pointer_target_overlay, vr::k_ulOverlayHandleInvalid);
+    ConfigManager::SetValue(configid_handle_state_dplus_laser_pointer_target_overlay, vr::k_ulOverlayHandleInvalid);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_dplus_laser_pointer_target_overlay), vr::k_ulOverlayHandleInvalid);
 }
 
@@ -671,7 +671,7 @@ void LaserPointer::RemoveDevice(vr::TrackedDeviceIndex_t device_index)
         vr::VROverlayView()->PostOverlayEvent(lp_device.OvrlHandleTargetLast, &vr_event);
 
         //Also remove pointer override in case there is any
-        bool is_primary_device = (device_index == (vr::TrackedDeviceIndex_t)ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device));
+        bool is_primary_device = (device_index == (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
         if ( (!lp_device.IsActiveForMultiLaserInput) || (is_primary_device) )
         {
             vr::VROverlay()->ClearOverlayCursorPositionOverride(lp_device.OvrlHandleTargetLast);
@@ -733,7 +733,7 @@ void LaserPointer::TriggerLaserPointerHaptics(vr::TrackedDeviceIndex_t device_in
 
 void LaserPointer::ForceTargetOverlay(vr::VROverlayHandle_t overlay_handle)
 {
-    vr::TrackedDeviceIndex_t primary_pointer_device = (vr::TrackedDeviceIndex_t)ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device);
+    vr::TrackedDeviceIndex_t primary_pointer_device = (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device);
 
     if (primary_pointer_device >= vr::k_unMaxTrackedDeviceCount)
         return;
@@ -761,7 +761,7 @@ LaserPointerActivationOrigin LaserPointer::GetActivationOrigin() const
 
 bool LaserPointer::IsActive() const
 {
-    vr::TrackedDeviceIndex_t primary_pointer_device = (vr::TrackedDeviceIndex_t)ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device);
+    vr::TrackedDeviceIndex_t primary_pointer_device = (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device);
     return ( (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndexInvalid) && (primary_pointer_device != vr::k_unTrackedDeviceIndexInvalid) );
 }
 
@@ -770,7 +770,7 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
     //If active, just check if the primary pointer has a last target overlay
     if (IsActive())
     {
-        vr::TrackedDeviceIndex_t primary_pointer_device = (vr::TrackedDeviceIndex_t)ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device);
+        vr::TrackedDeviceIndex_t primary_pointer_device = (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device);
 
         if (primary_pointer_device >= vr::k_unMaxTrackedDeviceCount)
             return vr::k_unTrackedDeviceIndexInvalid;

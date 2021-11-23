@@ -294,7 +294,7 @@ void TranslationManager::LoadTranslationFromFile(const std::string& filename)
 
         //ISO 639 code ideally matches the file names used, so this works as auto-detection
         std::string lang_filename = StringConvertFromUTF16(buffer) + ".ini";
-        ConfigManager::Get().SetConfigString(configid_str_interface_language_file, lang_filename);
+        ConfigManager::SetValue(configid_str_interface_language_file, lang_filename);
         LoadTranslationFromFile(lang_filename);
 
         return;
@@ -361,7 +361,7 @@ const char* TranslationManager::GetDesktopIDString(int desktop_id)
         return GetString(tstr_SourceDesktopAll);
     }
 
-    int desktop_count = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
+    int desktop_count = ConfigManager::GetValue(configid_int_state_interface_desktop_count);
 
     desktop_id = clamp(desktop_id, 0, desktop_count - 1);
 

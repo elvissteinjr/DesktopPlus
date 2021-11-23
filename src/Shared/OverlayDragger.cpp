@@ -46,7 +46,7 @@ void OverlayDragger::DragStartBase(bool is_gesture_drag)
         //Still nothing, try the config hint
         if (device_index == vr::k_unTrackedDeviceIndexInvalid)
         {
-            device_index = (vr::TrackedDeviceIndex_t)ConfigManager::Get().GetConfigInt(configid_int_state_laser_pointer_device_hint);
+            device_index = (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_laser_pointer_device_hint);
         }
     }
 
@@ -196,7 +196,7 @@ void OverlayDragger::DragUpdate()
             m_DragModeMatrixTargetCurrent = matrix_source_current * matrix_target_new;
 
             //Do axis locking if managed overlay and setting enabled
-            if ( (m_DragModeOverlayID != k_ulOverlayID_None) && (ConfigManager::Get().GetConfigBool(configid_bool_input_drag_force_upright)) )
+            if ( (m_DragModeOverlayID != k_ulOverlayID_None) && (ConfigManager::GetValue(configid_bool_input_drag_force_upright)) )
             {
                 TransformForceUpright(m_DragModeMatrixTargetCurrent);
             }
@@ -298,7 +298,7 @@ float OverlayDragger::DragAddWidth(float width)
 
 Matrix4 OverlayDragger::GetBaseOffsetMatrix()
 {
-    return GetBaseOffsetMatrix((OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_origin));
+    return GetBaseOffsetMatrix((OverlayOrigin)ConfigManager::GetValue(configid_int_overlay_origin));
 }
 
 Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin)
@@ -616,7 +616,7 @@ void OverlayDragger::DragGestureUpdate()
                 Matrix4 matrix_rotate_diff = matrix_rotate_current_at_origin * matrix_rotate_last_inverse;
 
                 //Do axis locking if managed overlay and setting enabled
-                if ( (m_DragModeOverlayID != k_ulOverlayID_None) && (ConfigManager::Get().GetConfigBool(configid_bool_input_drag_force_upright)) )
+                if ( (m_DragModeOverlayID != k_ulOverlayID_None) && (ConfigManager::GetValue(configid_bool_input_drag_force_upright)) )
                 {
                     TransformForceUpright(matrix_rotate_diff);
                 }

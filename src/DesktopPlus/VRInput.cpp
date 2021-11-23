@@ -92,7 +92,7 @@ void VRInput::Update()
         actionset_desc[1].ulActionSet = m_HandleActionsetLaserPointer;
         //+2 when blocking since OVRAS uses vr::k_nActionSetOverlayGlobalPriorityMin + 1 as priority for global input
         //When not blocking laser pointer inputs should have priority over global shortcuts
-        actionset_desc[1].nPriority = ConfigManager::Get().GetConfigBool(configid_bool_input_laser_pointer_block_input) ? vr::k_nActionSetOverlayGlobalPriorityMin + 2 : 101;
+        actionset_desc[1].nPriority = ConfigManager::GetValue(configid_bool_input_laser_pointer_block_input) ? vr::k_nActionSetOverlayGlobalPriorityMin + 2 : 101;
 
         if (m_LaserPointerScrollMode != vrinput_scroll_none)
         {
@@ -164,11 +164,11 @@ void VRInput::HandleGlobalActionShortcuts(OutputManager& outmgr)
     {
         if (data.bState)
         {
-            outmgr.DoStartAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_shortcut01_action_id));
+            outmgr.DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut01_action_id));
         }
         else
         {
-            outmgr.DoStopAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_shortcut01_action_id));
+            outmgr.DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut01_action_id));
         }
     }
 
@@ -178,11 +178,11 @@ void VRInput::HandleGlobalActionShortcuts(OutputManager& outmgr)
     {
         if (data.bState)
         {
-            outmgr.DoStartAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_shortcut02_action_id));
+            outmgr.DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut02_action_id));
         }
         else
         {
-            outmgr.DoStopAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_shortcut02_action_id));
+            outmgr.DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut02_action_id));
         }
     }
 
@@ -192,11 +192,11 @@ void VRInput::HandleGlobalActionShortcuts(OutputManager& outmgr)
     {
         if (data.bState)
         {
-            outmgr.DoStartAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_shortcut03_action_id));
+            outmgr.DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut03_action_id));
         }
         else
         {
-            outmgr.DoStopAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_shortcut03_action_id));
+            outmgr.DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut03_action_id));
         }
     }
 }

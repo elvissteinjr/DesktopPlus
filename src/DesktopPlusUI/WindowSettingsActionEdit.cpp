@@ -92,8 +92,8 @@ void WindowSettingsActionEdit::UpdateCatActions()
             ImGui::FixedHelpMarker("Controller bindings when pointing at the overlay.\nConfigure the VR Dashboard controller bindings to change which buttons these are.");
         }
 
-        ActionID actionid_home = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id);
-        ActionID actionid_back = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id);
+        ActionID actionid_home = (ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id);
+        ActionID actionid_back = (ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id);
 
         ImGui::Columns(2, "ColumnControllerButtonActions", false);
         ImGui::SetColumnWidth(0, column_width_0);
@@ -104,7 +104,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
 
         if (ButtonAction("ActionGoHome", actionid_home))
         {
-            ConfigManager::Get().SetConfigInt(configid_int_input_go_home_action_id, actionid_home);
+            ConfigManager::SetValue(configid_int_input_go_home_action_id, actionid_home);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_go_home_action_id), actionid_home);
         }
 
@@ -116,7 +116,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
             
         if (ButtonAction("ActionGoBack", actionid_back))
         {
-            ConfigManager::Get().SetConfigInt(configid_int_input_go_back_action_id, actionid_back);
+            ConfigManager::SetValue(configid_int_input_go_back_action_id, actionid_back);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_go_back_action_id), actionid_back);
         }
 
@@ -154,9 +154,9 @@ void WindowSettingsActionEdit::UpdateCatActions()
             ImGui::FixedHelpMarker("Controller bindings when the dashboard is closed and not pointing at an overlay.\nConfigure the Desktop+ controller bindings to change which buttons these are.");
         }
 
-        ActionID actionid_global_01 = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_shortcut01_action_id);
-        ActionID actionid_global_02 = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_shortcut02_action_id);
-        ActionID actionid_global_03 = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_shortcut03_action_id);
+        ActionID actionid_global_01 = (ActionID)ConfigManager::GetValue(configid_int_input_shortcut01_action_id);
+        ActionID actionid_global_02 = (ActionID)ConfigManager::GetValue(configid_int_input_shortcut02_action_id);
+        ActionID actionid_global_03 = (ActionID)ConfigManager::GetValue(configid_int_input_shortcut03_action_id);
 
         ImGui::Columns(2, "ColumnControllerButtonGlobalActions", false);
         ImGui::SetColumnWidth(0, column_width_0);
@@ -167,7 +167,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
 
         if (ButtonAction("ActionGlobalShortcut1", actionid_global_01))
         {
-            ConfigManager::Get().SetConfigInt(configid_int_input_shortcut01_action_id, actionid_global_01);
+            ConfigManager::SetValue(configid_int_input_shortcut01_action_id, actionid_global_01);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_shortcut01_action_id), actionid_global_01);
         }
 
@@ -179,7 +179,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
 
         if (ButtonAction("ActionGlobalShortcut2", actionid_global_02))
         {
-            ConfigManager::Get().SetConfigInt(configid_int_input_shortcut02_action_id, actionid_global_02);
+            ConfigManager::SetValue(configid_int_input_shortcut02_action_id, actionid_global_02);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_shortcut02_action_id), actionid_global_02);
         }
 
@@ -191,7 +191,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
 
         if (ButtonAction("ActionGlobalShortcut3", actionid_global_03))
         {
-            ConfigManager::Get().SetConfigInt(configid_int_input_shortcut03_action_id, actionid_global_03);
+            ConfigManager::SetValue(configid_int_input_shortcut03_action_id, actionid_global_03);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_shortcut03_action_id), actionid_global_03);
         }
 
@@ -204,9 +204,9 @@ void WindowSettingsActionEdit::UpdateCatActions()
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
         ImGui::FixedHelpMarker("System-wide keyboard shortcuts.\nHotkeys block other applications from receiving that input and may not work if the same combination has already been registered elsewhere.");
 
-        ActionID actionid_hotkey_01 = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_action_id);
-        ActionID actionid_hotkey_02 = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_action_id);
-        ActionID actionid_hotkey_03 = (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_action_id);
+        ActionID actionid_hotkey_01 = (ActionID)ConfigManager::GetValue(configid_int_input_hotkey01_action_id);
+        ActionID actionid_hotkey_02 = (ActionID)ConfigManager::GetValue(configid_int_input_hotkey02_action_id);
+        ActionID actionid_hotkey_03 = (ActionID)ConfigManager::GetValue(configid_int_input_hotkey03_action_id);
 
         //Adjust column width automatically if there's a stupidly long hotkey button/name
         static float hotkey_button_width = 0.0f;
@@ -231,7 +231,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
 
         if (ButtonAction("ActionHotkey1", actionid_hotkey_01))
         {
-            ConfigManager::Get().SetConfigInt(configid_int_input_hotkey01_action_id, actionid_hotkey_01);
+            ConfigManager::SetValue(configid_int_input_hotkey01_action_id, actionid_hotkey_01);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey01_action_id), actionid_hotkey_01);
         }
 
@@ -252,7 +252,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
 
         if (ButtonAction("ActionHotkey2", actionid_hotkey_02))
         {
-            ConfigManager::Get().SetConfigInt(configid_int_input_hotkey02_action_id, actionid_hotkey_02);
+            ConfigManager::SetValue(configid_int_input_hotkey02_action_id, actionid_hotkey_02);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey02_action_id), actionid_hotkey_02);
         }
 
@@ -273,7 +273,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
 
         if (ButtonAction("ActionHotkey3", actionid_hotkey_03))
         {
-            ConfigManager::Get().SetConfigInt(configid_int_input_hotkey03_action_id, actionid_hotkey_03);
+            ConfigManager::SetValue(configid_int_input_hotkey03_action_id, actionid_hotkey_03);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey03_action_id), actionid_hotkey_03);
         }
 
@@ -448,16 +448,16 @@ void WindowSettingsActionEdit::UpdateCatActions()
 
         ImGui::SetNextItemWidth(-1);
         const char* items[] = { "None", "Individual Desktops", "Cycle Buttons" };
-        int button_style = clamp(ConfigManager::Get().GetConfigIntRef(configid_int_interface_mainbar_desktop_listing), 0, IM_ARRAYSIZE(items) - 1);
+        int button_style = clamp(ConfigManager::GetRef(configid_int_interface_mainbar_desktop_listing), 0, IM_ARRAYSIZE(items) - 1);
         if (ImGui::Combo("##ComboButtonStyle", &button_style, items, IM_ARRAYSIZE(items)))
         {
-            ConfigManager::Get().SetConfigInt(configid_int_interface_mainbar_desktop_listing, button_style);
+            ConfigManager::SetValue(configid_int_interface_mainbar_desktop_listing, button_style);
             UIManager::Get()->RepeatFrame();
         }
 
         ImGui::NextColumn();
 
-        bool& include_all = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_mainbar_desktop_include_all);
+        bool& include_all = ConfigManager::GetRef(configid_bool_interface_mainbar_desktop_include_all);
         if (ImGui::Checkbox("Add Combined Desktop", &include_all))
         {
             UIManager::Get()->RepeatFrame();
@@ -728,20 +728,20 @@ bool WindowSettingsActionEdit::ButtonHotkey(unsigned int hotkey_id)
     {
         case 0:
         {
-            flags   = (unsigned int) ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_modifiers);
-            keycode = (unsigned char)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_keycode);
+            flags   = (unsigned int) ConfigManager::GetValue(configid_int_input_hotkey01_modifiers);
+            keycode = (unsigned char)ConfigManager::GetValue(configid_int_input_hotkey01_keycode);
             break;
         }
         case 1:
         {
-            flags   = (unsigned int) ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_modifiers);
-            keycode = (unsigned char)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_keycode);
+            flags   = (unsigned int) ConfigManager::GetValue(configid_int_input_hotkey02_modifiers);
+            keycode = (unsigned char)ConfigManager::GetValue(configid_int_input_hotkey02_keycode);
             break;
         }
         case 2:
         {
-            flags   = (unsigned int) ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_modifiers);
-            keycode = (unsigned char)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_keycode);
+            flags   = (unsigned int) ConfigManager::GetValue(configid_int_input_hotkey03_modifiers);
+            keycode = (unsigned char)ConfigManager::GetValue(configid_int_input_hotkey03_keycode);
             break;
         }
     }
@@ -857,24 +857,24 @@ bool WindowSettingsActionEdit::ButtonHotkey(unsigned int hotkey_id)
             {
                 case 0: 
                 {
-                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey01_modifiers, (int)flags);
-                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey01_keycode,   keycode_edit);
+                    ConfigManager::SetValue(configid_int_input_hotkey01_modifiers, (int)flags);
+                    ConfigManager::SetValue(configid_int_input_hotkey01_keycode,   keycode_edit);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey01_modifiers), (int)flags);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey01_keycode),   keycode_edit);
                     break;
                 }
                 case 1: 
                 {
-                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey02_modifiers, (int)flags);
-                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey02_keycode, keycode_edit);
+                    ConfigManager::SetValue(configid_int_input_hotkey02_modifiers, (int)flags);
+                    ConfigManager::SetValue(configid_int_input_hotkey02_keycode, keycode_edit);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey02_modifiers), (int)flags);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey02_keycode),   keycode_edit);
                     break;
                 }
                 case 2: 
                 {
-                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey03_modifiers, (int)flags);
-                    ConfigManager::Get().SetConfigInt(configid_int_input_hotkey03_keycode, keycode_edit);
+                    ConfigManager::SetValue(configid_int_input_hotkey03_modifiers, (int)flags);
+                    ConfigManager::SetValue(configid_int_input_hotkey03_keycode, keycode_edit);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey03_modifiers), (int)flags);
                     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey03_keycode),   keycode_edit);
                     break;
@@ -913,12 +913,12 @@ void WindowSettingsActionEdit::ActionOrderSetting(unsigned int overlay_id)
     {
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
 
-        if (ImGui::Checkbox("Use Global Setting", &ConfigManager::Get().GetConfigBoolRef(configid_bool_overlay_actionbar_order_use_global)))
+        if (ImGui::Checkbox("Use Global Setting", &ConfigManager::GetRef(configid_bool_overlay_actionbar_order_use_global)))
         {
             UIManager::Get()->RepeatFrame();
         }
 
-        use_global_order = ConfigManager::Get().GetConfigBool(configid_bool_overlay_actionbar_order_use_global);
+        use_global_order = ConfigManager::GetValue(configid_bool_overlay_actionbar_order_use_global);
     }
 
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
@@ -1179,8 +1179,8 @@ void WindowSettingsActionEdit::PopupActionEdit(CustomAction& action, int id)
             {
                 b_size_default.x *= UIManager::Get()->GetUIScale();
                 b_size_default.y *= UIManager::Get()->GetUIScale();
-                b_size_default.x *= ConfigManager::Get().GetConfigFloat(configid_float_interface_last_vr_ui_scale);
-                b_size_default.y *= ConfigManager::Get().GetConfigFloat(configid_float_interface_last_vr_ui_scale);
+                b_size_default.x *= ConfigManager::GetValue(configid_float_interface_last_vr_ui_scale);
+                b_size_default.y *= ConfigManager::GetValue(configid_float_interface_last_vr_ui_scale);
             }
 
             ImGui::PushStyleColor(ImGuiCol_ChildBg, 0);

@@ -348,21 +348,23 @@ class ConfigManager
         static WPARAM GetWParamForConfigID(ConfigID_Float id);
         static WPARAM GetWParamForConfigID(ConfigID_Handle id);
 
-        void SetConfigBool(ConfigID_Bool id, bool value);
-        void SetConfigInt(ConfigID_Int id, int value);
-        void SetConfigFloat(ConfigID_Float id, float value);
-        void SetConfigHandle(ConfigID_Handle id, uint64_t value);
-        void SetConfigString(ConfigID_String id, const std::string& value);
-        bool GetConfigBool(ConfigID_Bool id) const;
-        int GetConfigInt(ConfigID_Int id) const;
-        float GetConfigFloat(ConfigID_Float id) const;
-        uint64_t GetConfigHandle(ConfigID_Handle id) const;
-        const std::string& GetConfigString(ConfigID_String id) const;
-        //These are meant for direct use with ImGui widgets
-        bool& GetConfigBoolRef(ConfigID_Bool id);
-        int& GetConfigIntRef(ConfigID_Int id);
-        float& GetConfigFloatRef(ConfigID_Float id);
-        uint64_t& GetConfigHandleRef(ConfigID_Handle id);
+        static void SetValue(ConfigID_Bool   configid, bool               value);
+        static void SetValue(ConfigID_Int    configid, int                value);
+        static void SetValue(ConfigID_Float  configid, float              value);
+        static void SetValue(ConfigID_Handle configid, uint64_t           value);
+        static void SetValue(ConfigID_String configid, const std::string& value);
+
+        static bool               GetValue(ConfigID_Bool   configid);
+        static int                GetValue(ConfigID_Int    configid);
+        static float              GetValue(ConfigID_Float  configid);
+        static uint64_t           GetValue(ConfigID_Handle configid);
+        static const std::string& GetValue(ConfigID_String configid);
+
+        static bool&     GetRef(ConfigID_Bool   configid);
+        static int&      GetRef(ConfigID_Int    configid);
+        static float&    GetRef(ConfigID_Float  configid);
+        static uint64_t& GetRef(ConfigID_Handle configid);
+
         void ResetConfigStateValues();  //Reset all configid_*_state_* settings. Used when restarting a Desktop+ process
 
         ActionManager& GetActionManager();

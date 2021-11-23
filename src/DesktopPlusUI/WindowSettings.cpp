@@ -179,7 +179,7 @@ void WindowSettingsNew::UpdateWarnings()
 
     //Compositor resolution warning
     {
-        bool& hide_compositor_res_warning = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_compositor_res_hidden);
+        bool& hide_compositor_res_warning = ConfigManager::GetRef(configid_bool_interface_warning_compositor_res_hidden);
 
         if ( (!hide_compositor_res_warning) && (UIManager::Get()->IsCompositorResolutionLow()) )
         {
@@ -204,7 +204,7 @@ void WindowSettingsNew::UpdateWarnings()
 
     //Compositor quality warning
     {
-        bool& hide_compositor_quality_warning = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_compositor_quality_hidden);
+        bool& hide_compositor_quality_warning = ConfigManager::GetRef(configid_bool_interface_warning_compositor_quality_hidden);
 
         if ( (!hide_compositor_quality_warning) && (UIManager::Get()->IsCompositorRenderQualityLow()) )
         {
@@ -229,9 +229,9 @@ void WindowSettingsNew::UpdateWarnings()
 
     //Dashboard app process elevation warning
     {
-        bool& hide_process_elevation_warning = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_process_elevation_hidden);
+        bool& hide_process_elevation_warning = ConfigManager::GetRef(configid_bool_interface_warning_process_elevation_hidden);
 
-        if ( (!hide_process_elevation_warning) && (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated)) )
+        if ( (!hide_process_elevation_warning) && (ConfigManager::GetValue(configid_bool_state_misc_process_elevated)) )
         {
             SelectableWarning("##WarningElevation", "DontShowAgain3", TranslationManager::GetString(tstr_SettingsWarningProcessElevated));
 
@@ -254,9 +254,9 @@ void WindowSettingsNew::UpdateWarnings()
 
     //Elevated mode warning (this is different from elevated dashboard process)
     {
-        bool& hide_elevated_mode_warning = ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_warning_elevated_mode_hidden);
+        bool& hide_elevated_mode_warning = ConfigManager::GetRef(configid_bool_interface_warning_elevated_mode_hidden);
 
-        if ( (!hide_elevated_mode_warning) && (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active)) )
+        if ( (!hide_elevated_mode_warning) && (ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active)) )
         {
             SelectableWarning("##WarningElevatedMode", "DontShowAgain4", TranslationManager::GetString(tstr_SettingsWarningElevatedMode));
 
@@ -283,8 +283,8 @@ void WindowSettingsNew::UpdateWarnings()
 
     //Focused process elevation warning
     {
-        if (  (ConfigManager::Get().GetConfigBool(configid_bool_state_window_focused_process_elevated)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated)) && 
-             (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active))       && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)) )
+        if (  (ConfigManager::GetValue(configid_bool_state_window_focused_process_elevated)) && (!ConfigManager::GetValue(configid_bool_state_misc_process_elevated)) && 
+             (!ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active))       && (!ConfigManager::GetValue(configid_bool_state_misc_uiaccess_enabled)) )
         {
             SelectableWarning("##WarningElevation2", "FocusedElevatedContext", TranslationManager::GetString(tstr_SettingsWarningElevatedProcessFocus));
 
@@ -313,7 +313,7 @@ void WindowSettingsNew::UpdateWarnings()
 
     //UIAccess lost warning
     {
-        if ( (ConfigManager::Get().GetConfigBool(configid_bool_misc_uiaccess_was_enabled)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_uiaccess_enabled)) )
+        if ( (ConfigManager::GetValue(configid_bool_misc_uiaccess_was_enabled)) && (!ConfigManager::GetValue(configid_bool_state_misc_uiaccess_enabled)) )
         {
             SelectableWarning("##WarningUIAccess", "DontShowAgain6", TranslationManager::GetString(tstr_SettingsWarningUIAccessLost));
 
@@ -322,7 +322,7 @@ void WindowSettingsNew::UpdateWarnings()
             {
                 if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
                 {
-                    ConfigManager::Get().SetConfigBool(configid_bool_misc_uiaccess_was_enabled, false);
+                    ConfigManager::SetValue(configid_bool_misc_uiaccess_was_enabled, false);
                 }
                 ImGui::EndPopup();
 
@@ -546,7 +546,7 @@ void WindowSettingsNew::UpdatePageMainCatInterface()
                 //Load language list
                 list_id = 0;
 
-                const std::string& current_filename = ConfigManager::Get().GetConfigString(configid_str_interface_language_file);
+                const std::string& current_filename = ConfigManager::GetValue(configid_str_interface_language_file);
                 const std::wstring wpath = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "lang/*.ini").c_str() );
                 WIN32_FIND_DATA find_data;
                 HANDLE handle_find = ::FindFirstFileW(wpath.c_str(), &find_data);
@@ -581,7 +581,7 @@ void WindowSettingsNew::UpdatePageMainCatInterface()
             {
                 if (ImGui::Selectable(item.second.c_str(), (list_id == i)))
                 {
-                    ConfigManager::Get().SetConfigString(configid_str_interface_language_file, item.first);
+                    ConfigManager::SetValue(configid_str_interface_language_file, item.first);
                     TranslationManager::Get().LoadTranslationFromFile(item.first);
                     UIManager::Get()->OnTranslationChanged();
 
@@ -599,16 +599,16 @@ void WindowSettingsNew::UpdatePageMainCatInterface()
         ImGui::Spacing();
         ImGui::Indent();
 
-        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsInterfaceAdvancedSettings), &ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_show_advanced_settings)))
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsInterfaceAdvancedSettings), &ConfigManager::GetRef(configid_bool_interface_show_advanced_settings)))
         {
             UIManager::Get()->RepeatFrame();
         }
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_SettingsInterfaceAdvancedSettingsTip));
 
-        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_show_advanced_settings))
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
         {
-            ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsInterfaceBlankSpaceDrag), &ConfigManager::Get().GetConfigBoolRef(configid_bool_interface_blank_space_drag_enabled));
+            ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsInterfaceBlankSpaceDrag), &ConfigManager::GetRef(configid_bool_interface_blank_space_drag_enabled));
         }
 
         ImGui::Unindent();
@@ -663,7 +663,7 @@ void WindowSettingsNew::UpdatePageMainCatInput()
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsKeyboardSize));
         ImGui::NextColumn();
 
-        float& size = ConfigManager::Get().GetConfigFloatRef(configid_float_input_keyboard_detached_size);
+        float& size = ConfigManager::GetRef(configid_float_input_keyboard_detached_size);
 
         vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("KeyboardSize") );
         if (ImGui::SliderWithButtonsFloatPercentage("KeyboardSize", size, 5, 1, 50, 200, "%d%%"))
@@ -681,12 +681,12 @@ void WindowSettingsNew::UpdatePageMainCatInput()
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsKeyboardBehavior));
         ImGui::NextColumn();
 
-        ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsKeyboardStickyMod), &ConfigManager::Get().GetConfigBoolRef(configid_bool_input_keyboard_sticky_modifiers));
+        ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsKeyboardStickyMod), &ConfigManager::GetRef(configid_bool_input_keyboard_sticky_modifiers));
 
         ImGui::NextColumn();
         ImGui::NextColumn();
 
-        ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsKeyboardKeyRepeat), &ConfigManager::Get().GetConfigBoolRef(configid_bool_input_keyboard_key_repeat));
+        ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsKeyboardKeyRepeat), &ConfigManager::GetRef(configid_bool_input_keyboard_key_repeat));
 
         ImGui::Columns(1);
     }
@@ -702,7 +702,7 @@ void WindowSettingsNew::UpdatePageMainCatInput()
 
         ImGui::Indent();
 
-        bool& block_input = ConfigManager::Get().GetConfigBoolRef(configid_bool_input_laser_pointer_block_input);
+        bool& block_input = ConfigManager::GetRef(configid_bool_input_laser_pointer_block_input);
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsLaserPointerBlockInput), &block_input))
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_input_laser_pointer_block_input), block_input);
@@ -717,7 +717,7 @@ void WindowSettingsNew::UpdatePageMainCatInput()
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsLaserPointerAutoToggleDistance));
         ImGui::NextColumn();
 
-        float& distance = ConfigManager::Get().GetConfigFloatRef(configid_float_input_detached_interaction_max_distance);
+        float& distance = ConfigManager::GetRef(configid_float_input_detached_interaction_max_distance);
         const char* alt_text = (distance < 0.01f) ? TranslationManager::GetString(tstr_SettingsLaserPointerAutoToggleDistanceValueOff) : nullptr;
 
         vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("LaserPointerMaxDistance") );
@@ -745,15 +745,15 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
 
         ImGui::Indent();
 
-        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_show_advanced_settings))
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
         {
-            bool& auto_focus = ConfigManager::Get().GetConfigBoolRef(configid_bool_windows_winrt_auto_focus);
+            bool& auto_focus = ConfigManager::GetRef(configid_bool_windows_winrt_auto_focus);
             if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysAutoFocus), &auto_focus))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_auto_focus), auto_focus);
             }
 
-            bool& keep_on_screen = ConfigManager::Get().GetConfigBoolRef(configid_bool_windows_winrt_keep_on_screen);
+            bool& keep_on_screen = ConfigManager::GetRef(configid_bool_windows_winrt_keep_on_screen);
             if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysKeepOnScreen), &keep_on_screen))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_keep_on_screen), keep_on_screen);
@@ -762,21 +762,21 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
             HelpMarker(TranslationManager::GetString(tstr_SettingsWindowOverlaysKeepOnScreenTip));
         }
 
-        bool& auto_size_overlay = ConfigManager::Get().GetConfigBoolRef(configid_bool_windows_winrt_auto_size_overlay);
+        bool& auto_size_overlay = ConfigManager::GetRef(configid_bool_windows_winrt_auto_size_overlay);
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysAutoSizeOverlay), &auto_size_overlay))
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_auto_size_overlay), auto_size_overlay);
         }
 
-        bool& focus_scene_app = ConfigManager::Get().GetConfigBoolRef(configid_bool_windows_winrt_auto_focus_scene_app);
+        bool& focus_scene_app = ConfigManager::GetRef(configid_bool_windows_winrt_auto_focus_scene_app);
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysFocusSceneApp), &focus_scene_app))
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_auto_focus_scene_app), focus_scene_app);
         }
 
-        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_show_advanced_settings))
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
         {
-            bool& strict_matching = ConfigManager::Get().GetConfigBoolRef(configid_bool_windows_winrt_window_matching_strict);
+            bool& strict_matching = ConfigManager::GetRef(configid_bool_windows_winrt_window_matching_strict);
             if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysStrictMatching), &strict_matching))
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_window_matching_strict), strict_matching);
@@ -787,7 +787,7 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
 
         ImGui::Unindent();
 
-        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_show_advanced_settings))
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
         {
             ImGui::Spacing();
             ImGui::Columns(2, "ColumnWindows", false);
@@ -797,7 +797,7 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsWindowOverlaysOnWindowDrag));
             ImGui::NextColumn();
 
-            int& mode_dragging = ConfigManager::Get().GetConfigIntRef(configid_int_windows_winrt_dragging_mode);
+            int& mode_dragging = ConfigManager::GetRef(configid_int_windows_winrt_dragging_mode);
 
             ImGui::SetNextItemWidth(-1);
             if (TranslatedComboAnimated("##ComboWindowDrag", mode_dragging, tstr_SettingsWindowOverlaysOnWindowDragDoNothing, tstr_SettingsWindowOverlaysOnWindowDragOverlay))
@@ -813,7 +813,7 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
             HelpMarker(TranslationManager::GetString(tstr_SettingsWindowOverlaysOnCaptureLossTip));
             ImGui::NextColumn();
 
-            int& behavior_capture_loss = ConfigManager::Get().GetConfigIntRef(configid_int_windows_winrt_capture_lost_behavior);
+            int& behavior_capture_loss = ConfigManager::GetRef(configid_int_windows_winrt_capture_lost_behavior);
 
             ImGui::SetNextItemWidth(-1);
             if (TranslatedComboAnimated("##ComboCaptureLost", behavior_capture_loss, tstr_SettingsWindowOverlaysOnCaptureLossDoNothing, tstr_SettingsWindowOverlaysOnCaptureLossRemove))
@@ -860,15 +860,15 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
 
         int warning_hidden_count = 0;
 
-        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_compositor_quality_hidden))
+        if (ConfigManager::GetValue(configid_bool_interface_warning_compositor_quality_hidden))
             warning_hidden_count++;
-        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_compositor_res_hidden))
+        if (ConfigManager::GetValue(configid_bool_interface_warning_compositor_res_hidden))
             warning_hidden_count++;
-        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_process_elevation_hidden))
+        if (ConfigManager::GetValue(configid_bool_interface_warning_process_elevation_hidden))
             warning_hidden_count++;
-        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_elevated_mode_hidden))
+        if (ConfigManager::GetValue(configid_bool_interface_warning_elevated_mode_hidden))
             warning_hidden_count++;
-        if (ConfigManager::Get().GetConfigBool(configid_bool_interface_warning_welcome_hidden))
+        if (ConfigManager::GetValue(configid_bool_interface_warning_welcome_hidden))
             warning_hidden_count++;
 
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsWarningsHidden));
@@ -879,11 +879,11 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
 
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsWarningsReset)))
         {
-            ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_compositor_quality_hidden, false);
-            ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_compositor_res_hidden,     false);
-            ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_process_elevation_hidden,  false);
-            ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_elevated_mode_hidden,      false);
-            ConfigManager::Get().SetConfigBool(configid_bool_interface_warning_welcome_hidden,            false);
+            ConfigManager::SetValue(configid_bool_interface_warning_compositor_quality_hidden, false);
+            ConfigManager::SetValue(configid_bool_interface_warning_compositor_res_hidden,     false);
+            ConfigManager::SetValue(configid_bool_interface_warning_process_elevation_hidden,  false);
+            ConfigManager::SetValue(configid_bool_interface_warning_elevated_mode_hidden,      false);
+            ConfigManager::SetValue(configid_bool_interface_warning_welcome_hidden,            false);
 
             UIManager::Get()->UpdateAnyWarningDisplayedState();
         }
@@ -892,7 +892,7 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
     }
 
     //Startup
-    bool& no_steam = ConfigManager::Get().GetConfigBoolRef(configid_bool_misc_no_steam);
+    bool& no_steam = ConfigManager::GetRef(configid_bool_misc_no_steam);
 
     if ( (ConfigManager::Get().IsSteamInstall()) || (UIManager::Get()->IsOpenVRLoaded()) ) //Only show if Steam install or we can access OpenVR settings
     {
@@ -941,7 +941,7 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
             UIManager::Get()->RestartDashboardApp();
         }
 
-        bool has_restart_steam_button = ( (ConfigManager::Get().IsSteamInstall()) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam)) );
+        bool has_restart_steam_button = ( (ConfigManager::Get().IsSteamInstall()) && (!ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam)) );
 
         if (has_restart_steam_button)
         {
@@ -969,7 +969,7 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
             if (!has_restart_steam_button)
                 ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
-            if (!ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active))
+            if (!ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active))
             {
                 if (ImGui::Button(TranslationManager::GetString(tstr_SettingsTroubleshootingElevatedModeEnter)))
                 {
@@ -1041,7 +1041,7 @@ void WindowSettingsNew::UpdatePageKeyboardLayout()
         list_layouts.clear();
         list_id = -1;
 
-        const std::string& current_filename = ConfigManager::Get().GetConfigString(configid_str_input_keyboard_layout_file);
+        const std::string& current_filename = ConfigManager::GetValue(configid_str_input_keyboard_layout_file);
         const std::wstring wpath = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "keyboards/*.ini").c_str() );
         WIN32_FIND_DATA find_data;
         HANDLE handle_find = ::FindFirstFileW(wpath.c_str(), &find_data);
@@ -1070,10 +1070,10 @@ void WindowSettingsNew::UpdatePageKeyboardLayout()
         }
 
         //Clusters
-        cluster_enabled_prev[kbdlayout_cluster_function]   = ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_cluster_function_enabled);
-        cluster_enabled_prev[kbdlayout_cluster_navigation] = ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_cluster_navigation_enabled);
-        cluster_enabled_prev[kbdlayout_cluster_numpad]     = ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_cluster_numpad_enabled);
-        cluster_enabled_prev[kbdlayout_cluster_extra]      = ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_cluster_extra_enabled);
+        cluster_enabled_prev[kbdlayout_cluster_function]   = ConfigManager::GetValue(configid_bool_input_keyboard_cluster_function_enabled);
+        cluster_enabled_prev[kbdlayout_cluster_navigation] = ConfigManager::GetValue(configid_bool_input_keyboard_cluster_navigation_enabled);
+        cluster_enabled_prev[kbdlayout_cluster_numpad]     = ConfigManager::GetValue(configid_bool_input_keyboard_cluster_numpad_enabled);
+        cluster_enabled_prev[kbdlayout_cluster_extra]      = ConfigManager::GetValue(configid_bool_input_keyboard_cluster_extra_enabled);
 
         UIManager::Get()->RepeatFrame();
     }
@@ -1109,10 +1109,10 @@ void WindowSettingsNew::UpdatePageKeyboardLayout()
     ImGui::Indent();
 
     bool reload_layout = false;
-    bool& function_enabled   = ConfigManager::Get().GetConfigBoolRef(configid_bool_input_keyboard_cluster_function_enabled);
-    bool& navigation_enabled = ConfigManager::Get().GetConfigBoolRef(configid_bool_input_keyboard_cluster_navigation_enabled);
-    bool& numpad_enabled     = ConfigManager::Get().GetConfigBoolRef(configid_bool_input_keyboard_cluster_numpad_enabled);
-    bool& extra_enabled      = ConfigManager::Get().GetConfigBoolRef(configid_bool_input_keyboard_cluster_extra_enabled);
+    bool& function_enabled   = ConfigManager::GetRef(configid_bool_input_keyboard_cluster_function_enabled);
+    bool& navigation_enabled = ConfigManager::GetRef(configid_bool_input_keyboard_cluster_navigation_enabled);
+    bool& numpad_enabled     = ConfigManager::GetRef(configid_bool_input_keyboard_cluster_numpad_enabled);
+    bool& extra_enabled      = ConfigManager::GetRef(configid_bool_input_keyboard_cluster_extra_enabled);
 
     //Keep unavailable options as enabled but show the check boxes as unticked to avoid confusion
     bool cluster_available[kbdlayout_cluster_MAX] = {false};
@@ -1203,7 +1203,7 @@ void WindowSettingsNew::UpdatePageKeyboardLayout()
     {
         if (list_id != -1)
         {
-            ConfigManager::Get().SetConfigString(configid_str_input_keyboard_layout_file, list_layouts[list_id].FileName);
+            ConfigManager::SetValue(configid_str_input_keyboard_layout_file, list_layouts[list_id].FileName);
         }
 
         PageGoBack();
@@ -1214,10 +1214,10 @@ void WindowSettingsNew::UpdatePageKeyboardLayout()
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
     {
         //Restore previous cluster settings
-        ConfigManager::Get().SetConfigBool(configid_bool_input_keyboard_cluster_function_enabled,   cluster_enabled_prev[kbdlayout_cluster_function]);
-        ConfigManager::Get().SetConfigBool(configid_bool_input_keyboard_cluster_navigation_enabled, cluster_enabled_prev[kbdlayout_cluster_navigation]);
-        ConfigManager::Get().SetConfigBool(configid_bool_input_keyboard_cluster_numpad_enabled,     cluster_enabled_prev[kbdlayout_cluster_numpad]);
-        ConfigManager::Get().SetConfigBool(configid_bool_input_keyboard_cluster_extra_enabled,      cluster_enabled_prev[kbdlayout_cluster_extra]);
+        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_function_enabled,   cluster_enabled_prev[kbdlayout_cluster_function]);
+        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_navigation_enabled, cluster_enabled_prev[kbdlayout_cluster_navigation]);
+        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_numpad_enabled,     cluster_enabled_prev[kbdlayout_cluster_numpad]);
+        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_extra_enabled,      cluster_enabled_prev[kbdlayout_cluster_extra]);
 
         vr_keyboard.LoadCurrentLayout();
 

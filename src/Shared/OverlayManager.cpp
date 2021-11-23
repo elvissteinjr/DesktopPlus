@@ -410,7 +410,7 @@ std::vector<unsigned int> OverlayManager::FindInactiveOverlaysForWindow(const Wi
     const std::string class_str = StringConvertFromUTF16(window_info.GetWindowClassName().c_str());
 
     //Just straight look for a complete match when strict matching is enabled
-    if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_window_matching_strict))
+    if (ConfigManager::GetValue(configid_bool_windows_winrt_window_matching_strict))
     {
         for (auto i : candidate_overlay_ids)
         {

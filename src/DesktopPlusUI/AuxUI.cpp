@@ -502,7 +502,7 @@ void WindowCaptureWindowSelect::Update()
                 }
 
                 //Set pointer hint in case dashboard app needs it
-                ConfigManager::Get().SetConfigInt(configid_int_state_laser_pointer_device_hint, (int)device_index);
+                ConfigManager::SetValue(configid_int_state_laser_pointer_device_hint, (int)device_index);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_laser_pointer_device_hint), (int)device_index);
 
                 //Add overlay

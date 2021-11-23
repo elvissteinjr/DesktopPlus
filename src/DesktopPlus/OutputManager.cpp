@@ -278,9 +278,9 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
     m_OutputInvalid = false;
 
-    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
+    if (ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring))
     {
-        SingleOutput = clamp(ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id), -1, ::GetSystemMetrics(SM_CMONITORS) - 1);
+        SingleOutput = clamp(ConfigManager::GetValue(configid_int_overlay_desktop_id), -1, ::GetSystemMetrics(SM_CMONITORS) - 1);
     }
     else
     {
@@ -512,7 +512,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     }
 
     //In case this was called due to a resolution change, check if the crop was just exactly the set desktop in each overlay and adapt then
-    if (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
+    if (!ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring))
     {
         unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
 
@@ -634,7 +634,7 @@ vr::EVRInitError OutputManager::InitOverlay()
 
     //Check if this process was launched by Steam by checking if the "SteamClientLaunch" environment variable exists
     bool is_steam_app = (::GetEnvironmentVariable(L"SteamClientLaunch", nullptr, 0) != 0);
-    ConfigManager::Get().SetConfigBool(configid_bool_state_misc_process_started_by_steam, is_steam_app);
+    ConfigManager::SetValue(configid_bool_state_misc_process_started_by_steam, is_steam_app);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_started_by_steam), is_steam_app);
 
     //Add application manifest and set app key to Steam one if needed (setting the app key will make it load Steam input bindings even when not launched by it)
@@ -721,7 +721,7 @@ vr::EVRInitError OutputManager::InitOverlay()
     bool input_res = m_VRInput.Init();
 
     //Check if it's a WMR system and set up for that if needed
-    SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens));
+    SetConfigForWMR(ConfigManager::GetRef(configid_int_interface_wmr_ignore_vscreens));
 
     //Init background overlay if needed
     m_BackgroundOverlay.Update();
@@ -794,7 +794,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
                          int(PointerInfo->Position.y + PointerInfo->ShapeInfo.Height)};
 
     //If mouse state got updated, expand dirty rect to include old and new cursor regions
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_cursor)) && (m_MouseLastInfo.LastTimeStamp.QuadPart < PointerInfo->LastTimeStamp.QuadPart) )
+    if ( (ConfigManager::GetValue(configid_bool_input_mouse_render_cursor)) && (m_MouseLastInfo.LastTimeStamp.QuadPart < PointerInfo->LastTimeStamp.QuadPart) )
     {
         //Only invalidate if position or shape changed, otherwise it would be a visually identical result
         if ( (m_MouseLastInfo.Position.x != PointerInfo->Position.x) || (m_MouseLastInfo.Position.y != PointerInfo->Position.y) ||
@@ -924,7 +924,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     }
 
     //Count frames if performance stats are active
-    if ( (has_updated_overlay) && (ConfigManager::Get().GetConfigBool(configid_bool_state_performance_stats_active)) )
+    if ( (has_updated_overlay) && (ConfigManager::GetValue(configid_bool_state_performance_stats_active)) )
     {
         m_PerformanceFrameCount++;
     }
@@ -948,14 +948,14 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
             std::string copystr((char*)pcds->lpData, pcds->cbData); //We rely on the data length. The data is sent without the NUL byte
 
             ConfigID_String str_id = (ConfigID_String)pcds->dwData;
-            ConfigManager::Get().SetConfigString(str_id, copystr);
+            ConfigManager::SetValue(str_id, copystr);
 
             switch (str_id)
             {
                 case configid_str_state_action_value_string:
                 {
                     std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
-                    const int id = ConfigManager::Get().GetConfigInt(configid_int_state_action_current);
+                    const int id = ConfigManager::GetValue(configid_int_state_action_current);
 
                     //Unnecessary, but let's save us from the near endless loop in case of a coding error
                     if ( (id < 0) || (id > 10000) )
@@ -986,7 +986,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
     //Apply overlay id override if needed
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-    int overlay_override_id = ConfigManager::Get().GetConfigInt(configid_int_state_overlay_current_id_override);
+    int overlay_override_id = ConfigManager::GetValue(configid_int_state_overlay_current_id_override);
 
     if (overlay_override_id != -1)
     {
@@ -1080,14 +1080,14 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         default: capsource = ovrl_capsource_desktop_duplication;
                     }
 
-                    AddOverlayDrag(pointer_distance, capsource, desktop_id, (HWND)ConfigManager::Get().GetConfigHandle(configid_handle_state_arg_hwnd));
+                    AddOverlayDrag(pointer_distance, capsource, desktop_id, (HWND)ConfigManager::GetValue(configid_handle_state_arg_hwnd));
                     break;
                 }
                 case ipcact_overlay_remove:
                 {
                     OverlayManager::Get().RemoveOverlay((unsigned int)msg.lParam);
                     //RemoveOverlay() may have changed active ID, keep in sync
-                    ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, OverlayManager::Get().GetCurrentOverlayID());
+                    ConfigManager::SetValue(configid_int_interface_overlay_current_id, OverlayManager::Get().GetCurrentOverlayID());
                     break;
                 }
                 case ipcact_overlay_transform_sync:
@@ -1159,7 +1159,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                             data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = msg.lParam;
 
-                            if (ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay)
+                            if (ConfigManager::GetValue(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay)
                                 data.ConfigBool[configid_bool_overlay_enabled] = true;
 
                             OnSetOverlayWinRTCaptureWindow(i);
@@ -1168,7 +1168,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                             IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
                             IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), msg.lParam);
 
-                            if (ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay)
+                            if (ConfigManager::GetValue(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay)
                                 IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), true);
 
                             IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
@@ -1222,15 +1222,15 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                     //Global config state
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_interface_desktop_count),
-                                                         ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count));
+                                                         ConfigManager::GetValue(configid_int_state_interface_desktop_count));
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_window_focused_process_elevated), 
-                                                         ConfigManager::Get().GetConfigBool(configid_bool_state_window_focused_process_elevated));
+                                                         ConfigManager::GetValue(configid_bool_state_window_focused_process_elevated));
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_elevated), 
-                                                         ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_elevated));
+                                                         ConfigManager::GetValue(configid_bool_state_misc_process_elevated));
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_started_by_steam),
-                                                         ConfigManager::Get().GetConfigBool(configid_bool_state_misc_process_started_by_steam));
+                                                         ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam));
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_dplus_laser_pointer_device),
-                                                         ConfigManager::Get().GetConfigInt(configid_int_state_dplus_laser_pointer_device));
+                                                         ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
 
                     //Sync usually means new UI process, so get new handles
                     m_LaserPointer.RefreshCachedOverlayHandles();
@@ -1268,7 +1268,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
             if (msg.wParam < configid_bool_MAX)
             {
                 ConfigID_Bool bool_id = (ConfigID_Bool)msg.wParam;
-                ConfigManager::Get().SetConfigBool(bool_id, msg.lParam);
+                ConfigManager::SetValue(bool_id, msg.lParam);
 
                 switch (bool_id)
                 {
@@ -1351,7 +1351,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         if (msg.lParam) //Update GPU Copy state
                         {
-                            ConfigManager::Get().SetConfigBool(configid_bool_state_performance_gpu_copy_active, (m_MultiGPUTargetDevice != nullptr));
+                            ConfigManager::SetValue(configid_bool_state_performance_gpu_copy_active, (m_MultiGPUTargetDevice != nullptr));
                             IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_performance_gpu_copy_active), 
                                                                  (m_MultiGPUTargetDevice != nullptr));
                         }
@@ -1369,8 +1369,8 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
             {
                 ConfigID_Int int_id = (ConfigID_Int)(msg.wParam - configid_bool_MAX);
 
-                int previous_value = ConfigManager::Get().GetConfigInt(int_id);
-                ConfigManager::Get().SetConfigInt(int_id, msg.lParam);
+                int previous_value = ConfigManager::GetValue(int_id);
+                ConfigManager::SetValue(int_id, msg.lParam);
 
                 switch (int_id)
                 {
@@ -1390,7 +1390,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         CropToDisplay(msg.lParam);
 
-                        reset_mirroring = (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring) && (msg.lParam != previous_value));
+                        reset_mirroring = (ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring) && (msg.lParam != previous_value));
                         break;
                     }
                     case configid_int_overlay_capture_source:
@@ -1466,7 +1466,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_int_state_action_value_int:
                     {
                         std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
-                        const int id = ConfigManager::Get().GetConfigInt(configid_int_state_action_current);
+                        const int id = ConfigManager::GetValue(configid_int_state_action_current);
 
                         //Unnecessary, but let's save us from the near endless loop in case of a coding error
                         if (id > 10000)
@@ -1488,8 +1488,8 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 ConfigID_Float float_id = (ConfigID_Float)(msg.wParam - configid_bool_MAX - configid_int_MAX);
 
                 float value = pun_cast<float, LPARAM>(msg.lParam);
-                float previous_value = ConfigManager::Get().GetConfigFloat(float_id);
-                ConfigManager::Get().SetConfigFloat(float_id, value);
+                float previous_value = ConfigManager::GetValue(float_id);
+                ConfigManager::SetValue(float_id, value);
 
                 switch (float_id)
                 {
@@ -1518,8 +1518,8 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 ConfigID_Handle handle_id = (ConfigID_Handle)(msg.wParam - configid_bool_MAX - configid_int_MAX - configid_float_MAX);
 
                 uint64_t value = pun_cast<uint64_t, LPARAM>(msg.lParam);
-                intptr_t previous_value = ConfigManager::Get().GetConfigHandle(handle_id);
-                ConfigManager::Get().SetConfigHandle(handle_id, value);
+                intptr_t previous_value = ConfigManager::GetValue(handle_id);
+                ConfigManager::SetValue(handle_id, value);
 
                 switch (handle_id)
                 {
@@ -1573,7 +1573,7 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
             }
 
             //Adaptive Size
-            bool adaptive_size_apply = ( (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_size_overlay)) && (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && 
+            bool adaptive_size_apply = ( (ConfigManager::GetValue(configid_bool_windows_winrt_auto_size_overlay)) && (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && 
                                          (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) && (data.ConfigInt[configid_int_overlay_state_content_width] != -1) && 
                                          (content_width != -1) );
 
@@ -1622,7 +1622,7 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
             OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
 
             //Hide affected overlay if setting enabled
-            if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay) )
+            if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (ConfigManager::GetValue(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay) )
             {
                 unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
                 OverlayManager::Get().SetCurrentOverlayID(overlay_id);
@@ -1635,11 +1635,11 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
                 IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), false);
                 IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
             }
-            else if (ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_remove_overlay) //Or remove it
+            else if (ConfigManager::GetValue(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_remove_overlay) //Or remove it
             {
                 OverlayManager::Get().RemoveOverlay(overlay_id);
                 //RemoveOverlay() may have changed active ID, keep in sync
-                ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, OverlayManager::Get().GetCurrentOverlayID());
+                ConfigManager::SetValue(configid_int_interface_overlay_current_id, OverlayManager::Get().GetCurrentOverlayID());
 
                 //Send to UI
                 IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlay_remove, overlay_id);
@@ -1670,9 +1670,9 @@ void OutputManager::HandleHotkeyMessage(const MSG& msg)
     {
         switch (msg.wParam)
         {
-            case 0: DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_action_id)); break;
-            case 1: DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_action_id)); break;
-            case 2: DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_action_id)); break;
+            case 0: DoAction((ActionID)ConfigManager::GetValue(configid_int_input_hotkey01_action_id)); break;
+            case 1: DoAction((ActionID)ConfigManager::GetValue(configid_int_input_hotkey02_action_id)); break;
+            case 2: DoAction((ActionID)ConfigManager::GetValue(configid_int_input_hotkey03_action_id)); break;
         }
 
         m_IsHotkeyDown[msg.wParam] = true;
@@ -1756,7 +1756,7 @@ void OutputManager::ResetOverlays()
 
     //Check if process is elevated and send that info to the UI too
     bool elevated = IsProcessElevated();
-    ConfigManager::Get().SetConfigBool(configid_bool_state_misc_process_elevated, elevated);
+    ConfigManager::SetValue(configid_bool_state_misc_process_elevated, elevated);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_elevated), elevated);
 
     //Make sure that the entire overlay texture gets at least one full update for regions that will never be dirty (i.e. blank space not occupied by any desktop)
@@ -1775,7 +1775,7 @@ void OutputManager::ResetCurrentOverlay()
     ApplySettingUpdateLimiter();
 
     //Make sure that the entire overlay texture gets at least one full update for regions that will never be dirty (i.e. blank space not occupied by any desktop)
-    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
+    if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
     {
         m_OutputPendingFullRefresh = true;
     }
@@ -1811,7 +1811,7 @@ DWORD OutputManager::GetMaxRefreshDelay() const
     if ( (m_OvrlActiveCount != 0) || (m_OvrlDashboardActive) || (m_LaserPointer.IsActive()) )
     {
         //Actually causes extreme load while not really being necessary (looks nice tho)
-        if ( (m_OvrlInputActive) && (ConfigManager::Get().GetConfigBool(configid_bool_performance_rapid_laser_pointer_updates)) )
+        if ( (m_OvrlInputActive) && (ConfigManager::GetValue(configid_bool_performance_rapid_laser_pointer_updates)) )
         {
             return 0;
         }
@@ -1870,8 +1870,8 @@ void OutputManager::ShowOverlay(unsigned int id)
         WindowManager::Get().SetOverlayActive(true);
     }
 
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) && (ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) &&
-        (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
+    if ( (ConfigManager::GetValue(configid_bool_overlay_input_enabled)) && (ConfigManager::GetValue(configid_bool_input_mouse_hmd_pointer_override)) &&
+        (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) && (!ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) )
     {
         vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
     }
@@ -1932,7 +1932,7 @@ void OutputManager::HideOverlay(unsigned int id)
 
     overlay.SetVisible(false);
 
-    if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) == id) //Don't leave the keyboard open when hiding
+    if (ConfigManager::GetValue(configid_int_state_keyboard_visible_for_overlay_id) == id) //Don't leave the keyboard open when hiding
     {
         IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, false);
     }
@@ -2179,7 +2179,7 @@ void OutputManager::DoAction(ActionID action_id)
             {
                 const Overlay& ovrl_current = OverlayManager::Get().GetCurrentOverlay();
 
-                if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1)
+                if (ConfigManager::GetValue(configid_int_state_keyboard_visible_for_overlay_id) != -1)
                 {
                     //If it's already displayed for an overlay, hide it instead
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, false);
@@ -2190,7 +2190,7 @@ void OutputManager::DoAction(ActionID action_id)
                     int ovrl_keyboard_id = ovrl_current.GetID();
 
                     //Assign current overlay for keyboard
-                    ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, ovrl_keyboard_id);
+                    ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, ovrl_keyboard_id);
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), ovrl_keyboard_id);
 
                     //Tell UI to show it
@@ -2210,14 +2210,14 @@ void OutputManager::DoAction(ActionID action_id)
 
                 last_toggle_tick = ::GetTickCount64();
 
-                int& crop_x      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
-                int& crop_y      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
-                int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
-                int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
+                int& crop_x      = ConfigManager::GetRef(configid_int_overlay_crop_x);
+                int& crop_y      = ConfigManager::GetRef(configid_int_overlay_crop_y);
+                int& crop_width  = ConfigManager::GetRef(configid_int_overlay_crop_width);
+                int& crop_height = ConfigManager::GetRef(configid_int_overlay_crop_height);
 
                 //Check if crop is just exactly the current desktop
                 bool crop_equals_current_desktop = false;
-                int desktop_id = ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id);
+                int desktop_id = ConfigManager::GetValue(configid_int_overlay_desktop_id);
 
                 if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) )
                 {
@@ -2330,10 +2330,10 @@ VRInput& OutputManager::GetVRInput()
 void OutputManager::UpdatePerformanceStates()
 {
     //Frame counter, the frames themselves are counted in Update()
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_performance_stats_active)) && (::GetTickCount64() >= m_PerformanceFrameCountStartTick + 1000) )
+    if ( (ConfigManager::GetValue(configid_bool_state_performance_stats_active)) && (::GetTickCount64() >= m_PerformanceFrameCountStartTick + 1000) )
     {
         //A second has passed, reset the value
-        ConfigManager::Get().SetConfigInt(configid_int_state_performance_duplication_fps, m_PerformanceFrameCount);
+        ConfigManager::SetValue(configid_int_state_performance_duplication_fps, m_PerformanceFrameCount);
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_performance_duplication_fps), m_PerformanceFrameCount);
 
         m_PerformanceFrameCountStartTick = ::GetTickCount64();
@@ -2361,7 +2361,7 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
         Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
         UINT i = 0;
         int output_count = 0;
-        bool wmr_ignore_vscreens = (ConfigManager::Get().GetConfigInt(configid_int_interface_wmr_ignore_vscreens) == 1);
+        bool wmr_ignore_vscreens = (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1);
 
         //Also look for the device the HMD is connected to
         int32_t vr_gpu_id;
@@ -2419,7 +2419,7 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
         }
 
         //Store output/desktop count and send it over to UI
-        ConfigManager::Get().SetConfigInt(configid_int_state_interface_desktop_count, output_count);
+        ConfigManager::SetValue(configid_int_state_interface_desktop_count, output_count);
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_interface_desktop_count), output_count);
     }
 
@@ -2441,7 +2441,7 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
 
 void OutputManager::CropToDisplay(int display_id, int& crop_x, int& crop_y, int& crop_width, int& crop_height)
 {   
-    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) && (display_id >= 0) && (display_id < m_DesktopRects.size()) ) 
+    if ( (!ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring)) && (display_id >= 0) && (display_id < m_DesktopRects.size()) ) 
     {
         //Individual desktop on full desktop texture
         const DPRect& rect = m_DesktopRects[display_id];
@@ -2815,7 +2815,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
     UINT OutputCount;
     if (SingleOutput < 0)
     {
-        int desktop_count = ConfigManager::Get().GetConfigInt(configid_int_state_interface_desktop_count);
+        int desktop_count = ConfigManager::GetValue(configid_int_state_interface_desktop_count);
 
         hr = S_OK;
         for (OutputCount = 0; SUCCEEDED(hr); ++OutputCount)
@@ -3028,7 +3028,7 @@ void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
 DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
 {
     //Just return if we don't need to render it
-    if ((!ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_cursor)) || (!PtrInfo->Visible))
+    if ((!ConfigManager::GetValue(configid_bool_input_mouse_render_cursor)) || (!PtrInfo->Visible))
     {
         return DUPL_RETURN_SUCCESS;
     }
@@ -3418,7 +3418,7 @@ bool OutputManager::HandleOpenVREvents()
 
                     m_BackgroundOverlay.Update();
 
-                    if (ConfigManager::Get().GetConfigBool(configid_bool_interface_dim_ui))
+                    if (ConfigManager::GetValue(configid_bool_interface_dim_ui))
                     {
                         DimDashboard(true);
                     }
@@ -3444,7 +3444,7 @@ bool OutputManager::HandleOpenVREvents()
 
                     m_BackgroundOverlay.Update();
 
-                    if (ConfigManager::Get().GetConfigBool(configid_bool_interface_dim_ui))
+                    if (ConfigManager::GetValue(configid_bool_interface_dim_ui))
                     {
                         DimDashboard(false);
                     }
@@ -3513,7 +3513,7 @@ bool OutputManager::HandleOpenVREvents()
                     }
                 }
 
-                if (ConfigManager::Get().GetConfigBool(configid_bool_windows_auto_focus_scene_app_dashboard))
+                if (ConfigManager::GetValue(configid_bool_windows_auto_focus_scene_app_dashboard))
                 {
                     WindowManager::Get().FocusActiveVRSceneApp(&m_InputSim);
                 }
@@ -3613,11 +3613,11 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     if (vr_event.data.controller.button == Button_Dashboard_GoHome)
                     {
-                        DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id));
+                        DoAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id));
                     }
                     else if (vr_event.data.controller.button == Button_Dashboard_GoBack)
                     {
-                        DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id));
+                        DoAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id));
                     }
 
                     break;
@@ -3626,7 +3626,7 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     m_OvrlInputActive = true;
 
-                    bool drag_or_select_mode_enabled = ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) );
+                    bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
 
                     if (!drag_or_select_mode_enabled)
                     {
@@ -3638,12 +3638,12 @@ bool OutputManager::HandleOpenVREvents()
                         //If it's a WinRT window capture, check for window management stuff
                         if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) )
                         {
-                            if ( (!m_MouseIgnoreMoveEvent) && (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus)) )
+                            if ( (!m_MouseIgnoreMoveEvent) && (ConfigManager::GetValue(configid_bool_windows_winrt_auto_focus)) )
                             {
                                 WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], &m_InputSim);
                             }
 
-                            if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_keep_on_screen))
+                            if (ConfigManager::GetValue(configid_bool_windows_winrt_keep_on_screen))
                             {
                                 WindowManager::MoveWindowIntoWorkArea((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]);
                             }
@@ -3656,13 +3656,13 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     m_OvrlInputActive = false;
 
-                    bool drag_or_select_mode_enabled = ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) );
+                    bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
 
                     if (!drag_or_select_mode_enabled)
                     {
                         //If leaving a WinRT window capture and the option is enabled, focus the active scene app
                         if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) && 
-                             (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus_scene_app)) )
+                             (ConfigManager::GetValue(configid_bool_windows_winrt_auto_focus_scene_app)) )
                         {
                             WindowManager::Get().FocusActiveVRSceneApp(&m_InputSim);
                         }
@@ -3676,7 +3676,7 @@ bool OutputManager::HandleOpenVREvents()
                     }
 
                     //Finish drag if there's somehow still one going (and not temp drag mode, where this is expected)
-                    if ( (m_OverlayDragger.IsDragActive()) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode_temp)) )
+                    if ( (m_OverlayDragger.IsDragActive()) && (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) )
                     {
                         OnDragFinish();
                         m_OverlayDragger.DragFinish();
@@ -3816,9 +3816,9 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
     {
         case vr::VREvent_MouseMove:
         {
-            if ((!data.ConfigBool[configid_bool_overlay_input_enabled]) || (m_MouseIgnoreMoveEvent) ||
-                (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) || 
-                (m_OverlayDragger.IsDragActive()) || (overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui) )
+            if ( (!data.ConfigBool[configid_bool_overlay_input_enabled]) || (m_MouseIgnoreMoveEvent) ||
+                 (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) || 
+                 (m_OverlayDragger.IsDragActive()) || (overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui) )
             {
                 break;
             }
@@ -3894,8 +3894,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             int pointer_y = ((-round(vr_event.data.mouse.y) + content_height) - hotspot_y) + offset_y;
 
             //If double click assist is current active, check if there was an obviously deliberate movement and cancel it then
-            if ((ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms) != 0) &&
-                (::GetTickCount64() < m_MouseLastClickTick + ConfigManager::Get().GetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms)))
+            if ( (ConfigManager::GetValue(configid_int_state_mouse_dbl_click_assist_duration_ms) != 0) &&
+                 (::GetTickCount64() < m_MouseLastClickTick + ConfigManager::GetValue(configid_int_state_mouse_dbl_click_assist_duration_ms)) )
             {
                 if ((abs(pointer_x - m_MouseLastLaserPointerX) > 64) || (abs(pointer_y - m_MouseLastLaserPointerY) > 64))
                 {
@@ -3909,8 +3909,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             }
 
             //Check if this mouse move would start a drag of a maximized window's title bar
-            if ((ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_dragging_mode) != window_dragging_none) && 
-                (overlay_current.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0))
+            if ( (ConfigManager::GetValue(configid_int_windows_winrt_dragging_mode) != window_dragging_none) && 
+                 (overlay_current.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) )
             {
                 if (WindowManager::Get().WouldDragMaximizedTitleBar((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd],
                                                                     m_MouseLastLaserPointerX, m_MouseLastLaserPointerY, pointer_x, pointer_y))
@@ -3920,7 +3920,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                     WindowManager::Get().SetTargetWindow(nullptr);
 
                     //Start overlay drag if setting enabled
-                    if (ConfigManager::Get().GetConfigInt(configid_int_windows_winrt_dragging_mode) == window_dragging_overlay)
+                    if (ConfigManager::GetValue(configid_int_windows_winrt_dragging_mode) == window_dragging_overlay)
                     {
                         m_OverlayDragger.DragStart(OverlayManager::Get().GetCurrentOverlayID());
                     }
@@ -3930,7 +3930,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             }
 
             //Check coordinates if HMDPointerOverride is enabled
-            if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) && (device_is_hmd))
+            if ((ConfigManager::GetValue(configid_bool_input_mouse_hmd_pointer_override)) && (device_is_hmd))
             {
                 POINT pt;
                 ::GetCursorPos(&pt);
@@ -3952,7 +3952,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                         m_MouseIgnoreMoveEvent = true;
 
                         //Set flag for all overlays
-                        if (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+                        if (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode))
                         {
                             for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                             {
@@ -3997,7 +3997,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
         }
         case vr::VREvent_MouseButtonDown:
         {
-            if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
+            if (ConfigManager::GetValue(configid_bool_state_overlay_selectmode))
             {
                 if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
                 {
@@ -4007,7 +4007,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 }
                 break;
             }
-            else if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode))
+            else if (ConfigManager::GetValue(configid_bool_state_overlay_dragmode))
             {
                 if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
                 {
@@ -4062,19 +4062,19 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(true);   break;
                 case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(true);  break;
                 case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but our own laser pointer supports this
-                case VRMouseButton_DP_Aux01:    DoStartAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id)); break;
-                case VRMouseButton_DP_Aux02:    DoStartAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id)); break;
+                case VRMouseButton_DP_Aux01:    DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id)); break;
+                case VRMouseButton_DP_Aux02:    DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id)); break;
             }
 
             break;
         }
         case vr::VREvent_MouseButtonUp:
         {
-            if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode))
+            if (ConfigManager::GetValue(configid_bool_state_overlay_selectmode))
             {
                 break;
             }
-            else if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode_temp))
+            else if (ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp))
             {
                 //Temp drag doesn't have proper overlay focus so can be called on any overlay if it's in front. Finish drag in any case.
                 if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
@@ -4118,8 +4118,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(false);   break;
                 case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(false);  break;
                 case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(false); break;
-                case VRMouseButton_DP_Aux01:    DoStopAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id)); break;
-                case VRMouseButton_DP_Aux02:    DoStopAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id)); break;
+                case VRMouseButton_DP_Aux01:    DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id)); break;
+                case VRMouseButton_DP_Aux02:    DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id)); break;
             }
 
             //If there was a possible WindowManager drag event prepared for, reset the target window
@@ -4138,7 +4138,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
         }
         case vr::VREvent_ScrollDiscrete:
         {
-            if ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) || 
+            if ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) || 
                  (overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui) )
             {
                 break;
@@ -4187,7 +4187,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                         }
 
                         //Set device as hint, just in case
-                        ConfigManager::Get().SetConfigInt(configid_int_state_laser_pointer_device_hint, (int)device_index);
+                        ConfigManager::SetValue(configid_int_state_laser_pointer_device_hint, (int)device_index);
                         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_laser_pointer_device_hint), (int)device_index);
 
                         //Send to UI
@@ -4283,8 +4283,8 @@ void OutputManager::HandleKeyboardMessage(IPCActionID ipc_action_id, LPARAM lpar
 bool OutputManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
 {
     bool multi_overlay = (lparam != ipcactv_ovrl_profile_single);
-    int desktop_id_prev = ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id);
-    const std::string& profile_name = ConfigManager::Get().GetConfigString(configid_str_state_profile_name_load);
+    int desktop_id_prev = ConfigManager::GetValue(configid_int_overlay_desktop_id);
+    const std::string& profile_name = ConfigManager::GetValue(configid_str_state_profile_name_load);
 
     if (profile_name == "Default")
     {
@@ -4308,7 +4308,7 @@ bool OutputManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
     }
 
     //Reset mirroing entirely if desktop was changed (only in single desktop mode)
-    if ( (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring)) && (ConfigManager::Get().GetConfigInt(configid_int_overlay_desktop_id) != desktop_id_prev) )
+    if ( (ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring)) && (ConfigManager::GetValue(configid_int_overlay_desktop_id) != desktop_id_prev) )
         return true; //Reset mirroring
 
     ResetOverlays(); //This does everything relevant
@@ -4318,7 +4318,7 @@ bool OutputManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
 
 void OutputManager::LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8)
 {
-    if (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active))
+    if (ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active))
     {
         IPCManager::Get().SendStringToElevatedModeProcess(ipcestrid_launch_application_path, path_utf8, m_WindowHandle);
 
@@ -4363,10 +4363,10 @@ void OutputManager::ResetMouseLastLaserPointerPos()
 
 void OutputManager::CropToActiveWindow()
 {
-    int& crop_x      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
-    int& crop_y      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
-    int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
-    int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
+    int& crop_x      = ConfigManager::GetRef(configid_int_overlay_crop_x);
+    int& crop_y      = ConfigManager::GetRef(configid_int_overlay_crop_y);
+    int& crop_width  = ConfigManager::GetRef(configid_int_overlay_crop_width);
+    int& crop_height = ConfigManager::GetRef(configid_int_overlay_crop_height);
 
     if (CropToActiveWindow(crop_x, crop_y, crop_width, crop_height))
     {
@@ -4383,10 +4383,10 @@ void OutputManager::CropToActiveWindow()
 
 void OutputManager::CropToDisplay(int display_id, bool do_not_apply_setting)
 {
-    int& crop_x      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_x);
-    int& crop_y      = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_y);
-    int& crop_width  = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_width);
-    int& crop_height = ConfigManager::Get().GetConfigIntRef(configid_int_overlay_crop_height);
+    int& crop_x      = ConfigManager::GetRef(configid_int_overlay_crop_x);
+    int& crop_y      = ConfigManager::GetRef(configid_int_overlay_crop_y);
+    int& crop_width  = ConfigManager::GetRef(configid_int_overlay_crop_width);
+    int& crop_height = ConfigManager::GetRef(configid_int_overlay_crop_height);
 
     CropToDisplay(display_id, crop_x, crop_y, crop_width, crop_height);
 
@@ -4399,7 +4399,7 @@ void OutputManager::CropToDisplay(int display_id, bool do_not_apply_setting)
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
 
     //In single desktop mode, set desktop ID for all overlays
-    if (ConfigManager::Get().GetConfigBool(configid_bool_performance_single_desktop_mirroring))
+    if (ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring))
     {
         for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
         {
@@ -4434,7 +4434,7 @@ void OutputManager::DuplicateOverlay(unsigned int base_id, bool is_ui_overlay)
     }
 
     OverlayManager::Get().SetCurrentOverlayID(new_id);
-    ConfigManager::Get().SetConfigInt(configid_int_interface_overlay_current_id, (int)new_id);
+    ConfigManager::SetValue(configid_int_interface_overlay_current_id, (int)new_id);
 
     if (!is_ui_overlay)
     {
@@ -4474,7 +4474,7 @@ unsigned int OutputManager::AddOverlayDrag(float source_distance, OverlayCapture
     }
 
     //Adjust width and send it over to UI app
-    ConfigManager::Get().SetConfigFloat(configid_float_overlay_width, overlay_width);
+    ConfigManager::SetValue(configid_float_overlay_width, overlay_width);
 
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)new_id);
     IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_width), pun_cast<LPARAM, float>(overlay_width));
@@ -4493,7 +4493,7 @@ void OutputManager::ApplySettingCaptureSource()
 {
     Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
 
-    switch (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source))
+    switch (ConfigManager::GetValue(configid_int_overlay_capture_source))
     {
         case ovrl_capsource_desktop_duplication:
         {
@@ -4542,7 +4542,7 @@ void OutputManager::ApplySettingCaptureSource()
                                 DPWinRT_PauseCapture(overlay.GetHandle(), true);
                             }
 
-                            if (ConfigManager::Get().GetConfigBool(configid_bool_windows_winrt_auto_focus))
+                            if (ConfigManager::GetValue(configid_bool_windows_winrt_auto_focus))
                             {
                                 WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], &m_InputSim);
                             }
@@ -4587,8 +4587,8 @@ void OutputManager::ApplySetting3DMode()
     const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
     vr::VROverlayHandle_t ovrl_handle = overlay_current.GetHandle();
-    bool is_enabled = ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_enabled);
-    int mode = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
+    bool is_enabled = ConfigManager::GetValue(configid_bool_overlay_3D_enabled);
+    int mode = ConfigManager::GetValue(configid_int_overlay_3D_mode);
 
     //Override mode to none if texsource is none or the desktop duplication output is invalid
     if ( (overlay_current.GetTextureSource() == ovrl_texsource_none) || ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) && (m_OutputInvalid) ) )
@@ -4664,15 +4664,15 @@ void OutputManager::ApplySettingTransform()
     //This has to be done first since there seem to be issues with moving invisible overlays
     bool should_be_visible = overlay.ShouldBeVisible();
 
-    if ( (!should_be_visible) && (m_OvrlDashboardActive) && (m_OvrlDashboardActive) && (ConfigManager::Get().GetConfigBool(configid_bool_overlay_enabled)) &&
-         (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragselectmode_show_hidden)) )
+    if ( (!should_be_visible) && (m_OvrlDashboardActive) && (m_OvrlDashboardActive) && (ConfigManager::GetValue(configid_bool_overlay_enabled)) &&
+         (ConfigManager::GetValue(configid_bool_state_overlay_dragselectmode_show_hidden)) )
     {
         should_be_visible = true;
         overlay.SetOpacity(0.25f);
     }
-    else if ( (!ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) && (overlay.GetOpacity() != ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity)) )
+    else if ( (!ConfigManager::GetValue(configid_bool_overlay_gazefade_enabled)) && (overlay.GetOpacity() != ConfigManager::GetValue(configid_float_overlay_opacity)) )
     {
-        overlay.SetOpacity(ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity));
+        overlay.SetOpacity(ConfigManager::GetValue(configid_float_overlay_opacity));
         should_be_visible = overlay.ShouldBeVisible(); //Re-evaluate this in case the overlay was left hidden after deactivating gaze fade
     }
 
@@ -4689,10 +4689,10 @@ void OutputManager::ApplySettingTransform()
     unsigned int primary_dashboard_overlay_id = OverlayManager::Get().GetPrimaryDashboardOverlay().GetID();
     bool is_primary_dashboard_overlay = (primary_dashboard_overlay_id == overlay.GetID());
 
-    float width = ConfigManager::Get().GetConfigFloat(configid_float_overlay_width);
+    float width = ConfigManager::GetValue(configid_float_overlay_width);
     float height = 0.0f;
     float dummy_height = 0.0f;
-    OverlayOrigin overlay_origin = (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_origin);
+    OverlayOrigin overlay_origin = (OverlayOrigin)ConfigManager::GetValue(configid_int_overlay_origin);
 
     if (is_primary_dashboard_overlay)
     {
@@ -4734,9 +4734,9 @@ void OutputManager::ApplySettingTransform()
             matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
 
             //Offset transform by additional offset values
-            TransformOpenVR34TranslateRelative(matrix, ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_right),
-                                                       ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_up),
-                                                       ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_forward));
+            TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                                       ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                                       ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
             vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, universe_origin, &matrix);
             break;
@@ -4759,9 +4759,9 @@ void OutputManager::ApplySettingTransform()
             Matrix4 matrix_base = m_OverlayDragger.GetBaseOffsetMatrix() * ConfigManager::Get().GetOverlayDetachedTransform();
 
             //Offset transform by additional offset values
-            matrix_base.translate_relative(ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_right),
-                                           ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_up),
-                                           ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_forward));
+            matrix_base.translate_relative(ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                           ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                           ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
             //Apply origin offset, which basically adjusts transform to be aligned bottom-center instead of centered on both axes
             if (height == 0.0f)     //Get overlay height if it's not set yet
@@ -4781,9 +4781,9 @@ void OutputManager::ApplySettingTransform()
             matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
 
             //Offset transform by additional offset values
-            TransformOpenVR34TranslateRelative(matrix, ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_right),
-                                                       ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_up),
-                                                       ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_forward));
+            TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                                       ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                                       ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
             vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, vr::k_unTrackedDeviceIndex_Hmd, &matrix);
             break;
@@ -4797,9 +4797,9 @@ void OutputManager::ApplySettingTransform()
                 matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
 
                 //Offset transform by additional offset values
-                TransformOpenVR34TranslateRelative(matrix, ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_right),
-                                                           ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_up),
-                                                           ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_forward));
+                TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                                           ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                                           ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
                 vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, device_index, &matrix);
             }
@@ -4818,9 +4818,9 @@ void OutputManager::ApplySettingTransform()
                 matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
 
                 //Offset transform by additional offset values
-                TransformOpenVR34TranslateRelative(matrix, ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_right),
-                                                           ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_up),
-                                                           ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_forward));
+                TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                                           ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                                           ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
                 vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, device_index, &matrix);
             }
@@ -4839,9 +4839,9 @@ void OutputManager::ApplySettingTransform()
                 matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
 
                 //Offset transform by additional offset values
-                TransformOpenVR34TranslateRelative(matrix, ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_right),
-                                                           ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_up),
-                                                           ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_forward));
+                TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                                           ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                                           ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
                 vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, index_tracker, &matrix);
             }
@@ -4858,7 +4858,7 @@ void OutputManager::ApplySettingTransform()
     vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle, width);
 
     //Update Curvature
-    vr::VROverlay()->SetOverlayCurvature(ovrl_handle, ConfigManager::Get().GetConfigFloat(configid_float_overlay_curvature));
+    vr::VROverlay()->SetOverlayCurvature(ovrl_handle, ConfigManager::GetValue(configid_float_overlay_curvature));
 
     //Set last tick for dashboard dummy delayed update
     m_LastApplyTransformTick = ::GetTickCount64();
@@ -4895,8 +4895,8 @@ void OutputManager::ApplySettingCrop()
     overlay.UpdateValidatedCropRect();
     const DPRect& crop_rect = overlay.GetValidatedCropRect();
 
-    const bool is_3d_enabled = ConfigManager::Get().GetConfigBool(configid_bool_overlay_3D_enabled);
-    const int mode_3d = ConfigManager::Get().GetConfigInt(configid_int_overlay_3D_mode);
+    const bool is_3d_enabled = ConfigManager::GetValue(configid_bool_overlay_3D_enabled);
+    const int mode_3d = ConfigManager::GetValue(configid_int_overlay_3D_mode);
     const bool is_ou3d = ( (is_3d_enabled) && ((mode_3d == ovrl_3Dmode_ou) || (mode_3d == ovrl_3Dmode_hou)) );
 
     //Use full texture if everything checks out or 3D mode is Over-Under (converted to a 1:1 fitting texture)
@@ -4921,7 +4921,7 @@ void OutputManager::ApplySettingCrop()
     }
 
     //If capture source is WinRT, set 3D mode with cropping values
-    if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_winrt_capture)
+    if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_winrt_capture)
     {
         DPWinRT_SetOverlayOverUnder3D(ovrl_handle, is_ou3d, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
     }
@@ -4943,7 +4943,7 @@ void OutputManager::ApplySettingInputMode()
     //Apply/Restore mouse settings first
     ApplySettingMouseInput();
 
-    bool drag_or_select_mode_enabled = ( (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) || (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) );
+    bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
     //Always applies to all overlays
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
@@ -4953,10 +4953,10 @@ void OutputManager::ApplySettingInputMode()
         const Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
         vr::VROverlayHandle_t ovrl_handle = overlay_current.GetHandle();
 
-        if ((ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled)) || (drag_or_select_mode_enabled) )
+        if ((ConfigManager::GetValue(configid_bool_overlay_input_enabled)) || (drag_or_select_mode_enabled) )
         {
             //Don't activate drag mode for HMD origin when the pointer is also the HMD (or it's the dashboard overlay)
-            if ( ((ConfigManager::Get().GetPrimaryLaserPointerDevice() == vr::k_unTrackedDeviceIndex_Hmd) && (ConfigManager::Get().GetConfigInt(configid_int_overlay_origin) == ovrl_origin_hmd)) )
+            if ( ((ConfigManager::Get().GetPrimaryLaserPointerDevice() == vr::k_unTrackedDeviceIndex_Hmd) && (ConfigManager::GetValue(configid_int_overlay_origin) == ovrl_origin_hmd)) )
             {
                 vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_None);
             }
@@ -4973,7 +4973,7 @@ void OutputManager::ApplySettingInputMode()
         }
 
         //Sync matrix if it's been turned off
-        if ( (!drag_or_select_mode_enabled) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) )
+        if ( (!drag_or_select_mode_enabled) && (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) )
         {
             DetachedTransformSync(i);
         }
@@ -4987,17 +4987,17 @@ void OutputManager::ApplySettingInputMode()
 void OutputManager::ApplySettingMouseInput()
 {
     //Set double-click assist duration from user config value
-    if (ConfigManager::Get().GetConfigInt(configid_int_input_mouse_dbl_click_assist_duration_ms) == -1)
+    if (ConfigManager::GetValue(configid_int_input_mouse_dbl_click_assist_duration_ms) == -1)
     {
-        ConfigManager::Get().SetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms, ::GetDoubleClickTime());
+        ConfigManager::SetValue(configid_int_state_mouse_dbl_click_assist_duration_ms, ::GetDoubleClickTime());
     }
     else
     {
-        ConfigManager::Get().SetConfigInt(configid_int_state_mouse_dbl_click_assist_duration_ms, ConfigManager::Get().GetConfigInt(configid_int_input_mouse_dbl_click_assist_duration_ms));
+        ConfigManager::SetValue(configid_int_state_mouse_dbl_click_assist_duration_ms, ConfigManager::GetValue(configid_int_input_mouse_dbl_click_assist_duration_ms));
     }
 
-    bool drag_mode_enabled   = ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode);
-    bool select_mode_enabled = ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode);
+    bool drag_mode_enabled   = ConfigManager::GetValue(configid_bool_state_overlay_dragmode);
+    bool select_mode_enabled = ConfigManager::GetValue(configid_bool_state_overlay_selectmode);
     //Always applies to all overlays
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
@@ -5008,9 +5008,9 @@ void OutputManager::ApplySettingMouseInput()
         vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
 
         //Set input method (possibly overridden by ApplyInputMethod() right afterwards)
-        if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled))
+        if (ConfigManager::GetValue(configid_bool_overlay_input_enabled))
         {
-            if (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode_temp)) //Temp drag needs every input-enabled overlay to have smooth scroll
+            if (ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) //Temp drag needs every input-enabled overlay to have smooth scroll
             {
                 vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, false);
                 vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRSmoothScrollEvents,   true);
@@ -5032,13 +5032,13 @@ void OutputManager::ApplySettingMouseInput()
         bool hide_intersection = false;
         if ( (overlay.GetTextureSource() != ovrl_texsource_none) && (overlay.GetTextureSource() != ovrl_texsource_ui) && (!drag_mode_enabled) && (!select_mode_enabled) )
         {
-            hide_intersection = !ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_render_intersection_blob);
+            hide_intersection = !ConfigManager::GetValue(configid_bool_input_mouse_render_intersection_blob);
         }
 
         vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, hide_intersection);
 
         //Set mouse scale
-        if (ConfigManager::Get().GetConfigInt(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
+        if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
         {
             vr::HmdVector2_t mouse_scale;
             mouse_scale.v[0] = m_DesktopWidth;
@@ -5089,13 +5089,13 @@ void OutputManager::ApplySettingUpdateLimiter()
     float limit_ms = 0.0f;
 
     //Set limiter value from global setting
-    if (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) == update_limit_mode_ms)
+    if (ConfigManager::GetValue(configid_int_performance_update_limit_mode) == update_limit_mode_ms)
     {
-        limit_ms = ConfigManager::Get().GetConfigFloat(configid_float_performance_update_limit_ms);
+        limit_ms = ConfigManager::GetValue(configid_float_performance_update_limit_ms);
     }
-    else if (ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_mode) == update_limit_mode_fps)
+    else if (ConfigManager::GetValue(configid_int_performance_update_limit_mode) == update_limit_mode_fps)
     {
-        int enum_id = ConfigManager::Get().GetConfigInt(configid_int_performance_update_limit_fps);
+        int enum_id = ConfigManager::GetValue(configid_int_performance_update_limit_fps);
 
         if (enum_id <= update_limit_fps_50)
         {
@@ -5194,7 +5194,7 @@ void OutputManager::DetachedTransformReset(unsigned int overlay_id_ref)
     Matrix4& transform = ConfigManager::Get().GetOverlayDetachedTransform();
     transform.identity(); //Reset to identity
 
-    OverlayOrigin overlay_origin = (OverlayOrigin)ConfigManager::Get().GetConfigInt(configid_int_overlay_origin);
+    OverlayOrigin overlay_origin = (OverlayOrigin)ConfigManager::GetValue(configid_int_overlay_origin);
     const Overlay& overlay_ref = OverlayManager::Get().GetOverlay(overlay_id_ref);
     vr::VROverlayHandle_t ovrl_handle_ref = overlay_ref.GetHandle(); //Results in vr::k_ulOverlayHandleInvalid for k_ulOverlayID_None
 
@@ -5512,9 +5512,9 @@ void OutputManager::DetachedTransformUpdateHMDFloor()
     matrix *= ConfigManager::Get().GetOverlayDetachedTransform();
 
     //Offset transform by additional offset values
-    matrix.translate_relative(ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_right),
-                              ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_up),
-                              ConfigManager::Get().GetConfigFloat(configid_float_overlay_offset_forward));
+    matrix.translate_relative(ConfigManager::GetValue(configid_float_overlay_offset_right),
+                              ConfigManager::GetValue(configid_float_overlay_offset_up),
+                              ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
     vr::HmdMatrix34_t matrix_ovr = matrix.toOpenVR34();
     vr::VROverlay()->SetOverlayTransformAbsolute(OverlayManager::Get().GetCurrentOverlay().GetHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
@@ -5537,7 +5537,7 @@ void OutputManager::DetachedTransformUpdateSeatedPosition()
     {
         OverlayManager::Get().SetCurrentOverlayID(i);
 
-        if (ConfigManager::Get().GetConfigInt(configid_int_overlay_origin) == ovrl_origin_seated_universe)
+        if (ConfigManager::GetValue(configid_int_overlay_origin) == ovrl_origin_seated_universe)
         {
             ApplySettingTransform();
         }
@@ -5554,7 +5554,7 @@ void OutputManager::DetachedInteractionAutoToggleAll()
     if ( (m_OverlayDragger.IsDragActive()) || (m_OverlayDragger.IsDragGestureActive()) )
         return;
 
-    float max_distance = ConfigManager::Get().GetConfigFloat(configid_float_input_detached_interaction_max_distance);
+    float max_distance = ConfigManager::GetValue(configid_float_input_detached_interaction_max_distance);
 
     if ( (max_distance != 0.0f) && (!vr::VROverlay()->IsDashboardVisible()) )
     {
@@ -5586,8 +5586,8 @@ void OutputManager::DetachedInteractionAutoToggleAll()
 
 void OutputManager::DetachedOverlayGazeFade()
 {
-    if (  (ConfigManager::Get().GetConfigBool(configid_bool_overlay_gazefade_enabled)) && (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && 
-         (!ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) )
+    if (  (ConfigManager::GetValue(configid_bool_overlay_gazefade_enabled)) && (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) && 
+         (!ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) )
     {
         vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
         vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
@@ -5596,9 +5596,9 @@ void OutputManager::DetachedOverlayGazeFade()
         if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
         {
             //Distance the gaze point is offset from HMD (useful range 0.25 - 1.0)
-            float gaze_distance = ConfigManager::Get().GetConfigFloat(configid_float_overlay_gazefade_distance);
+            float gaze_distance = ConfigManager::GetValue(configid_float_overlay_gazefade_distance);
             //Rate the fading gets applied when looking off the gaze point (useful range 4.0 - 30, depends on overlay size) 
-            float fade_rate = ConfigManager::Get().GetConfigFloat(configid_float_overlay_gazefade_rate) * 10.0f; 
+            float fade_rate = ConfigManager::GetValue(configid_float_overlay_gazefade_rate) * 10.0f; 
 
             Matrix4 mat_pose = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
 
@@ -5625,8 +5625,8 @@ void OutputManager::DetachedOverlayGazeFade()
             float alpha = clamp((distance * -fade_rate) + ((gaze_distance - 0.1f) * 10.0f), 0.0f, 1.0f); //There's nothing smart behind this, just trial and error
 
             //Adapt alpha result from a 0.0 - 1.0 range to gazefade_opacity - overlay_opacity and invert if necessary
-            float max_alpha = ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity);
-            float min_alpha = ConfigManager::Get().GetConfigFloat(configid_float_overlay_gazefade_opacity);
+            float max_alpha = ConfigManager::GetValue(configid_float_overlay_opacity);
+            float min_alpha = ConfigManager::GetValue(configid_float_overlay_gazefade_opacity);
             float range_length = max_alpha - min_alpha;
 
             if (range_length >= 0.0f)
@@ -5679,7 +5679,7 @@ void OutputManager::DetachedOverlayGazeFadeAutoConfigure()
 void OutputManager::DetachedOverlayGlobalHMDPointerAll()
 {
     //Don't do anything if setting disabled or a dashboard pointer is active
-    if ( (!ConfigManager::Get().GetConfigBool(configid_bool_input_global_hmd_pointer)) || (ConfigManager::Get().GetPrimaryLaserPointerDevice() != vr::k_unTrackedDeviceIndexInvalid) )
+    if ( (!ConfigManager::GetValue(configid_bool_input_global_hmd_pointer)) || (ConfigManager::Get().GetPrimaryLaserPointerDevice() != vr::k_unTrackedDeviceIndexInvalid) )
         return;
 
     static vr::VROverlayHandle_t ovrl_last_enter = vr::k_ulOverlayHandleInvalid;
@@ -5708,7 +5708,7 @@ void OutputManager::DetachedOverlayGlobalHMDPointerAll()
     vr::VROverlayHandle_t nearest_target_overlay = vr::k_ulOverlayHandleInvalid;
     vr::VROverlayIntersectionResults_t nearest_results = {0};
     nearest_results.fDistance = FLT_MAX;
-    float max_distance = ConfigManager::Get().GetConfigFloat(configid_float_input_global_hmd_pointer_max_distance);
+    float max_distance = ConfigManager::GetValue(configid_float_input_global_hmd_pointer_max_distance);
     max_distance = (max_distance != 0.0f) ? max_distance + 0.20f /* HMD origin is inside the headset */ : FLT_MAX /* 0 == infinite */; 
 
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
@@ -5789,9 +5789,9 @@ void OutputManager::DetachedOverlayAutoDockingAll()
     if (!m_OverlayDragger.IsDragActive())
     {
         //Set config value to 0 if the drag ended while it wasn't yet
-        if (ConfigManager::Get().GetConfigInt(configid_int_state_auto_docking_state) != 0)
+        if (ConfigManager::GetValue(configid_int_state_auto_docking_state) != 0)
         {
-            ConfigManager::Get().SetConfigInt(configid_int_state_auto_docking_state, 0);
+            ConfigManager::SetValue(configid_int_state_auto_docking_state, 0);
             IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_auto_docking_state), 0);
         }
 
@@ -5837,9 +5837,9 @@ void OutputManager::DetachedOverlayAutoDockingAll()
     }
 
     //Adjust config value if it changed
-    if (config_value != ConfigManager::Get().GetConfigInt(configid_int_state_auto_docking_state))
+    if (config_value != ConfigManager::GetValue(configid_int_state_auto_docking_state))
     {
-        ConfigManager::Get().SetConfigInt(configid_int_state_auto_docking_state, config_value);
+        ConfigManager::SetValue(configid_int_state_auto_docking_state, config_value);
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_auto_docking_state), config_value);
     }
 }
@@ -5860,14 +5860,14 @@ void OutputManager::DetachedTempDragStart(unsigned int overlay_id, float offset_
             m_LaserPointer.ForceTargetOverlay(OverlayManager::Get().GetOverlay(overlay_id).GetHandle());
         }
 
-        ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode_temp, true);
+        ConfigManager::SetValue(configid_bool_state_overlay_dragmode_temp, true);
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_overlay_dragmode_temp), true);
     }
 }
 
 void OutputManager::DetachedTempDragFinish()
 {
-    if ( (m_OverlayDragger.IsDragActive()) && (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode_temp)) )
+    if ( (m_OverlayDragger.IsDragActive()) && (ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) )
     {
         OnDragFinish();
 
@@ -5878,7 +5878,7 @@ void OutputManager::DetachedTempDragFinish()
         m_OverlayDragger.DragFinish();
 
         IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_overlay_dragmode_temp), false);
-        ConfigManager::Get().SetConfigBool(configid_bool_state_overlay_dragmode_temp, false);
+        ConfigManager::SetValue(configid_bool_state_overlay_dragmode_temp, false);
 
         ApplySettingTransform();
         DetachedTransformSync(OverlayManager::Get().GetCurrentOverlayID());
@@ -5896,7 +5896,7 @@ void OutputManager::OnDragFinish()
     ResetMouseLastLaserPointerPos();
 
     //Handle auto-docking
-    int auto_dock_value = ConfigManager::Get().GetConfigInt(configid_int_state_auto_docking_state);
+    int auto_dock_value = ConfigManager::GetValue(configid_int_state_auto_docking_state);
 
     if (auto_dock_value != 0)
     {
@@ -6038,28 +6038,28 @@ void OutputManager::RegisterHotkeys()
     m_IsAnyHotkeyActive = false;
 
     //...and register them again if there's an action assigned
-    UINT flags   = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_modifiers);
-    UINT keycode = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_keycode);
+    UINT flags   = ConfigManager::GetValue(configid_int_input_hotkey01_modifiers);
+    UINT keycode = ConfigManager::GetValue(configid_int_input_hotkey01_keycode);
 
-    if (ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_action_id) != action_none)
+    if (ConfigManager::GetValue(configid_int_input_hotkey01_action_id) != action_none)
     {
         ::RegisterHotKey(nullptr, 0, flags | MOD_NOREPEAT, keycode);
         m_IsAnyHotkeyActive = true;
     }
 
-    flags   = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_modifiers);
-    keycode = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_keycode);
+    flags   = ConfigManager::GetValue(configid_int_input_hotkey02_modifiers);
+    keycode = ConfigManager::GetValue(configid_int_input_hotkey02_keycode);
 
-    if (ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_action_id) != action_none)
+    if (ConfigManager::GetValue(configid_int_input_hotkey02_action_id) != action_none)
     {
         ::RegisterHotKey(nullptr, 1, flags | MOD_NOREPEAT, keycode);
         m_IsAnyHotkeyActive = true;
     }
 
-    flags   = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_modifiers);
-    keycode = ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_keycode);
+    flags   = ConfigManager::GetValue(configid_int_input_hotkey03_modifiers);
+    keycode = ConfigManager::GetValue(configid_int_input_hotkey03_keycode);
 
-    if (ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_action_id) != action_none)
+    if (ConfigManager::GetValue(configid_int_input_hotkey03_action_id) != action_none)
     {
         ::RegisterHotKey(nullptr, 2, flags | MOD_NOREPEAT, keycode);
         m_IsAnyHotkeyActive = true;
@@ -6075,17 +6075,17 @@ void OutputManager::HandleHotkeys()
     if (!m_IsAnyHotkeyActive)
         return;
 
-    const ActionID action_id[3] = {(ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_action_id),
-                                   (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_action_id),
-                                   (ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_action_id)};
+    const ActionID action_id[3] = {(ActionID)ConfigManager::GetValue(configid_int_input_hotkey01_action_id),
+                                   (ActionID)ConfigManager::GetValue(configid_int_input_hotkey02_action_id),
+                                   (ActionID)ConfigManager::GetValue(configid_int_input_hotkey03_action_id)};
 
-    const UINT flags[3]         = {(UINT)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_modifiers), 
-                                   (UINT)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_modifiers), 
-                                   (UINT)ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_modifiers)};
+    const UINT flags[3]         = {(UINT)ConfigManager::GetValue(configid_int_input_hotkey01_modifiers), 
+                                   (UINT)ConfigManager::GetValue(configid_int_input_hotkey02_modifiers), 
+                                   (UINT)ConfigManager::GetValue(configid_int_input_hotkey03_modifiers)};
 
-    const int keycode[3]        = {ConfigManager::Get().GetConfigInt(configid_int_input_hotkey01_keycode),
-                                   ConfigManager::Get().GetConfigInt(configid_int_input_hotkey02_keycode),
-                                   ConfigManager::Get().GetConfigInt(configid_int_input_hotkey03_keycode)};
+    const int keycode[3]        = {ConfigManager::GetValue(configid_int_input_hotkey01_keycode),
+                                   ConfigManager::GetValue(configid_int_input_hotkey02_keycode),
+                                   ConfigManager::GetValue(configid_int_input_hotkey03_keycode)};
 
     for (int i = 0; i < 3; ++i)
     {
