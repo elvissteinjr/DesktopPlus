@@ -52,8 +52,8 @@ int ElevatedModeEnter(HINSTANCE hinstance)
     IPCManager::Get().DisableUIPForRegisteredMessages(window_handle);
 
     //Send config update to dashboard and UI process to set elevated mode active
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_elevated_mode_active), true);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_elevated_mode_active), true);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_misc_elevated_mode_active, true);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_elevated_mode_active, true);
 
 	//Wait for callbacks, update or quit message
 	MSG msg;
@@ -67,8 +67,8 @@ int ElevatedModeEnter(HINSTANCE hinstance)
 	}
 
     //Send config update to dashboard and UI process to disable it again
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_elevated_mode_active), false);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_elevated_mode_active), false);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_misc_elevated_mode_active, false);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_elevated_mode_active, false);
 
     //Uninitialize COM if it was used
     if (!g_ElevatedMode_ComInitDone)

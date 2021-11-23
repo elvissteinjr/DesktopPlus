@@ -699,7 +699,7 @@ void WindowManager::HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, L
                 m_FocusLastProcess = process_id;
 
                 //Send updated process elevation state to UI
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_window_focused_process_elevated), IsProcessElevated(process_id));
+                IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_window_focused_process_elevated, IsProcessElevated(process_id));
             }
 
             //Send focus update to UI
@@ -750,8 +750,7 @@ void WindowManager::HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, L
                                 if (!m_DragOverlayMsgSent)
                                 {
                                     //Start the overlay drag or send overlay ID 0 to have the mouse button be released (so the desktop drag stops)
-                                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_winmanager_drag_start, 
-                                                                                (m_ThreadLocalData.DoOverlayDrag) ? m_ThreadLocalData.TargetOverlayID : UINT_MAX);
+                                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_winmanager_drag_start, (m_ThreadLocalData.DoOverlayDrag) ? m_ThreadLocalData.TargetOverlayID : UINT_MAX);
                                     m_DragOverlayMsgSent = true;
                                 }
                             }
@@ -849,7 +848,7 @@ void WindowManager::ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINE
         m_FocusLastProcess = process_id;
 
         //Send process elevation state to UI
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_window_focused_process_elevated), IsProcessElevated(process_id));
+        IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_window_focused_process_elevated, IsProcessElevated(process_id));
 
         hook_handle_focus_change = ::SetWinEventHook(EVENT_OBJECT_FOCUS, EVENT_OBJECT_FOCUS, nullptr, WindowManager::WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
     }

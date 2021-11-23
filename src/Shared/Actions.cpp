@@ -98,48 +98,48 @@ void CustomAction::ApplyStringFromConfig()
 void CustomAction::SendUpdateToDashboardApp(int id, HWND window_handle) const
 {
     //Send changes over to dashboard application
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current), id);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current, id);
     //Sendings strings stalls the application and the dashboard app doesn't use the name, so don't send it
-    /*IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 0);
+    /*IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current_sub, 0);
     IPCManager::Get().SendStringToDashboardApp(configid_str_state_action_value_string, Name, window_handle);*/
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 1);
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), FunctionType);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current_sub, 1);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_value_int, FunctionType);
 
     switch (FunctionType)
     {
         case caction_press_keys:
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 2);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), KeyCodes[0]);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 3);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), KeyCodes[1]);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 4);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), KeyCodes[2]);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 5);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), IntID);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current_sub, 2);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_value_int, KeyCodes[0]);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current_sub, 3);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_value_int, KeyCodes[1]);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current_sub, 4);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_value_int, KeyCodes[2]);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current_sub, 5);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_value_int, IntID);
 
             break;
         }
         case caction_type_string:
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 2);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current_sub, 2);
             IPCManager::Get().SendStringToDashboardApp(configid_str_state_action_value_string, StrMain, window_handle);
 
             break;
         }
         case caction_launch_application:
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 2);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current_sub, 2);
             IPCManager::Get().SendStringToDashboardApp(configid_str_state_action_value_string, StrMain, window_handle);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 3);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current_sub, 3);
             IPCManager::Get().SendStringToDashboardApp(configid_str_state_action_value_string, StrArg, window_handle);
 
             break;
         }
         case caction_toggle_overlay_enabled_state:
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 2);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), IntID);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current_sub, 2);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_value_int, IntID);
         }
         default: break;
     }

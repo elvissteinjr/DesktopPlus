@@ -105,7 +105,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
         if (ButtonAction("ActionGoHome", actionid_home))
         {
             ConfigManager::SetValue(configid_int_input_go_home_action_id, actionid_home);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_go_home_action_id), actionid_home);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_go_home_action_id, actionid_home);
         }
 
         ImGui::NextColumn();
@@ -117,7 +117,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
         if (ButtonAction("ActionGoBack", actionid_back))
         {
             ConfigManager::SetValue(configid_int_input_go_back_action_id, actionid_back);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_go_back_action_id), actionid_back);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_go_back_action_id, actionid_back);
         }
 
         ImGui::Columns(1);
@@ -168,7 +168,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
         if (ButtonAction("ActionGlobalShortcut1", actionid_global_01))
         {
             ConfigManager::SetValue(configid_int_input_shortcut01_action_id, actionid_global_01);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_shortcut01_action_id), actionid_global_01);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_shortcut01_action_id, actionid_global_01);
         }
 
         ImGui::NextColumn();
@@ -180,7 +180,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
         if (ButtonAction("ActionGlobalShortcut2", actionid_global_02))
         {
             ConfigManager::SetValue(configid_int_input_shortcut02_action_id, actionid_global_02);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_shortcut02_action_id), actionid_global_02);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_shortcut02_action_id, actionid_global_02);
         }
 
         ImGui::NextColumn();
@@ -192,7 +192,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
         if (ButtonAction("ActionGlobalShortcut3", actionid_global_03))
         {
             ConfigManager::SetValue(configid_int_input_shortcut03_action_id, actionid_global_03);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_shortcut03_action_id), actionid_global_03);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_shortcut03_action_id, actionid_global_03);
         }
 
         ImGui::Columns(1);
@@ -232,7 +232,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
         if (ButtonAction("ActionHotkey1", actionid_hotkey_01))
         {
             ConfigManager::SetValue(configid_int_input_hotkey01_action_id, actionid_hotkey_01);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey01_action_id), actionid_hotkey_01);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_hotkey01_action_id, actionid_hotkey_01);
         }
 
         ImGui::NextColumn();
@@ -253,7 +253,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
         if (ButtonAction("ActionHotkey2", actionid_hotkey_02))
         {
             ConfigManager::SetValue(configid_int_input_hotkey02_action_id, actionid_hotkey_02);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey02_action_id), actionid_hotkey_02);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_hotkey02_action_id, actionid_hotkey_02);
         }
 
         ImGui::NextColumn();
@@ -274,7 +274,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
         if (ButtonAction("ActionHotkey3", actionid_hotkey_03))
         {
             ConfigManager::SetValue(configid_int_input_hotkey03_action_id, actionid_hotkey_03);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey03_action_id), actionid_hotkey_03);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_hotkey03_action_id, actionid_hotkey_03);
         }
 
         ImGui::NextColumn();
@@ -334,9 +334,9 @@ void WindowSettingsActionEdit::UpdateCatActions()
             act.Name = "New Action";
 
             actions.push_back(act);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current), actions.size() - 1);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_current_sub), 1);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_action_value_int), (int)act.FunctionType);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current, actions.size() - 1);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_current_sub, 1);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_action_value_int, (int)act.FunctionType);
 
             ConfigManager::Get().GetActionMainBarOrder().push_back({ (ActionID)(actions.size() - 1 + action_custom), false });
 
@@ -859,24 +859,24 @@ bool WindowSettingsActionEdit::ButtonHotkey(unsigned int hotkey_id)
                 {
                     ConfigManager::SetValue(configid_int_input_hotkey01_modifiers, (int)flags);
                     ConfigManager::SetValue(configid_int_input_hotkey01_keycode,   keycode_edit);
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey01_modifiers), (int)flags);
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey01_keycode),   keycode_edit);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_hotkey01_modifiers, (int)flags);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_hotkey01_keycode,   keycode_edit);
                     break;
                 }
                 case 1: 
                 {
                     ConfigManager::SetValue(configid_int_input_hotkey02_modifiers, (int)flags);
                     ConfigManager::SetValue(configid_int_input_hotkey02_keycode, keycode_edit);
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey02_modifiers), (int)flags);
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey02_keycode),   keycode_edit);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_hotkey02_modifiers, (int)flags);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_hotkey02_keycode,   keycode_edit);
                     break;
                 }
                 case 2: 
                 {
                     ConfigManager::SetValue(configid_int_input_hotkey03_modifiers, (int)flags);
                     ConfigManager::SetValue(configid_int_input_hotkey03_keycode, keycode_edit);
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey03_modifiers), (int)flags);
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_hotkey03_keycode),   keycode_edit);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_hotkey03_modifiers, (int)flags);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_hotkey03_keycode,   keycode_edit);
                     break;
                 }
             }

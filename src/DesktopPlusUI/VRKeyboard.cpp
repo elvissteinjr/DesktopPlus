@@ -478,7 +478,7 @@ void VRKeyboard::OnImGuiNewFrame()
             if (ConfigManager::GetValue(configid_int_state_keyboard_visible_for_overlay_id) == -1)
             {
                 ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -2);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -2);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_keyboard_visible_for_overlay_id, -2);
             }
         }
     }
@@ -526,7 +526,7 @@ void VRKeyboard::OnWindowHidden()
 
     //Remove overlay assignment, if any
     ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -1);
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -1);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_keyboard_visible_for_overlay_id, -1);
 
     m_KeyboardHiddenLastFrame = true; //Widgets will request the keyboard for the next frame anyways, so we prevent showing it again right away with this flag
 }

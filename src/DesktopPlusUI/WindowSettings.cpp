@@ -705,7 +705,7 @@ void WindowSettingsNew::UpdatePageMainCatInput()
         bool& block_input = ConfigManager::GetRef(configid_bool_input_laser_pointer_block_input);
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsLaserPointerBlockInput), &block_input))
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_input_laser_pointer_block_input), block_input);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_laser_pointer_block_input, block_input);
         }
 
         ImGui::Unindent();
@@ -726,7 +726,7 @@ void WindowSettingsNew::UpdatePageMainCatInput()
             if (distance < 0.01f)
                 distance = 0.0f;
 
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_input_detached_interaction_max_distance), pun_cast<LPARAM, float>(distance));
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_input_detached_interaction_max_distance, pun_cast<LPARAM, float>(distance));
         }
         vr_keyboard.VRKeyboardInputEnd();
 
@@ -750,13 +750,13 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
             bool& auto_focus = ConfigManager::GetRef(configid_bool_windows_winrt_auto_focus);
             if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysAutoFocus), &auto_focus))
             {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_auto_focus), auto_focus);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_windows_winrt_auto_focus, auto_focus);
             }
 
             bool& keep_on_screen = ConfigManager::GetRef(configid_bool_windows_winrt_keep_on_screen);
             if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysKeepOnScreen), &keep_on_screen))
             {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_keep_on_screen), keep_on_screen);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_windows_winrt_keep_on_screen, keep_on_screen);
             }
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsWindowOverlaysKeepOnScreenTip));
@@ -765,13 +765,13 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
         bool& auto_size_overlay = ConfigManager::GetRef(configid_bool_windows_winrt_auto_size_overlay);
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysAutoSizeOverlay), &auto_size_overlay))
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_auto_size_overlay), auto_size_overlay);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_windows_winrt_auto_size_overlay, auto_size_overlay);
         }
 
         bool& focus_scene_app = ConfigManager::GetRef(configid_bool_windows_winrt_auto_focus_scene_app);
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysFocusSceneApp), &focus_scene_app))
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_auto_focus_scene_app), focus_scene_app);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_windows_winrt_auto_focus_scene_app, focus_scene_app);
         }
 
         if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
@@ -779,7 +779,7 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
             bool& strict_matching = ConfigManager::GetRef(configid_bool_windows_winrt_window_matching_strict);
             if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysStrictMatching), &strict_matching))
             {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_windows_winrt_window_matching_strict), strict_matching);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_windows_winrt_window_matching_strict, strict_matching);
             }
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsWindowOverlaysStrictMatchingTip));
@@ -802,7 +802,7 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
             ImGui::SetNextItemWidth(-1);
             if (TranslatedComboAnimated("##ComboWindowDrag", mode_dragging, tstr_SettingsWindowOverlaysOnWindowDragDoNothing, tstr_SettingsWindowOverlaysOnWindowDragOverlay))
             {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_windows_winrt_dragging_mode), mode_dragging);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_windows_winrt_dragging_mode, mode_dragging);
             }
 
             ImGui::NextColumn();
@@ -818,7 +818,7 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
             ImGui::SetNextItemWidth(-1);
             if (TranslatedComboAnimated("##ComboCaptureLost", behavior_capture_loss, tstr_SettingsWindowOverlaysOnCaptureLossDoNothing, tstr_SettingsWindowOverlaysOnCaptureLossRemove))
             {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_windows_winrt_capture_lost_behavior), behavior_capture_loss);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_windows_winrt_capture_lost_behavior, behavior_capture_loss);
             }
         }
 
@@ -914,7 +914,7 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
         {
             if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsStartupSteamDisable), &no_steam))
             {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_misc_no_steam), no_steam);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_misc_no_steam, no_steam);
             }
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsStartupSteamDisableTip));

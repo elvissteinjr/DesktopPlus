@@ -311,9 +311,9 @@ bool WindowGazeFadeAutoHint::Show()
     m_TickTime = 0.0;         //Triggers label update right away on Update()
 
     //Deactivate GazeFade during the countdown so the overlay is visible to the user
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)m_TargetOverlay);
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_gazefade_enabled), false);
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)m_TargetOverlay);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_gazefade_enabled, false);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
 
     return AuxUIWindow::Show();
 }
@@ -321,10 +321,10 @@ bool WindowGazeFadeAutoHint::Show()
 void WindowGazeFadeAutoHint::Hide()
 {
     //Trigger GazeFade auto-configure
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)m_TargetOverlay);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)m_TargetOverlay);
     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_gaze_fade_auto);
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_gazefade_enabled), true);
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_gazefade_enabled, true);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
 
     //Enable gaze fade if it isn't yet
     OverlayManager::Get().GetConfigData(m_TargetOverlay).ConfigBool[configid_bool_overlay_gazefade_enabled] = true;
@@ -503,14 +503,14 @@ void WindowCaptureWindowSelect::Update()
 
                 //Set pointer hint in case dashboard app needs it
                 ConfigManager::SetValue(configid_int_state_laser_pointer_device_hint, (int)device_index);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_laser_pointer_device_hint), (int)device_index);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_laser_pointer_device_hint, (int)device_index);
 
                 //Add overlay
                 HWND window_handle = window_info.GetWindowHandle();
                 OverlayManager::Get().AddOverlay(ovrl_capsource_winrt_capture, -2, window_handle);
 
                 //Send to dashboard app
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_arg_hwnd), (LPARAM)window_handle);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_state_arg_hwnd, (LPARAM)window_handle);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new_drag, MAKELPARAM(-2, (source_distance * 100.0f)));
             }
 

@@ -138,14 +138,14 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
 
             //Set pointer hint in case dashboard app needs it
             ConfigManager::SetValue(configid_int_state_laser_pointer_device_hint, (int)device_index);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_laser_pointer_device_hint), (int)device_index);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_laser_pointer_device_hint, (int)device_index);
 
             //Add overlay
             HWND current_window = ::GetForegroundWindow();
             OverlayManager::Get().AddOverlay(ovrl_capsource_winrt_capture, -2, current_window);
 
             //Send to dashboard app
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_arg_hwnd), (LPARAM)current_window);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_state_arg_hwnd, (LPARAM)current_window);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new_drag, MAKELPARAM(-2, (source_distance * 100.0f)));
         }
 
@@ -174,8 +174,8 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
     {
         is_dragmode_enabled = !is_dragmode_enabled;
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragselectmode_show_hidden), false);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_dragmode_enabled);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragselectmode_show_hidden, false);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragmode, is_dragmode_enabled);
     }
 
     if (dragmode_was_enabled)
@@ -195,9 +195,9 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     {
         overlay_data.ConfigBool[configid_bool_overlay_enabled] = false;
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), false);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_enabled, false);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
     }
 
     DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIHideOverlayTip));
@@ -421,18 +421,18 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
     {
         current_desktop = current_desktop_new;
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
 
         //Reset window selection when switching to a desktop
         if (current_configid == configid_int_overlay_winrt_desktop_id)
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), 0);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, 0);
             overlay_config.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = 0;
         }
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(current_configid), current_desktop);
+        IPCManager::Get().PostConfigMessageToDashboardApp(current_configid, current_desktop);
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
 
         //Update overlay name
         OverlayManager::Get().SetOverlayNameAuto(overlay_id);
@@ -493,9 +493,9 @@ void WindowFloatingUIActionBar::UpdateActionButtons(unsigned int overlay_id)
                     {
                         if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
                         {
-                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+                            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
                             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
-                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
                         }
                         DisplayTooltipIfHovered(ActionManager::Get().GetActionName(order_data.action_id));
                     }
@@ -503,9 +503,9 @@ void WindowFloatingUIActionBar::UpdateActionButtons(unsigned int overlay_id)
                     {
                         if (ImGui::ButtonWithWrappedLabel(ActionManager::Get().GetActionButtonLabel(order_data.action_id), b_size_default))
                         {
-                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+                            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
                             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
-                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
                         }
                     }
                 }
@@ -582,9 +582,9 @@ void WindowFloatingUIActionBar::ButtonActionKeyboard(unsigned int overlay_id, Im
             //We work around this by enforcing a 0.5 second delay since the last auto-hide or else just don't react to the press
             if (ImGui::GetTime() >= UIManager::Get()->GetVRKeyboard().GetLastAutoHiddenTime() + 0.5)
             {
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, action_show_keyboard);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
             }
         }
     }

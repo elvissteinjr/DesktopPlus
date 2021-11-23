@@ -276,9 +276,9 @@ float OverlayDragger::DragAddWidth(float width)
 
         #ifndef DPLUS_UI
             //Send adjusted width to the UI app
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)m_DragModeOverlayID);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_width), pun_cast<LPARAM, float>(overlay_width));
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_DragModeOverlayID);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_width, pun_cast<LPARAM, float>(overlay_width));
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
         #endif
     }
     else
@@ -588,9 +588,9 @@ void OverlayDragger::DragGestureUpdate()
 
                     #ifndef DPLUS_UI
                     //Send adjusted width to the UI app
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)m_DragModeOverlayID);
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_width), pun_cast<LPARAM, float>(width));
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_DragModeOverlayID);
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_width, pun_cast<LPARAM, float>(width));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
                     #endif
                 }
             }

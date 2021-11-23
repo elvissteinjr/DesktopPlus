@@ -475,8 +475,7 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
         if (is_primary_device)
         {
             ConfigManager::SetValue(configid_handle_state_dplus_laser_pointer_target_overlay, lp_device.OvrlHandleTargetLast);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_dplus_laser_pointer_target_overlay), 
-                                                 pun_cast<LPARAM, vr::VROverlayHandle_t>(lp_device.OvrlHandleTargetLast));
+            IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_dplus_laser_pointer_target_overlay, pun_cast<LPARAM, vr::VROverlayHandle_t>(lp_device.OvrlHandleTargetLast));
         }
     }
 
@@ -618,11 +617,10 @@ void LaserPointer::SetActiveDevice(vr::TrackedDeviceIndex_t device_index, LaserP
     m_ActivationOrigin = activation_origin;
 
     ConfigManager::SetValue(configid_int_state_dplus_laser_pointer_device, device_index);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_dplus_laser_pointer_device), device_index);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_dplus_laser_pointer_device, device_index);
 
     ConfigManager::SetValue(configid_handle_state_dplus_laser_pointer_target_overlay, lp_device.OvrlHandleTargetLast);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_dplus_laser_pointer_target_overlay), 
-                                         pun_cast<LPARAM, vr::VROverlayHandle_t>(lp_device.OvrlHandleTargetLast));
+    IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_dplus_laser_pointer_target_overlay, pun_cast<LPARAM, vr::VROverlayHandle_t>(lp_device.OvrlHandleTargetLast));
 }
 
 void LaserPointer::ClearActiveDevice()
@@ -643,10 +641,10 @@ void LaserPointer::ClearActiveDevice()
     m_ActivationOrigin = dplp_activation_origin_none;
 
     ConfigManager::SetValue(configid_int_state_dplus_laser_pointer_device, vr::k_unTrackedDeviceIndexInvalid);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_dplus_laser_pointer_device), vr::k_unTrackedDeviceIndexInvalid);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_dplus_laser_pointer_device, vr::k_unTrackedDeviceIndexInvalid);
 
     ConfigManager::SetValue(configid_handle_state_dplus_laser_pointer_target_overlay, vr::k_ulOverlayHandleInvalid);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_dplus_laser_pointer_target_overlay), vr::k_ulOverlayHandleInvalid);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_dplus_laser_pointer_target_overlay, vr::k_ulOverlayHandleInvalid);
 }
 
 void LaserPointer::RemoveDevice(vr::TrackedDeviceIndex_t device_index)

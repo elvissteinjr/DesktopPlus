@@ -635,7 +635,7 @@ vr::EVRInitError OutputManager::InitOverlay()
     //Check if this process was launched by Steam by checking if the "SteamClientLaunch" environment variable exists
     bool is_steam_app = (::GetEnvironmentVariable(L"SteamClientLaunch", nullptr, 0) != 0);
     ConfigManager::SetValue(configid_bool_state_misc_process_started_by_steam, is_steam_app);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_started_by_steam), is_steam_app);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_started_by_steam, is_steam_app);
 
     //Add application manifest and set app key to Steam one if needed (setting the app key will make it load Steam input bindings even when not launched by it)
     vr::EVRApplicationError app_error;
@@ -1165,13 +1165,13 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                             OnSetOverlayWinRTCaptureWindow(i);
 
                             //Send to UI
-                            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
-                            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), msg.lParam);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)i);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_winrt_hwnd, msg.lParam);
 
                             if (ConfigManager::GetValue(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay)
-                                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), true);
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_enabled, true);
 
-                            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
                         }
                     }
                     break;
@@ -1202,35 +1202,27 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         const Overlay& overlay        = OverlayManager::Get().GetOverlay(i);
                         const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)i);
 
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_state_content_width), 
-                                                             data.ConfigInt[configid_int_overlay_state_content_width]);
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_state_content_height), 
-                                                             data.ConfigInt[configid_int_overlay_state_content_height]);
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_width,  data.ConfigInt[configid_int_overlay_state_content_width]);
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_height, data.ConfigInt[configid_int_overlay_state_content_height]);
 
                         //Send over current HWND if there's an active capture
                         if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0))
                         {
 
-                            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), 
-                                                                 data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_winrt_hwnd, data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]);
                         }
 
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
                     }
 
                     //Global config state
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_interface_desktop_count),
-                                                         ConfigManager::GetValue(configid_int_state_interface_desktop_count));
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_window_focused_process_elevated), 
-                                                         ConfigManager::GetValue(configid_bool_state_window_focused_process_elevated));
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_elevated), 
-                                                         ConfigManager::GetValue(configid_bool_state_misc_process_elevated));
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_started_by_steam),
-                                                         ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam));
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_dplus_laser_pointer_device),
-                                                         ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_interface_desktop_count, ConfigManager::GetValue(configid_int_state_interface_desktop_count));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_window_focused_process_elevated, ConfigManager::GetValue(configid_bool_state_window_focused_process_elevated));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_elevated, ConfigManager::GetValue(configid_bool_state_misc_process_elevated));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_started_by_steam, ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_dplus_laser_pointer_device, ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
 
                     //Sync usually means new UI process, so get new handles
                     m_LaserPointer.RefreshCachedOverlayHandles();
@@ -1352,8 +1344,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         if (msg.lParam) //Update GPU Copy state
                         {
                             ConfigManager::SetValue(configid_bool_state_performance_gpu_copy_active, (m_MultiGPUTargetDevice != nullptr));
-                            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_performance_gpu_copy_active), 
-                                                                 (m_MultiGPUTargetDevice != nullptr));
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_performance_gpu_copy_active, (m_MultiGPUTargetDevice != nullptr));
                         }
                         break;
                     }
@@ -1586,18 +1577,17 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
             data.ConfigInt[configid_int_overlay_state_content_height] = content_height;
 
             //Send update to UI
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
 
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_state_content_width),  content_width);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_state_content_height), content_height);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_width,  content_width);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_height, content_height);
 
             if (adaptive_size_apply)
             {
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_width), 
-                                                     pun_cast<LPARAM, float>(data.ConfigFloat[configid_float_overlay_width]));
+                IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_width, pun_cast<LPARAM, float>(data.ConfigFloat[configid_float_overlay_width]));
             }
 
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
 
             //Apply change to overlay
             unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
@@ -1631,9 +1621,9 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
                 OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
                 //Send to UI
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), false);
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
+                IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_enabled, false);
+                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
             }
             else if (ConfigManager::GetValue(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_remove_overlay) //Or remove it
             {
@@ -1757,7 +1747,7 @@ void OutputManager::ResetOverlays()
     //Check if process is elevated and send that info to the UI too
     bool elevated = IsProcessElevated();
     ConfigManager::SetValue(configid_bool_state_misc_process_elevated, elevated);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_misc_process_elevated), elevated);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_elevated, elevated);
 
     //Make sure that the entire overlay texture gets at least one full update for regions that will never be dirty (i.e. blank space not occupied by any desktop)
     m_OutputPendingFullRefresh = true;
@@ -2162,9 +2152,9 @@ void OutputManager::DoAction(ActionID action_id)
                         OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
                         //Sync change
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)action.IntID);
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), data.ConfigBool[configid_bool_overlay_enabled]);
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)action.IntID);
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_enabled, data.ConfigBool[configid_bool_overlay_enabled]);
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
                     }
                 }
             }
@@ -2191,7 +2181,7 @@ void OutputManager::DoAction(ActionID action_id)
 
                     //Assign current overlay for keyboard
                     ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, ovrl_keyboard_id);
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), ovrl_keyboard_id);
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_keyboard_visible_for_overlay_id, ovrl_keyboard_id);
 
                     //Tell UI to show it
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, true);
@@ -2315,9 +2305,9 @@ void OutputManager::ToggleOverlayGroupEnabled(int group_id)
             OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
             //Sync change
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), i);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), data.ConfigBool[configid_bool_overlay_enabled]);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, i);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_enabled, data.ConfigBool[configid_bool_overlay_enabled]);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
         }
     }
 }
@@ -2334,7 +2324,7 @@ void OutputManager::UpdatePerformanceStates()
     {
         //A second has passed, reset the value
         ConfigManager::SetValue(configid_int_state_performance_duplication_fps, m_PerformanceFrameCount);
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_performance_duplication_fps), m_PerformanceFrameCount);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_performance_duplication_fps, m_PerformanceFrameCount);
 
         m_PerformanceFrameCountStartTick = ::GetTickCount64();
         m_PerformanceFrameCount = 0;
@@ -2420,7 +2410,7 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
 
         //Store output/desktop count and send it over to UI
         ConfigManager::SetValue(configid_int_state_interface_desktop_count, output_count);
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_interface_desktop_count), output_count);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_interface_desktop_count, output_count);
     }
 
     if (out_adapter_preferred != nullptr)
@@ -4002,7 +3992,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
                 {
                     //Select this as current overlay
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), overlay_current.GetID());
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_interface_overlay_current_id, overlay_current.GetID());
                     current_overlay_old = overlay_current.GetID(); //Set a new reset value since we're in the middle of a temporary current overlay loop
                 }
                 break;
@@ -4188,10 +4178,10 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
                         //Set device as hint, just in case
                         ConfigManager::SetValue(configid_int_state_laser_pointer_device_hint, (int)device_index);
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_laser_pointer_device_hint), (int)device_index);
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_laser_pointer_device_hint, (int)device_index);
 
                         //Send to UI
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_handle_state_arg_hwnd), (LPARAM)current_window);
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_arg_hwnd, (LPARAM)current_window);
                         IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlay_new_drag, MAKELPARAM(-2, 0 /*UI doesn't need distance*/));
 
                         //Reset input and WindowManager state manually since the overlay mouse up even will be consumed to finish the drag later
@@ -4371,10 +4361,10 @@ void OutputManager::CropToActiveWindow()
     if (CropToActiveWindow(crop_x, crop_y, crop_width, crop_height))
     {
         //Send them over to UI
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_x),      crop_x);
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_y),      crop_y);
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_width),  crop_width);
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_x,      crop_x);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_y,      crop_y);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_width,  crop_width);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_height, crop_height);
 
         ApplySettingCrop();
         ApplySettingTransform();
@@ -4391,12 +4381,12 @@ void OutputManager::CropToDisplay(int display_id, bool do_not_apply_setting)
     CropToDisplay(display_id, crop_x, crop_y, crop_width, crop_height);
 
     //Send change to UI as well (also set override since this may be called during one)
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), OverlayManager::Get().GetCurrentOverlayID());
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_x),      crop_x);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y),      crop_y);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width),  crop_width);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, OverlayManager::Get().GetCurrentOverlayID());
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_x,      crop_x);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_y,      crop_y);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_width,  crop_width);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_height, crop_height);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
 
     //In single desktop mode, set desktop ID for all overlays
     if (ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring))
@@ -4405,9 +4395,9 @@ void OutputManager::CropToDisplay(int display_id, bool do_not_apply_setting)
         {
             OverlayManager::Get().GetConfigData(i).ConfigInt[configid_int_overlay_desktop_id] = display_id;
 
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)i);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_desktop_id), display_id);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)i);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_desktop_id, display_id);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
         }
     }
 
@@ -4476,9 +4466,9 @@ unsigned int OutputManager::AddOverlayDrag(float source_distance, OverlayCapture
     //Adjust width and send it over to UI app
     ConfigManager::SetValue(configid_float_overlay_width, overlay_width);
 
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)new_id);
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_width), pun_cast<LPARAM, float>(overlay_width));
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)new_id);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_width, pun_cast<LPARAM, float>(overlay_width));
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
 
     //Start drag and apply overlay config
     DetachedTempDragStart(new_id, std::max(source_distance - 0.25f, 0.01f));
@@ -5169,15 +5159,15 @@ void OutputManager::ApplySettingUpdateLimiter()
 
 void OutputManager::DetachedTransformSync(unsigned int overlay_id)
 {
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_transform_sync_target_id), (int)overlay_id);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_transform_sync_target_id, (int)overlay_id);
 
     const float* values = OverlayManager::Get().GetConfigData(overlay_id).ConfigTransform.get();
     for (size_t i = 0; i < 16; ++i)
     {
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_state_overlay_transform_sync_value), pun_cast<LPARAM, float>(values[i]));
+        IPCManager::Get().PostConfigMessageToUIApp(configid_float_state_overlay_transform_sync_value, pun_cast<LPARAM, float>(values[i]));
     }
 
-    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_transform_sync_target_id), -1);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_transform_sync_target_id, -1);
 }
 
 void OutputManager::DetachedTransformSyncAll()
@@ -5671,8 +5661,8 @@ void OutputManager::DetachedOverlayGazeFadeAutoConfigure()
         data.ConfigFloat[configid_float_overlay_gazefade_distance] = gaze_distance;
         data.ConfigFloat[configid_float_overlay_gazefade_rate]     = fade_rate;
 
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_gazefade_distance), pun_cast<LPARAM, float>(gaze_distance));
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_float_overlay_gazefade_rate),     pun_cast<LPARAM, float>(fade_rate));
+        IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_gazefade_distance, pun_cast<LPARAM, float>(gaze_distance));
+        IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_gazefade_rate,     pun_cast<LPARAM, float>(fade_rate));
     }
 }
 
@@ -5792,7 +5782,7 @@ void OutputManager::DetachedOverlayAutoDockingAll()
         if (ConfigManager::GetValue(configid_int_state_auto_docking_state) != 0)
         {
             ConfigManager::SetValue(configid_int_state_auto_docking_state, 0);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_auto_docking_state), 0);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_auto_docking_state, 0);
         }
 
         return;
@@ -5840,7 +5830,7 @@ void OutputManager::DetachedOverlayAutoDockingAll()
     if (config_value != ConfigManager::GetValue(configid_int_state_auto_docking_state))
     {
         ConfigManager::SetValue(configid_int_state_auto_docking_state, config_value);
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_auto_docking_state), config_value);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_auto_docking_state, config_value);
     }
 }
 
@@ -5861,7 +5851,7 @@ void OutputManager::DetachedTempDragStart(unsigned int overlay_id, float offset_
         }
 
         ConfigManager::SetValue(configid_bool_state_overlay_dragmode_temp, true);
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_overlay_dragmode_temp), true);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_dragmode_temp, true);
     }
 }
 
@@ -5877,7 +5867,7 @@ void OutputManager::DetachedTempDragFinish()
 
         m_OverlayDragger.DragFinish();
 
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_state_overlay_dragmode_temp), false);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_dragmode_temp, false);
         ConfigManager::SetValue(configid_bool_state_overlay_dragmode_temp, false);
 
         ApplySettingTransform();
@@ -5915,9 +5905,9 @@ void OutputManager::OnDragFinish()
         }
 
         //Send change over to UI
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)m_OverlayDragger.GetDragOverlayID());
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_origin), data.ConfigInt[configid_int_overlay_origin]);
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_OverlayDragger.GetDragOverlayID());
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_origin, data.ConfigInt[configid_int_overlay_origin]);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
     }
 }
 

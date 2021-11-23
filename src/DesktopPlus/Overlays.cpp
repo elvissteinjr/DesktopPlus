@@ -109,10 +109,10 @@ void Overlay::AssignDesktopDuplicationTexture()
             data.ConfigInt[configid_int_overlay_state_content_height] = dheight;
             UpdateValidatedCropRect();
 
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), m_ID);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_state_content_width),  dwidth);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_state_content_height), dheight);
-            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, m_ID);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_width,  dwidth);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_height, dheight);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
         }
 
         //Exclude indirect desktop duplication sources, like converted Over-Under 3D

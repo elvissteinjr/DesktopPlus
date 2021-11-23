@@ -130,7 +130,7 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
         }
     }
 
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_interface_overlay_current_id), (int)overlay_id);
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_interface_overlay_current_id, (int)overlay_id);
 }
 
 void WindowOverlayProperties::WindowUpdate()
@@ -275,9 +275,9 @@ void WindowOverlayProperties::OverlayPositionReset()
     float& forward = ConfigManager::GetRef(configid_float_overlay_offset_forward);
     up = right = forward = 0.0f;
 
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_up),      pun_cast<LPARAM, float>(up));
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_right),   pun_cast<LPARAM, float>(right));
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_forward), pun_cast<LPARAM, float>(forward));
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_up,      pun_cast<LPARAM, float>(up));
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_right,   pun_cast<LPARAM, float>(right));
+    IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_forward, pun_cast<LPARAM, float>(forward));
 
     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_reset);
 }
@@ -337,7 +337,7 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
             if (ImGui::Selectable("", (mode_origin == i)))
             {
                 mode_origin = i;
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_origin), mode_origin);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_origin, mode_origin);
             }
 
             ImGui::SameLine(0.0f, 0.0f);
@@ -385,7 +385,7 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
 
     if (TranslatedComboAnimated("##ComboPositionDisplayMode", mode_display, tstr_OvrlPropsPositionDispModeAlways, tstr_OvrlPropsPositionDispModeDPlus))
     {
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_display_mode), mode_display);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_display_mode, mode_display);
     }
 
     ImGui::NextColumn();
@@ -447,7 +447,7 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
         if (width < 0.05f)
             width = 0.05f;
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_width), pun_cast<LPARAM, float>(width));
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_width, pun_cast<LPARAM, float>(width));
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -465,7 +465,7 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     {
         curve = clamp(curve, 0.0f, 1.0f);
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_curvature), pun_cast<LPARAM, float>(curve));
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_curvature, pun_cast<LPARAM, float>(curve));
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -483,7 +483,7 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     {
         opacity = clamp(opacity, 0.0f, 1.0f);
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_opacity), pun_cast<LPARAM, float>(opacity));
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_opacity, pun_cast<LPARAM, float>(opacity));
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -498,7 +498,7 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
         ImGui::AlignTextToFramePadding();
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAppearanceCrop), &crop_enabled))
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_crop_enabled), crop_enabled);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_crop_enabled, crop_enabled);
         }
         ImGui::NextColumn();
         ImGui::Spacing();
@@ -577,7 +577,7 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
     if (ImGui::RadioButton(TranslationManager::GetString(tstr_OvrlPropsCaptureMethodDup), (capture_method == ovrl_capsource_desktop_duplication)))
     {
         capture_method = ovrl_capsource_desktop_duplication;
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_capture_source), capture_method);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_capture_source, capture_method);
 
         OverlayManager::Get().SetCurrentOverlayNameAuto();
         SetActiveOverlayID(m_ActiveOverlayID);
@@ -593,7 +593,7 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
     if (ImGui::RadioButton(TranslationManager::GetString(tstr_OvrlPropsCaptureMethodGC), (capture_method == ovrl_capsource_winrt_capture)))
     {
         capture_method = ovrl_capsource_winrt_capture;
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_capture_source), capture_method);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_capture_source, capture_method);
 
         OverlayManager::Get().SetCurrentOverlayNameAuto();
         SetActiveOverlayID(m_ActiveOverlayID);
@@ -626,7 +626,7 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
                 if (ImGui::Selectable(TranslationManager::Get().GetDesktopIDString(i), (selected_desktop == i)))
                 {
                     selected_desktop = i;
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id), selected_desktop);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_desktop_id, selected_desktop);
 
                     OverlayManager::Get().SetCurrentOverlayNameAuto();
                     SetActiveOverlayID(m_ActiveOverlayID);
@@ -859,7 +859,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvanced3D), &is_3D_enabled))
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_3D_enabled), is_3D_enabled);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_3D_enabled, is_3D_enabled);
         }
         ImGui::NextColumn();
 
@@ -874,7 +874,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
                 if (ImGui::Selectable(TranslationManager::GetString( (TRMGRStrID)(tstr_OvrlPropsAdvancedHSBS + i) ), (mode_3d == i)))
                 {
                     mode_3d = i;
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_3D_mode), mode_3d);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_3D_mode, mode_3d);
                 }
             }
 
@@ -886,7 +886,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvanced3DSwap), &is_3D_swapped))
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_3D_swapped), is_3D_swapped);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_3D_swapped, is_3D_swapped);
         }
 
         if (!is_3D_enabled)
@@ -902,7 +902,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFade), &gazefade_enabled))
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_gazefade_enabled), gazefade_enabled);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_gazefade_enabled, gazefade_enabled);
         }
         ImGui::NextColumn();
 
@@ -944,7 +944,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
                 if (distance < 0.01f)
                     distance = 0.0f;
 
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_gazefade_distance), *(LPARAM*)&distance);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_gazefade_distance, *(LPARAM*)&distance);
             }
             vr_keyboard.VRKeyboardInputEnd();
 
@@ -961,7 +961,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
                 if (rate < 0.0f)
                     rate = 0.0f;
 
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_gazefade_rate), *(LPARAM*)&rate);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_gazefade_rate, *(LPARAM*)&rate);
             }
             vr_keyboard.VRKeyboardInputEnd();
             ImGui::NextColumn();
@@ -977,7 +977,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
             {
                 target_opacity = clamp(target_opacity, 0.0f, 1.0f);
 
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_gazefade_opacity), *(LPARAM*)&target_opacity);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_gazefade_opacity, *(LPARAM*)&target_opacity);
             }
             vr_keyboard.VRKeyboardInputEnd();
 
@@ -997,7 +997,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedInput), &input_enabled))
         {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_input_enabled), input_enabled);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_input_enabled, input_enabled);
         }
         ImGui::NextColumn();
 
@@ -1014,7 +1014,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedInputInGame), &input_dplus_lp_enabled_visual))
         {
             input_dplus_lp_enabled = input_dplus_lp_enabled_visual;
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_input_dplus_lp_enabled), input_dplus_lp_enabled);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_input_dplus_lp_enabled, input_dplus_lp_enabled);
         }
 
         ImGui::NextColumn();
@@ -1024,7 +1024,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedInputFloatingUI), &floating_ui_enabled_visual))
         {
             floating_ui_enabled = floating_ui_enabled_visual;
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_floatingui_enabled), floating_ui_enabled);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_floatingui_enabled, floating_ui_enabled);
         }
 
         if (!input_enabled)
@@ -1137,8 +1137,8 @@ void WindowOverlayProperties::UpdatePagePositionChange()
 
             bool& is_changing_position = ConfigManager::GetRef(configid_bool_state_overlay_dragmode);
             is_changing_position = true;
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragselectmode_show_hidden), is_changing_position);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode), is_changing_position);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragselectmode_show_hidden, is_changing_position);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragmode, is_changing_position);
         }
     }
 
@@ -1397,7 +1397,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetUp") );
     if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
     {
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_up), pun_cast<LPARAM, float>(up));
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_up, pun_cast<LPARAM, float>(up));
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -1412,7 +1412,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetRight") );
     if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
     {
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_right), pun_cast<LPARAM, float>(right));
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_right, pun_cast<LPARAM, float>(right));
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -1427,7 +1427,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetForward") );
     if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
     {
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_offset_forward), pun_cast<LPARAM, float>(forward));
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_forward, pun_cast<LPARAM, float>(forward));
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -1443,7 +1443,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
 
     if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsForceUpright), &force_upright))
     {
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_input_drag_force_upright), force_upright);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_force_upright, force_upright);
     }
 
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
@@ -1611,11 +1611,11 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
 
         SetActiveOverlayID(m_ActiveOverlayID);
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_crop_enabled), crop_enabled);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width),    crop_width);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height),   crop_height);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_x),        crop_x);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y),        crop_y);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_crop_enabled, crop_enabled);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_width,    crop_width);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_height,   crop_height);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_x,        crop_x);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_y,        crop_y);
 
         m_IsConfigDataModified = false;
         return;
@@ -1628,7 +1628,7 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
 
         //Enable cropping so modifications are always visible
         crop_enabled = true;
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_overlay_crop_enabled), true);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_crop_enabled, true);
     }
 
     ImGui::TextUnformatted("(More things will still go here)");
@@ -1690,10 +1690,10 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
         if (crop_x + crop_width > ovrl_width)
         {
             crop_width = ovrl_width - crop_x;
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width), crop_width);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_width, crop_width);
         }
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_x), crop_x);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_x, crop_x);
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -1711,10 +1711,10 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
         if (crop_y + crop_height > ovrl_height)
         {
             crop_height = ovrl_height - crop_y;
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_height, crop_height);
         }
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y), crop_y);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_y, crop_y);
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -1737,7 +1737,7 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
         if (crop_width_ui > crop_width_max)
             crop_width = -1;
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width), crop_width);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_width, crop_width);
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -1759,7 +1759,7 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
         if (crop_height_ui > crop_height_max)
             crop_height = -1;
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_height, crop_height);
     }
     vr_keyboard.VRKeyboardInputEnd();
 
@@ -1819,16 +1819,15 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
             crop_width  = -1;
             crop_height = -1;
 
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_x), crop_x);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_y), crop_y);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_width), crop_width);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_crop_height), crop_height);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_x, crop_x);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_y, crop_y);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_width,  crop_width);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_height, crop_height);
         }
         else
         {
             //Have the dashboard figure out the right crop by changing the desktop ID to the current value again
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_desktop_id),
-                                                        ConfigManager::GetValue(configid_int_overlay_desktop_id));
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_desktop_id, ConfigManager::GetValue(configid_int_overlay_desktop_id));
         }
 
         OverlayManager::Get().SetCurrentOverlayNameAuto();
@@ -1859,8 +1858,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
 
             SetActiveOverlayID(m_ActiveOverlayID);
 
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), (LPARAM)winrt_selected_window);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id),            winrt_selected_desktop);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, (LPARAM)winrt_selected_window);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id,            winrt_selected_desktop);
 
             m_IsConfigDataModified = false;
         }
@@ -1898,8 +1897,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
         OverlayManager::Get().SetCurrentOverlayNameAuto();
         SetActiveOverlayID(m_ActiveOverlayID);
 
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), 0);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id, winrt_selected_desktop);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, 0);
 
         UIManager::Get()->RepeatFrame();
     }
@@ -1934,8 +1933,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
             OverlayManager::Get().SetCurrentOverlayNameAuto();
             SetActiveOverlayID(m_ActiveOverlayID);
 
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), 0);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, 0);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id, winrt_selected_desktop);
 
             UIManager::Get()->RepeatFrame();
         }
@@ -1969,8 +1968,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
             OverlayManager::Get().SetCurrentOverlayNameAuto();
             SetActiveOverlayID(m_ActiveOverlayID);
 
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), 0);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), winrt_selected_desktop);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, 0);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id, winrt_selected_desktop);
 
             UIManager::Get()->RepeatFrame();
         }
@@ -2006,8 +2005,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
             OverlayManager::Get().SetCurrentOverlayNameAuto();
             SetActiveOverlayID(m_ActiveOverlayID);
 
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_winrt_desktop_id), -2);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_handle_overlay_state_winrt_hwnd), (LPARAM)winrt_selected_window);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id, -2);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, (LPARAM)winrt_selected_window);
         }
 
         ImGui::SameLine(0.0f, 0.0f);
@@ -2141,8 +2140,8 @@ void WindowOverlayProperties::OnPageLeaving(WindowOverlayPropertiesPage previous
         {
             //Disable dragmode when leaving page
             ConfigManager::SetValue(configid_bool_state_overlay_dragmode, false);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragselectmode_show_hidden), false);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_state_overlay_dragmode),                   false);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragselectmode_show_hidden, false);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragmode,                   false);
             break;
         }
         case wndovrlprop_page_crop_change:

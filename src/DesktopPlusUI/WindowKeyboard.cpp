@@ -68,7 +68,7 @@ void WindowKeyboard::Hide(bool skip_fade)
     if ( (UIManager::Get()->GetOverlayDragger().IsDragActive()) && (UIManager::Get()->GetOverlayDragger().GetDragOverlayHandle() == GetOverlayHandle()) )
     {
         ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -3);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -3);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_keyboard_visible_for_overlay_id, -3);
 
         return;
     }
@@ -636,7 +636,7 @@ void WindowKeyboard::OnWindowPinButtonPressed()
     if (m_IsPinned)
     {
         ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -3);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -3);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_keyboard_visible_for_overlay_id, -3);
     }
 }
 

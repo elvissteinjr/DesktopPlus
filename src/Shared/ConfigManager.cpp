@@ -231,9 +231,9 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     //When loading an UI overlay, send config state over to ensure the correct process has rendering access even if the UI was restarted at some point
     if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
     {
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_overlay_capture_source), ovrl_capsource_ui);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_capture_source, ovrl_capsource_ui);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
 
         UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
     }

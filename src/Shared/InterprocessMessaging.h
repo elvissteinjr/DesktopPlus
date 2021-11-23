@@ -145,8 +145,19 @@ class IPCManager
         static DWORD GetUIAppProcessID();
 
 		void PostMessageToDashboardApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
+		void PostConfigMessageToDashboardApp(ConfigID_Bool   configid, LPARAM l_param = 0) const;
+		void PostConfigMessageToDashboardApp(ConfigID_Int    configid, LPARAM l_param = 0) const;
+		void PostConfigMessageToDashboardApp(ConfigID_Float  configid, LPARAM l_param = 0) const;
+		void PostConfigMessageToDashboardApp(ConfigID_Handle configid, LPARAM l_param = 0) const;
+
 		void PostMessageToUIApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
+        void PostConfigMessageToUIApp(ConfigID_Bool   configid, LPARAM l_param = 0) const;
+        void PostConfigMessageToUIApp(ConfigID_Int    configid, LPARAM l_param = 0) const;
+        void PostConfigMessageToUIApp(ConfigID_Float  configid, LPARAM l_param = 0) const;
+        void PostConfigMessageToUIApp(ConfigID_Handle configid, LPARAM l_param = 0) const;
+
 		void PostMessageToElevatedModeProcess(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
+
         void SendStringToDashboardApp(ConfigID_String config_id, const std::string& str, HWND source_window) const;
         void SendStringToUIApp(ConfigID_String config_id, const std::string& str, HWND source_window) const;
         void SendStringToElevatedModeProcess(IPCElevatedStringID elevated_str_id, const std::string& str, HWND source_window) const;

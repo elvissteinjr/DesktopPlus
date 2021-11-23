@@ -184,9 +184,9 @@ void WindowOverlayBar::UpdateOverlayButtons()
             if ((drag_last_hovered_button != i) && (index_swap >= 0) && (index_swap < overlay_count))
             {
                 OverlayManager::Get().SwapOverlays(i, index_swap);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_overlay_current_id_override), i);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, i);
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_swap, index_swap);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
 
                 std::iter_swap(list_unique_ids.begin() + i, list_unique_ids.begin() + index_swap);
 
@@ -295,9 +295,9 @@ void WindowOverlayBar::MenuOverlayButton(unsigned int overlay_id, ImVec2 pos, bo
         {
             is_enabled = !is_enabled;
 
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_bool_overlay_enabled), is_enabled);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_enabled, is_enabled);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
 
             HideMenus();
         }
@@ -507,7 +507,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
 
             //Set pointer hint in case dashboard app needs it
             ConfigManager::SetValue(configid_int_state_laser_pointer_device_hint, (int)device_index);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_laser_pointer_device_hint), (int)device_index);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_laser_pointer_device_hint, (int)device_index);
 
             //Add overlay and sent to dashboard app
             OverlayManager::Get().AddOverlay((new_overlay_desktop_id == -3) ? ovrl_capsource_ui : ovrl_capsource_desktop_duplication, new_overlay_desktop_id);

@@ -106,12 +106,52 @@ void IPCManager::PostMessageToDashboardApp(IPCMsgID IPC_id, WPARAM w_param, LPAR
 	}
 }
 
+void IPCManager::PostConfigMessageToDashboardApp(ConfigID_Bool configid, LPARAM l_param) const
+{
+    PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
+}
+
+void IPCManager::PostConfigMessageToDashboardApp(ConfigID_Int configid, LPARAM l_param) const
+{
+    PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
+}
+
+void IPCManager::PostConfigMessageToDashboardApp(ConfigID_Float configid, LPARAM l_param) const
+{
+    PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
+}
+
+void IPCManager::PostConfigMessageToDashboardApp(ConfigID_Handle configid, LPARAM l_param) const
+{
+    PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
+}
+
 void IPCManager::PostMessageToUIApp(IPCMsgID IPC_id, WPARAM w_param, LPARAM l_param) const
 {
 	if (HWND window = ::FindWindow(g_WindowClassNameUIApp, nullptr))
 	{
 		::PostMessage(window, GetWin32MessageID(IPC_id), w_param, l_param);
 	}
+}
+
+void IPCManager::PostConfigMessageToUIApp(ConfigID_Bool configid, LPARAM l_param) const
+{
+    PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
+}
+
+void IPCManager::PostConfigMessageToUIApp(ConfigID_Int configid, LPARAM l_param) const
+{
+    PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
+}
+
+void IPCManager::PostConfigMessageToUIApp(ConfigID_Float configid, LPARAM l_param) const
+{
+    PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
+}
+
+void IPCManager::PostConfigMessageToUIApp(ConfigID_Handle configid, LPARAM l_param) const
+{
+    PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
 }
 
 void IPCManager::PostMessageToElevatedModeProcess(IPCMsgID IPC_id, WPARAM w_param, LPARAM l_param) const
