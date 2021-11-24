@@ -707,6 +707,14 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
     if (!detached)
     {
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Position");
+
+        //Show some beginner help if there's only the dashboard overlay
+        if (OverlayManager::Get().GetOverlayCount() == 1)
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::FixedHelpMarker("To freely set position, origin or display mode, add an additional overlay");
+        }
+
         ImGui::Columns(2, "ColumnPosition", false);
         ImGui::SetColumnWidth(0, column_width_0);
 
@@ -3015,7 +3023,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.6");
+        ImGui::Text("Desktop+ Version 2.6.1");
 
         ImGui::Columns(1);
     }
