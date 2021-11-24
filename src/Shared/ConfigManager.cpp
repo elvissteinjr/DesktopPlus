@@ -226,6 +226,12 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
         data.ConfigInt[configid_int_overlay_desktop_id] = OverlayManager::Get().GetConfigData(k_ulOverlayID_Dashboard).ConfigInt[configid_int_overlay_desktop_id];
     }
 
+    //v2.5.5 introduced seated position origin, shifting origin IDs. If the seated transform doesn't exist we assume it was saved with the previous origin enum order
+    if ( (data.ConfigInt[configid_int_overlay_detached_origin] >= ovrl_origin_seated_universe) && (!config.KeyExists(section.c_str(), "DetachedTransformSeatedPosition")) )
+    {
+        data.ConfigInt[configid_int_overlay_detached_origin] += 1; 
+    }
+
     //Default the transform matrices to zero
     float matrix_zero[16] = { 0.0f };
     std::fill(std::begin(data.ConfigDetachedTransform), std::end(data.ConfigDetachedTransform), matrix_zero);
@@ -538,7 +544,6 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_performance_monitor_show_vive_wireless]   = config.ReadBool("Performance", "PerformanceMonitorShowViveWireless", false);
     m_ConfigBool[configid_bool_performance_monitor_disable_gpu_counters] = config.ReadBool("Performance", "PerformanceMonitorDisableGPUCounters", false);
 
-
     m_ConfigBool[configid_bool_misc_no_steam]             = config.ReadBool("Misc", "NoSteam", false);
     m_ConfigBool[configid_bool_misc_uiaccess_was_enabled] = config.ReadBool("Misc", "UIAccessWasEnabled", false);
 
@@ -674,9 +679,16 @@ bool ConfigManager::LoadConfigFromFile()
     //Query elevated mode state
     m_ConfigBool[configid_bool_state_misc_elevated_mode_active] = IPCManager::IsElevatedModeProcessRunning();
 
+    //v2.5.2 fixed UI dimming setting being written from the wrong value.
+    //Best way to work around it is to not trust this setting when seated position (v2.5.5+) doesn't exist in the file
+    if (!config.KeyExists("Overlay0", "DetachedTransformSeatedPosition"))
+    {
+        m_ConfigBool[configid_bool_interface_dim_ui] = false;
+    }
+
     //Load last used overlay config
     LoadMultiOverlayProfile(config);
-    
+
     return existed; //We use default values if it doesn't, but still return if the file existed
 }
 

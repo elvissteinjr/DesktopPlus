@@ -77,7 +77,7 @@ enum ConfigID_Bool
     configid_bool_state_misc_elevated_mode_active,            //True if the elevated mode process is running
     configid_bool_state_misc_process_started_by_steam,
     configid_bool_state_misc_uiaccess_enabled,
-	configid_bool_MAX
+    configid_bool_MAX
 };
 
 enum ConfigID_Int
@@ -130,7 +130,7 @@ enum ConfigID_Int
     configid_int_state_keyboard_modifiers,                  //Keyboard modifier state when keyboard helper is enabled and visible (allows UI seeing state while elevated app is in focus)
     configid_int_state_performance_duplication_fps,
     configid_int_state_interface_desktop_count,             //Count of desktops after optionally filtering virtual WMR displays
-	configid_int_MAX
+    configid_int_MAX
 };
 
 enum ConfigID_Float
@@ -151,7 +151,7 @@ enum ConfigID_Float
     configid_float_input_global_hmd_pointer_max_distance,
     configid_float_interface_last_vr_ui_scale,
     configid_float_performance_update_limit_ms,
-	configid_float_MAX
+    configid_float_MAX
 };
 
 enum ConfigID_IntPtr
