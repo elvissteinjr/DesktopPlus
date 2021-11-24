@@ -217,14 +217,8 @@ void WindowKeyboard::WindowUpdate()
             //If down, try to find same keys in both layouts
             if (button_state.IsDown)
             {
-                int key_index_new = -1;
-                
-                //Only makes sense with sticky modifiers enabled, however
-                if (sticky_modifiers_enabled)
-                {
-                    key_index_new = FindSameKeyInNewSubLayout(key_index, m_LastSubLayout, current_sublayout);
-                }
-                
+                int key_index_new = FindSameKeyInNewSubLayout(key_index, m_LastSubLayout, current_sublayout);
+
                 if (key_index_new != -1)
                 {
                     m_ButtonStates[key_index_new] = button_state;
@@ -489,6 +483,7 @@ void WindowKeyboard::WindowUpdate()
                         if (iso_enter_click_state == 4) //button right-clicked
                         {
                             SetManualStickyModifierState(key.KeyCode, !is_down);
+                            m_IsIsoEnterDown = !m_IsIsoEnterDown;
                         }
                     }
 
@@ -523,6 +518,11 @@ void WindowKeyboard::WindowUpdate()
             }
             case kbdlayout_key_string:
             {
+                bool is_down = button_state.IsDown;
+
+                if (is_down)
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+
                 if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state)) && (use_key_repeat) )
                 {
                     (button_state.IsDown) ? OnStringKeyUp(key.KeyString) : OnStringKeyDown(key.KeyString);
@@ -546,6 +546,10 @@ void WindowKeyboard::WindowUpdate()
                     (button_state.IsDown) ? OnStringKeyUp(key.KeyString) : OnStringKeyDown(key.KeyString);
                     button_state.IsDown = !button_state.IsDown;
                 }
+
+                if (is_down)
+                    ImGui::PopStyleColor();
+
                 break;
             }
             case kbdlayout_key_sublayout_toggle:
@@ -574,6 +578,11 @@ void WindowKeyboard::WindowUpdate()
             }
             case kbdlayout_key_action:
             {
+                bool is_down = button_state.IsDown;
+
+                if (is_down)
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+
                 if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state)) && (use_key_repeat) )
                 {
                     vr_keyboard.SetActionDown(key.KeyActionID, !button_state.IsDown);
@@ -597,6 +606,10 @@ void WindowKeyboard::WindowUpdate()
                     vr_keyboard.SetActionDown(key.KeyActionID, !button_state.IsDown);
                     button_state.IsDown = !button_state.IsDown;
                 }
+
+                if (is_down)
+                    ImGui::PopStyleColor();
+
                 break;
             }
             default: break;
