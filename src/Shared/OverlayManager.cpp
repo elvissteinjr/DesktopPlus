@@ -428,7 +428,7 @@ std::vector<unsigned int> OverlayManager::FindInactiveOverlaysForWindow(const Wi
 
     std::string title_search = title_str;
     std::string app_name;
-    size_t search_pos = title_str.find_last_of(" - ");
+    size_t search_pos = title_str.rfind(" - ");
 
     if (search_pos != std::string::npos)
     {
