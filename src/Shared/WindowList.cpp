@@ -198,7 +198,7 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string title_str, const st
     std::wstring title_wstr = WStringConvertFromUTF8(title_str.c_str());
     std::wstring title_search = title_wstr;
     std::wstring app_name;
-    size_t search_pos = title_wstr.find_last_of(L" - ");
+    size_t search_pos = title_wstr.rfind(L" - ");
 
     if (search_pos != std::wstring::npos)
     {
