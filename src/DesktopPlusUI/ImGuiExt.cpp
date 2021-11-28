@@ -1029,17 +1029,18 @@ namespace ImGui
         MouseWheelH  = io.MouseWheelH;
         MouseDelta   = io.MouseDelta;
         MousePosPrev = io.MousePosPrev;
-        std::copy(std::begin(io.MouseClickedPos),         std::end(io.MouseClickedPos),         MouseClickedPos);
-        std::copy(std::begin(io.MouseClickedTime),        std::end(io.MouseClickedTime),        MouseClickedTime);
-        std::copy(std::begin(io.MouseClicked),            std::end(io.MouseClicked),            MouseClicked);
-        std::copy(std::begin(io.MouseDoubleClicked),      std::end(io.MouseDoubleClicked),      MouseDoubleClicked);
-        std::copy(std::begin(io.MouseReleased),           std::end(io.MouseReleased),           MouseReleased);
-        std::copy(std::begin(io.MouseDownOwned),          std::end(io.MouseDownOwned),          MouseDownOwned);
-        std::copy(std::begin(io.MouseDownWasDoubleClick), std::end(io.MouseDownWasDoubleClick), MouseDownWasDoubleClick);
-        std::copy(std::begin(io.MouseDownDuration),       std::end(io.MouseDownDuration),       MouseDownDuration);
-        std::copy(std::begin(io.MouseDownDurationPrev),   std::end(io.MouseDownDurationPrev),   MouseDownDurationPrev);
-        std::copy(std::begin(io.MouseDragMaxDistanceAbs), std::end(io.MouseDragMaxDistanceAbs), MouseDragMaxDistanceAbs);
-        std::copy(std::begin(io.MouseDragMaxDistanceSqr), std::end(io.MouseDragMaxDistanceSqr), MouseDragMaxDistanceSqr);
+        std::copy(std::begin(io.MouseClickedPos),                std::end(io.MouseClickedPos),                MouseClickedPos);
+        std::copy(std::begin(io.MouseClickedTime),               std::end(io.MouseClickedTime),               MouseClickedTime);
+        std::copy(std::begin(io.MouseClicked),                   std::end(io.MouseClicked),                   MouseClicked);
+        std::copy(std::begin(io.MouseDoubleClicked),             std::end(io.MouseDoubleClicked),             MouseDoubleClicked);
+        std::copy(std::begin(io.MouseReleased),                  std::end(io.MouseReleased),                  MouseReleased);
+        std::copy(std::begin(io.MouseDownOwned),                 std::end(io.MouseDownOwned),                 MouseDownOwned);
+        std::copy(std::begin(io.MouseDownOwnedUnlessPopupClose), std::end(io.MouseDownOwnedUnlessPopupClose), MouseDownOwnedUnlessPopupClose);
+        std::copy(std::begin(io.MouseDownWasDoubleClick),        std::end(io.MouseDownWasDoubleClick),        MouseDownWasDoubleClick);
+        std::copy(std::begin(io.MouseDownDuration),              std::end(io.MouseDownDuration),              MouseDownDuration);
+        std::copy(std::begin(io.MouseDownDurationPrev),          std::end(io.MouseDownDurationPrev),          MouseDownDurationPrev);
+        std::copy(std::begin(io.MouseDragMaxDistanceAbs),        std::end(io.MouseDragMaxDistanceAbs),        MouseDragMaxDistanceAbs);
+        std::copy(std::begin(io.MouseDragMaxDistanceSqr),        std::end(io.MouseDragMaxDistanceSqr),        MouseDragMaxDistanceSqr);
     }
 
     void ImGuiMouseState::ApplyToGlobalState()
@@ -1052,17 +1053,18 @@ namespace ImGui
         io.MouseWheelH  = MouseWheelH;
         io.MouseDelta   = MouseDelta;
         io.MousePosPrev = MousePosPrev;
-        std::copy(std::begin(MouseClickedPos),         std::end(MouseClickedPos),         io.MouseClickedPos);
-        std::copy(std::begin(MouseClickedTime),        std::end(MouseClickedTime),        io.MouseClickedTime);
-        std::copy(std::begin(MouseClicked),            std::end(MouseClicked),            io.MouseClicked);
-        std::copy(std::begin(MouseDoubleClicked),      std::end(MouseDoubleClicked),      io.MouseDoubleClicked);
-        std::copy(std::begin(MouseReleased),           std::end(MouseReleased),           io.MouseReleased);
-        std::copy(std::begin(MouseDownOwned),          std::end(MouseDownOwned),          io.MouseDownOwned);
-        std::copy(std::begin(MouseDownWasDoubleClick), std::end(MouseDownWasDoubleClick), io.MouseDownWasDoubleClick);
-        std::copy(std::begin(MouseDownDuration),       std::end(MouseDownDuration),       io.MouseDownDuration);
-        std::copy(std::begin(MouseDownDurationPrev),   std::end(MouseDownDurationPrev),   io.MouseDownDurationPrev);
-        std::copy(std::begin(MouseDragMaxDistanceAbs), std::end(MouseDragMaxDistanceAbs), io.MouseDragMaxDistanceAbs);
-        std::copy(std::begin(MouseDragMaxDistanceSqr), std::end(MouseDragMaxDistanceSqr), io.MouseDragMaxDistanceSqr);
+        std::copy(std::begin(MouseClickedPos),                std::end(MouseClickedPos),                io.MouseClickedPos);
+        std::copy(std::begin(MouseClickedTime),               std::end(MouseClickedTime),               io.MouseClickedTime);
+        std::copy(std::begin(MouseClicked),                   std::end(MouseClicked),                   io.MouseClicked);
+        std::copy(std::begin(MouseDoubleClicked),             std::end(MouseDoubleClicked),             io.MouseDoubleClicked);
+        std::copy(std::begin(MouseReleased),                  std::end(MouseReleased),                  io.MouseReleased);
+        std::copy(std::begin(MouseDownOwned),                 std::end(MouseDownOwned),                 io.MouseDownOwned);
+        std::copy(std::begin(MouseDownOwnedUnlessPopupClose), std::end(MouseDownOwnedUnlessPopupClose), io.MouseDownOwnedUnlessPopupClose);
+        std::copy(std::begin(MouseDownWasDoubleClick),        std::end(MouseDownWasDoubleClick),        io.MouseDownWasDoubleClick);
+        std::copy(std::begin(MouseDownDuration),              std::end(MouseDownDuration),              io.MouseDownDuration);
+        std::copy(std::begin(MouseDownDurationPrev),          std::end(MouseDownDurationPrev),          io.MouseDownDurationPrev);
+        std::copy(std::begin(MouseDragMaxDistanceAbs),        std::end(MouseDragMaxDistanceAbs),        io.MouseDragMaxDistanceAbs);
+        std::copy(std::begin(MouseDragMaxDistanceSqr),        std::end(MouseDragMaxDistanceSqr),        io.MouseDragMaxDistanceSqr);
     }
 
     void ImGuiMouseState::Advance()

@@ -74,7 +74,8 @@ class VRKeyboard
 
         ImGuiID m_ActiveInputText;
         ImGuiID m_InputBeginWidgetID;
-        bool m_MouseLeftStateOldCached;
+        bool m_MouseLeftDownPrevCached;
+        bool m_MouseLeftClickedPrevCached;
         bool m_KeyboardHiddenLastFrame;
         double m_LastAutoHiddenTime;
 

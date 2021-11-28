@@ -115,6 +115,7 @@ namespace ImGui
             bool   MouseDoubleClicked[5];
             bool   MouseReleased[5];
             bool   MouseDownOwned[5];
+            bool   MouseDownOwnedUnlessPopupClose[5];
             bool   MouseDownWasDoubleClick[5];
             float  MouseDownDuration[5];
             float  MouseDownDurationPrev[5];

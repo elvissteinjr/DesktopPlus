@@ -12,7 +12,8 @@ VRKeyboard::VRKeyboard() :
     m_CapsLockToggled(false),
     m_ActiveInputText(0),
     m_InputBeginWidgetID(0),
-    m_MouseLeftStateOldCached(false),
+    m_MouseLeftDownPrevCached(false),
+    m_MouseLeftClickedPrevCached(false),
     m_KeyboardHiddenLastFrame(false),
     m_LastAutoHiddenTime(0.0)
 {
@@ -407,10 +408,14 @@ void VRKeyboard::VRKeyboardInputBegin(ImGuiID widget_id)
         }
     }
 
-    m_MouseLeftStateOldCached = io.MouseDown[ImGuiMouseButton_Left];
+    m_MouseLeftDownPrevCached    = io.MouseDown[ImGuiMouseButton_Left];
+    m_MouseLeftClickedPrevCached = io.MouseClicked[ImGuiMouseButton_Left];
 
     if (m_WindowKeyboard.IsHovered())
+    {
         io.MouseDown[ImGuiMouseButton_Left] = false;
+        io.MouseClicked[ImGuiMouseButton_Left] = false;
+    }
 
     m_InputBeginWidgetID = widget_id;
 }
@@ -421,7 +426,8 @@ void VRKeyboard::VRKeyboardInputEnd()
     ImGuiID widget_id = m_InputBeginWidgetID;
 
     //Restore mouse down in case modified in VRKeyboardInputBegin()
-    io.MouseDown[ImGuiMouseButton_Left] = m_MouseLeftStateOldCached;
+    io.MouseDown[ImGuiMouseButton_Left]    = m_MouseLeftDownPrevCached;
+    io.MouseClicked[ImGuiMouseButton_Left] = m_MouseLeftClickedPrevCached;
 
     if (ImGui::IsItemActivated())
     {
