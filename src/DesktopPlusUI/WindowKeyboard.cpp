@@ -909,11 +909,14 @@ bool WindowKeyboard::ButtonLaser(const char* label, const ImVec2& size_arg, Butt
     const ImGuiStyle& style = g.Style;
     const ImGuiID id        = window->GetID(label);
     const ImVec2 label_size = ImGui::CalcTextSize(label, nullptr, true);
+    const ImVec2 half_spacing(style.ItemSpacing.x / 2.0f, style.ItemSpacing.y / 2.0f);
 
     ImVec2 pos  = window->DC.CursorPos;
     ImVec2 size = ImGui::CalcItemSize(size_arg, label_size.x + style.FramePadding.x * 2.0f, label_size.y + style.FramePadding.y * 2.0f);
 
     const ImRect bb(pos.x, pos.y, pos.x + size.x, pos.y + size.y);
+    const ImRect bb_with_spacing(bb.Min.x - half_spacing.x, bb.Min.y - half_spacing.y, bb.Max.x + half_spacing.x, bb.Max.y + half_spacing.y);
+
     ImGui::ItemSize(size, style.FramePadding.y);
     if (!ImGui::ItemAdd(bb, id))
         return false;
@@ -934,7 +937,8 @@ bool WindowKeyboard::ButtonLaser(const char* label, const ImVec2& size_arg, Butt
 
     for (auto& state : m_LaserInputStates)
     {
-        bool hovered = bb.Contains(state.MouseState.MousePos);
+        bool hovered_spacing = bb_with_spacing.Contains(state.MouseState.MousePos);
+        bool hovered = (hovered_spacing) ? bb.Contains(state.MouseState.MousePos) : false;
 
         if (hovered)
         {
@@ -987,9 +991,9 @@ bool WindowKeyboard::ButtonLaser(const char* label, const ImVec2& size_arg, Butt
             }
         }
 
-        if ( (state.DeviceIndex == vr::k_unTrackedDeviceIndexOther) && ( (hovered) || (button_state.IsHeld) ) )
+        if ( (state.DeviceIndex == vr::k_unTrackedDeviceIndexOther) && ( (hovered_spacing) || (button_state.IsHeld) ) )
         {
-            m_IsAnyButtonHovered = true;
+            m_IsAnyButtonHovered = true;    //This state is only used for blank space dragging. We include the spacing area in order to not activate drags from clicking in-between key spacing
         }
 
         if (hovered)
