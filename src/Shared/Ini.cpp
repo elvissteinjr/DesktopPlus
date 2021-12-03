@@ -105,7 +105,13 @@ bool Ini::Save(const std::wstring& filename)
     int size = ini_save(m_IniPtr, nullptr, 0); //Get required size
     if (size > 0)
     {
-        char* data = new char[size];
+        char* data = new (std::nothrow) char[size];
+
+        if (data == nullptr)
+        {
+            return false;
+        }
+
         size = ini_save(m_IniPtr, data, size); //Store in data buffer
 
         FILE* fp = _wfopen(filename.c_str(), L"wt");
@@ -116,7 +122,7 @@ bool Ini::Save(const std::wstring& filename)
         }
         delete[] data;
 
-        return true;
+        return (fp != nullptr);
     }
 
     return false;
@@ -218,7 +224,13 @@ bool Ini::KeyExists(const char* section, const char* key) const
 
 void Ini::RemoveSection(const char* section)
 {
-    ini_section_remove(m_IniPtr, ini_find_section(m_IniPtr, section, 0)); //ini_section_remove checks for section_id range so this is fine
+    //There is a bug in ini_section_remove() which causes sections to not be removed properly under certain conditions
+    //I've not been able to find the real cause, but removing the section until it's not found anymore works. Sounds like there's multiple section entires, but that's not it I think
+    int section_id;
+    while (section_id = ini_find_section(m_IniPtr, section, 0), section_id != INI_NOT_FOUND)
+    {
+        ini_section_remove(m_IniPtr, section_id);
+    }
 }
 
 void Ini::RemoveKey(const char* section, const char* key)
