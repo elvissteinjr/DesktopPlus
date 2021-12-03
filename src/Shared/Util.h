@@ -76,6 +76,8 @@ HWND FindMainWindow(DWORD pid);
 unsigned int GetKeyboardModifierState();
 void StringReplaceAll(std::string& source, const std::string& from, const std::string& to);
 void WStringReplaceAll(std::wstring& source, const std::wstring& from, const std::wstring& to);
+bool IsWCharInvalidForFileName(wchar_t wchar);
+void SanitizeFileNameWString(std::wstring& str);
 
 //Virtual Keycode string mapping
 const char* GetStringForKeyCode(unsigned char keycode);

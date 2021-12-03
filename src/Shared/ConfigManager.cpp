@@ -345,13 +345,13 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
 
 bool ConfigManager::LoadConfigFromFile()
 {
-    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config_newui.ini").c_str() );
+    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
     bool existed = FileExists(wpath.c_str());
 
     //If config.ini doesn't exist (yet), load from config_default.ini instead, which hopefully does (would still work to a lesser extent though)
     if (!existed)
     {
-        wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config_default.ini").c_str() );
+        wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_default.ini").c_str() );
     }
 
     Ini config(wpath.c_str());
@@ -610,7 +610,7 @@ bool ConfigManager::LoadConfigFromFile()
     return existed; //We use default values if it doesn't, but still return if the file existed
 }
 
-void ConfigManager::LoadMultiOverlayProfile(const Ini& config, bool clear_existing_overlays)
+void ConfigManager::LoadMultiOverlayProfile(const Ini& config, bool clear_existing_overlays, std::vector<char>* ovrl_inclusion_list)
 {
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
 
@@ -627,10 +627,14 @@ void ConfigManager::LoadMultiOverlayProfile(const Ini& config, bool clear_existi
     //Load all sequential overlay sections that exist
     while (config.SectionExists(ss.str().c_str()))
     {
-        OverlayManager::Get().DuplicateOverlay(OverlayConfigData());
-        OverlayManager::Get().SetCurrentOverlayID(OverlayManager::Get().GetOverlayCount() - 1);
+        //Don't add if not in list (or none was passed)
+        if ( (ovrl_inclusion_list == nullptr) || (ovrl_inclusion_list->size() <= overlay_id) || ((*ovrl_inclusion_list)[overlay_id] != 0) )
+        {
+            OverlayManager::Get().DuplicateOverlay(OverlayConfigData());
+            OverlayManager::Get().SetCurrentOverlayID(OverlayManager::Get().GetOverlayCount() - 1);
 
-        LoadOverlayProfile(config, overlay_id);
+            LoadOverlayProfile(config, overlay_id);
+        }
 
         overlay_id++;
 
@@ -638,10 +642,10 @@ void ConfigManager::LoadMultiOverlayProfile(const Ini& config, bool clear_existi
         ss << "Overlay" << overlay_id;
     }
 
-    OverlayManager::Get().SetCurrentOverlayID( std::min(current_overlay_old, OverlayManager::Get().GetOverlayCount() - 1) );
+    OverlayManager::Get().SetCurrentOverlayID( std::min(current_overlay_old, (OverlayManager::Get().GetOverlayCount() == 0) ? k_ulOverlayID_None : OverlayManager::Get().GetOverlayCount() - 1) );
 }
 
-void ConfigManager::SaveMultiOverlayProfile(Ini& config)
+void ConfigManager::SaveMultiOverlayProfile(Ini& config, std::vector<char>* ovrl_inclusion_list)
 {
     //Remove single overlay section in case it still exists
     config.RemoveSection("Overlay");
@@ -662,13 +666,19 @@ void ConfigManager::SaveMultiOverlayProfile(Ini& config)
     }
 
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    overlay_id = 0;
 
     //Save all overlays in separate sections
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
-        OverlayManager::Get().SetCurrentOverlayID(i);
+        //Don't save if not in list (or none was passed)
+        if ( (ovrl_inclusion_list == nullptr) || (ovrl_inclusion_list->size() <= i) || ((*ovrl_inclusion_list)[i] != 0) )
+        {
+            OverlayManager::Get().SetCurrentOverlayID(i);
 
-        SaveOverlayProfile(config, i);
+            SaveOverlayProfile(config, overlay_id);
+            overlay_id++;
+        }
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
@@ -719,7 +729,7 @@ void ConfigManager::RemoveScaleFromTransform(Matrix4& transform, float* width)
 
 void ConfigManager::SaveConfigToFile()
 {
-    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config_newui.ini").c_str() );
+    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
     Ini config(wpath.c_str());
 
     SaveMultiOverlayProfile(config);
@@ -878,7 +888,7 @@ void ConfigManager::SaveConfigToFile()
 void ConfigManager::RestoreConfigFromDefault()
 {
     //Basically delete the config file and then load it again which will fall back to config_default.ini
-    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config_newui.ini").c_str() );
+    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
     ::DeleteFileW(wpath.c_str());
 
     LoadConfigFromFile();
@@ -886,75 +896,56 @@ void ConfigManager::RestoreConfigFromDefault()
 
 void ConfigManager::LoadOverlayProfileDefault(bool multi_overlay)
 {
-    Ini config(L"");
-
-    //Multi-Overlay "default" config is removing all overlays and defaulting that
+    //Multi-Overlay "default" config is loaded from the default configuration file
     if (multi_overlay)
     {
-        OverlayManager::Get().RemoveAllOverlays();
+        LoadMultiOverlayProfileFromFile("../config_default.ini", true);     //This path is relative to the absolute profile path used in LoadMultiOverlayProfileFromFile()
+        return;
     }
-
-    LoadOverlayProfile(config); //All read calls will fail end fill in default values as a result
+    else
+    {
+        Ini config(L"");
+        LoadOverlayProfile(config); //All read calls will fail end fill in default values as a result
+    }
 }
 
-bool ConfigManager::LoadOverlayProfileFromFile(const std::string filename)
+bool ConfigManager::LoadMultiOverlayProfileFromFile(const std::string& filename, bool clear_existing_overlays, std::vector<char>* ovrl_inclusion_list)
 {
-    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/profiles/overlays/" + filename).c_str() );
+    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "profiles/" + filename).c_str() );
 
     if (FileExists(wpath.c_str()))
     {
         Ini config(wpath);
-        LoadOverlayProfile(config);
+        LoadMultiOverlayProfile(config, clear_existing_overlays, ovrl_inclusion_list);
         return true;
     }
 
     return false;
 }
 
-void ConfigManager::SaveOverlayProfileToFile(const std::string filename)
+bool ConfigManager::SaveMultiOverlayProfileToFile(const std::string& filename, std::vector<char>* ovrl_inclusion_list)
 {
-    std::string path = m_ApplicationPath + "/profiles/overlays/" + filename;
+    std::string path = m_ApplicationPath + "profiles/" + filename;
     Ini config(WStringConvertFromUTF8(path.c_str()));
 
-    SaveOverlayProfile(config);
-    config.Save();
+    SaveMultiOverlayProfile(config, ovrl_inclusion_list);
+    return config.Save();
 }
 
-bool ConfigManager::LoadMultiOverlayProfileFromFile(const std::string filename, bool clear_existing_overlays)
+bool ConfigManager::DeleteOverlayProfile(const std::string& filename)
 {
-    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/profiles/multi-overlays/" + filename).c_str() );
-
-    if (FileExists(wpath.c_str()))
-    {
-        Ini config(wpath);
-        LoadMultiOverlayProfile(config, clear_existing_overlays);
-        return true;
-    }
-
-    return false;
-}
-
-void ConfigManager::SaveMultiOverlayProfileToFile(const std::string filename)
-{
-    std::string path = m_ApplicationPath + "/profiles/multi-overlays/" + filename;
-    Ini config(WStringConvertFromUTF8(path.c_str()));
-
-    SaveMultiOverlayProfile(config);
-    config.Save();
-}
-
-bool ConfigManager::DeleteOverlayProfile(const std::string filename, bool multi_overlay)
-{
-    std::string path = m_ApplicationPath + "profiles/" + ((multi_overlay) ? "multi-overlays/" : "overlays/") + filename;
+    std::string path = m_ApplicationPath + "profiles/" + filename;
     return (::DeleteFileW(WStringConvertFromUTF8(path.c_str()).c_str()) != 0);
 }
 
-std::vector<std::string> ConfigManager::GetOverlayProfileList(bool multi_overlay)
+#ifdef DPLUS_UI
+
+std::vector<std::string> ConfigManager::GetOverlayProfileList()
 {
     std::vector<std::string> list;
-    list.emplace_back("Default");
+    list.emplace_back(TranslationManager::GetString(tstr_SettingsProfilesOverlaysNameDefault));
 
-    const std::wstring wpath = WStringConvertFromUTF8(std::string(m_ApplicationPath + "profiles/" + ((multi_overlay) ? "multi-overlays" : "overlays") + "/*.ini").c_str());
+    const std::wstring wpath = WStringConvertFromUTF8(std::string(m_ApplicationPath + "profiles/*.ini").c_str());
     WIN32_FIND_DATA find_data;
     HANDLE handle_find = ::FindFirstFileW(wpath.c_str(), &find_data);
 
@@ -972,10 +963,44 @@ std::vector<std::string> ConfigManager::GetOverlayProfileList(bool multi_overlay
         ::FindClose(handle_find);
     }
 
-    list.emplace_back("[New Profile]");
+    list.emplace_back(TranslationManager::GetString(tstr_SettingsProfilesOverlaysNameNew));
 
     return list;
 }
+
+std::vector< std::pair<std::string, OverlayOrigin> > ConfigManager::GetOverlayProfileOverlayNameList(const std::string& filename)
+{
+    std::vector< std::pair<std::string, OverlayOrigin> > list;
+
+    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "profiles/" + filename).c_str() );
+
+    if (FileExists(wpath.c_str()))
+    {
+        Ini config(wpath);
+        unsigned int overlay_id = 0;
+
+        std::stringstream ss;
+        ss << "Overlay" << overlay_id;
+
+        //Get names and origin from all sequential overlay sections that exist
+        while (config.SectionExists(ss.str().c_str()))
+        {
+            overlay_id++;
+
+            std::string name(config.ReadString(ss.str().c_str(), "Name"));
+            OverlayOrigin origin = (OverlayOrigin)config.ReadInt(ss.str().c_str(), "Origin", ovrl_origin_room);
+
+            list.push_back( std::make_pair(name.empty() ? ss.str() : name, origin) );   //Name should never be blank with compatible profiles, but offer alternative just in case
+
+            ss = std::stringstream();
+            ss << "Overlay" << overlay_id;
+        }
+    }
+
+    return list;
+}
+
+#endif //ifdef DPLUS_UI
 
 WPARAM ConfigManager::GetWParamForConfigID(ConfigID_Bool id)    //This is a no-op, but for consistencies' sake and in case anything changes there, it still exists
 {

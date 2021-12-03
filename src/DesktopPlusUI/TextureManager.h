@@ -103,7 +103,7 @@ class TextureManager
 
         bool GetOverlayIconTextureInfo(OverlayConfigData& data, ImVec2& size, ImVec2& uv_min, ImVec2& uv_max, bool is_xsmall = false, bool* has_window_icon = nullptr);
 
-        bool AddFontBuilderString(const char* str);   //Returns true if string has been added (not already in extra string list)
+        bool AddFontBuilderString(const std::string& str);   //Returns true if string has been added (not already in extra string list)
 
         static TMNGRTexID GetOverlayIconTextureID(const OverlayConfigData& data, bool is_xsmall, bool* has_window_icon = nullptr);
 };

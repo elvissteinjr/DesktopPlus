@@ -7,12 +7,15 @@ enum WindowSettingsPage
     wndsettings_page_none,
     wndsettings_page_main,
     wndsettings_page_keyboard,
+    wndsettings_page_profiles,
+    wndsettings_page_profiles_overlay_select,
     wndsettings_page_reset_confirm
 };
 
 enum WindowSettingsMainCategory
 {
     wndsettings_cat_interface,
+    wndsettings_cat_profiles,
     wndsettings_cat_actions,
     wndsettings_cat_keyboard,
     wndsettings_cat_laser_pointer,
@@ -49,6 +52,10 @@ class WindowSettingsNew : public FloatingWindow
 
         std::string m_WarningTextOverlayError;
         std::string m_WarningTextWinRTError;
+        
+        std::string m_ProfileSelectionName;
+        bool m_ProfileOverlaySelectIsSaving;
+        std::vector<std::string> m_ProfileList;
 
         virtual void WindowUpdate();
 
@@ -57,14 +64,18 @@ class WindowSettingsNew : public FloatingWindow
         void UpdatePageMain();
         void UpdatePageMainCatInterface();
         void UpdatePageMainCatActions();
+        void UpdatePageMainCatProfiles();
         void UpdatePageMainCatInput();
         void UpdatePageMainCatWindows();
         void UpdatePageMainCatMisc();
         void UpdatePageKeyboardLayout();
+        void UpdatePageProfiles();
+        void UpdatePageProfilesOverlaySelect();
         void UpdatePageResetConfirm();
 
         void PageGoForward(WindowSettingsPage new_page);
         void PageGoBack();
+        void PageGoBackInstantly();
         void PageGoHome();
 
         void SelectableWarning(const char* selectable_id, const char* popup_id, const char* text, bool show_warning_prefix = true, const ImVec4* text_color = nullptr);

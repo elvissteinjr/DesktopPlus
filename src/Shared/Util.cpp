@@ -654,6 +654,20 @@ void WStringReplaceAll(std::wstring& source, const std::wstring& from, const std
     source.swap(new_string);
 }
 
+bool IsWCharInvalidForFileName(wchar_t wchar)
+{
+    if ( (wchar < 32) || ( (wchar < 256) && (strchr("<>:\"/\\|?*", (char)wchar) != nullptr) ) )
+        return true;
+
+    return false;
+}
+
+void SanitizeFileNameWString(std::wstring& str)
+{
+    //This doesn't care about reserved names, but neither do we where this is used
+    str.erase( std::remove_if(str.begin(), str.end(), IsWCharInvalidForFileName), str.end() );
+}
+
 //This ain't pretty, but GetKeyNameText() works with scancodes, which are not exactly the same and the output strings aren't that nice either (and always localized)
 //Should this be translatable?
 const char* g_VK_name[256] = 

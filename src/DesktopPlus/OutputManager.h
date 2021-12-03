@@ -233,6 +233,8 @@ class OutputManager
         ULONGLONG m_PerformanceFrameCountStartTick;
         LARGE_INTEGER m_PerformanceUpdateLimiterDelay;
 
+        std::vector<int> m_ProfileAddOverlayIDQueue;
+
         bool m_IsAnyHotkeyActive;
         bool m_IsHotkeyDown[3];
 };

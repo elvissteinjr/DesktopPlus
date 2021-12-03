@@ -39,7 +39,8 @@ enum IPCActionID
     ipcact_action_start,              //Sent by UI application to start an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
     ipcact_action_stop,               //Sent by UI application to stop an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
     ipcact_vrkeyboard_closed,         //Sent by dashboard application when VREvent_Closed occured and the keyboard is open for the UI application. No data in lParam
-    ipcact_overlay_profile_load,      //Sent by UI application when loading a profile. lParam is IPCActionOverlayProfileLoadArg, profile name is stored in configid_str_state_profile_name_load beforehand
+    ipcact_overlay_profile_load,      //Sent by UI application when loading a profile. lParam is IPCActionOverlayProfileLoadArg + profile overlay ID (low/high word order). -2 ID is default.
+                                      //Profile name is stored in configid_str_state_profile_name_load beforehand. ipcactv_ovrl_profile_multi_add queues profile IDs until called with -1
     ipcact_crop_to_active_window,     //Sent by UI application to adjust crop values to the active window. No data in lParam
     ipcact_overlay_duplicate,         //Sent by UI application to duplicate an overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
     ipcact_overlay_new_ui,            //Sent by UI application to add a new UI overlay, also making it the active one. No data in lParam
@@ -82,7 +83,6 @@ enum IPCActionOverlayPosAdjustTarget
 
 enum IPCActionOverlayProfileLoadArg
 {
-    ipcactv_ovrl_profile_single,
     ipcactv_ovrl_profile_multi,
     ipcactv_ovrl_profile_multi_add
 };

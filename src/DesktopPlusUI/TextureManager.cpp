@@ -678,14 +678,12 @@ bool TextureManager::GetOverlayIconTextureInfo(OverlayConfigData& data, ImVec2& 
     return GetTextureInfo(GetOverlayIconTextureID(data, is_xsmall, has_window_icon), size, uv_min, uv_max);
 }
 
-bool TextureManager::AddFontBuilderString(const char* str)
+bool TextureManager::AddFontBuilderString(const std::string& str)
 {
-    const std::string builder_string(str);
-
     //Add only if it's not already in the extra string list. Avoids duplicates and unnecessary texture rebuilds if the requested character can't be found in the loaded fonts
-    if (std::find(m_FontBuilderExtraStrings.begin(), m_FontBuilderExtraStrings.end(), builder_string) == m_FontBuilderExtraStrings.end())
+    if (std::find(m_FontBuilderExtraStrings.begin(), m_FontBuilderExtraStrings.end(), str) == m_FontBuilderExtraStrings.end())
     {
-        m_FontBuilderExtraStrings.push_back(builder_string);
+        m_FontBuilderExtraStrings.push_back(str);
         return true;
     }
 

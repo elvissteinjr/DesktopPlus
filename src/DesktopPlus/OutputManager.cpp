@@ -4272,28 +4272,54 @@ void OutputManager::HandleKeyboardMessage(IPCActionID ipc_action_id, LPARAM lpar
 
 bool OutputManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
 {
-    bool multi_overlay = (lparam != ipcactv_ovrl_profile_single);
+    IPCActionOverlayProfileLoadArg profile_load_arg = (IPCActionOverlayProfileLoadArg)LOWORD(lparam);
+    int profile_overlay_id = GET_Y_LPARAM(lparam);
+
     int desktop_id_prev = ConfigManager::GetValue(configid_int_overlay_desktop_id);
     const std::string& profile_name = ConfigManager::GetValue(configid_str_state_profile_name_load);
 
-    if (profile_name == "Default")
+    if (profile_overlay_id == -2)
     {
-        ConfigManager::Get().LoadOverlayProfileDefault(multi_overlay);
-
-        if (!multi_overlay) //Overlays need their transform reset afterwards
-        {
-            DetachedTransformReset();
-        }
+        ConfigManager::Get().LoadOverlayProfileDefault(true);
     }
-    else
+    else if (profile_load_arg == ipcactv_ovrl_profile_multi)
     {
-        if (multi_overlay)
+        ConfigManager::Get().LoadMultiOverlayProfileFromFile(profile_name + ".ini", true);
+    }
+    else if (profile_load_arg == ipcactv_ovrl_profile_multi_add)
+    {
+        if (profile_overlay_id == -1)  //Load queued up overlays
         {
-            ConfigManager::Get().LoadMultiOverlayProfileFromFile(profile_name + ".ini", (lparam == ipcactv_ovrl_profile_multi));
+            //Usually, elements should have been sent in order, but lets make sure they really are
+            std::sort(m_ProfileAddOverlayIDQueue.begin(), m_ProfileAddOverlayIDQueue.end());
+
+            std::vector<char> ovrl_inclusion_list;
+            ovrl_inclusion_list.reserve(m_ProfileAddOverlayIDQueue.back());
+
+            //Build overlay inclusion list
+            for (int ovrl_id : m_ProfileAddOverlayIDQueue)
+            {
+                if ((int)ovrl_inclusion_list.size() > ovrl_id)      //Skip if already in list (double entry)
+                {
+                    continue;
+                }
+
+                while ((int)ovrl_inclusion_list.size() < ovrl_id)   //Exclude overlays not queued
+                {
+                    ovrl_inclusion_list.push_back(0);
+                }
+
+                ovrl_inclusion_list.push_back(1);                   //Include ovrl_id
+            }
+
+            ConfigManager::Get().LoadMultiOverlayProfileFromFile(profile_name + ".ini", false, &ovrl_inclusion_list);
+
+            m_ProfileAddOverlayIDQueue.clear();
         }
-        else
+        else if ( (profile_overlay_id >= 0) && (profile_overlay_id < 1000) )  //Queue up overlays
         {
-            ConfigManager::Get().LoadOverlayProfileFromFile(profile_name + ".ini");
+            m_ProfileAddOverlayIDQueue.push_back(profile_overlay_id);
+            return false;
         }
     }
 

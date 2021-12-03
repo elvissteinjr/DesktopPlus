@@ -1,6 +1,7 @@
 #include "WindowSettings.h"
 
 #include <sstream>
+#include <shlwapi.h>
 
 #include "ImGuiExt.h"
 #include "UIManager.h"
@@ -22,7 +23,8 @@ WindowSettingsNew::WindowSettingsNew() :
     m_ScrollProgress(0.0f),
     m_ScrollStartPos(0.0f),
     m_ScrollTargetPos(0.0f),
-    m_Column0Width(0.0f)
+    m_Column0Width(0.0f),
+    m_ProfileOverlaySelectIsSaving(false)
 {
     m_WindowTitleStrID = tstr_SettingsWindowTitle;
     m_WindowIcon = tmtex_icon_xsmall_settings;
@@ -141,9 +143,11 @@ void WindowSettingsNew::WindowUpdate()
 
             switch (page_id)
             {
-                case wndsettings_page_main:          UpdatePageMain();           break;
-                case wndsettings_page_keyboard:      UpdatePageKeyboardLayout(); break;
-                case wndsettings_page_reset_confirm: UpdatePageResetConfirm();   break;
+                case wndsettings_page_main:                    UpdatePageMain();                    break;
+                case wndsettings_page_keyboard:                UpdatePageKeyboardLayout();          break;
+                case wndsettings_page_profiles:                UpdatePageProfiles();                break;
+                case wndsettings_page_profiles_overlay_select: UpdatePageProfilesOverlaySelect();   break;
+                case wndsettings_page_reset_confirm:           UpdatePageResetConfirm();            break;
                 default: break;
             }
         }
@@ -446,6 +450,7 @@ void WindowSettingsNew::UpdatePageMain()
     const TRMGRStrID jumpto_strings[wndsettings_cat_MAX] = 
     {
         tstr_SettingsCatInterface, 
+        tstr_SettingsCatProfiles,
         tstr_SettingsCatActions,
         tstr_SettingsCatKeyboard,
         tstr_SettingsCatLaserPointer,
@@ -495,6 +500,7 @@ void WindowSettingsNew::UpdatePageMain()
 
     //Page Content
     UpdatePageMainCatInterface();
+    UpdatePageMainCatProfiles();
     UpdatePageMainCatActions();
     UpdatePageMainCatInput();
     UpdatePageMainCatWindows();
@@ -632,6 +638,29 @@ void WindowSettingsNew::UpdatePageMainCatActions()
         }
 
         ImGui::Unindent();
+    }
+}
+
+void WindowSettingsNew::UpdatePageMainCatProfiles()
+{
+    //Profiles
+    {
+        m_ScrollMainCatPos[wndsettings_cat_profiles] = ImGui::GetCursorPosY();
+
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatProfiles)); 
+        ImGui::Columns(2, "ColumnInterface", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsProfilesOverlays));
+        ImGui::NextColumn();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesManage)))
+        {
+            PageGoForward(wndsettings_page_profiles);
+        }
+
+        ImGui::Columns(1);
     }
 }
 
@@ -1082,7 +1111,9 @@ void WindowSettingsNew::UpdatePageKeyboardLayout()
     ImGui::Indent();
 
     ImGui::SetNextItemWidth(-1.0f);
-    ImGui::BeginChild("LayoutList", ImVec2(0.0f, ImGui::GetFontSize() * 15.0f), true);
+    const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
+    ImGui::BeginChild("LayoutList", ImVec2(0.0f, (item_height * 13.0f) + inner_padding), true);
 
     //List layouts
     int index = 0;
@@ -1225,6 +1256,630 @@ void WindowSettingsNew::UpdatePageKeyboardLayout()
     }
 }
 
+void WindowSettingsNew::UpdatePageProfiles()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    bool scroll_to_selection = false;
+    static int list_id = -1;
+    static bool used_profile_save_new_page = false;
+    static bool delete_confirm_state       = false;
+    static bool has_loading_failed         = false;
+    static bool has_deletion_failed        = false;
+    static float list_buttons_width        = 0.0f;
+    static ImVec2 button_delete_size;
+    
+    if (m_PageAppearing == wndsettings_page_profiles)
+    {
+        //Load profile list
+        m_ProfileList = ConfigManager::Get().GetOverlayProfileList();
+        list_id = -1;
+        delete_confirm_state = false;
+        has_deletion_failed = false;
+
+        //Figure out size for delete button. We need it to stay the same but also consider the case of the confirm text being longer in some languages
+        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete));
+        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm));
+        button_delete_size = (text_size_delete.x > text_size_confirm.x) ? text_size_delete : text_size_confirm;
+        
+        button_delete_size.x += style.FramePadding.x * 2.0f;
+        button_delete_size.y += style.FramePadding.y * 2.0f;
+
+        UIManager::Get()->RepeatFrame();
+    }
+    else if ( (used_profile_save_new_page) && (m_PageStack[m_PageStackPos] == wndsettings_page_profiles) ) //Find m_ProfileSelectionName profile after returning from saving profile
+    {
+        const auto it = std::find(m_ProfileList.begin(), m_ProfileList.end(), m_ProfileSelectionName);
+
+        if (it != m_ProfileList.end())
+        {
+            list_id = (int)std::distance(m_ProfileList.begin(), it);
+        }
+        else
+        {
+            list_id = (int)m_ProfileList.size() - 1;
+            m_ProfileSelectionName = "";
+        }
+        
+        scroll_to_selection = true;
+        used_profile_save_new_page = false;
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsProfilesOverlaysHeader) ); 
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
+    ImGui::BeginChild("LayoutList", ImVec2(0.0f, (item_height * 15.0f) + inner_padding), true);
+
+    //List layouts
+    int index = 0;
+    for (const auto& name : m_ProfileList)
+    {
+        ImGui::PushID(index);
+        if (ImGui::Selectable(name.c_str(), (index == list_id)))
+        {
+            list_id = index;
+            m_ProfileSelectionName = (list_id == m_ProfileList.size() - 1) ? "" : m_ProfileList[list_id];
+
+            delete_confirm_state = false;
+        }
+        ImGui::PopID();
+
+        if ( (scroll_to_selection) && (index == list_id) )
+        {
+            ImGui::SetScrollHereY();
+        }
+
+        index++;
+    }
+
+    ImGui::EndChild();
+    ImGui::Spacing();
+
+    const bool is_none  = (list_id == -1);
+    const bool is_first = (list_id == 0);
+    const bool is_last  = (list_id == m_ProfileList.size() - 1);
+
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - list_buttons_width);
+
+    ImGui::BeginGroup();
+
+    if ( (is_last) || (is_none) )
+        ImGui::PushItemDisabled();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileLoad)))
+    {
+        has_loading_failed = false;
+
+        if (list_id == 0)
+        {
+            ConfigManager::Get().LoadOverlayProfileDefault(true);
+
+            //Tell dashboard app to load the profile as well
+            IPCManager::Get().SendStringToDashboardApp(configid_str_state_profile_name_load, m_ProfileSelectionName, UIManager::Get()->GetWindowHandle());
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_profile_load, MAKELPARAM(ipcactv_ovrl_profile_multi, -2));
+        }
+        else
+        {
+            has_loading_failed = !ConfigManager::Get().LoadMultiOverlayProfileFromFile(m_ProfileSelectionName + ".ini");
+
+            if (!has_loading_failed)
+            {
+                //Tell dashboard app to load the profile as well
+                IPCManager::Get().SendStringToDashboardApp(configid_str_state_profile_name_load, m_ProfileSelectionName, UIManager::Get()->GetWindowHandle());
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_profile_load, ipcactv_ovrl_profile_multi);
+            }
+        }
+
+        if (!has_loading_failed)
+        {
+            //Adjust current overlay ID for UI since this may have made the old selection invalid
+            int& current_overlay = ConfigManager::Get().GetRef(configid_int_interface_overlay_current_id);
+            current_overlay = clamp(current_overlay, 0, (int)OverlayManager::Get().GetOverlayCount() - 1);
+
+            //Adjust overlay properties window
+            WindowOverlayProperties& properties_window = UIManager::Get()->GetOverlayPropertiesWindow();
+
+            //Hide window if overlay ID no longer in range
+            if (properties_window.GetActiveOverlayID() >= OverlayManager::Get().GetOverlayCount())
+            {
+                properties_window.SetActiveOverlayID(k_ulOverlayID_None, true);
+                properties_window.Hide();
+            }
+            else //Just adjust switch if it is still is
+            {
+                properties_window.SetActiveOverlayID(properties_window.GetActiveOverlayID(), true);
+            }
+
+            UIManager::Get()->RepeatFrame();
+        }
+
+        delete_confirm_state = false;
+        has_deletion_failed  = false;
+    }
+
+    ImGui::SameLine();
+
+    if ( (is_last) || (is_none) )
+        ImGui::PopItemDisabled();
+
+    if ( (is_first) || (is_last) || (is_none) )
+        ImGui::PushItemDisabled();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileAdd)))
+    {
+        m_ProfileOverlaySelectIsSaving = false;
+        PageGoForward(wndsettings_page_profiles_overlay_select);
+
+        delete_confirm_state = false;
+        has_loading_failed   = false;
+        has_deletion_failed  = false;
+    }
+
+    ImGui::SameLine();
+
+    if ( (is_first) || (is_last) || (is_none) )
+        ImGui::PopItemDisabled();
+
+    if ( (is_first) || (OverlayManager::Get().GetOverlayCount() == 0) )
+        ImGui::PushItemDisabled();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileSave)))
+    {
+        m_ProfileOverlaySelectIsSaving = true;
+        PageGoForward(wndsettings_page_profiles_overlay_select);
+
+        if (is_last)
+        {
+            used_profile_save_new_page = true; //Refresh list ID when returning to this page later
+        }
+
+        delete_confirm_state = false;
+        has_loading_failed   = false;
+        has_deletion_failed  = false;
+    }
+
+    if ( (is_first) || (OverlayManager::Get().GetOverlayCount() == 0) )
+        ImGui::PopItemDisabled();
+
+    ImGui::SameLine();
+
+    if ( (is_first) || (is_last) || (is_none) )
+        ImGui::PushItemDisabled();
+
+    if (delete_confirm_state)
+    {
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm), button_delete_size))
+        {
+            has_deletion_failed = !ConfigManager::Get().DeleteOverlayProfile(m_ProfileSelectionName + ".ini");
+
+            if (!has_deletion_failed)
+            {
+                m_ProfileList = ConfigManager::Get().GetOverlayProfileList();
+                m_ProfileSelectionName = m_ProfileList[list_id];
+                list_id--;
+
+                UIManager::Get()->RepeatFrame();
+            }
+
+            has_loading_failed   = false;
+            delete_confirm_state = false;
+        }
+    }
+    else
+    {
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete), button_delete_size))
+        {
+            delete_confirm_state = true;
+        }
+    }
+
+    if ( (is_first) || (is_last) || (is_none) )
+        ImGui::PopItemDisabled();
+
+    ImGui::EndGroup();
+
+    list_buttons_width = ImGui::GetItemRectSize().x + style.IndentSpacing;
+
+    ImGui::Unindent();
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+
+    //Confirmation buttons
+    ImGui::Separator();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogDone))) 
+    {
+        PageGoBack();
+    }
+
+    if ( (has_loading_failed) || (has_deletion_failed) )
+    {
+        ImGui::SameLine();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextError);
+        ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString((has_loading_failed) ? tstr_SettingsProfilesOverlaysProfileFailedLoad : tstr_SettingsProfilesOverlaysProfileFailedDelete));
+        ImGui::PopStyleColor();
+    }
+}
+
+void WindowSettingsNew::UpdatePageProfilesOverlaySelect()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    bool skip_selection = false;
+    static std::vector<std::wstring> list_profiles_w;
+    static std::vector< std::pair<std::string, OverlayOrigin> > list_overlays;
+    static std::vector<char> list_overlays_ticked;
+    static char buffer_profile_name[256] = "";
+    static bool pending_input_focus      = false;
+    static int appearing_framecount      = 0;
+    static bool is_any_ticked            = true;
+    static bool is_name_readonly         = true;
+    static bool is_name_taken            = false;
+    static bool is_name_blank            = false;
+    static bool has_saving_failed        = false;
+    static float list_buttons_width      = 0.0f;
+
+    auto check_profile_name_taken = [](const wchar_t* profile_name) 
+                                    { 
+                                       auto it = std::find_if(list_profiles_w.begin(), list_profiles_w.end(), 
+                                                              [&profile_name](const auto& list_entry){ return (::StrCmpIW(profile_name, list_entry.c_str()) == 0); });
+                                    
+                                       return (it != list_profiles_w.end());
+                                    };
+    
+    if (m_PageAppearing == wndsettings_page_profiles_overlay_select)
+    {
+        appearing_framecount = ImGui::GetFrameCount();
+
+        //Load overlay list
+        if (m_ProfileOverlaySelectIsSaving)
+        {
+            //We also keep a list of profile names as wide strings to allow for case-insensitive comparisions through the WinAPI
+            list_profiles_w.clear();
+            for (const auto& name : m_ProfileList)
+            {
+                list_profiles_w.push_back(WStringConvertFromUTF8(name.c_str()));
+            }
+
+            list_overlays.clear();
+            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+            {
+                const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+                list_overlays.push_back( std::make_pair(data.ConfigNameStr, (OverlayOrigin)data.ConfigInt[configid_int_overlay_origin]) );
+            }
+
+            is_name_readonly = !m_ProfileSelectionName.empty();
+
+            //Generate name if empty
+            if (m_ProfileSelectionName.empty())
+            {
+                std::wstring new_profile_name_w_base = WStringConvertFromUTF8(TranslationManager::GetString(tstr_SettingsProfilesOverlaysNameNewBase));
+                std::wstring new_profile_name_w;
+                int i = 0;
+
+                //Sanity check translation string for ID placeholder to avoid infinite loop
+                if (new_profile_name_w_base.find(L"%ID%") == std::wstring::npos)
+                {
+                    new_profile_name_w_base = L"Profile %ID%";
+                }
+
+                //Default to higher profile number if normal is already taken
+                auto it = list_profiles_w.end();
+
+                do
+                {
+                    ++i;
+                    new_profile_name_w = new_profile_name_w_base;
+                    WStringReplaceAll(new_profile_name_w, L"%ID%", std::to_wstring(i));
+                }
+                while ( check_profile_name_taken(new_profile_name_w.c_str()) );
+
+                m_ProfileSelectionName = StringConvertFromUTF16(new_profile_name_w.c_str());
+            }
+
+            //Set profile name buffer
+            size_t copied_length = m_ProfileSelectionName.copy(buffer_profile_name, IM_ARRAYSIZE(buffer_profile_name) - 1);
+            buffer_profile_name[copied_length] = '\0';
+
+            //Focus InputText once as soon as we can (needs to be not clipped)
+            pending_input_focus = !is_name_readonly;
+        }
+        else
+        {
+            list_overlays = ConfigManager::Get().GetOverlayProfileOverlayNameList(m_ProfileSelectionName + ".ini");
+
+            //Skip selection if there's only one overlay to choose from anyways
+            if (list_overlays.size() == 1)
+            {
+                skip_selection = true;
+            }
+            else
+            {
+                //Check overlay list for names with unmapped characters
+                for (const auto& pair : list_overlays)
+                {
+                    if (ImGui::StringContainsUnmappedCharacter(pair.first.c_str()))
+                    {
+                        if (TextureManager::Get().AddFontBuilderString(pair.first))
+                        {
+                            TextureManager::Get().ReloadAllTexturesLater();
+                            UIManager::Get()->RepeatFrame();
+                        }
+                    }
+                }
+            }
+        }
+
+        list_overlays_ticked.clear();
+        list_overlays_ticked.resize(list_overlays.size(), 1);
+        is_any_ticked = !list_overlays.empty();
+        is_name_taken = false;
+        is_name_blank = false;
+        has_saving_failed = false;
+
+        UIManager::Get()->RepeatFrame();
+    }
+
+    if (m_ProfileOverlaySelectIsSaving)
+    {
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileSaveSelectHeader));
+        ImGui::Columns(2, "ColumnProfileName", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileSaveSelectName));
+
+        if (is_name_taken)
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileSaveSelectNameErrorTaken), "(!)");
+        }
+        else if (is_name_blank)
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileSaveSelectNameErrorBlank), "(!)");
+        }
+
+        ImGui::NextColumn();
+
+        VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
+        if (is_name_readonly)
+            ImGui::PushItemDisabled();
+
+        ImGui::PushItemWidth(-1.0f);
+        ImGui::PushID(appearing_framecount);  //The idea is to have ImGui treat this as a new widget every time the page is opened, so the cursor position isn't remembered between page switches
+        vr_keyboard.VRKeyboardInputBegin("##InputProfileName");
+        if (ImGui::InputText("##InputProfileName", buffer_profile_name, IM_ARRAYSIZE(buffer_profile_name), ImGuiInputTextFlags_CallbackCharFilter,
+                                                                                                           [](ImGuiInputTextCallbackData* data)
+                                                                                                           {
+                                                                                                               return (int)IsWCharInvalidForFileName(data->EventChar);
+                                                                                                           }
+           ))
+        {
+            std::wstring wstr = WStringConvertFromUTF8(buffer_profile_name);
+            is_name_taken = check_profile_name_taken(wstr.c_str());
+            is_name_blank = wstr.empty();
+
+            //Check input for unmapped character
+            //This isn't ideal as it'll collect builder strings over time, but assuming there won't be too many of those in a session it's alright
+            if (ImGui::StringContainsUnmappedCharacter(buffer_profile_name))
+            {
+                if (TextureManager::Get().AddFontBuilderString(buffer_profile_name))
+                {
+                    TextureManager::Get().ReloadAllTexturesLater();
+                    UIManager::Get()->RepeatFrame();
+                }
+            }
+        }
+        vr_keyboard.VRKeyboardInputEnd();
+        ImGui::PopID();
+
+        if ( (pending_input_focus) && (ImGui::IsItemVisible()) )
+        {
+            ImGui::SetKeyboardFocusHere(-1);
+            pending_input_focus = false;
+        }
+
+        if (is_name_readonly)
+            ImGui::PopItemDisabled();
+
+        ImGui::Columns(1);
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), 
+                                  TranslationManager::GetString((m_ProfileOverlaySelectIsSaving) ? tstr_SettingsProfilesOverlaysProfileSaveSelectHeaderList : 
+                                                                                                   tstr_SettingsProfilesOverlaysProfileAddSelectHeader       ) ); 
+    ImGui::Indent();
+
+    //Shouldn't really happen, but display error if there are no overlays
+    if (list_overlays.size() == 0)
+    {
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileAddSelectEmpty));
+    }
+    else
+    {
+        ImGui::SetNextItemWidth(-1.0f);
+        const float item_height = ImGui::GetFrameHeight() + style.ItemSpacing.y;
+        const float inner_padding = style.FramePadding.y + style.ItemInnerSpacing.y;
+        ImGui::BeginChild("OverlayList", ImVec2(0.0f, (item_height * ((m_ProfileOverlaySelectIsSaving) ? 12.0f : 13.0f) ) + inner_padding), true);
+
+        //Reset scroll when appearing
+        if (m_PageAppearing == wndsettings_page_profiles_overlay_select)
+        {
+            ImGui::SetScrollY(0.0f);
+        }
+
+        //List overlays
+        const float cursor_x_past_checkbox = ImGui::GetCursorPosX() + ImGui::GetFrameHeightWithSpacing();
+        ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
+        ImVec2 img_size, img_uv_min, img_uv_max;
+
+        static unsigned int hovered_overlay_id_last = k_ulOverlayID_None;
+        unsigned int hovered_overlay_id = k_ulOverlayID_None;
+        
+        int index = 0;
+        for (const auto& pair : list_overlays)
+        {
+            ImGui::PushID(index);
+
+            //We're using a trick here to extend the checkbox interaction space to the end of the child window
+            //Checkbox() uses the item inner spacing if the label is not blank, so we increase that and use a space label
+            //Below we render a custom label with icon in front of it after adjusting the cursor position to where it normally would be
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, {ImGui::GetContentRegionAvail().x, style.ItemInnerSpacing.y});
+
+            if (ImGui::Checkbox(" ", (bool*)&list_overlays_ticked[index]))
+            {
+                //Update any ticked status
+                is_any_ticked = false;
+                for (auto is_ticked : list_overlays_ticked)
+                {
+                    if (is_ticked != 0)
+                    {
+                        is_any_ticked = true;
+                        break;
+                    }
+                }
+            }
+
+            ImGui::PopStyleVar();
+
+            if (ImGui::IsItemVisible())
+            {
+                if ( (m_ProfileOverlaySelectIsSaving) && (ImGui::IsItemHovered()) )
+                {
+                    hovered_overlay_id = (unsigned int)index;
+                }
+
+                //Adjust cursor position to be after the checkbox + offset for icon
+                ImGui::SameLine();
+                float text_y = ImGui::GetCursorPosY();
+                ImGui::SetCursorPos({cursor_x_past_checkbox, text_y + style.FramePadding.y});
+
+                //Origin icon
+                TextureManager::Get().GetTextureInfo((TMNGRTexID)(tmtex_icon_xsmall_origin_room + pair.second), img_size, img_uv_min, img_uv_max);
+                ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+                //Checkbox label
+                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                ImGui::SetCursorPosY(text_y);
+
+                ImGui::TextUnformatted(pair.first.c_str());
+            }
+
+            ImGui::PopID();
+
+            index++;
+        }
+
+        ImGui::EndChild();
+        ImGui::Spacing();
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - list_buttons_width);
+
+        ImGui::BeginGroup();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileAddSelectAll)))
+        {
+            std::fill(list_overlays_ticked.begin(), list_overlays_ticked.end(), 1);
+            is_any_ticked = true;
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileAddSelectNone)))
+        {
+            std::fill(list_overlays_ticked.begin(), list_overlays_ticked.end(), 0);
+            is_any_ticked = false;
+        }
+        ImGui::EndGroup();
+
+        list_buttons_width = ImGui::GetItemRectSize().x + style.IndentSpacing;
+
+        //Set overlay highlight if saving
+        if ( (m_ProfileOverlaySelectIsSaving) && (hovered_overlay_id_last != hovered_overlay_id) )
+        {
+            UIManager::Get()->HighlightOverlay(hovered_overlay_id);
+            hovered_overlay_id_last = hovered_overlay_id;
+        }
+    }
+
+    ImGui::Unindent();
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+
+    //Confirmation buttons
+    ImGui::Separator();
+
+    const bool disable_confirm_button = ((!is_any_ticked) || (is_name_taken) || (is_name_blank));
+
+    if (disable_confirm_button)
+        ImGui::PushItemDisabled();
+
+    if (m_ProfileOverlaySelectIsSaving)
+    {
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileSaveSelectDo)))   //Save profile
+        {
+            m_ProfileSelectionName = buffer_profile_name;
+            has_saving_failed = !ConfigManager::Get().SaveMultiOverlayProfileToFile(m_ProfileSelectionName + ".ini", &list_overlays_ticked);
+
+            if (!has_saving_failed)
+            {
+                m_ProfileList = ConfigManager::Get().GetOverlayProfileList();
+                PageGoBack();
+            }
+        }
+    }
+    else
+    {
+        if ( (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileAddSelectDo))) || (skip_selection) )  //Add selected overlays from profile
+        {
+            ConfigManager::Get().LoadMultiOverlayProfileFromFile(m_ProfileSelectionName + ".ini", false, &list_overlays_ticked);
+
+            //Tell dashboard app to load the profile as well
+            IPCManager::Get().SendStringToDashboardApp(configid_str_state_profile_name_load, m_ProfileSelectionName, UIManager::Get()->GetWindowHandle());
+
+            for (int i = 0; i < list_overlays_ticked.size(); ++i)  //Send each ticked overlay's ID to queue it up
+            {
+                if (list_overlays_ticked[i] == 1)
+                {
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_profile_load, MAKELPARAM(ipcactv_ovrl_profile_multi_add, i) );
+                }
+            }
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_profile_load, MAKELPARAM(ipcactv_ovrl_profile_multi_add, -1) );       //Add queued overlays
+
+            (skip_selection) ? PageGoBackInstantly() : PageGoBack();
+            UIManager::Get()->RepeatFrame();
+        }
+    }
+
+    if (disable_confirm_button)
+        ImGui::PopItemDisabled();
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
+    {
+        PageGoBack();
+    }
+
+    if (has_saving_failed)
+    {
+        ImGui::SameLine();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextError);
+        ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileSaveSelectDoFailed));
+        ImGui::PopStyleColor();
+    }
+}
+
 void WindowSettingsNew::UpdatePageResetConfirm()
 {
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsReset) ); 
@@ -1273,6 +1928,22 @@ void WindowSettingsNew::PageGoBack()
 {
     if (m_PageStackPos != 0)
         m_PageStackPos--;
+}
+
+void WindowSettingsNew::PageGoBackInstantly()
+{
+    //Go back while skipping any active animations
+    PageGoBack();
+
+    while ((int)m_PageStack.size() > m_PageStackPosAnimation)
+    {
+        m_PageStack.pop_back();
+    }
+
+    m_PageAnimationDir      = 0;
+    m_PageStackPosAnimation = m_PageStackPos;
+    m_PageAnimationOffset   = m_PageAnimationStartPos;
+    m_PageAnimationProgress = 0.0f;
 }
 
 void WindowSettingsNew::PageGoHome()

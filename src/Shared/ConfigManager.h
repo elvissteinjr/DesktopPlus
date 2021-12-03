@@ -321,8 +321,8 @@ class ConfigManager
 
         void LoadOverlayProfile(const Ini& config, unsigned int overlay_id = UINT_MAX);
         void SaveOverlayProfile(Ini& config, unsigned int overlay_id = UINT_MAX);
-        void LoadMultiOverlayProfile(const Ini& config, bool clear_existing_overlays = true);
-        void SaveMultiOverlayProfile(Ini& config);
+        void LoadMultiOverlayProfile(const Ini& config, bool clear_existing_overlays = true, std::vector<char>* ovrl_inclusion_list = nullptr);
+        void SaveMultiOverlayProfile(Ini& config, std::vector<char>* ovrl_inclusion_list = nullptr);
 
         static bool IsUIAccessEnabled();
         static void RemoveScaleFromTransform(Matrix4& transform, float* width);
@@ -336,12 +336,14 @@ class ConfigManager
         void RestoreConfigFromDefault();
 
         void LoadOverlayProfileDefault(bool multi_overlay = false);
-        bool LoadOverlayProfileFromFile(const std::string filename);
-        void SaveOverlayProfileToFile(const std::string filename);
-        bool LoadMultiOverlayProfileFromFile(const std::string filename, bool clear_existing_overlays = true);
-        void SaveMultiOverlayProfileToFile(const std::string filename);
-        bool DeleteOverlayProfile(const std::string filename, bool multi_overlay = false);
-        std::vector<std::string> GetOverlayProfileList(bool multi_overlay = false);
+        bool LoadMultiOverlayProfileFromFile(const std::string& filename, bool clear_existing_overlays = true, std::vector<char>* ovrl_inclusion_list = nullptr);
+        bool SaveMultiOverlayProfileToFile(const std::string& filename, std::vector<char>* ovrl_inclusion_list = nullptr);
+        bool DeleteOverlayProfile(const std::string& filename);
+
+        #ifdef DPLUS_UI
+            std::vector<std::string> GetOverlayProfileList();
+            std::vector< std::pair<std::string, OverlayOrigin> > GetOverlayProfileOverlayNameList(const std::string& filename);
+        #endif
 
         static WPARAM GetWParamForConfigID(ConfigID_Bool id);
         static WPARAM GetWParamForConfigID(ConfigID_Int id);

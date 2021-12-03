@@ -112,6 +112,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
     TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max); //Get settings icons dimensions for uniform button size
     ImVec2 b_size_default = b_size;
 
+    static unsigned int hovered_overlay_id_last = k_ulOverlayID_None;
     unsigned int hovered_overlay_id = k_ulOverlayID_None;
     const unsigned int u_overlay_count = OverlayManager::Get().GetOverlayCount();
 
@@ -252,9 +253,10 @@ void WindowOverlayBar::UpdateOverlayButtons()
     }
 
     //Don't change overlay highlight while mouse down as it won't be correct while dragging and flicker just before it
-    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+    if ( (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) && (hovered_overlay_id_last != hovered_overlay_id) )
     {
         UIManager::Get()->HighlightOverlay(hovered_overlay_id);
+        hovered_overlay_id_last = hovered_overlay_id;
     }
 
     ImGui::PopID();
