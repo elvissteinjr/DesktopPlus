@@ -454,14 +454,6 @@ void VRKeyboard::VRKeyboardInputEnd()
         UIManager::Get()->RepeatFrame();
     }
 
-    if (m_ActiveInputText == widget_id)
-    {
-        if (m_WindowKeyboard.IsHovered())
-        {
-            ImGui::SetKeyboardFocusHere(-1);
-        }
-    }
-
     m_InputBeginWidgetID = 0;
 }
 
