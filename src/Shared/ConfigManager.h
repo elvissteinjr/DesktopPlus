@@ -90,7 +90,7 @@ enum ConfigID_Bool
     configid_bool_state_misc_elevated_mode_active,            //True if the elevated mode process is running
     configid_bool_state_misc_process_started_by_steam,
     configid_bool_state_misc_uiaccess_enabled,
-	configid_bool_MAX
+    configid_bool_MAX
 };
 
 enum ConfigID_Int
@@ -147,7 +147,7 @@ enum ConfigID_Int
     configid_int_state_auto_docking_state,                  //0 = Off, 1 = Left Hand, 2 = Right Hand (matches ETrackedControllerRole). +2 for detaching
     configid_int_state_laser_pointer_device_hint,           //Used by dragging functions when laser pointer device can't be determined via other means (value is tracked device index)
     configid_int_state_dplus_laser_pointer_device,          //Tracked device index for active Desktop+ laser pointer
-	configid_int_MAX
+    configid_int_MAX
 };
 
 enum ConfigID_Float
@@ -169,7 +169,7 @@ enum ConfigID_Float
     configid_float_interface_last_vr_ui_scale,
     configid_float_performance_update_limit_ms,
     configid_float_state_overlay_transform_sync_value,      //Used for sending overlay transforms asynchronously. This is done by sending 16 of these after setting the target id
-	configid_float_MAX
+    configid_float_MAX
 };
 
 enum ConfigID_Handle
@@ -195,7 +195,7 @@ enum ConfigID_String
     configid_str_state_keyboard_string,                     //VR keyboard input for the dashboard application
     configid_str_state_dashboard_error_string,              //Error messages are displayed in VR through the UI app
     configid_str_state_profile_name_load,                   //Name of the profile to load 
-	configid_str_MAX
+    configid_str_MAX
 };
 
 //Actually stored as ints, but still have this for readability
@@ -306,12 +306,12 @@ class OverlayConfigData
 
 class ConfigManager
 {
-	private:
-		bool m_ConfigBool[configid_bool_MAX];
-		int m_ConfigInt[configid_int_MAX];
-		float m_ConfigFloat[configid_float_MAX];
+    private:
+        bool m_ConfigBool[configid_bool_MAX];
+        int m_ConfigInt[configid_int_MAX];
+        float m_ConfigFloat[configid_float_MAX];
         uint64_t m_ConfigHandle[configid_handle_MAX];
-		std::string m_ConfigString[configid_str_MAX];
+        std::string m_ConfigString[configid_str_MAX];
 
         ActionManager m_ActionManager;
 
@@ -327,9 +327,9 @@ class ConfigManager
         static bool IsUIAccessEnabled();
         static void RemoveScaleFromTransform(Matrix4& transform, float* width);
 
-	public:
-		ConfigManager();
-		static ConfigManager& Get();
+    public:
+        ConfigManager();
+        static ConfigManager& Get();
 
         bool LoadConfigFromFile();
         void SaveConfigToFile();
@@ -374,8 +374,8 @@ class ConfigManager
         std::vector<ActionMainBarOrderData>& GetActionMainBarOrder();
         Matrix4& GetOverlayDetachedTransform();
 
-		const std::string& GetApplicationPath() const;
-		const std::string& GetExecutableName() const;
+        const std::string& GetApplicationPath() const;
+        const std::string& GetExecutableName() const;
         bool IsSteamInstall() const;
         vr::TrackedDeviceIndex_t GetPrimaryLaserPointerDevice() const;                 //GetPrimaryDashboardDevice() but works with Desktop+'s laser pointer as well
         bool IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayHandle) const; //IsHoverTargetOverlay() but works with Desktop+'s laser pointer as well

@@ -220,7 +220,7 @@ void OverlayDragger::DragAddDistance(float distance)
         vr::VROverlay()->GetOverlayWidthInMeters(m_DragModeOverlayHandle, &overlay_width);
     }
 
-	//Scale distance to overlay width
+    //Scale distance to overlay width
     distance = clamp(distance * (overlay_width / 2.0f), -0.5f, 0.5f);
 
     if (m_AbsoluteModeActive)

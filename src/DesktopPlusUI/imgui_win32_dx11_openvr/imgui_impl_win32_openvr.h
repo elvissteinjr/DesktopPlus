@@ -24,7 +24,7 @@ IMGUI_IMPL_API void     ImGui_ImplWin32_NewFrame();
 // - Disable gamepad support or linking with xinput.lib
 //#define IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
 //#define IMGUI_IMPL_WIN32_DISABLE_LINKING_XINPUT
-																										  
+                                                                                                          
 // Win32 message handler your application need to call.
 // - Intentionally commented out in a '#if 0' block to avoid dragging dependencies on <windows.h> from this helper.
 // - You should COPY the line below into your .cpp code to forward declare the function and then you can call it.
@@ -72,4 +72,4 @@ IMGUI_IMPL_API void ImGui_ImplOpenVR_AddInputFromOSK(const char* input);
 
 // Set overlay intersection mask from current top-level window outer rects, optionally writes primitives sent to SteamVR into primitves_out
 IMGUI_IMPL_API void ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(vr::VROverlayHandle_t* overlay_handles, size_t overlay_count, 
-																	std::vector<vr::VROverlayIntersectionMaskPrimitive_t>* primitives_out = nullptr);
+                                                                    std::vector<vr::VROverlayIntersectionMaskPrimitive_t>* primitives_out = nullptr);

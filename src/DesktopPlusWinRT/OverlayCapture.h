@@ -16,7 +16,7 @@ public:
     void RestartCapture();
 
     bool IsCursorEnabled()                                               { return m_CursorEnabled; }
-	void IsCursorEnabled(bool value);
+    void IsCursorEnabled(bool value);
     winrt::Windows::Graphics::Capture::GraphicsCaptureItem CaptureItem() { return m_Item; }
 
     void PauseCapture(bool pause)  { m_Paused = pause; OnOverlayDataRefresh(); }

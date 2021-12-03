@@ -25,9 +25,9 @@ enum ActionID: int
 
 enum CustomActionFunctionID
 {
-	caction_press_keys,
-	caction_type_string,
-	caction_launch_application,
+    caction_press_keys,
+    caction_type_string,
+    caction_launch_application,
     caction_toggle_overlay_enabled_state
 };
 

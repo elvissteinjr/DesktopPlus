@@ -55,16 +55,16 @@ int ElevatedModeEnter(HINSTANCE hinstance)
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_misc_elevated_mode_active, true);
     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_elevated_mode_active, true);
 
-	//Wait for callbacks, update or quit message
-	MSG msg;
-	while (::GetMessage(&msg, 0, 0, 0))
-	{
+    //Wait for callbacks, update or quit message
+    MSG msg;
+    while (::GetMessage(&msg, 0, 0, 0))
+    {
         //Custom IPC messages
         if (msg.message >= 0xC000)
         {
             HandleIPCMessage(msg);
         }
-	}
+    }
 
     //Send config update to dashboard and UI process to disable it again
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_misc_elevated_mode_active, false);
@@ -77,7 +77,7 @@ int ElevatedModeEnter(HINSTANCE hinstance)
         g_ElevatedMode_ComInitDone = false;
     }
 
-	return 0;
+    return 0;
 }
 
 LRESULT CALLBACK WndProcElevated(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)

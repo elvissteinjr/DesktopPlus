@@ -24,7 +24,7 @@ enum IPCMsgID
     ipcmsg_set_config,        //wParam = ConfigID, lParam = Value. Generic ConfigIDs are derived from their specific ID + predecending *_MAX values.
                               //e.g. configid_float_stuff is configid_bool_MAX + configid_int_MAX + configid_float_stuff. Strings are handled separately
     ipcmsg_elevated_action,   //wParam = IPCElevatedActionID, lParam = Action-specific value. Actions sent to the elevated mode process
-	ipcmsg_MAX
+    ipcmsg_MAX
 };
 
 enum IPCActionID
@@ -128,35 +128,35 @@ enum IPCElevatedStringID
 
 class IPCManager
 {
-	private:
-		UINT m_RegisteredMessages[ipcmsg_MAX];
+    private:
+        UINT m_RegisteredMessages[ipcmsg_MAX];
 
-	public:
-		IPCManager();
+    public:
+        IPCManager();
         static IPCManager& Get();
         void DisableUIPForRegisteredMessages(HWND window_handle) const;   //Disables User Interface Privilege Isolation in order to enable unelevated UI application to send messages to the overlay
-		UINT GetWin32MessageID(IPCMsgID IPC_id) const;
+        UINT GetWin32MessageID(IPCMsgID IPC_id) const;
         IPCMsgID GetIPCMessageID(UINT win32_id) const;
-		bool GetAllMesssagesRegistered() const;			//Sanity check in case registering the messages fails, which should usually not happen
+        bool GetAllMesssagesRegistered() const;			//Sanity check in case registering the messages fails, which should usually not happen
         static bool IsDashboardAppRunning();
         static bool IsUIAppRunning();
         static bool IsElevatedModeProcessRunning();
         static DWORD GetDashboardAppProcessID();
         static DWORD GetUIAppProcessID();
 
-		void PostMessageToDashboardApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
-		void PostConfigMessageToDashboardApp(ConfigID_Bool   configid, LPARAM l_param = 0) const;
-		void PostConfigMessageToDashboardApp(ConfigID_Int    configid, LPARAM l_param = 0) const;
-		void PostConfigMessageToDashboardApp(ConfigID_Float  configid, LPARAM l_param = 0) const;
-		void PostConfigMessageToDashboardApp(ConfigID_Handle configid, LPARAM l_param = 0) const;
+        void PostMessageToDashboardApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
+        void PostConfigMessageToDashboardApp(ConfigID_Bool   configid, LPARAM l_param = 0) const;
+        void PostConfigMessageToDashboardApp(ConfigID_Int    configid, LPARAM l_param = 0) const;
+        void PostConfigMessageToDashboardApp(ConfigID_Float  configid, LPARAM l_param = 0) const;
+        void PostConfigMessageToDashboardApp(ConfigID_Handle configid, LPARAM l_param = 0) const;
 
-		void PostMessageToUIApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
+        void PostMessageToUIApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
         void PostConfigMessageToUIApp(ConfigID_Bool   configid, LPARAM l_param = 0) const;
         void PostConfigMessageToUIApp(ConfigID_Int    configid, LPARAM l_param = 0) const;
         void PostConfigMessageToUIApp(ConfigID_Float  configid, LPARAM l_param = 0) const;
         void PostConfigMessageToUIApp(ConfigID_Handle configid, LPARAM l_param = 0) const;
 
-		void PostMessageToElevatedModeProcess(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
+        void PostMessageToElevatedModeProcess(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
 
         void SendStringToDashboardApp(ConfigID_String config_id, const std::string& str, HWND source_window) const;
         void SendStringToUIApp(ConfigID_String config_id, const std::string& str, HWND source_window) const;

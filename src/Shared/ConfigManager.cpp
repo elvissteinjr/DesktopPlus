@@ -400,21 +400,21 @@ bool ConfigManager::LoadConfigFromFile()
         action_order.push_back({ (ActionID)id, visible });
     }
 
-	m_ConfigInt[configid_int_input_go_home_action_id]                       = config.ReadInt( "Input", "GoHomeButtonActionID", 0);
-	m_ConfigInt[configid_int_input_go_back_action_id]                       = config.ReadInt( "Input", "GoBackButtonActionID", 0);
-	m_ConfigInt[configid_int_input_shortcut01_action_id]                    = config.ReadInt( "Input", "GlobalShortcut01ActionID", 0);
-	m_ConfigInt[configid_int_input_shortcut02_action_id]                    = config.ReadInt( "Input", "GlobalShortcut02ActionID", 0);
-	m_ConfigInt[configid_int_input_shortcut03_action_id]                    = config.ReadInt( "Input", "GlobalShortcut03ActionID", 0);
+    m_ConfigInt[configid_int_input_go_home_action_id]                       = config.ReadInt( "Input", "GoHomeButtonActionID", 0);
+    m_ConfigInt[configid_int_input_go_back_action_id]                       = config.ReadInt( "Input", "GoBackButtonActionID", 0);
+    m_ConfigInt[configid_int_input_shortcut01_action_id]                    = config.ReadInt( "Input", "GlobalShortcut01ActionID", 0);
+    m_ConfigInt[configid_int_input_shortcut02_action_id]                    = config.ReadInt( "Input", "GlobalShortcut02ActionID", 0);
+    m_ConfigInt[configid_int_input_shortcut03_action_id]                    = config.ReadInt( "Input", "GlobalShortcut03ActionID", 0);
 
-	m_ConfigInt[configid_int_input_hotkey01_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey01Modifiers", 0);
-	m_ConfigInt[configid_int_input_hotkey01_keycode]                        = config.ReadInt( "Input", "GlobalHotkey01KeyCode",   0);
-	m_ConfigInt[configid_int_input_hotkey01_action_id]                      = config.ReadInt( "Input", "GlobalHotkey01ActionID",  0);
-	m_ConfigInt[configid_int_input_hotkey02_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey02Modifiers", 0);
-	m_ConfigInt[configid_int_input_hotkey02_keycode]                        = config.ReadInt( "Input", "GlobalHotkey02KeyCode",   0);
-	m_ConfigInt[configid_int_input_hotkey02_action_id]                      = config.ReadInt( "Input", "GlobalHotkey02ActionID",  0);
-	m_ConfigInt[configid_int_input_hotkey03_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey03Modifiers", 0);
-	m_ConfigInt[configid_int_input_hotkey03_keycode]                        = config.ReadInt( "Input", "GlobalHotkey03KeyCode",   0);
-	m_ConfigInt[configid_int_input_hotkey03_action_id]                      = config.ReadInt( "Input", "GlobalHotkey03ActionID",  0);
+    m_ConfigInt[configid_int_input_hotkey01_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey01Modifiers", 0);
+    m_ConfigInt[configid_int_input_hotkey01_keycode]                        = config.ReadInt( "Input", "GlobalHotkey01KeyCode",   0);
+    m_ConfigInt[configid_int_input_hotkey01_action_id]                      = config.ReadInt( "Input", "GlobalHotkey01ActionID",  0);
+    m_ConfigInt[configid_int_input_hotkey02_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey02Modifiers", 0);
+    m_ConfigInt[configid_int_input_hotkey02_keycode]                        = config.ReadInt( "Input", "GlobalHotkey02KeyCode",   0);
+    m_ConfigInt[configid_int_input_hotkey02_action_id]                      = config.ReadInt( "Input", "GlobalHotkey02ActionID",  0);
+    m_ConfigInt[configid_int_input_hotkey03_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey03Modifiers", 0);
+    m_ConfigInt[configid_int_input_hotkey03_keycode]                        = config.ReadInt( "Input", "GlobalHotkey03KeyCode",   0);
+    m_ConfigInt[configid_int_input_hotkey03_action_id]                      = config.ReadInt( "Input", "GlobalHotkey03ActionID",  0);
 
     m_ConfigFloat[configid_float_input_detached_interaction_max_distance]   = config.ReadInt( "Input", "DetachedInteractionMaxDistance", 200) / 100.0f;
     m_ConfigBool[configid_bool_input_global_hmd_pointer]                    = config.ReadBool("Input", "GlobalHMDPointer", false);
@@ -424,8 +424,8 @@ bool ConfigManager::LoadConfigFromFile()
 
     m_ConfigBool[configid_bool_input_mouse_render_cursor]                   = config.ReadBool("Mouse", "RenderCursor", true);
     m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]        = config.ReadBool("Mouse", "RenderIntersectionBlob", false);
-	m_ConfigInt[configid_int_input_mouse_dbl_click_assist_duration_ms]      = config.ReadInt( "Mouse", "DoubleClickAssistDuration", -1);
-	m_ConfigBool[configid_bool_input_mouse_hmd_pointer_override]            = config.ReadBool("Mouse", "HMDPointerOverride", true);
+    m_ConfigInt[configid_int_input_mouse_dbl_click_assist_duration_ms]      = config.ReadInt( "Mouse", "DoubleClickAssistDuration", -1);
+    m_ConfigBool[configid_bool_input_mouse_hmd_pointer_override]            = config.ReadBool("Mouse", "HMDPointerOverride", true);
 
     m_ConfigString[configid_str_input_keyboard_layout_file]                 = config.ReadString("Keyboard", "LayoutFile", "qwerty_usa.ini");
     m_ConfigBool[configid_bool_input_keyboard_cluster_function_enabled]     = config.ReadBool("Keyboard", "LayoutClusterFunction",   true);
@@ -1141,7 +1141,7 @@ const std::string& ConfigManager::GetApplicationPath() const
 
 const std::string& ConfigManager::GetExecutableName() const
 {
-	return m_ExecutableName;
+    return m_ExecutableName;
 }
 
 bool ConfigManager::IsSteamInstall() const

@@ -442,18 +442,18 @@ float Matrix4::getDeterminant()
 vr::HmdMatrix34_t Matrix4::toOpenVR34()
 {
     vr::HmdMatrix34_t matrixObj;
-	matrixObj.m[0][0] = m[0];
-	matrixObj.m[1][0] = m[1];
-	matrixObj.m[2][0] = m[2];
-	matrixObj.m[0][1] = m[4];
-	matrixObj.m[1][1] = m[5];
-	matrixObj.m[2][1] = m[6];
-	matrixObj.m[0][2] = m[8];
-	matrixObj.m[1][2] = m[9];
-	matrixObj.m[2][2] = m[10];
-	matrixObj.m[0][3] = m[12];
-	matrixObj.m[1][3] = m[13];
-	matrixObj.m[2][3] = m[14];
+    matrixObj.m[0][0] = m[0];
+    matrixObj.m[1][0] = m[1];
+    matrixObj.m[2][0] = m[2];
+    matrixObj.m[0][1] = m[4];
+    matrixObj.m[1][1] = m[5];
+    matrixObj.m[2][1] = m[6];
+    matrixObj.m[0][2] = m[8];
+    matrixObj.m[1][2] = m[9];
+    matrixObj.m[2][2] = m[10];
+    matrixObj.m[0][3] = m[12];
+    matrixObj.m[1][3] = m[13];
+    matrixObj.m[2][3] = m[14];
 
     //return {m[0], m[1], m[2],m[4],m[5],m[6],m[8],m[9],m[10],m[12], m[13], m[14]};
     return matrixObj;

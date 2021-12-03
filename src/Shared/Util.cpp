@@ -5,42 +5,42 @@
 
 std::string StringConvertFromUTF16(LPCWSTR str)
 {
-	std::string stdstr;
-	int length_utf8 = WideCharToMultiByte(CP_UTF8, 0, str, -1, nullptr, 0, nullptr, nullptr);
+    std::string stdstr;
+    int length_utf8 = WideCharToMultiByte(CP_UTF8, 0, str, -1, nullptr, 0, nullptr, nullptr);
 
-	if (length_utf8 != 0)
-	{
-		char* str_utf8 = new char[length_utf8];
-		
-		if (WideCharToMultiByte(CP_UTF8, 0, str, -1, str_utf8, length_utf8, nullptr, nullptr) != 0)
-		{
-			stdstr = str_utf8;
-		}
+    if (length_utf8 != 0)
+    {
+        char* str_utf8 = new char[length_utf8];
+        
+        if (WideCharToMultiByte(CP_UTF8, 0, str, -1, str_utf8, length_utf8, nullptr, nullptr) != 0)
+        {
+            stdstr = str_utf8;
+        }
 
-		delete[] str_utf8;
-	}
-		
-	return stdstr;
+        delete[] str_utf8;
+    }
+        
+    return stdstr;
 }
 
 std::wstring WStringConvertFromUTF8(const char * str)
 {
-	std::wstring wstr;
-	int length_utf16 = MultiByteToWideChar(CP_UTF8, 0, str, -1, nullptr, 0);
+    std::wstring wstr;
+    int length_utf16 = MultiByteToWideChar(CP_UTF8, 0, str, -1, nullptr, 0);
 
-	if (length_utf16 != 0)
-	{
-		WCHAR* str_utf16 = new WCHAR[length_utf16];
+    if (length_utf16 != 0)
+    {
+        WCHAR* str_utf16 = new WCHAR[length_utf16];
 
-		if (MultiByteToWideChar(CP_UTF8, 0, str, -1, str_utf16, length_utf16) != 0)
-		{
-			wstr = str_utf16;
-		}
+        if (MultiByteToWideChar(CP_UTF8, 0, str, -1, str_utf16, length_utf16) != 0)
+        {
+            wstr = str_utf16;
+        }
 
-		delete[] str_utf16;
-	}
+        delete[] str_utf16;
+    }
 
-	return wstr;
+    return wstr;
 }
 
 //This is only needed for std::error_code.message(), thanks to it being in the local ANSI codepage instead of UTF-8
@@ -66,17 +66,17 @@ std::wstring WStringConvertFromLocalEncoding(const char* str)
 
 void TransformOpenVR34TranslateRelative(vr::HmdMatrix34_t& matrix, float offset_right, float offset_up, float offset_forward)
 {
-	matrix.m[0][3] += offset_right * matrix.m[0][0];
-	matrix.m[1][3] += offset_right * matrix.m[1][0];
-	matrix.m[2][3] += offset_right * matrix.m[2][0];
+    matrix.m[0][3] += offset_right * matrix.m[0][0];
+    matrix.m[1][3] += offset_right * matrix.m[1][0];
+    matrix.m[2][3] += offset_right * matrix.m[2][0];
 
-	matrix.m[0][3] += offset_up * matrix.m[0][1];
-	matrix.m[1][3] += offset_up * matrix.m[1][1];
-	matrix.m[2][3] += offset_up * matrix.m[2][1];
+    matrix.m[0][3] += offset_up * matrix.m[0][1];
+    matrix.m[1][3] += offset_up * matrix.m[1][1];
+    matrix.m[2][3] += offset_up * matrix.m[2][1];
 
-	matrix.m[0][3] += offset_forward * matrix.m[0][2];
-	matrix.m[1][3] += offset_forward * matrix.m[1][2];
-	matrix.m[2][3] += offset_forward * matrix.m[2][2];
+    matrix.m[0][3] += offset_forward * matrix.m[0][2];
+    matrix.m[1][3] += offset_forward * matrix.m[1][2];
+    matrix.m[2][3] += offset_forward * matrix.m[2][2];
 }
 
 void TransformOpenVR34TranslateRelative(Matrix4& matrix, float offset_right, float offset_up, float offset_forward)
