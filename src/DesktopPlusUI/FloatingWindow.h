@@ -29,6 +29,7 @@ class FloatingWindow
         float m_TitleBarWidth;
         float m_TitleBarTitleMaxWidth;   //Width available for the title string without icon and buttons
         bool m_HasAppearedOnce;
+        bool m_IsWindowAppearing;
 
         void WindowUpdateBase();         //Sets up ImGui window with custom title bar, pinning and overlay-based dragging
         virtual void WindowUpdate() = 0; //Window content, called within an ImGui Begin()'d window

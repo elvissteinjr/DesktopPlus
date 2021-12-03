@@ -16,7 +16,8 @@ FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
                                    m_WindowIconWin32IconCacheID(-1),
                                    m_TitleBarWidth(64.0f),
                                    m_TitleBarTitleMaxWidth(-1.0f),
-                                   m_HasAppearedOnce(false)
+                                   m_HasAppearedOnce(false),
+                                   m_IsWindowAppearing(false)
 {
     m_Pos.x = FLT_MIN;
     m_WindowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
@@ -69,6 +70,7 @@ void FloatingWindow::WindowUpdateBase()
     ImGui::Begin(m_WindowID.c_str(), nullptr, flags);
 
     bool title_hover = ImGui::IsItemHovered(); //Current item is the title bar (needs to be checked before BeginTitleBar())
+    m_IsWindowAppearing = ImGui::IsWindowAppearing();
 
     //Title bar
     ImVec4 title_rect = ImGui::BeginTitleBar();

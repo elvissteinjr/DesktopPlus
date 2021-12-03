@@ -109,14 +109,14 @@ void WindowSettingsNew::WindowUpdate()
         m_PageStackPosAnimation = m_PageStackPos;
         m_PageAnimationStartPos = m_PageAnimationOffset;
         m_PageAnimationProgress = 0.0f;
-        
+
         //Set appearing value to top of stack when starting animation to it
         if (m_PageAnimationDir == -1)
         {
             m_PageAppearing = m_PageStack.back();
         }
     }
-    else if (ImGui::IsWindowAppearing()) //Set appearing value when the whole window appeared again
+    else if (m_IsWindowAppearing) //Set appearing value when the whole window appeared again
     {
         m_PageAppearing = m_PageStack.back();
     }
@@ -1276,12 +1276,13 @@ void WindowSettingsNew::UpdatePageProfiles()
     static bool has_deletion_failed        = false;
     static float list_buttons_width        = 0.0f;
     static ImVec2 button_delete_size;
-    
+
     if (m_PageAppearing == wndsettings_page_profiles)
     {
         //Load profile list
         m_ProfileList = ConfigManager::Get().GetOverlayProfileList();
         list_id = -1;
+        m_ProfileSelectionName = "";
         delete_confirm_state = false;
         has_deletion_failed = false;
 
@@ -1561,41 +1562,45 @@ void WindowSettingsNew::UpdatePageProfilesOverlaySelect()
                 list_overlays.push_back( std::make_pair(data.ConfigNameStr, (OverlayOrigin)data.ConfigInt[configid_int_overlay_origin]) );
             }
 
-            is_name_readonly = !m_ProfileSelectionName.empty();
-
-            //Generate name if empty
-            if (m_ProfileSelectionName.empty())
+            //Only do this part if the page is appearing from a page change, not window appearing again
+            if (!m_IsWindowAppearing)
             {
-                std::wstring new_profile_name_w_base = WStringConvertFromUTF8(TranslationManager::GetString(tstr_SettingsProfilesOverlaysNameNewBase));
-                std::wstring new_profile_name_w;
-                int i = 0;
+                is_name_readonly = !m_ProfileSelectionName.empty();
 
-                //Sanity check translation string for ID placeholder to avoid infinite loop
-                if (new_profile_name_w_base.find(L"%ID%") == std::wstring::npos)
+                //Generate name if empty
+                if (m_ProfileSelectionName.empty())
                 {
-                    new_profile_name_w_base = L"Profile %ID%";
+                    std::wstring new_profile_name_w_base = WStringConvertFromUTF8(TranslationManager::GetString(tstr_SettingsProfilesOverlaysNameNewBase));
+                    std::wstring new_profile_name_w;
+                    int i = 0;
+
+                    //Sanity check translation string for ID placeholder to avoid infinite loop
+                    if (new_profile_name_w_base.find(L"%ID%") == std::wstring::npos)
+                    {
+                        new_profile_name_w_base = L"Profile %ID%";
+                    }
+
+                    //Default to higher profile number if normal is already taken
+                    auto it = list_profiles_w.end();
+
+                    do
+                    {
+                        ++i;
+                        new_profile_name_w = new_profile_name_w_base;
+                        WStringReplaceAll(new_profile_name_w, L"%ID%", std::to_wstring(i));
+                    }
+                    while ( check_profile_name_taken(new_profile_name_w.c_str()) );
+
+                    m_ProfileSelectionName = StringConvertFromUTF16(new_profile_name_w.c_str());
                 }
 
-                //Default to higher profile number if normal is already taken
-                auto it = list_profiles_w.end();
+                //Set profile name buffer
+                size_t copied_length = m_ProfileSelectionName.copy(buffer_profile_name, IM_ARRAYSIZE(buffer_profile_name) - 1);
+                buffer_profile_name[copied_length] = '\0';
 
-                do
-                {
-                    ++i;
-                    new_profile_name_w = new_profile_name_w_base;
-                    WStringReplaceAll(new_profile_name_w, L"%ID%", std::to_wstring(i));
-                }
-                while ( check_profile_name_taken(new_profile_name_w.c_str()) );
-
-                m_ProfileSelectionName = StringConvertFromUTF16(new_profile_name_w.c_str());
+                //Focus InputText once as soon as we can (needs to be not clipped)
+                pending_input_focus = !is_name_readonly;
             }
-
-            //Set profile name buffer
-            size_t copied_length = m_ProfileSelectionName.copy(buffer_profile_name, IM_ARRAYSIZE(buffer_profile_name) - 1);
-            buffer_profile_name[copied_length] = '\0';
-
-            //Focus InputText once as soon as we can (needs to be not clipped)
-            pending_input_focus = !is_name_readonly;
         }
         else
         {
@@ -1623,9 +1628,32 @@ void WindowSettingsNew::UpdatePageProfilesOverlaySelect()
             }
         }
 
-        list_overlays_ticked.clear();
+        //Only clear if page changed
+        if (!m_IsWindowAppearing)
+        {
+            list_overlays_ticked.clear();
+        }
+
         list_overlays_ticked.resize(list_overlays.size(), 1);
-        is_any_ticked = !list_overlays.empty();
+
+        //If we're preserving the selections we need to check ticked state
+        if (m_IsWindowAppearing)
+        {
+            is_any_ticked = false;
+            for (auto is_ticked : list_overlays_ticked)
+            {
+                if (is_ticked != 0)
+                {
+                    is_any_ticked = true;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            is_any_ticked = !list_overlays.empty();
+        }
+
         is_name_taken = false;
         is_name_blank = false;
         has_saving_failed = false;

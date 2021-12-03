@@ -1126,7 +1126,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
         button_width = button_label_width + (style.FramePadding.x * 2.0f);
 
         //Set dragmode state
-        //Dragging the overlay the UI is open on is pretty inconvenient to get out of when not sitting in front of a real mouse, so let's prevent this
+        //Dragging the overlay when the UI is open on desktop is pretty inconvenient to get out of when not sitting in front of a real mouse, so let's prevent this
         if (!UIManager::Get()->IsInDesktopMode())
         {
             //Automatically reset the matrix to a saner default if it still has the zero value
@@ -1621,7 +1621,7 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
         return;
     }
 
-    if (m_PageAppearing == wndovrlprop_page_crop_change)
+    if ( (m_PageAppearing == wndovrlprop_page_crop_change) && (!m_IsWindowAppearing) )
     {
         m_IsConfigDataModified = true;
         m_ConfigDataTemp = OverlayManager::Get().GetCurrentConfigData();
@@ -1866,7 +1866,7 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
         return;
     }
 
-    if (m_PageAppearing == wndovrlprop_page_graphics_capture_source)
+    if ( (m_PageAppearing == wndovrlprop_page_graphics_capture_source) && (!m_IsWindowAppearing) )
     {
         m_IsConfigDataModified = true;
         m_ConfigDataTemp = OverlayManager::Get().GetCurrentConfigData();
