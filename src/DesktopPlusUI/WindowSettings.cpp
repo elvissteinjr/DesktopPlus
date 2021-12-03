@@ -24,6 +24,7 @@ WindowSettingsNew::WindowSettingsNew() :
     m_ScrollStartPos(0.0f),
     m_ScrollTargetPos(0.0f),
     m_Column0Width(0.0f),
+    m_WarningHeight(0.0f),
     m_ProfileOverlaySelectIsSaving(false)
 {
     m_WindowTitleStrID = tstr_SettingsWindowTitle;
@@ -174,12 +175,17 @@ void WindowSettingsNew::WindowUpdate()
 void WindowSettingsNew::UpdateWarnings()
 {
     if (!UIManager::Get()->IsAnyWarningDisplayed())
+    {
+        m_WarningHeight = 0.0f;
         return;
+    }
 
     bool warning_displayed = false;
     bool popup_visible = false;
 
     static float popup_alpha = 0.0f;
+
+    const float warning_height_start = ImGui::GetCursorPosY();
 
     //Compositor resolution warning
     {
@@ -429,6 +435,8 @@ void WindowSettingsNew::UpdateWarnings()
     {
         UIManager::Get()->UpdateAnyWarningDisplayedState();
     }
+
+    m_WarningHeight = ImGui::GetCursorPosY() - warning_height_start;
 
     //Animate fade-in if any of the popups is visible
     if (popup_visible)
@@ -1113,7 +1121,7 @@ void WindowSettingsNew::UpdatePageKeyboardLayout()
     ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
-    ImGui::BeginChild("LayoutList", ImVec2(0.0f, (item_height * 13.0f) + inner_padding), true);
+    ImGui::BeginChild("LayoutList", ImVec2(0.0f, (item_height * 13.0f) + inner_padding - m_WarningHeight), true);
 
     //List layouts
     int index = 0;
@@ -1311,7 +1319,7 @@ void WindowSettingsNew::UpdatePageProfiles()
     ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
-    ImGui::BeginChild("LayoutList", ImVec2(0.0f, (item_height * 15.0f) + inner_padding), true);
+    ImGui::BeginChild("LayoutList", ImVec2(0.0f, (item_height * 15.0f) + inner_padding - m_WarningHeight), true);
 
     //List layouts
     int index = 0;
@@ -1707,7 +1715,7 @@ void WindowSettingsNew::UpdatePageProfilesOverlaySelect()
         ImGui::SetNextItemWidth(-1.0f);
         const float item_height = ImGui::GetFrameHeight() + style.ItemSpacing.y;
         const float inner_padding = style.FramePadding.y + style.ItemInnerSpacing.y;
-        ImGui::BeginChild("OverlayList", ImVec2(0.0f, (item_height * ((m_ProfileOverlaySelectIsSaving) ? 12.0f : 13.0f) ) + inner_padding), true);
+        ImGui::BeginChild("OverlayList", ImVec2(0.0f, (item_height * ((m_ProfileOverlaySelectIsSaving) ? 12.0f : 13.0f) ) + inner_padding - m_WarningHeight), true);
 
         //Reset scroll when appearing
         if (m_PageAppearing == wndsettings_page_profiles_overlay_select)
