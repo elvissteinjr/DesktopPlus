@@ -4,6 +4,7 @@
 
 #include "InterprocessMessaging.h"
 #include "InputSimulator.h"
+#include "WindowManager.h"
 #include "Util.h"
 
 static bool g_ElevatedMode_ComInitDone = false;
@@ -76,6 +77,8 @@ int ElevatedModeEnter(HINSTANCE hinstance)
         ::CoUninitialize();
         g_ElevatedMode_ComInitDone = false;
     }
+
+    WindowManager::Get().ClearTempTopMostWindow();
 
     return 0;
 }
@@ -260,6 +263,12 @@ bool HandleIPCMessage(MSG msg)
                     {   
                         ::ShellExecute(nullptr, nullptr, path_wstr.c_str(), arg_wstr.c_str(), nullptr, SW_SHOWNORMAL);
                     }
+                    break;
+                }
+                case ipceact_window_topmost_set:
+                {
+                    HWND window = (HWND)msg.lParam;
+                    (window != nullptr) ? WindowManager::Get().SetTempTopMostWindow(window) : WindowManager::Get().ClearTempTopMostWindow();
                     break;
                 }
             }

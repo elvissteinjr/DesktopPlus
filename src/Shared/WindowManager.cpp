@@ -476,11 +476,12 @@ bool WindowManager::WouldDragMaximizedTitleBar(HWND window, int prev_cursor_x, i
 
 void WindowManager::RaiseAndFocusWindow(HWND window, InputSimulator* input_sim_ptr)
 {
+    const bool timeout_passed = (m_LastFocusFailedTick + 3000 <= ::GetTickCount64());
     bool focus_success = true;
-    if ( ( (m_LastFocusFailedWindow != window) || (m_LastFocusFailedTick + 3000 >= ::GetTickCount64()) ) && (::GetForegroundWindow() != window) )
+    if ( ( (m_LastFocusFailedWindow != window) || (timeout_passed) ) && (::GetForegroundWindow() != window) )
     {
         focus_success = (::IsIconic(window)) ? ::OpenIcon(window) /*Also focuses*/: ::SetForegroundWindow(window);
-        
+
         if (focus_success)
         {
             m_LastFocusFailedWindow = nullptr;
@@ -517,12 +518,72 @@ void WindowManager::RaiseAndFocusWindow(HWND window, InputSimulator* input_sim_p
         }
     }
 
+    if ( ((!focus_success) || (!timeout_passed)) && (::GetForegroundWindow() != window) )    //Do this when focusing failed or the timeout hasn't passed yet
+    {
+        //Above didn't work, try to make the window topmost at least (we won't count this as a focus success, however)
+        SetTempTopMostWindow(window);
+    }
+
     if (!focus_success)
     {
         //If a focusing attempt failed we either wait until it succeeded on another window or 3 seconds in order to not spam attempts when it's blocked for some reason
         m_LastFocusFailedWindow = window;
         m_LastFocusFailedTick = ::GetTickCount64();
     }
+}
+
+bool WindowManager::SetTempTopMostWindow(HWND window)
+{
+    if (ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active))
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_window_topmost_set, (LPARAM)window);
+        return true;    //No failure report, but elevated will work in most cases anyways
+    }
+
+    if (window == m_TempTopMostWindow)
+        return true;
+
+    //Don't attempt to change the temp topmost window if clearing the old one failed to avoid getting stuck with permanent style changes
+    if (!ClearTempTopMostWindow())
+        return false;
+
+    //Don't do anything if the window is already topmost on its own
+    LONG exstyle = ::GetWindowLongW(window, GWL_EXSTYLE);
+    if (exstyle & WS_EX_TOPMOST)
+        return true;
+
+    bool ret = ::SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOMOVE);
+
+    if (ret)
+        m_TempTopMostWindow = window;
+
+    return ret;
+}
+
+bool WindowManager::ClearTempTopMostWindow()
+{
+    if (ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active))
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_window_topmost_set, 0);
+        return true;
+    }
+
+    bool ret = true;
+
+    if ( (m_TempTopMostWindow != nullptr) && (::IsWindow(m_TempTopMostWindow)) )
+    {
+        ret = ::SetWindowPos(m_TempTopMostWindow, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOMOVE);
+
+        //Also bring the currently focused window back to the top
+        ::SetWindowPos(::GetForegroundWindow(), HWND_TOP, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOMOVE);
+    }
+
+    if (ret)
+    {
+        m_TempTopMostWindow = nullptr;
+    }
+
+    return ret;
 }
 
 void WindowManager::FocusActiveVRSceneApp(InputSimulator* input_sim_ptr)

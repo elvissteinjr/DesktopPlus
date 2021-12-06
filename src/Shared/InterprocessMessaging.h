@@ -115,6 +115,7 @@ enum IPCElevatedActionID
     ipceact_keystate_set,              //lParam = IPCKeyboardKeystateFlags & Keycode (low/high word order)
     ipceact_keyboard_text_finish,      //Finishes the keyboard text queue. Keyboard text is queued by sending strings with ipcestrid_keyboard_text*. No data in lParam
     ipceact_launch_application,        //Launches application previously defined by sending ipcestrid_launch_application_path and ipcestrid_launch_application_arg strings. No data in lParam
+    ipceact_window_topmost_set,        //Sets the temporary topmost window (WindowManager::SetTempTopMostWindow()). lParam = HWND (nullptr/0 to clear)
     ipceact_MAX
 };
 

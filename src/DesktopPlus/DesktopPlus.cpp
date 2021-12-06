@@ -497,6 +497,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     CloseHandle(TerminateThreadsEvent);
 
     //Tell WindowManager to exit if it's still active
+    WindowManager::Get().ClearTempTopMostWindow();
     WindowManager::Get().SetActive(false);
 
     //Kindly ask elevated mode process to quit if it exists

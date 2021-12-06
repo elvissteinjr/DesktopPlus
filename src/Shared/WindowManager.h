@@ -84,6 +84,8 @@ class WindowManager
         bool WouldDragMaximizedTitleBar(HWND window, int prev_cursor_x, int prev_cursor_y, int new_cursor_x, int new_cursor_y);
         bool IsHoveringCapturableTitleBar(HWND window, int cursor_x, int cursor_y);
         void RaiseAndFocusWindow(HWND window, InputSimulator* input_sim_ptr = nullptr);          //input_sim_ptr is optional but passing it increases chance of success
+        bool SetTempTopMostWindow(HWND window);
+        bool ClearTempTopMostWindow();
         void FocusActiveVRSceneApp(InputSimulator* input_sim_ptr = nullptr);
         static void MoveWindowIntoWorkArea(HWND window);
 
@@ -99,6 +101,7 @@ class WindowManager
 
         HWND m_LastFocusFailedWindow = nullptr;
         ULONGLONG m_LastFocusFailedTick = 0;
+        HWND m_TempTopMostWindow = nullptr;
 
         std::vector<WindowInfo> m_WindowList;
 

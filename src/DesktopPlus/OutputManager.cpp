@@ -3663,6 +3663,8 @@ bool OutputManager::HandleOpenVREvents()
                             m_InputSim.MouseSetLeftDown(false);
                             WindowManager::Get().SetTargetWindow(nullptr);
                         }
+
+                        WindowManager::Get().ClearTempTopMostWindow();
                     }
 
                     //Finish drag if there's somehow still one going (and not temp drag mode, where this is expected)
