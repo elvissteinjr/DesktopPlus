@@ -110,6 +110,10 @@ void FloatingUI::UpdateUITargetState()
     vr::VROverlayHandle_t ovrl_handle_hover_target = (ConfigManager::Get().IsLaserPointerTargetOverlay(ovrl_handle_floating_ui)) ? ovrl_handle_floating_ui : vr::k_ulOverlayHandleInvalid;
     unsigned int ovrl_id_hover_target = k_ulOverlayID_None;
 
+    //Also find primary dashboard overlay as fallback to always display when available
+    vr::VROverlayHandle_t ovrl_handle_primary_dashboard = vr::k_ulOverlayHandleInvalid;
+    unsigned int ovrl_id_primary_dashboard = k_ulOverlayID_None;
+
     //If previous target overlay is no longer visible
     if ( (m_OvrlHandleCurrentUITarget != vr::k_ulOverlayHandleInvalid) && (!vr::VROverlay()->IsOverlayVisible(m_OvrlHandleCurrentUITarget)) )
     {
@@ -125,21 +129,42 @@ void FloatingUI::UpdateUITargetState()
     //ImGui::IsPopupOpen() doesn't just check for modals though so it could get in the way at some point
     if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) && (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) )
     {
-        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+        if (has_pointer_device)
         {
-            vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(i);
-
-            if ( (ovrl_handle != vr::k_ulOverlayHandleInvalid) && (ConfigManager::Get().IsLaserPointerTargetOverlay(ovrl_handle)) )
+            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
             {
-                const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+                vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(i);
 
-                if ( (has_pointer_device) && (data.ConfigBool[configid_bool_overlay_floatingui_enabled]) )
+                if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
                 {
-                    ovrl_handle_hover_target = ovrl_handle;
-                    ovrl_id_hover_target = i;
+                    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
 
-                    break;
+                    if ( (data.ConfigBool[configid_bool_overlay_floatingui_enabled]) && (ConfigManager::Get().IsLaserPointerTargetOverlay(ovrl_handle)) )
+                    {
+                        ovrl_handle_hover_target = ovrl_handle;
+                        ovrl_id_hover_target = i;
+
+                        break;
+                    }
+                    else if ( (ovrl_id_primary_dashboard == k_ulOverlayID_None) && (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_dashboard) && 
+                              (data.ConfigInt[configid_int_overlay_display_mode] != ovrl_dispmode_scene) )
+                    {
+                        ovrl_id_primary_dashboard = i;
+
+                        //First dashboard origin with non-scene display mode is considered to be the primary dashboard overlay, but only really use it if enabled with FloatingUI on
+                        if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (data.ConfigBool[configid_bool_overlay_floatingui_enabled]) && (vr::VROverlay()->IsOverlayVisible(ovrl_handle)) )
+                        {
+                            ovrl_handle_primary_dashboard = ovrl_handle;
+                        }
+                    }
                 }
+            }
+
+            //Use fallback primary dashboard overlay if no hover target was found
+            if (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid)
+            {
+                ovrl_handle_hover_target = ovrl_handle_primary_dashboard;
+                ovrl_id_hover_target = ovrl_id_primary_dashboard;
             }
         }
     }
@@ -242,17 +267,26 @@ void FloatingUI::UpdateUITargetState()
         //If the Floating UI is just appearing, adjust overlay size based on the distance between HMD and overlay
         if (is_newly_visible)
         {
-            vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-            vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
-
-            if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+            //Use fixed size when using primary dashboard overlay fallback
+            if (ovrl_handle_primary_dashboard == m_OvrlHandleCurrentUITarget)
             {
-                Matrix4 mat_overlay(matrix);
-                Matrix4 mat_hmd = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
-                float distance = mat_overlay.getTranslation().distance(mat_hmd.getTranslation());
-
-                m_Width = 0.66f + (0.5f * distance);
+                m_Width = 1.2f;
                 vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle_floating_ui, m_Width);
+            }
+            else
+            {
+                vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+                vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+                if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+                {
+                    Matrix4 mat_overlay(matrix);
+                    Matrix4 mat_hmd = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+                    float distance = mat_overlay.getTranslation().distance(mat_hmd.getTranslation());
+
+                    m_Width = 0.66f + (0.5f * distance);
+                    vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle_floating_ui, m_Width);
+                }
             }
         }
 
