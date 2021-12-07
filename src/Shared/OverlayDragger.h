@@ -25,6 +25,7 @@ class OverlayDragger
         bool m_AbsoluteModeActive;              //Absolute mode forces the overlay to stay centered on the controller tip + offset
         float m_AbsoluteModeOffsetForward;
 
+        Matrix4 m_DashboardMatLast;
         float m_DashboardHMD_Y;                 //The HMDs y-position when the dashboard was activated. Used for dashboard-relative positioning
 
         void DragStartBase(bool is_gesture_drag = false);

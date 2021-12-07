@@ -335,30 +335,36 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin)
         }
         case ovrl_origin_dashboard:
         {
-            //This code is prone to break when Valve changes the entire dashboard once again
-            vr::VROverlayHandle_t system_dashboard;
-            vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
-
-            if (system_dashboard != vr::k_ulOverlayHandleInvalid)
+            //Update dashboard transform if it's visible
+            if (vr::VROverlay()->IsDashboardVisible())
             {
-                vr::HmdMatrix34_t matrix_overlay_system;
+                //This code is prone to break when Valve changes the entire dashboard once again
+                vr::VROverlayHandle_t system_dashboard;
+                vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
 
-                vr::HmdVector2_t overlay_system_size;
-                vr::VROverlay()->GetOverlayMouseScale(system_dashboard, &overlay_system_size); //Coordinate size should be mouse scale
-
-                vr::VROverlay()->GetTransformForOverlayCoordinates(system_dashboard, universe_origin, { overlay_system_size.v[0]/2.0f, 0.0f }, &matrix_overlay_system);
-                matrix = matrix_overlay_system;
-
-                if (m_DashboardHMD_Y == -100.0f)    //If Desktop+ was started with the dashboard open, the value will still be default, so set it now
+                if (system_dashboard != vr::k_ulOverlayHandleInvalid)
                 {
-                    UpdateDashboardHMD_Y();
-                }
+                    vr::HmdMatrix34_t matrix_overlay_system;
 
-                Vector3 pos_offset = matrix.getTranslation();
-                pos_offset.y = m_DashboardHMD_Y;
-                pos_offset.y -= 0.44f;              //Move 0.44m down for better dashboard overlay default pos (needs to fit Floating UI though)
-                matrix.setTranslation(pos_offset);
+                    vr::HmdVector2_t overlay_system_size;
+                    vr::VROverlay()->GetOverlayMouseScale(system_dashboard, &overlay_system_size); //Coordinate size should be mouse scale
+
+                    vr::VROverlay()->GetTransformForOverlayCoordinates(system_dashboard, universe_origin, { overlay_system_size.v[0]/2.0f, 0.0f }, &matrix_overlay_system);
+                    m_DashboardMatLast = matrix_overlay_system;
+
+                    if (m_DashboardHMD_Y == -100.0f)    //If Desktop+ was started with the dashboard open, the value will still be default, so set it now
+                    {
+                        UpdateDashboardHMD_Y();
+                    }
+                }
             }
+
+            matrix = m_DashboardMatLast;
+
+            Vector3 pos_offset = matrix.getTranslation();
+            pos_offset.y = m_DashboardHMD_Y;
+            pos_offset.y -= 0.44f;              //Move 0.44m down for better dashboard overlay default pos (needs to fit Floating UI though)
+            matrix.setTranslation(pos_offset);
 
             break;
         }
