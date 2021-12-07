@@ -5216,7 +5216,7 @@ void OutputManager::DetachedTransformReset(unsigned int overlay_id_ref)
     const Overlay& overlay_ref = OverlayManager::Get().GetOverlay(overlay_id_ref);
     vr::VROverlayHandle_t ovrl_handle_ref = overlay_ref.GetHandle(); //Results in vr::k_ulOverlayHandleInvalid for k_ulOverlayID_None
 
-    if (ovrl_handle_ref == vr::k_ulOverlayHandleInvalid)
+    if ( (ovrl_handle_ref == vr::k_ulOverlayHandleInvalid) && (overlay_origin < ovrl_origin_left_hand) )
     {
         const Overlay& overlay_dashboard = OverlayManager::Get().GetPrimaryDashboardOverlay();
 
