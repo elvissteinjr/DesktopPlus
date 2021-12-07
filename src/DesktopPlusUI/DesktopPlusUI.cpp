@@ -91,6 +91,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         if (ui_manager.InitOverlay() != vr::VRInitError_None)
         {
             ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+
+            //Try starting in desktop mode instead
+            if (!desktop_mode)
+            {
+                ui_manager.Restart(true);
+            }
+
             return 2;
         }
     }
