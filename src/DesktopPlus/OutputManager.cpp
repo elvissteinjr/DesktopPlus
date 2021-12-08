@@ -4037,6 +4037,15 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 ResetMouseLastLaserPointerPos();
                 ApplySettingMouseInput();
 
+                //If it's a WinRT window capture, also check for window management stuff that would've happened on overlay focus enter otherwise
+                if ( (overlay_current.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) )
+                {
+                    if (ConfigManager::GetValue(configid_bool_windows_winrt_auto_focus))
+                    {
+                        WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], &m_InputSim);
+                    }
+                }
+
                 break;  //Click to restore shouldn't generate a mouse click
             }
 
