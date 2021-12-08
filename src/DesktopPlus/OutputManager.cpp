@@ -5031,8 +5031,9 @@ void OutputManager::ApplySettingMouseInput()
         ConfigManager::SetValue(configid_int_state_mouse_dbl_click_assist_duration_ms, ConfigManager::GetValue(configid_int_input_mouse_dbl_click_assist_duration_ms));
     }
 
-    bool drag_mode_enabled   = ConfigManager::GetValue(configid_bool_state_overlay_dragmode);
-    bool select_mode_enabled = ConfigManager::GetValue(configid_bool_state_overlay_selectmode);
+    const bool drag_mode_enabled   = ConfigManager::GetValue(configid_bool_state_overlay_dragmode);
+    const bool select_mode_enabled = ConfigManager::GetValue(configid_bool_state_overlay_selectmode);
+    const bool drag_or_select_mode_enabled = ((drag_mode_enabled) || (select_mode_enabled));
     //Always applies to all overlays
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
@@ -5043,10 +5044,10 @@ void OutputManager::ApplySettingMouseInput()
         vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
 
         //Set input method (possibly overridden by ApplyInputMethod() right afterwards)
-        if (ConfigManager::GetValue(configid_bool_overlay_input_enabled))
+        if ((ConfigManager::GetValue(configid_bool_overlay_input_enabled) || (drag_or_select_mode_enabled)))
         {
             //Temp drag needs every input-enabled overlay to have smooth scroll
-            if ( (ConfigManager::GetValue(configid_bool_input_mouse_scroll_smooth)) || (ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) )
+            if ( (ConfigManager::GetValue(configid_bool_input_mouse_scroll_smooth)) || (ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) || (drag_mode_enabled) )
             {
                 vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, false);
                 vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRSmoothScrollEvents,   true);
