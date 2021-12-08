@@ -62,6 +62,7 @@ enum ConfigID_Bool
     configid_bool_input_global_hmd_pointer,
     configid_bool_input_mouse_render_cursor,
     configid_bool_input_mouse_render_intersection_blob,
+    configid_bool_input_mouse_scroll_smooth,
     configid_bool_input_mouse_hmd_pointer_override,
     configid_bool_input_keyboard_cluster_function_enabled,
     configid_bool_input_keyboard_cluster_navigation_enabled,

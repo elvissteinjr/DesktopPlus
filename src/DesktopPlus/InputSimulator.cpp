@@ -4,8 +4,6 @@
 #include "OutputManager.h"
 #include "Util.h"
 
-//TODO Elevated forwarding is missing!
-
 enum KeyboardWin32KeystateFlags
 {
     kbd_w32keystate_flag_shift_down       = 1 << 0,

@@ -1319,6 +1319,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                         break;
                     }
+                    case configid_bool_input_mouse_scroll_smooth:
+                    {
+                        ApplySettingMouseInput();
+                        break;
+                    }
                     case configid_bool_input_laser_pointer_block_input:
                     {
                         //Set SteamVR setting to allow global overlay input as we need it for this to work. Messing with user settings is not ideal, but we're not the first to do so
@@ -4129,24 +4134,54 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             break;
         }
         case vr::VREvent_ScrollDiscrete:
+        case vr::VREvent_ScrollSmooth:
         {
+            //Check deadzone
+            const float xdelta_abs = fabs(vr_event.data.scroll.xdelta);
+            const float ydelta_abs = fabs(vr_event.data.scroll.ydelta);
+            const bool do_scroll_h = (xdelta_abs > 0.025f);
+            const bool do_scroll_v = (ydelta_abs > 0.025f);
+            
+            //Drag-mode scroll
+            if (m_OverlayDragger.IsDragActive())
+            {
+                //Block drag scroll actions when a temp drag just started to avoid mis-inputs
+                if (::GetTickCount64() <= m_OvrlTempDragStartTick + 250)
+                    break;
+
+                //Additional deadzone
+                if ((xdelta_abs > 0.05f) || (ydelta_abs > 0.05f))
+                {
+                    //Add distance as long as y-delta input is bigger
+                    if (xdelta_abs < ydelta_abs)
+                    {
+                        m_OverlayDragger.DragAddDistance(vr_event.data.scroll.ydelta);
+                    }
+                    else
+                    {
+                        m_OverlayDragger.DragAddWidth(vr_event.data.scroll.xdelta * -0.25f);
+                    }
+                }
+
+                break;
+            }
+
+            //Overlay scrolls
             if ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) || 
                  (overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui) )
             {
                 break;
             }
 
-            if (vr_event.data.scroll.xdelta != 0.0f) //This doesn't seem to be ever sent by SteamVR
-            {
-                m_InputSim.MouseWheelHorizontal(vr_event.data.scroll.xdelta);
-            }
-
-            if (vr_event.data.scroll.ydelta != 0.0f)
+            //Overlay drag-scroll window-title-pull creation... thingy
+            if (do_scroll_v)
             {
                 bool is_desktop_overlay = (  (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) ||
                                             ((data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == 0)) );
 
-                if ( (is_desktop_overlay) && (!m_OverlayDragger.IsDragActive()) && (m_MouseLeftDownOverlayID == overlay_current.GetID()) && (vr_event.data.scroll.ydelta <= -0.9f) )
+                const float delta_trigger_min = (ConfigManager::GetValue(configid_bool_input_mouse_scroll_smooth)) ? -0.16f : 0.9f;
+                
+                if ( (is_desktop_overlay) && (m_MouseLeftDownOverlayID == overlay_current.GetID()) && (vr_event.data.scroll.ydelta <= delta_trigger_min) )
                 {
                     HWND current_window = ::GetForegroundWindow();
 
@@ -4197,36 +4232,17 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                     }
                 }
 
+            }
+
+            //Normal scrolling
+            if (do_scroll_v)
+            {
                 m_InputSim.MouseWheelVertical(vr_event.data.scroll.ydelta);
             }
 
-            break;
-        }
-        case vr::VREvent_ScrollSmooth:
-        {
-            //Smooth scrolls are only used for dragging mode
-            if (m_OverlayDragger.IsDragActive())
+            if (do_scroll_h)
             {
-                //Block drag scroll actions when a temp drag just started to avoid mis-inputs
-                if (::GetTickCount64() <= m_OvrlTempDragStartTick + 250)
-                    break;
-
-                float xdelta_abs = fabs(vr_event.data.scroll.xdelta);
-                float ydelta_abs = fabs(vr_event.data.scroll.ydelta);
-
-                //Deadzone
-                if ((xdelta_abs > 0.05f) || (ydelta_abs > 0.05f))
-                {
-                    //Add distance as long as y-delta input is bigger
-                    if (xdelta_abs < ydelta_abs)
-                    {
-                        m_OverlayDragger.DragAddDistance(vr_event.data.scroll.ydelta);
-                    }
-                    else
-                    {
-                        m_OverlayDragger.DragAddWidth(vr_event.data.scroll.xdelta * -0.25f);
-                    }
-                }
+                m_InputSim.MouseWheelHorizontal(-vr_event.data.scroll.xdelta);
             }
 
             break;
@@ -5028,7 +5044,8 @@ void OutputManager::ApplySettingMouseInput()
         //Set input method (possibly overridden by ApplyInputMethod() right afterwards)
         if (ConfigManager::GetValue(configid_bool_overlay_input_enabled))
         {
-            if (ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) //Temp drag needs every input-enabled overlay to have smooth scroll
+            //Temp drag needs every input-enabled overlay to have smooth scroll
+            if ( (ConfigManager::GetValue(configid_bool_input_mouse_scroll_smooth)) || (ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) )
             {
                 vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, false);
                 vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRSmoothScrollEvents,   true);
