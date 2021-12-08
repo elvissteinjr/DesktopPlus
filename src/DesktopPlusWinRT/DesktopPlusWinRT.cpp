@@ -86,15 +86,10 @@ bool DPWinRT_Internal_StartCapture(vr::VROverlayHandle_t overlay_handle, const D
     //Create new thread if no existing one was found
     g_Threads.push_back(data);
     g_Threads.back().Overlays.push_back(overlay_data);
+    g_Threads.back().IsCursorEnabledInitial = g_IsCursorEnabled;
 
     //Thread may run before CreateThread() returns, but the thread will have to wait on the mutex so it's fine
     g_Threads.back().ThreadHandle = ::CreateThread(nullptr, 0, WinRTCaptureThreadEntry, &g_Threads.back(), 0, &g_Threads.back().ThreadID);
-
-    //If the cursor is disabled, send a message to disable it right away (non-default state)
-    if (!g_IsCursorEnabled)
-    {
-        ::PostThreadMessage(g_Threads.back().ThreadID, WM_DPLUSWINRT_ENABLE_CURSOR, g_IsCursorEnabled, 0);
-    }
 
     return true;
 }
@@ -513,6 +508,9 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
                     capture_manager->StartCaptureFromMonitorHandle(nullptr);
                 }
             }
+
+            //Set initial cursor enabled state
+            capture_manager->IsCursorEnabled(data.IsCursorEnabledInitial);
         }
 
         //Ideally, capabilities are checked by before creating the thread, but if not and no capture starts, there will just be an idling thread until StopCapture is called
