@@ -1290,9 +1290,20 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
                     case configid_bool_overlay_input_enabled:
                     case configid_bool_input_mouse_render_intersection_blob:
-                    case configid_bool_input_mouse_hmd_pointer_override:
                     {
                         ApplySettingMouseInput();
+                        break;
+                    }
+                    case configid_bool_input_mouse_allow_pointer_override:
+                    {
+                        //Reset Pointer override
+                        if (m_MouseIgnoreMoveEvent)
+                        {
+                            m_MouseIgnoreMoveEvent = false;
+
+                            ResetMouseLastLaserPointerPos();
+                            ApplySettingMouseInput();
+                        }
                         break;
                     }
                     case configid_bool_interface_dim_ui:
@@ -1863,12 +1874,6 @@ void OutputManager::ShowOverlay(unsigned int id)
         m_MouseIgnoreMoveEvent = false;
 
         WindowManager::Get().SetOverlayActive(true);
-    }
-
-    if ( (ConfigManager::GetValue(configid_bool_overlay_input_enabled)) && (ConfigManager::GetValue(configid_bool_input_mouse_hmd_pointer_override)) &&
-        (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) && (!ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) )
-    {
-        vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
     }
 
     m_OvrlActiveCount++;
@@ -3807,8 +3812,6 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
     const Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
     const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
-    bool device_is_hmd = ((ConfigManager::Get().GetPrimaryLaserPointerDevice() == vr::k_unTrackedDeviceIndex_Hmd) || (vr_event.trackedDeviceIndex == vr::k_unTrackedDeviceIndex_Hmd));
-
     switch (vr_event.eventType)
     {
         case vr::VREvent_MouseMove:
@@ -3927,7 +3930,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             }
 
             //Check coordinates if HMDPointerOverride is enabled
-            if ((ConfigManager::GetValue(configid_bool_input_mouse_hmd_pointer_override)) && (device_is_hmd))
+            if (ConfigManager::GetValue(configid_bool_input_mouse_allow_pointer_override))
             {
                 POINT pt;
                 ::GetCursorPos(&pt);
@@ -4027,7 +4030,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 break;
             }
 
-            if (m_MouseIgnoreMoveEvent) //This can only be true if IgnoreHMDPointer enabled
+            if (m_MouseIgnoreMoveEvent) //This can only be true if AllowPointerOverride enabled
             {
                 m_MouseIgnoreMoveEvent = false;
 
@@ -4998,8 +5001,6 @@ void OutputManager::ApplySettingInputMode()
             {
                 vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
             }
-
-            m_MouseIgnoreMoveEvent = false;
         }
         else
         {
