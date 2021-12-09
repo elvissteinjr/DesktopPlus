@@ -8,6 +8,7 @@
 #include "TranslationManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
+#include "DesktopPlusWinRT.h"
 
 WindowSettingsNew::WindowSettingsNew() :
     m_PageStackPos(0),
@@ -461,6 +462,7 @@ void WindowSettingsNew::UpdatePageMain()
         tstr_SettingsCatProfiles,
         tstr_SettingsCatActions,
         tstr_SettingsCatKeyboard,
+        tstr_SettingsCatMouse,
         tstr_SettingsCatLaserPointer,
         tstr_SettingsCatWindowOverlays,
         tstr_SettingsCatVersionInfo,
@@ -674,6 +676,22 @@ void WindowSettingsNew::UpdatePageMainCatProfiles()
 
 void WindowSettingsNew::UpdatePageMainCatInput()
 {
+    static bool is_any_gc_overlay_active = false;
+
+    if (m_PageAppearing == wndsettings_page_main)
+    {
+        //Check if any Graphics Capture overlays are active
+        is_any_gc_overlay_active = false;
+        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+        {
+            if (OverlayManager::Get().GetConfigData(i).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
+            {
+                is_any_gc_overlay_active = true;
+                break;
+            }
+        }
+    }
+
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
     //Keyboard
@@ -724,6 +742,83 @@ void WindowSettingsNew::UpdatePageMainCatInput()
         ImGui::NextColumn();
 
         ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsKeyboardKeyRepeat), &ConfigManager::GetRef(configid_bool_input_keyboard_key_repeat));
+
+        ImGui::Columns(1);
+    }
+
+    //Mouse
+    {
+        ImGui::Spacing();
+        m_ScrollMainCatPos[wndsettings_cat_mouse] = ImGui::GetCursorPosY();
+
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatMouse)); 
+
+        ImGui::Indent();
+
+        bool& render_cursor = ConfigManager::Get().GetRef(configid_bool_input_mouse_render_cursor);
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsMouseShowCursor), &render_cursor))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_input_mouse_render_cursor), render_cursor);
+        }
+
+        if ( (!render_cursor) && (is_any_gc_overlay_active) )
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsMouseShowCursorGCActiveWarning), "(!)");
+        }
+        else if (!DPWinRT_IsCaptureCursorEnabledPropertySupported())
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsMouseShowCursorGCUnsupported), "(!)");
+        }
+
+        bool& scroll_smooth = ConfigManager::GetRef(configid_bool_input_mouse_scroll_smooth);
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsMouseScrollSmooth), &scroll_smooth))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_mouse_scroll_smooth, scroll_smooth);
+        }
+
+        bool& pointer_override = ConfigManager::Get().GetRef(configid_bool_input_mouse_allow_pointer_override);
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsMouseAllowLaserPointerOverride), &pointer_override))
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_input_mouse_allow_pointer_override), pointer_override);
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_SettingsMouseAllowLaserPointerOverrideTip));
+
+        ImGui::Unindent();
+
+        //Double-Click Assistant
+        ImGui::Columns(2, "ColumnMouse", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsMouseDoubleClickAssist)); 
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_SettingsMouseDoubleClickAssistTip));
+
+        ImGui::NextColumn();
+
+        //The way mapping max + 1 == -1 value into the slider is done is a bit convoluted, but still works
+        int& assist_duration = ConfigManager::Get().GetRef(configid_int_input_mouse_dbl_click_assist_duration_ms);
+        const int assist_duration_max = 3000; //The "Auto" wrapping makes this the absolute maximum value even with manual input, but longer than 3 seconds is questionable either way
+        int assist_duration_ui = (assist_duration == -1) ? assist_duration_max + 1 : assist_duration;
+
+        const char* text_alt_assist = nullptr;
+        if (assist_duration <= 0)
+        {
+            text_alt_assist = TranslationManager::GetString((assist_duration == -1) ? tstr_SettingsMouseDoubleClickAssistTipValueAuto : tstr_SettingsMouseDoubleClickAssistTipValueOff);
+        }
+
+        if (ImGui::SliderWithButtonsInt("DBLClickAssist", assist_duration_ui, 25, 5, 0, assist_duration_max + 1, (text_alt_assist != nullptr) ? "" : "%d ms", 0, nullptr, text_alt_assist))
+        {
+            assist_duration = clamp(assist_duration_ui, 0, assist_duration_max + 1);
+
+            if (assist_duration_ui > assist_duration_max)
+                assist_duration = -1;
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_mouse_dbl_click_assist_duration_ms), assist_duration);
+        }
 
         ImGui::Columns(1);
     }

@@ -18,6 +18,7 @@ enum WindowSettingsMainCategory
     wndsettings_cat_profiles,
     wndsettings_cat_actions,
     wndsettings_cat_keyboard,
+    wndsettings_cat_mouse,
     wndsettings_cat_laser_pointer,
     wndsettings_cat_window_overlays,
     wndsettings_cat_version_info,
