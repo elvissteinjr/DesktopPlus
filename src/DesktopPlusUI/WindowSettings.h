@@ -28,7 +28,7 @@ enum WindowSettingsMainCategory
     wndsettings_cat_MAX
 };
 
-class WindowSettingsNew : public FloatingWindow
+class WindowSettings : public FloatingWindow
 {
     private:
         std::vector<WindowSettingsPage> m_PageStack;
@@ -83,7 +83,7 @@ class WindowSettingsNew : public FloatingWindow
         void SelectableWarning(const char* selectable_id, const char* popup_id, const char* text, bool show_warning_prefix = true, const ImVec4* text_color = nullptr);
 
     public:
-        WindowSettingsNew();
+        WindowSettings();
         virtual void Hide(bool skip_fade = false);
         virtual void ResetTransform();
         virtual vr::VROverlayHandle_t GetOverlayHandle() const;

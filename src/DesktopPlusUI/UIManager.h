@@ -67,7 +67,7 @@ class UIManager
         VRKeyboard m_VRKeyboard;
         AuxUI m_AuxUI;
         WindowOverlayBar m_WindowOverlayBar;
-        WindowSettingsNew m_WindowSettingsNew;
+        WindowSettings m_WindowSettings;
         WindowOverlayProperties m_WindowOverlayProperties;
         WindowPerformance m_WindowPerformance;
         WindowSettingsActionEdit m_WindowSettingsActionEdit;
@@ -137,7 +137,7 @@ class UIManager
         VRKeyboard& GetVRKeyboard();
         AuxUI& GetAuxUI();
         WindowOverlayBar& GetOverlayBarWindow();
-        WindowSettingsNew& GetSettingsWindow();
+        WindowSettings& GetSettingsWindow();
         WindowOverlayProperties& GetOverlayPropertiesWindow();
         WindowPerformance& GetPerformanceWindow();
         WindowSettingsActionEdit& GetSettingsActionEditWindow();

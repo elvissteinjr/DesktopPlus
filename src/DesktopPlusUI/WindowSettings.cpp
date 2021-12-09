@@ -10,7 +10,7 @@
 #include "Util.h"
 #include "DesktopPlusWinRT.h"
 
-WindowSettingsNew::WindowSettingsNew() :
+WindowSettings::WindowSettings() :
     m_PageStackPos(0),
     m_PageStackPosAnimation(0),
     m_PageAnimationDir(0),
@@ -43,32 +43,32 @@ WindowSettingsNew::WindowSettingsNew() :
     ResetTransform();
 }
 
-void WindowSettingsNew::Hide(bool skip_fade)
+void WindowSettings::Hide(bool skip_fade)
 {
     FloatingWindow::Hide();
 
     ConfigManager::Get().SaveConfigToFile();
 }
 
-void WindowSettingsNew::ResetTransform()
+void WindowSettings::ResetTransform()
 {
     m_Transform.identity();
     m_Transform.rotateY(-15.0f);
     m_Transform.translate_relative(OVERLAY_WIDTH_METERS_DASHBOARD_UI / 3.0f, 0.70f, 0.15f);
 }
 
-vr::VROverlayHandle_t WindowSettingsNew::GetOverlayHandle() const
+vr::VROverlayHandle_t WindowSettings::GetOverlayHandle() const
 {
     return UIManager::Get()->GetOverlayHandleSettings();
 }
 
-void WindowSettingsNew::ClearCachedTranslationStrings()
+void WindowSettings::ClearCachedTranslationStrings()
 {
     m_WarningTextOverlayError = "";
     m_WarningTextWinRTError = "";
 }
 
-void WindowSettingsNew::WindowUpdate()
+void WindowSettings::WindowUpdate()
 {
     ImGui::SetWindowSize(m_Size);
 
@@ -173,7 +173,7 @@ void WindowSettingsNew::WindowUpdate()
     ImGui::PopClipRect();
 }
 
-void WindowSettingsNew::UpdateWarnings()
+void WindowSettings::UpdateWarnings()
 {
     if (!UIManager::Get()->IsAnyWarningDisplayed())
     {
@@ -453,7 +453,7 @@ void WindowSettingsNew::UpdateWarnings()
     }
 }
 
-void WindowSettingsNew::UpdatePageMain()
+void WindowSettings::UpdatePageMain()
 {
     static int jumpto_item_id = 0;
     const TRMGRStrID jumpto_strings[wndsettings_cat_MAX] = 
@@ -537,7 +537,7 @@ void WindowSettingsNew::UpdatePageMain()
     ImGui::EndChild();
 }
 
-void WindowSettingsNew::UpdatePageMainCatInterface()
+void WindowSettings::UpdatePageMainCatInterface()
 {
     //Interface
     {
@@ -631,7 +631,7 @@ void WindowSettingsNew::UpdatePageMainCatInterface()
     }
 }
 
-void WindowSettingsNew::UpdatePageMainCatActions()
+void WindowSettings::UpdatePageMainCatActions()
 {
     //Actions (strings are not translatable here since this is just temp stuff)
     {
@@ -651,7 +651,7 @@ void WindowSettingsNew::UpdatePageMainCatActions()
     }
 }
 
-void WindowSettingsNew::UpdatePageMainCatProfiles()
+void WindowSettings::UpdatePageMainCatProfiles()
 {
     //Profiles
     {
@@ -674,7 +674,7 @@ void WindowSettingsNew::UpdatePageMainCatProfiles()
     }
 }
 
-void WindowSettingsNew::UpdatePageMainCatInput()
+void WindowSettings::UpdatePageMainCatInput()
 {
     static bool is_any_gc_overlay_active = false;
 
@@ -866,7 +866,7 @@ void WindowSettingsNew::UpdatePageMainCatInput()
     }
 }
 
-void WindowSettingsNew::UpdatePageMainCatWindows()
+void WindowSettings::UpdatePageMainCatWindows()
 {
     //Window Overlays
     {
@@ -958,7 +958,7 @@ void WindowSettingsNew::UpdatePageMainCatWindows()
     }
 }
 
-void WindowSettingsNew::UpdatePageMainCatMisc()
+void WindowSettings::UpdatePageMainCatMisc()
 {
     static bool is_autolaunch_enabled = false;
 
@@ -1155,7 +1155,7 @@ void WindowSettingsNew::UpdatePageMainCatMisc()
     }
 }
 
-void WindowSettingsNew::UpdatePageKeyboardLayout()
+void WindowSettings::UpdatePageKeyboardLayout()
 {
     ImGuiStyle& style = ImGui::GetStyle();
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
@@ -1359,7 +1359,7 @@ void WindowSettingsNew::UpdatePageKeyboardLayout()
     }
 }
 
-void WindowSettingsNew::UpdatePageProfiles()
+void WindowSettings::UpdatePageProfiles()
 {
     ImGuiStyle& style = ImGui::GetStyle();
 
@@ -1610,7 +1610,7 @@ void WindowSettingsNew::UpdatePageProfiles()
     }
 }
 
-void WindowSettingsNew::UpdatePageProfilesOverlaySelect()
+void WindowSettings::UpdatePageProfilesOverlaySelect()
 {
     ImGuiStyle& style = ImGui::GetStyle();
 
@@ -2011,7 +2011,7 @@ void WindowSettingsNew::UpdatePageProfilesOverlaySelect()
     }
 }
 
-void WindowSettingsNew::UpdatePageResetConfirm()
+void WindowSettings::UpdatePageResetConfirm()
 {
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsReset) ); 
     ImGui::Indent();
@@ -2049,19 +2049,19 @@ void WindowSettingsNew::UpdatePageResetConfirm()
     }
 }
 
-void WindowSettingsNew::PageGoForward(WindowSettingsPage new_page)
+void WindowSettings::PageGoForward(WindowSettingsPage new_page)
 {
     m_PageStack.push_back(new_page);
     m_PageStackPos++;
 }
 
-void WindowSettingsNew::PageGoBack()
+void WindowSettings::PageGoBack()
 {
     if (m_PageStackPos != 0)
         m_PageStackPos--;
 }
 
-void WindowSettingsNew::PageGoBackInstantly()
+void WindowSettings::PageGoBackInstantly()
 {
     //Go back while skipping any active animations
     PageGoBack();
@@ -2077,12 +2077,12 @@ void WindowSettingsNew::PageGoBackInstantly()
     m_PageAnimationProgress = 0.0f;
 }
 
-void WindowSettingsNew::PageGoHome()
+void WindowSettings::PageGoHome()
 {
     m_PageStackPos = 0;
 }
 
-void WindowSettingsNew::SelectableWarning(const char* selectable_id, const char* popup_id, const char* text, bool show_warning_prefix, const ImVec4* text_color)
+void WindowSettings::SelectableWarning(const char* selectable_id, const char* popup_id, const char* text, bool show_warning_prefix, const ImVec4* text_color)
 {
     float* selectable_height = ImGui::GetStateStorage()->GetFloatRef(ImGui::GetID(selectable_id), 1.0f);
 

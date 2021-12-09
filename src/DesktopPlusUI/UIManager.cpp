@@ -780,9 +780,9 @@ WindowOverlayBar& UIManager::GetOverlayBarWindow()
     return m_WindowOverlayBar;
 }
 
-WindowSettingsNew& UIManager::GetSettingsWindow()
+WindowSettings& UIManager::GetSettingsWindow()
 {
-    return m_WindowSettingsNew;
+    return m_WindowSettings;
 }
 
 WindowOverlayProperties& UIManager::GetOverlayPropertiesWindow()
@@ -1097,7 +1097,7 @@ void UIManager::OnTranslationChanged()
     TextureManager::Get().ReloadAllTexturesLater();
 
     m_NotificationIcon.RefreshPopupMenu();
-    m_WindowSettingsNew.ClearCachedTranslationStrings();
+    m_WindowSettings.ClearCachedTranslationStrings();
     m_WindowOverlayProperties.SetActiveOverlayID(m_WindowOverlayProperties.GetActiveOverlayID(), true);
 
     RepeatFrame();
@@ -1523,7 +1523,7 @@ void UIManager::UpdateOverlayDrag()
             //Store changed transform to the previously dragged overlay handle
             if (drag_overlay_handle == m_OvrlHandleSettings)
             {
-                m_WindowSettingsNew.SetTransform(matrix_relative_offset);
+                m_WindowSettings.SetTransform(matrix_relative_offset);
             }
             else if (drag_overlay_handle == m_OvrlHandleOverlayProperties)
             {
@@ -1582,7 +1582,7 @@ void UIManager::UpdateOverlayDrag()
             //Store changed transform to the previously dragged overlay handle and update width/size config value
             if (drag_overlay_handle == m_OvrlHandleSettings)
             {
-                m_WindowSettingsNew.SetTransform(matrix_relative_offset);
+                m_WindowSettings.SetTransform(matrix_relative_offset);
             }
             else if (drag_overlay_handle == m_OvrlHandleOverlayProperties)
             {
