@@ -29,6 +29,101 @@ OverlayManager& OverlayManager::Get()
 
 }
 
+
+Matrix4 OverlayManager::GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handle, unsigned int id, bool add_bottom_offset) const
+{
+    //The gist is that GetTransformForOverlayCoordinates() is fundamentally broken if the overlay has non-default properties
+    //UV min/max not 0.0/1.0? You still get coordinates as if they were
+    //Pixel aspect not 1.0? That function doesn't care
+    //Also doesn't care about curvature, but that's not a huge issue
+    const OverlayConfigData& data = GetConfigData(id);
+
+    int ovrl_pixel_width = 1, ovrl_pixel_height = 1;
+
+    if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+    {
+        #ifdef DPLUS_UI
+            UIManager::Get()->GetDesktopOverlayPixelSize(ovrl_pixel_width, ovrl_pixel_height);
+        #else
+            if (OutputManager* outmgr = OutputManager::Get())
+            {
+                ovrl_pixel_width  = outmgr->GetDesktopWidth();
+                ovrl_pixel_height = outmgr->GetDesktopHeight();
+            }
+        #endif
+    }
+    else
+    {
+        vr::HmdVector2_t ovrl_mouse_scale;
+        //Use mouse scale of overlay if possible as it can sometimes differ from the config size (and GetOverlayTextureSize() currently leaks GPU memory, oops)
+        if (vr::VROverlay()->GetOverlayMouseScale(ovrl_handle, &ovrl_mouse_scale) == vr::VROverlayError_None)
+        {
+            ovrl_pixel_width  = (int)ovrl_mouse_scale.v[0];
+            ovrl_pixel_height = (int)ovrl_mouse_scale.v[1];
+        }
+        else
+        {
+            ovrl_pixel_width  = data.ConfigInt[configid_int_overlay_state_content_width];
+            ovrl_pixel_height = data.ConfigInt[configid_int_overlay_state_content_height];
+        }
+    }
+
+    //Y-coordinate from this function is pretty much unpredictable if not pixel_height / 2
+    vr::HmdMatrix34_t matrix = {0};
+    vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle, vr::TrackingUniverseStanding, { (float)ovrl_pixel_width/2.0f, (float)ovrl_pixel_height/2.0f }, &matrix);
+
+    if (add_bottom_offset)
+    {
+        //Get texture bounds
+        vr::VRTextureBounds_t bounds;
+        vr::VROverlay()->GetOverlayTextureBounds(ovrl_handle, &bounds);
+
+        //Get 3D height factor
+        float height_factor_3d = 1.0f;
+
+        if (data.ConfigBool[configid_bool_overlay_3D_enabled])
+        {
+            if ((data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) || (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_ou))
+            {
+                //Additionally check if the overlay is actually displaying 3D content right now (can be not the case when error texture is shown)
+                uint32_t ovrl_flags = 0;
+                vr::VROverlay()->GetOverlayFlags(ovrl_handle, &ovrl_flags);
+
+                if ((ovrl_flags & vr::VROverlayFlags_SideBySide_Parallel) || (ovrl_flags & vr::VROverlayFlags_SideBySide_Crossed))
+                {
+                    height_factor_3d = (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) ? 2.0f : 0.5f;
+                }
+            }
+        }
+
+        //Attempt to calculate the correct offset to bottom, taking in account all the things GetTransformForOverlayCoordinates() does not
+        float width = data.ConfigFloat[configid_float_overlay_width];
+        float uv_width  = bounds.uMax - bounds.uMin;
+        float uv_height = bounds.vMax - bounds.vMin;
+        float cropped_width  = ovrl_pixel_width  * uv_width;
+        float cropped_height = ovrl_pixel_height * uv_height * height_factor_3d;
+        float aspect_ratio_orig = (float)ovrl_pixel_width / ovrl_pixel_height;
+        float aspect_ratio_new = cropped_height / cropped_width;
+        float height = (aspect_ratio_orig * width);
+        float offset_to_bottom =  -( (aspect_ratio_new * width) - (aspect_ratio_orig * width) ) / 2.0f;
+        offset_to_bottom -= height / 2.0f;
+
+        //When Performance Monitor, apply additional offset of the unused overlay space
+        #ifdef DPLUS_UI
+            if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
+            {
+                float height_new = aspect_ratio_new * width; //height uses aspect_ratio_orig, so calculate new height
+                offset_to_bottom += ( (cropped_height - UIManager::Get()->GetPerformanceWindow().GetSize().y) ) * ( (height_new / cropped_height) ) / 2.0f;
+            }
+        #endif
+
+        //Move to bottom
+        TransformOpenVR34TranslateRelative(matrix, 0.0f, offset_to_bottom, 0.0f);
+    }
+
+    return matrix;
+}
+
 unsigned int OverlayManager::DuplicateOverlay(const OverlayConfigData& data)
 {
     unsigned int id = (unsigned int)m_OverlayConfigData.size();
@@ -196,6 +291,14 @@ OverlayConfigData& OverlayManager::GetConfigData(unsigned int id)
         return m_OverlayConfigDataNull; //Return null overlay data when out of range
 }
 
+const OverlayConfigData& OverlayManager::GetConfigData(unsigned int id) const
+{
+    if (id < m_OverlayConfigData.size())
+        return m_OverlayConfigData[id];
+    else
+        return m_OverlayConfigDataNull; //Return null overlay data when out of range
+}
+
 OverlayConfigData& OverlayManager::GetCurrentConfigData()
 {
     return GetConfigData(m_CurrentOverlayID);
@@ -211,7 +314,7 @@ void OverlayManager::SetCurrentOverlayID(unsigned int id)
     m_CurrentOverlayID = id;
 }
 
-vr::VROverlayHandle_t OverlayManager::FindOverlayHandle(unsigned int id)
+vr::VROverlayHandle_t OverlayManager::FindOverlayHandle(unsigned int id) const
 {
     vr::VROverlayHandle_t ret = vr::k_ulOverlayHandleInvalid;
     std::string key = "elvissteinjr.DesktopPlus" + std::to_string(id);
@@ -561,6 +664,48 @@ void OverlayManager::SetOverlayNamesAutoForWindow(const WindowInfo& window_info)
             SetOverlayNameAuto(i, &window_info);
         }
     }
+}
+
+Matrix4 OverlayManager::GetOverlayMiddleTransform(unsigned int id, vr::VROverlayHandle_t ovrl_handle) const
+{
+    //Get handle if none was given
+    if (ovrl_handle == vr::k_ulOverlayHandleInvalid)
+    {
+        #ifdef DPLUS_UI
+            ovrl_handle = FindOverlayHandle(id);
+        #else
+            ovrl_handle = GetOverlay(id).GetHandle();
+        #endif
+
+        //Couldn't find overlay, return identity matrix
+        if (ovrl_handle == vr::k_ulOverlayHandleInvalid)
+        {
+            return Matrix4();
+        }
+    }
+
+    return GetOverlayTransformBase(ovrl_handle, id, false);
+}
+
+Matrix4 OverlayManager::GetOverlayCenterBottomTransform(unsigned int id, vr::VROverlayHandle_t ovrl_handle) const
+{
+    //Get handle if none was given
+    if (ovrl_handle == vr::k_ulOverlayHandleInvalid)
+    {
+        #ifdef DPLUS_UI
+            ovrl_handle = FindOverlayHandle(id);
+        #else
+            ovrl_handle = GetOverlay(id).GetHandle();
+        #endif
+
+        //Couldn't find overlay, return identity matrix
+        if (ovrl_handle == vr::k_ulOverlayHandleInvalid)
+        {
+            return Matrix4();
+        }
+    }
+
+    return GetOverlayTransformBase(ovrl_handle, id, true);
 }
 
 #endif //ifdef DPLUS_UI

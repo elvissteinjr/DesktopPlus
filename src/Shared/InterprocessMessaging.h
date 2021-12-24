@@ -38,7 +38,6 @@ enum IPCActionID
     ipcact_action_do,                 //Sent by UI application to do an Action. lParam is Action ID
     ipcact_action_start,              //Sent by UI application to start an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
     ipcact_action_stop,               //Sent by UI application to stop an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
-    ipcact_vrkeyboard_closed,         //Sent by dashboard application when VREvent_Closed occured and the keyboard is open for the UI application. No data in lParam
     ipcact_overlay_profile_load,      //Sent by UI application when loading a profile. lParam is IPCActionOverlayProfileLoadArg + profile overlay ID (low/high word order). -2 ID is default.
                                       //Profile name is stored in configid_str_state_profile_name_load beforehand. ipcactv_ovrl_profile_multi_add queues profile IDs until called with -1
     ipcact_crop_to_active_window,     //Sent by UI application to adjust crop values to the active window. No data in lParam
@@ -60,7 +59,7 @@ enum IPCActionID
     ipcact_winmanager_focus_changed,  //Sent by dashboard application's WindowManager thread to UI app when the foreground window changed. No data in lParam
     ipcact_sync_config_state,         //Sent by the UI application to request overlay and config state variables after a restart
     ipcact_focus_window,              //Sent by the UI application to focus a window. lParam is HWND
-    ipcact_keyboard_show,             //Sent by dashboard application to show the VR keyboard. lParam is bool (true to show)
+    ipcact_keyboard_show,             //Sent by dashboard application to show the VR keyboard. lParam is assigned overlay ID (-1 to hide, -2 for UI/global)
     ipcact_keyboard_vkey,             //Sent by UI application in response of a VR keyboard press. lParam is IPCKeyboardKeystateFlags + Win32 key code (low/high word order)
     ipcact_keyboard_wchar,            //Sent by UI application in response of a VR keyboard press. lParam is 1 wchar + key down bool (low/high word order)
     ipcact_lpointer_trigger_haptics,  //Sent by UI application to trigger laser pointer haptics (short UI interaction burst). lParam is tracked device index

@@ -52,9 +52,12 @@ void WindowSettings::Hide(bool skip_fade)
 
 void WindowSettings::ResetTransform()
 {
-    m_Transform.identity();
-    m_Transform.rotateY(-15.0f);
-    m_Transform.translate_relative(OVERLAY_WIDTH_METERS_DASHBOARD_UI / 3.0f, 0.70f, 0.15f);
+    FloatingWindow::ResetTransform();
+
+    m_OverlayStateDashboardTab.Transform.rotateY(-15.0f);
+    m_OverlayStateDashboardTab.Transform.translate_relative(OVERLAY_WIDTH_METERS_DASHBOARD_UI / 3.0f, 0.70f, 0.15f);
+
+    m_OverlayStateRoom.Transform = m_OverlayStateDashboardTab.Transform;
 }
 
 vr::VROverlayHandle_t WindowSettings::GetOverlayHandle() const
@@ -718,7 +721,9 @@ void WindowSettings::UpdatePageMainCatInput()
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsKeyboardSize));
         ImGui::NextColumn();
 
-        float& size = ConfigManager::GetRef(configid_float_input_keyboard_detached_size);
+        //Keyboard size setting uses size of currently visible overlay state (usually dashboard tab)
+        WindowKeyboard& window_keyboard = UIManager::Get()->GetVRKeyboard().GetWindow();
+        float& size = window_keyboard.GetOverlayState(window_keyboard.GetOverlayStateCurrentID()).Size;
 
         vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("KeyboardSize") );
         if (ImGui::SliderWithButtonsFloatPercentage("KeyboardSize", size, 5, 1, 50, 200, "%d%%"))
@@ -726,7 +731,7 @@ void WindowSettings::UpdatePageMainCatInput()
             if (size < 0.10f)
                 size = 0.10f;
 
-            UIManager::Get()->GetVRKeyboard().GetWindow().UpdateOverlaySize();
+            UIManager::Get()->GetVRKeyboard().GetWindow().ApplyCurrentOverlayState();
         }
         vr_keyboard.VRKeyboardInputEnd();
 

@@ -38,6 +38,7 @@ class OverlayDragger
 
         Matrix4 GetBaseOffsetMatrix();
         Matrix4 GetBaseOffsetMatrix(OverlayOrigin overlay_origin);
+        void ApplyDashboardScale(Matrix4& matrix);
 
         void DragStart(unsigned int overlay_id);
         void DragStart(vr::VROverlayHandle_t overlay_handle, OverlayOrigin overlay_origin = ovrl_origin_room);

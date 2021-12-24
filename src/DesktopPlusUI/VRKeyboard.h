@@ -77,7 +77,6 @@ class VRKeyboard
         bool m_MouseLeftDownPrevCached;
         bool m_MouseLeftClickedPrevCached;
         bool m_KeyboardHiddenLastFrame;
-        double m_LastAutoHiddenTime;
 
         unsigned char GetModifierFlags() const;
 
@@ -100,8 +99,6 @@ class VRKeyboard
         void SetActionDown(ActionID action_id, bool down);
         bool IsCapsLockToggled() const;
         void ResetState();
-
-        double GetLastAutoHiddenTime() const;
 
         void VRKeyboardInputBegin(const char* str_id);
         void VRKeyboardInputBegin(ImGuiID widget_id);

@@ -400,6 +400,10 @@ bool ConfigManager::LoadConfigFromFile()
         action_order.push_back({ (ActionID)id, visible });
     }
 
+    #ifdef DPLUS_UI
+        LoadConfigPersistentWindowState(config);
+    #endif
+
     m_ConfigInt[configid_int_input_go_home_action_id]                       = config.ReadInt( "Input", "GoHomeButtonActionID", 0);
     m_ConfigInt[configid_int_input_go_back_action_id]                       = config.ReadInt( "Input", "GoBackButtonActionID", 0);
     m_ConfigInt[configid_int_input_shortcut01_action_id]                    = config.ReadInt( "Input", "GlobalShortcut01ActionID", 0);
@@ -434,7 +438,6 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_input_keyboard_cluster_extra_enabled]        = config.ReadBool("Keyboard", "LayoutClusterExtra",      false);
     m_ConfigBool[configid_bool_input_keyboard_sticky_modifiers]             = config.ReadBool("Keyboard", "StickyModifiers",         true);
     m_ConfigBool[configid_bool_input_keyboard_key_repeat]                   = config.ReadBool("Keyboard", "KeyRepeat",               true);
-    m_ConfigFloat[configid_float_input_keyboard_detached_size]              = config.ReadInt( "Keyboard", "KeyboardDetachedSize", 100) / 100.0f;
 
     m_ConfigBool[configid_bool_windows_auto_focus_scene_app_dashboard]      = config.ReadBool("Windows", "AutoFocusSceneAppDashboard", false);
     m_ConfigBool[configid_bool_windows_winrt_auto_focus]                    = config.ReadBool("Windows", "WinRTAutoFocus", true);
@@ -597,8 +600,11 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_state_misc_elevated_mode_active] = IPCManager::IsElevatedModeProcessRunning();
 
     #ifdef DPLUS_UI
+        UIManager::Get()->GetSettingsWindow().ApplyCurrentOverlayState();
+        UIManager::Get()->GetOverlayPropertiesWindow().ApplyCurrentOverlayState();
         UIManager::Get()->GetVRKeyboard().LoadCurrentLayout();
-        UIManager::Get()->GetVRKeyboard().GetWindow().UpdateOverlaySize();
+        UIManager::Get()->GetVRKeyboard().GetWindow().ApplyCurrentOverlayState();
+
         TranslationManager::Get().LoadTranslationFromFile( m_ConfigString[configid_str_interface_language_file].c_str() );
 
         UIManager::Get()->UpdateAnyWarningDisplayedState();
@@ -684,6 +690,96 @@ void ConfigManager::SaveMultiOverlayProfile(Ini& config, std::vector<char>* ovrl
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
+#ifdef DPLUS_UI
+
+void ConfigManager::LoadConfigPersistentWindowState(Ini& config)
+{
+    //Load persistent UI window state (not stored in config variables)
+    FloatingWindow* const windows[]  = { &UIManager::Get()->GetSettingsWindow(), &UIManager::Get()->GetOverlayPropertiesWindow(), &UIManager::Get()->GetVRKeyboard().GetWindow() };
+    const char* const window_names[] = { "WindowSettings", "WindowProperties", "WindowKeyboard" };
+
+    for (size_t i = 0; i < IM_ARRAYSIZE(windows); ++i)
+    {
+        FloatingWindow& window = *windows[i];
+        FloatingWindowOverlayState& ovrl_state_room          = window.GetOverlayState(floating_window_ovrl_state_room);
+        FloatingWindowOverlayState& ovrl_state_dashboard_tab = window.GetOverlayState(floating_window_ovrl_state_dashboard_tab);
+        const std::string key_base = window_names[i];
+        std::string transform_str;
+
+        ovrl_state_room.IsVisible = config.ReadBool(  "Interface",  (key_base + "RoomVisible").c_str(), false);
+        ovrl_state_room.IsPinned  = config.ReadBool(  "Interface",  (key_base + "RoomPinned").c_str(),  false);
+        ovrl_state_room.Size      = config.ReadInt(   "Interface",  (key_base + "RoomSize").c_str(),      100) / 100.0f;
+        transform_str             = config.ReadString("Interface",  (key_base + "RoomTransform").c_str());
+
+        if (!transform_str.empty())
+        {
+            (ovrl_state_room.IsPinned) ? ovrl_state_room.TransformAbs = transform_str : ovrl_state_room.Transform = transform_str;
+        }
+
+        ovrl_state_dashboard_tab.IsVisible = config.ReadBool(  "Interface",  (key_base + "DashboardTabVisible").c_str(), false);
+        ovrl_state_dashboard_tab.IsPinned  = config.ReadBool(  "Interface",  (key_base + "DashboardTabPinned").c_str(),  false);
+        ovrl_state_dashboard_tab.Size      = config.ReadInt(   "Interface",  (key_base + "DashboardTabSize").c_str(),      100) / 100.0f;
+        transform_str                      = config.ReadString("Interface",  (key_base + "DashboardTabTransform").c_str());
+
+        if (!transform_str.empty())
+        {
+            (ovrl_state_dashboard_tab.IsPinned) ? ovrl_state_dashboard_tab.TransformAbs = transform_str : ovrl_state_dashboard_tab.Transform = transform_str;
+        }
+
+        //Show window if it should be visible. For most windows this has no effect, but the keyboard one has overridden Show() for example.
+        if ( ((window.GetOverlayStateCurrentID() == floating_window_ovrl_state_room)          && (ovrl_state_room.IsVisible)) ||
+             ((window.GetOverlayStateCurrentID() == floating_window_ovrl_state_dashboard_tab) && (ovrl_state_dashboard_tab.IsVisible)) )
+        {
+            window.Show();
+        }
+    }
+
+    //Load other specific window state
+    //SetActiveOverlayID() will not be effective if the config load happens before overlays were loaded (so during startup), 
+    //but it is also called again by UIManager::OnInitDone() on the ID set here, so it still works
+    int last_active_overlay_id = config.ReadInt("Interface", "WindowPropertiesLastOverlayID", -1);
+    UIManager::Get()->GetOverlayPropertiesWindow().SetActiveOverlayID((last_active_overlay_id != -1) ? (unsigned int)last_active_overlay_id : k_ulOverlayID_None, true);
+
+    //Only room state's is saved/restored here
+    UIManager::Get()->GetVRKeyboard().GetWindow().SetAssignedOverlayID(config.ReadInt("Interface", "WindowKeyboardLastAssignedOverlayID", -1), floating_window_ovrl_state_room);
+}
+
+void ConfigManager::SaveConfigPersistentWindowState(Ini& config)
+{
+    //Save persistent UI window state (not stored in config variables)
+    FloatingWindow* const windows[]  = { &UIManager::Get()->GetSettingsWindow(), &UIManager::Get()->GetOverlayPropertiesWindow(), &UIManager::Get()->GetVRKeyboard().GetWindow() };
+    const char* const window_names[] = { "WindowSettings", "WindowProperties", "WindowKeyboard" };
+
+    for (size_t i = 0; i < IM_ARRAYSIZE(windows); ++i)
+    {
+        const bool is_keyboard = (i == 2);
+        const FloatingWindowOverlayState& ovrl_state_room          = windows[i]->GetOverlayState(floating_window_ovrl_state_room);
+        const FloatingWindowOverlayState& ovrl_state_dashboard_tab = windows[i]->GetOverlayState(floating_window_ovrl_state_dashboard_tab);
+        std::string key_base = window_names[i];
+
+        const Matrix4& transform_room = (ovrl_state_room.IsPinned) ? ovrl_state_room.TransformAbs : ovrl_state_room.Transform;
+        config.WriteBool(  "Interface",  (key_base + "RoomVisible").c_str(),       ovrl_state_room.IsVisible);
+        config.WriteBool(  "Interface",  (key_base + "RoomPinned").c_str(),        ovrl_state_room.IsPinned);
+        config.WriteInt(   "Interface",  (key_base + "RoomSize").c_str(),      int(ovrl_state_room.Size * 100.0f));
+        config.WriteString("Interface",  (key_base + "RoomTransform").c_str(),     transform_room.toString().c_str());
+
+        const Matrix4& transform_dashboard_tab = (ovrl_state_dashboard_tab.IsPinned) ? ovrl_state_dashboard_tab.TransformAbs : ovrl_state_dashboard_tab.Transform;
+        config.WriteBool(  "Interface",  (key_base + "DashboardTabVisible").c_str(),       ovrl_state_dashboard_tab.IsVisible);
+        config.WriteBool(  "Interface",  (key_base + "DashboardTabPinned").c_str(),        ovrl_state_dashboard_tab.IsPinned);
+        config.WriteInt(   "Interface",  (key_base + "DashboardTabSize").c_str(),      int(ovrl_state_dashboard_tab.Size * 100.0f));
+        config.WriteString("Interface",  (key_base + "DashboardTabTransform").c_str(),     transform_dashboard_tab.toString().c_str());
+    }
+
+    //Store other specific window state
+    unsigned int last_active_overlay_id = UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID();
+    config.WriteInt("Interface", "WindowPropertiesLastOverlayID", (last_active_overlay_id != k_ulOverlayID_None) ? (int)last_active_overlay_id : -1);
+
+    //Only room state's is saved/restored here
+    config.WriteInt("Interface", "WindowKeyboardLastAssignedOverlayID", UIManager::Get()->GetVRKeyboard().GetWindow().GetAssignedOverlayID(floating_window_ovrl_state_room));
+}
+
+#endif //DPLUS_UI
+
 bool ConfigManager::IsUIAccessEnabled()
 {
     std::ifstream file_manifest("DesktopPlus.exe.manifest");
@@ -727,6 +823,8 @@ void ConfigManager::RemoveScaleFromTransform(Matrix4& transform, float* width)
         *width *= scale_x;
 }
 
+#ifdef DPLUS_UI
+
 void ConfigManager::SaveConfigToFile()
 {
     std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
@@ -768,6 +866,8 @@ void ConfigManager::SaveConfigToFile()
         ss << data.action_id << ' ' << data.visible << ";";
     }
 
+    SaveConfigPersistentWindowState(config);
+
     config.WriteString("Interface", "ActionOrder", ss.str().c_str());
 
     config.WriteInt( "Input",  "GoHomeButtonActionID",               m_ConfigInt[configid_int_input_go_home_action_id]);
@@ -804,7 +904,6 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Keyboard", "LayoutClusterExtra",          m_ConfigBool[configid_bool_input_keyboard_cluster_extra_enabled]);
     config.WriteBool("Keyboard", "StickyModifiers",             m_ConfigBool[configid_bool_input_keyboard_sticky_modifiers]);
     config.WriteBool("Keyboard", "KeyRepeat",                   m_ConfigBool[configid_bool_input_keyboard_key_repeat]);
-    config.WriteInt( "Keyboard", "KeyboardDetachedSize",    int(m_ConfigFloat[configid_float_input_keyboard_detached_size] * 100.0f));
 
     config.WriteBool("Windows", "AutoFocusSceneAppDashboard",   m_ConfigBool[configid_bool_windows_auto_focus_scene_app_dashboard]);
     config.WriteBool("Windows", "WinRTAutoFocus",               m_ConfigBool[configid_bool_windows_winrt_auto_focus]);
@@ -884,6 +983,8 @@ void ConfigManager::SaveConfigToFile()
 
     config.Save();
 }
+
+#endif //DPLUS_UI
 
 void ConfigManager::RestoreConfigFromDefault()
 {

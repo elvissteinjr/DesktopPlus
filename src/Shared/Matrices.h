@@ -172,7 +172,7 @@ public:
     const float*      get() const;
     const float*      getTranspose();                        // return transposed matrix
     float			  getDeterminant();
-    vr::HmdMatrix34_t toOpenVR34();
+    vr::HmdMatrix34_t toOpenVR34() const;
     std::string       toString() const;
 
 

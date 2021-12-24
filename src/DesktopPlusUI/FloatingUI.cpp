@@ -200,75 +200,7 @@ void FloatingUI::UpdateUITargetState()
     //If there is an active hover target overlay, position the floating UI
     if (m_OvrlHandleCurrentUITarget != vr::k_ulOverlayHandleInvalid)
     {
-        //Okay, this is a load of poop to be honest and took a while to get right
-        //The gist is that GetTransformForOverlayCoordinates() is fundamentally broken if the overlay has non-default properties
-        //UV min/max not 0.0/1.0? You still get coordinates as if they were
-        //Pixel aspect not 1.0? That function doesn't care
-        //Also doesn't care about curvature, but that's not a huge issue
-
-        vr::HmdMatrix34_t matrix;
-        vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
-        vr::VRTextureBounds_t bounds;
-
-        vr::VROverlay()->GetOverlayTextureBounds(m_OvrlHandleCurrentUITarget, &bounds);
-
-
-        const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
-
-        int ovrl_pixel_width, ovrl_pixel_height;
-
-        if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
-        {
-            ui_manager.GetDesktopOverlayPixelSize(ovrl_pixel_width, ovrl_pixel_height);
-        }
-        else
-        {
-            vr::HmdVector2_t ovrl_mouse_scale;
-            //Use mouse scale of overlay if possible as it can sometimes differ from the config size (and GetOverlayTextureSize() currently leaks GPU memory, oops)
-            if (vr::VROverlay()->GetOverlayMouseScale(m_OvrlHandleCurrentUITarget, &ovrl_mouse_scale) == vr::VROverlayError_None)
-            {
-                ovrl_pixel_width  = (int)ovrl_mouse_scale.v[0];
-                ovrl_pixel_height = (int)ovrl_mouse_scale.v[1];
-            }
-            else
-            {
-                ovrl_pixel_width  = data.ConfigInt[configid_int_overlay_state_content_width];
-                ovrl_pixel_height = data.ConfigInt[configid_int_overlay_state_content_height];
-            }
-        }
-
-        //Get 3D height factor
-        float height_factor_3d = 1.0f;
-
-        if (data.ConfigBool[configid_bool_overlay_3D_enabled])
-        {
-            if ((data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) || (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_ou))
-            {
-                //Additionally check if the overlay is actually displaying 3D content right now (can be not the case when error texture is shown)
-                uint32_t ovrl_flags = 0;
-                vr::VROverlay()->GetOverlayFlags(m_OvrlHandleCurrentUITarget, &ovrl_flags);
-
-                if ((ovrl_flags & vr::VROverlayFlags_SideBySide_Parallel) || (ovrl_flags & vr::VROverlayFlags_SideBySide_Crossed))
-                {
-                    height_factor_3d = (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) ? 2.0f : 0.5f;
-                }
-            }
-        }
-
-        //Attempt to calculate the correct offset to bottom, taking in account all the things GetTransformForOverlayCoordinates() does not
-        float width = data.ConfigFloat[configid_float_overlay_width];
-        float uv_width  = bounds.uMax - bounds.uMin;
-        float uv_height = bounds.vMax - bounds.vMin;
-        float cropped_width  = ovrl_pixel_width  * uv_width;
-        float cropped_height = ovrl_pixel_height * uv_height * height_factor_3d;
-        float aspect_ratio_orig = (float)ovrl_pixel_width / ovrl_pixel_height;
-        float aspect_ratio_new = cropped_height / cropped_width;
-        float height = (aspect_ratio_orig * width);
-        float offset_to_bottom = -( (aspect_ratio_new * width) - (aspect_ratio_orig * width) ) / 2.0f;
-        offset_to_bottom -= height / 2.0f;
-
-        //Y-coordinate from this function is pretty much unpredictable if not pixel_height / 2
-        vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleCurrentUITarget, origin, { (float)ovrl_pixel_width/2.0f, (float)ovrl_pixel_height/2.0f }, &matrix);
+        Matrix4 matrix = OverlayManager::Get().GetOverlayCenterBottomTransform(m_OvrlIDCurrentUITarget, m_OvrlHandleCurrentUITarget);
 
         //If the Floating UI is just appearing, adjust overlay size based on the distance between HMD and overlay
         if (is_newly_visible)
@@ -286,9 +218,8 @@ void FloatingUI::UpdateUITargetState()
 
                 if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
                 {
-                    Matrix4 mat_overlay(matrix);
                     Matrix4 mat_hmd = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
-                    float distance = mat_overlay.getTranslation().distance(mat_hmd.getTranslation());
+                    float distance = matrix.getTranslation().distance(mat_hmd.getTranslation());
 
                     m_Width = 0.66f + (0.5f * distance);
                     vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle_floating_ui, m_Width);
@@ -296,31 +227,24 @@ void FloatingUI::UpdateUITargetState()
             }
         }
 
-        //When Performance Monitor, apply additional offset of the unused overlay space
-        if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
-        {
-            float height_new = aspect_ratio_new * width; //height uses aspect_ratio_orig, so calculate new height
-            offset_to_bottom += ( (cropped_height - UIManager::Get()->GetPerformanceWindow().GetSize().y) ) * ( (height_new / cropped_height) ) / 2.0f;
-        }
-
-        //Move to bottom, vertically centering the floating UI overlay on the bottom end of the target overlay (previous function already got the X centered)
+        //Move down by Floating UI height
         const DPRect& rect_floating_ui = UITextureSpaces::Get().GetRect(ui_texspace_floating_ui);
         const float floating_ui_height_m = m_Width * ((float)rect_floating_ui.GetHeight() / (float)rect_floating_ui.GetWidth());
 
-        offset_to_bottom -= floating_ui_height_m / 3.0f;
-
-        TransformOpenVR34TranslateRelative(matrix, 0.0f, offset_to_bottom, 0.0f);
+        matrix.translate_relative(0.0f, -floating_ui_height_m / 3.0f, 0.0f);
 
         if ( (is_newly_visible) || (!UIManager::Get()->IsDummyOverlayTransformUnstable()) )
         {
-            vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_floating_ui, origin, &matrix);
+            vr::HmdMatrix34_t hmd_matrix = matrix.toOpenVR34();
+            vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_floating_ui, vr::TrackingUniverseStanding, &hmd_matrix);
         }
 
         //Set floating UI curvature based on target overlay curvature
         float curvature;
         vr::VROverlay()->GetOverlayCurvature(m_OvrlHandleCurrentUITarget, &curvature);
+        float overlay_width = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget).ConfigFloat[configid_float_overlay_width];
 
-        vr::VROverlay()->SetOverlayCurvature(ovrl_handle_floating_ui, curvature * (m_Width / width) );
+        vr::VROverlay()->SetOverlayCurvature(ovrl_handle_floating_ui, curvature * (m_Width / overlay_width) );
     }
 
     if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) || (m_OvrlHandleCurrentUITarget == vr::k_ulOverlayHandleInvalid) ) //If not even the UI itself is being hovered, fade out

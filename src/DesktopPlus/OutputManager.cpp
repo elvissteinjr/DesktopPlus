@@ -1027,17 +1027,17 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 }
                 case ipcact_action_do:
                 {
-                    DoAction((ActionID)msg.lParam);
+                    DoAction((ActionID)msg.lParam, (overlay_override_id != -1) ? (unsigned int)overlay_override_id : k_ulOverlayID_None); //Pass override ID as source if set
                     break;
                 }
                 case ipcact_action_start:
                 {
-                    DoStartAction((ActionID)msg.lParam);
+                    DoStartAction((ActionID)msg.lParam, (overlay_override_id != -1) ? (unsigned int)overlay_override_id : k_ulOverlayID_None);
                     break;
                 }
                 case ipcact_action_stop:
                 {
-                    DoStopAction((ActionID)msg.lParam);
+                    DoStopAction((ActionID)msg.lParam, (overlay_override_id != -1) ? (unsigned int)overlay_override_id : k_ulOverlayID_None);
                     break;
                 }
                 case ipcact_keyboard_vkey:
@@ -1932,11 +1932,6 @@ void OutputManager::HideOverlay(unsigned int id)
 
     overlay.SetVisible(false);
 
-    if (ConfigManager::GetValue(configid_int_state_keyboard_visible_for_overlay_id) == id) //Don't leave the keyboard open when hiding
-    {
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, false);
-    }
-
     //Overlay could've affected update limiter, so apply setting
     if (data.ConfigInt[configid_int_overlay_update_limit_override_mode] != update_limit_mode_off)
     {
@@ -2112,7 +2107,7 @@ bool OutputManager::IsOutputInvalid() const
     return m_OutputInvalid;
 }
 
-void OutputManager::DoAction(ActionID action_id)
+void OutputManager::DoAction(ActionID action_id, unsigned int overlay_source_id)
 {
     if (action_id >= action_custom)
     {
@@ -2177,24 +2172,15 @@ void OutputManager::DoAction(ActionID action_id)
         {
             case action_show_keyboard:
             {
-                const Overlay& ovrl_current = OverlayManager::Get().GetCurrentOverlay();
-
-                if (ConfigManager::GetValue(configid_int_state_keyboard_visible_for_overlay_id) != -1)
+                if (ConfigManager::GetValue(configid_bool_state_keyboard_visible))
                 {
                     //If it's already displayed for an overlay, hide it instead
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, false);
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, -1);
                 }
                 else
                 {
-                    vr::VROverlayHandle_t ovrl_keyboard_target = ovrl_current.GetHandle();
-                    int ovrl_keyboard_id = ovrl_current.GetID();
-
-                    //Assign current overlay for keyboard
-                    ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, ovrl_keyboard_id);
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_keyboard_visible_for_overlay_id, ovrl_keyboard_id);
-
-                    //Tell UI to show it
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, true);
+                    //Tell UI to show keyboard assigned to overlay
+                    IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, (overlay_source_id != k_ulOverlayID_None) ? (int)overlay_source_id : -2);
                 }
                 break;
             }
@@ -2252,7 +2238,7 @@ void OutputManager::DoAction(ActionID action_id)
 //This is like DoAction, but split between start and stop
 //Currently only used for input actions. The UI will send a start message already when pressing down on the button and an stop one only after releasing for these kind of actions.
 //Also used for global shortcuts, where non-input actions simply get forwarded to DoAction()
-void OutputManager::DoStartAction(ActionID action_id) 
+void OutputManager::DoStartAction(ActionID action_id, unsigned int overlay_source_id) 
 {
     if (action_id >= action_custom)
     {
@@ -2268,7 +2254,7 @@ void OutputManager::DoStartAction(ActionID action_id)
             }
             else
             {
-                DoAction(action_id);
+                DoAction(action_id, overlay_source_id);
             }
         }
     }
@@ -2278,7 +2264,7 @@ void OutputManager::DoStartAction(ActionID action_id)
     }
 }
 
-void OutputManager::DoStopAction(ActionID action_id)
+void OutputManager::DoStopAction(ActionID action_id, unsigned int /*overlay_source_id*/)
 {
     if (action_id >= action_custom)
     {
@@ -3613,11 +3599,11 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     if (vr_event.data.controller.button == Button_Dashboard_GoHome)
                     {
-                        DoAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id));
+                        DoAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id), i);
                     }
                     else if (vr_event.data.controller.button == Button_Dashboard_GoBack)
                     {
-                        DoAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id));
+                        DoAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id), i);
                     }
 
                     break;

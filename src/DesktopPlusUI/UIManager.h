@@ -131,6 +131,7 @@ class UIManager
         vr::EVRInitError InitOverlay();
         void HandleIPCMessage(const MSG& msg, bool handle_delayed = false); //Messages that need processing within an ImGui frame are stored in m_DelayedICPMessages when handle_delayed is false
         void HandleDelayedIPCMessages();                                    //Calls HandleIPCMessage() for messages in m_DelayedICPMessages and clears it
+        void OnInitDone();                                                  //Finishes up applying things that can only be applied after everything has finished loading
         void OnExit();
 
         FloatingUI& GetFloatingUI();

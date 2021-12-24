@@ -70,9 +70,9 @@ class OutputManager
         void SetOutputInvalid(); //Handles state when there's no valid output
         bool IsOutputInvalid() const;
 
-        void DoAction(ActionID action_id);
-        void DoStartAction(ActionID action_id);
-        void DoStopAction(ActionID action_id);
+        void DoAction(ActionID action_id,      unsigned int overlay_source_id = k_ulOverlayID_None);
+        void DoStartAction(ActionID action_id, unsigned int overlay_source_id = k_ulOverlayID_None);
+        void DoStopAction(ActionID action_id,  unsigned int overlay_source_id = k_ulOverlayID_None);
 
         void ToggleOverlayGroupEnabled(int group_id);
 

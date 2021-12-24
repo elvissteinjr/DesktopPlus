@@ -58,9 +58,12 @@ void WindowOverlayProperties::Hide(bool skip_fade)
 
 void WindowOverlayProperties::ResetTransform()
 {
-    m_Transform.identity();
-    m_Transform.rotateY(15.0f);
-    m_Transform.translate_relative(-OVERLAY_WIDTH_METERS_DASHBOARD_UI / 3.0f, 0.70f, 0.15f);
+    FloatingWindow::ResetTransform();
+
+    m_OverlayStateDashboardTab.Transform.rotateY(15.0f);
+    m_OverlayStateDashboardTab.Transform.translate_relative(-OVERLAY_WIDTH_METERS_DASHBOARD_UI / 3.0f, 0.70f, 0.15f);
+
+    m_OverlayStateRoom.Transform = m_OverlayStateDashboardTab.Transform;
 }
 
 vr::VROverlayHandle_t WindowOverlayProperties::GetOverlayHandle() const
@@ -75,10 +78,8 @@ unsigned int WindowOverlayProperties::GetActiveOverlayID() const
 
 void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool skip_fade)
 {
-    unsigned int overlay_id_prev = m_ActiveOverlayID;
-
     //This needs to cancel any active page state for the previous overlay if it's not the same
-    if ( (!skip_fade) && (overlay_id_prev != overlay_id) )
+    if ( (!skip_fade) && (m_ActiveOverlayID != overlay_id) && (m_ActiveOverlayID != k_ulOverlayID_None) )
     {
         //Animate overlay switching by fading out first if the window is visible
         if (m_PageFadeDir == 0)
@@ -2119,7 +2120,7 @@ void WindowOverlayProperties::PageFadeStart(unsigned int overlay_id)
 {
     m_PageFadeDir = -1; //Needed in any case for SetActiveOverlayID()
 
-    if (m_Visible)
+    if (m_OverlayStateCurrent->IsVisible)
     {
         m_PageFadeTargetOverlayID = overlay_id;
     }

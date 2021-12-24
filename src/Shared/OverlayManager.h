@@ -28,6 +28,8 @@ class OverlayManager
 
         std::vector< std::pair<unsigned int, unsigned int> > m_PendingSwaps; //Stores swaps that still need to be finalized by calling SwapOverlaysFinish()
 
+        Matrix4 GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handle, unsigned int id, bool add_bottom_offset) const;
+
     public:
         static OverlayManager& Get();
 
@@ -42,12 +44,13 @@ class OverlayManager
             unsigned int FindOverlayID(vr::VROverlayHandle_t handle);   //Returns k_ulOverlayID_None on error
         #endif
         OverlayConfigData& GetConfigData(unsigned int id);
+        const OverlayConfigData& GetConfigData(unsigned int id) const;
         OverlayConfigData& GetCurrentConfigData();
 
         unsigned int GetCurrentOverlayID() const;
         void SetCurrentOverlayID(unsigned int id);
 
-        vr::VROverlayHandle_t FindOverlayHandle(unsigned int id); //For UI app since it doesn't keep track of existing overlay handles
+        vr::VROverlayHandle_t FindOverlayHandle(unsigned int id) const; //For UI app since it doesn't keep track of existing overlay handles
         unsigned int GetOverlayCount() const;
         void SwapOverlays(unsigned int id, unsigned int id2);
         void SwapOverlaysFinish();
@@ -64,4 +67,7 @@ class OverlayManager
             void SetOverlayNameAuto(unsigned int id, const WindowInfo* window_info = nullptr); //window_info is optional, can be passed as override for when the handle isn't stored
             void SetOverlayNamesAutoForWindow(const WindowInfo& window_info);                  //Calls SetOverlayNameAuto() for all overlays currently using window_handle as source
         #endif
+
+        Matrix4 GetOverlayMiddleTransform(unsigned int id, vr::VROverlayHandle_t ovrl_handle = vr::k_ulOverlayHandleInvalid) const;
+        Matrix4 GetOverlayCenterBottomTransform(unsigned int id, vr::VROverlayHandle_t ovrl_handle = vr::k_ulOverlayHandleInvalid) const;
 };

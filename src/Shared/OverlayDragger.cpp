@@ -418,6 +418,17 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin)
     return matrix;
 }
 
+void OverlayDragger::ApplyDashboardScale(Matrix4& matrix)
+{
+    Matrix4 mat_origin = GetBaseOffsetMatrix(ovrl_origin_dplus_tab);
+    Vector3 row_1(mat_origin[0], mat_origin[1], mat_origin[2]);
+
+    Vector3 translation = matrix.getTranslation();
+    matrix.setTranslation({0.0f, 0.0f, 0.0f});
+    matrix.scale(row_1.length());
+    matrix.setTranslation(translation);
+}
+
 Matrix4 OverlayDragger::DragFinish()
 {
     DragUpdate();

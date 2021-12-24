@@ -14,8 +14,7 @@ VRKeyboard::VRKeyboard() :
     m_InputBeginWidgetID(0),
     m_MouseLeftDownPrevCached(false),
     m_MouseLeftClickedPrevCached(false),
-    m_KeyboardHiddenLastFrame(false),
-    m_LastAutoHiddenTime(0.0)
+    m_KeyboardHiddenLastFrame(false)
 {
     std::fill_n(m_KeyDown, IM_ARRAYSIZE(m_KeyDown), 0);
 }
@@ -389,11 +388,6 @@ void VRKeyboard::VRKeyboardInputBegin(const char* str_id)
     VRKeyboardInputBegin(ImGui::GetID(str_id));
 }
 
-double VRKeyboard::GetLastAutoHiddenTime() const
-{
-    return m_LastAutoHiddenTime;
-}
-
 void VRKeyboard::VRKeyboardInputBegin(ImGuiID widget_id)
 {
     ImGuiContext& g = *GImGui;
@@ -472,35 +466,40 @@ void VRKeyboard::OnImGuiNewFrame()
             m_TargetIsUI = true;
             m_WindowKeyboard.Show();
 
+            bool do_assign_to_ui = false;
+            int assigned_id = m_WindowKeyboard.GetAssignedOverlayID();
+
             //Assign keyboard to UI if it's not assigned to any overlay yet
-            if (ConfigManager::GetValue(configid_int_state_keyboard_visible_for_overlay_id) == -1)
+            if (assigned_id == -1)
             {
-                ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -2);
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_keyboard_visible_for_overlay_id, -2);
+                do_assign_to_ui = true;
+            }
+            else if (assigned_id >= 0)  //else do it if the assigned overlay is invisible
+            {
+                vr::VROverlayHandle_t ovrl_handle_assigned = OverlayManager::Get().FindOverlayHandle((unsigned int)assigned_id);
+                do_assign_to_ui = !vr::VROverlay()->IsOverlayVisible(ovrl_handle_assigned);
+            }
+
+            if (do_assign_to_ui)
+            {
+                m_WindowKeyboard.SetAssignedOverlayID(-2);
             }
         }
     }
     else if (m_WindowKeyboard.IsVisible())
     {
-        //If keyboard is visible for an overlay, just disable UI target
-        if (ConfigManager::GetValue(configid_int_state_keyboard_visible_for_overlay_id) != -2)
+        //Disable UI target if it's active
+        if (m_TargetIsUI)
         {
-            if (m_TargetIsUI)
-            {
-                ResetState();
-                m_TargetIsUI = false;
-                m_WindowKeyboard.Show(); //Show() updates window title
-            }
+            ResetState();
+            m_TargetIsUI = false;
+            m_WindowKeyboard.Show(); //Show() updates window title
         }
-        else //Auto-hide when assigned to UI and no longer needed
-        {
-            m_WindowKeyboard.Hide();
 
-            //Keyboard window may refuse to hide, so check if it really did first
-            if (!m_WindowKeyboard.IsVisible())
-            {
-                m_LastAutoHiddenTime = ImGui::GetTime();
-            }
+        //If keyboard is visible for the UI, assign to global
+        if (m_WindowKeyboard.GetAssignedOverlayID() == -2)
+        {
+            m_WindowKeyboard.SetAssignedOverlayID(-1);
         }
     }
 
@@ -521,10 +520,6 @@ void VRKeyboard::OnWindowHidden()
         ImGui::ClearActiveID();
         io.WantTextInput = false;
     }
-
-    //Remove overlay assignment, if any
-    ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -1);
-    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_keyboard_visible_for_overlay_id, -1);
 
     m_KeyboardHiddenLastFrame = true; //Widgets will request the keyboard for the next frame anyways, so we prevent showing it again right away with this flag
 }

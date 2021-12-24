@@ -357,8 +357,9 @@ vr::EVRInitError UIManager::InitOverlay()
     UpdateDesktopOverlayPixelSize();
     UpdateCompositorRenderQualityLow();
 
-    m_VRKeyboard.GetWindow().UpdateOverlaySize();
-    m_VRKeyboard.GetWindow().ResetTransform();
+    m_WindowSettings.ApplyCurrentOverlayState();
+    m_WindowOverlayProperties.ApplyCurrentOverlayState();
+    m_VRKeyboard.GetWindow().ApplyCurrentOverlayState();
 
     m_WindowPerformance.ResetCumulativeValues();
     m_WindowPerformance.RefreshTrackerBatteryList();
@@ -432,11 +433,6 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                 {
                     UpdateDesktopOverlayPixelSize();
                     m_WindowPerformance.ScheduleOverlaySharedTextureUpdate();
-                    break;
-                }
-                case ipcact_vrkeyboard_closed:
-                {
-                    ImGui_ImplOpenVR_InputOnVRKeyboardClosed();
                     break;
                 }
                 case ipcact_overlay_new_drag:
@@ -561,7 +557,8 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                 }
                 case ipcact_keyboard_show:
                 {
-                    (msg.lParam) ? m_VRKeyboard.GetWindow().Show() : m_VRKeyboard.GetWindow().Hide();
+                    m_VRKeyboard.GetWindow().SetAssignedOverlayID((int)msg.lParam);
+                    (msg.lParam != -1) ? m_VRKeyboard.GetWindow().Show() : m_VRKeyboard.GetWindow().Hide();
                     break;
                 }
             }
@@ -732,6 +729,21 @@ void UIManager::HandleDelayedIPCMessages()
     {
         HandleIPCMessage(m_DelayedICPMessages.back(), true);
         m_DelayedICPMessages.pop_back();
+    }
+}
+
+void UIManager::OnInitDone()
+{
+    //Re-apply active overlay ID since the first time config load couldn't apply it properly with the overlay not yet existing
+    unsigned int overlay_props_active_id = m_WindowOverlayProperties.GetActiveOverlayID();
+    m_WindowOverlayProperties.SetActiveOverlayID(overlay_props_active_id, true);
+
+    //Hide properties window if the overlay doesn't exist anymore for some reason
+    if ((overlay_props_active_id == k_ulOverlayID_None) || (OverlayManager::Get().GetOverlayCount() <= overlay_props_active_id))
+    {
+        m_WindowOverlayProperties.Hide(true);
+        m_WindowOverlayProperties.GetOverlayState(floating_window_ovrl_state_room).IsVisible = false;
+        m_WindowOverlayProperties.GetOverlayState(floating_window_ovrl_state_dashboard_tab).IsVisible = false;
     }
 }
 
@@ -1532,6 +1544,7 @@ void UIManager::UpdateOverlayDrag()
             else if (drag_overlay_handle == m_OvrlHandleKeyboard)
             {
                 m_VRKeyboard.GetWindow().SetTransform(matrix_relative_offset);
+                m_VRKeyboard.GetWindow().RebaseTransform();
             }
 
             return;
@@ -1553,13 +1566,7 @@ void UIManager::UpdateOverlayDrag()
             }
             else
             {
-                float new_width = m_OverlayDragger.DragAddWidth(io.MouseWheelH * -0.25f);
-
-                //Adjust persistent width settings after changing width
-                if (drag_overlay_handle == m_OvrlHandleKeyboard)
-                {
-                     ConfigManager::SetValue(configid_float_input_keyboard_detached_size, new_width / OVERLAY_WIDTH_METERS_KEYBOARD);
-                }
+                m_OverlayDragger.DragAddWidth(io.MouseWheelH * -0.25f);
             }
         }
 
@@ -1591,7 +1598,7 @@ void UIManager::UpdateOverlayDrag()
             else if (drag_overlay_handle == m_OvrlHandleKeyboard)
             {
                 m_VRKeyboard.GetWindow().SetTransform(matrix_relative_offset);
-                ConfigManager::SetValue(configid_float_input_keyboard_detached_size, new_width / OVERLAY_WIDTH_METERS_KEYBOARD);
+                m_VRKeyboard.GetWindow().RebaseTransform();
             }
         }
         else

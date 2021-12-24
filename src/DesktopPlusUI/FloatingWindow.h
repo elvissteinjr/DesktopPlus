@@ -5,27 +5,50 @@
 #include "TranslationManager.h"
 #include <string>
 
+enum FloatingWindowOverlayStateID
+{
+    floating_window_ovrl_state_room,
+    floating_window_ovrl_state_dashboard_tab
+};
+
+struct FloatingWindowOverlayState
+{
+    bool IsVisible = false;
+    bool IsPinned  = false;
+    float Size = 1.0f;
+    Matrix4 Transform;
+    Matrix4 TransformAbs;
+};
+
 //Base class for drag-able floating overlay windows, such as the Settings, Overlay Properties and Keyboard windows
 class FloatingWindow
 {
     protected:
         float m_OvrlWidth;
         float m_Alpha;
-        bool m_Visible;
         bool m_OvrlVisible;
-        bool m_IsPinned;
+        bool m_IsTransitionFading;
+
+        FloatingWindowOverlayStateID m_OverlayStateCurrentID;
+        FloatingWindowOverlayState m_OverlayStateRoom;
+        FloatingWindowOverlayState m_OverlayStateDashboardTab;
+        FloatingWindowOverlayState m_OverlayStateFading;
+        FloatingWindowOverlayState* m_OverlayStateCurrent;
+        FloatingWindowOverlayState* m_OverlayStatePending;
 
         std::string m_WindowTitle;
         std::string m_WindowID;
         TRMGRStrID m_WindowTitleStrID;
         TMNGRTexID m_WindowIcon;
         int m_WindowIconWin32IconCacheID; //TextureManager Icon cache ID when using a Win32 window icon as the ImGui window icon
-        Matrix4 m_Transform;
 
         ImVec2 m_Pos;
         ImVec2 m_PosPivot;
         ImVec2 m_Size;                   //Set in derived constructor, 2 pixel-wide padding around actual texture space expected
         ImGuiWindowFlags m_WindowFlags;
+        bool m_AllowRoomUnpinning;       //Set to enable pin button while room overlay state is active
+        OverlayOrigin m_DragOrigin;      //Origin passed to OverlayDragger for window drags, doesn't affect overlay positioning (override relevant functions instead)
+
         float m_TitleBarWidth;
         float m_TitleBarTitleMaxWidth;   //Width available for the title string without icon and buttons
         bool m_HasAppearedOnce;
@@ -33,6 +56,9 @@ class FloatingWindow
 
         void WindowUpdateBase();         //Sets up ImGui window with custom title bar, pinning and overlay-based dragging
         virtual void WindowUpdate() = 0; //Window content, called within an ImGui Begin()'d window
+
+        void OverlayStateSwitchCurrent(bool use_dashboard_tab);
+        void OverlayStateSwitchFinish();
 
         virtual void OnWindowPinButtonPressed();         //Called when the pin button is pressed, after updating m_IsPinned
         virtual bool IsVirtualWindowItemHovered() const; //Returns false by default, can be overridden to signal hover state of widgets that don't touch global ImGui state (used for blank space drag)
@@ -44,7 +70,7 @@ class FloatingWindow
         FloatingWindow();
         virtual ~FloatingWindow() = default;
         void Update();                   //Not called when idling (no windows visible)
-        void UpdateVisibility();         //Only called in VR mode
+        virtual void UpdateVisibility(); //Only called in VR mode
 
         virtual void Show(bool skip_fade = false);
         virtual void Hide(bool skip_fade = false);
@@ -55,8 +81,13 @@ class FloatingWindow
         bool IsPinned() const;
         void SetPinned(bool is_pinned);
 
+        FloatingWindowOverlayState& GetOverlayState(FloatingWindowOverlayStateID id);
+        FloatingWindowOverlayStateID GetOverlayStateCurrentID();
+
         Matrix4& GetTransform();
-        void SetTransform(Matrix4& transform);
+        void SetTransform(const Matrix4& transform);
+        virtual void ApplyCurrentOverlayState(); //Applies current absolute transform to the overlay if pinned and sets the width
+        virtual void RebaseTransform();
         virtual void ResetTransform();
         const ImVec2& GetPos() const;
         const ImVec2& GetSize() const;

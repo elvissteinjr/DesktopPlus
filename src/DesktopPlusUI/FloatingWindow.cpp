@@ -9,11 +9,15 @@
 FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
                                    m_Alpha(0.0f),
                                    m_OvrlVisible(false),
-                                   m_IsPinned(false),
-                                   m_Visible(false),
+                                   m_IsTransitionFading(false),
+                                   m_OverlayStateCurrentID(floating_window_ovrl_state_dashboard_tab),
+                                   m_OverlayStateCurrent(&m_OverlayStateDashboardTab),
+                                   m_OverlayStatePending(&m_OverlayStateFading),
                                    m_WindowTitleStrID(tstr_NONE),
                                    m_WindowIcon(tmtex_icon_xsmall_desktop_none),
                                    m_WindowIconWin32IconCacheID(-1),
+                                   m_AllowRoomUnpinning(false),
+                                   m_DragOrigin(ovrl_origin_dplus_tab),
                                    m_TitleBarWidth(64.0f),
                                    m_TitleBarTitleMaxWidth(-1.0f),
                                    m_HasAppearedOnce(false),
@@ -26,12 +30,12 @@ FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
 
 void FloatingWindow::WindowUpdateBase()
 {
-    if ((m_Alpha != 0.0f) || (m_Visible))
+    if ( ((!UIManager::Get()->GetRepeatFrame()) || (m_Alpha == 0.0f)) && ((m_Alpha != 0.0f) || (m_OverlayStateCurrent->IsVisible) || (m_IsTransitionFading)) )
     {
         float alpha_prev = m_Alpha;
 
         //Alpha fade animation
-        m_Alpha += (m_Visible) ? 0.1f : -0.1f;
+        m_Alpha += ((m_OverlayStateCurrent->IsVisible) && (!m_IsTransitionFading)) ? 0.1f : -0.1f;
 
         if (m_Alpha > 1.0f)
             m_Alpha = 1.0f;
@@ -41,6 +45,12 @@ void FloatingWindow::WindowUpdateBase()
         //Use overlay alpha when not in desktop mode for better blending
         if ( (!UIManager::Get()->IsInDesktopMode()) && (alpha_prev != m_Alpha) )
             vr::VROverlay()->SetOverlayAlpha(GetOverlayHandle(), m_Alpha);
+
+        //Finish transition fade if one's active
+        if ((m_Alpha == 0.0f) && (m_IsTransitionFading))
+        {
+            OverlayStateSwitchFinish();
+        }
     }
 
     if (m_Alpha == 0.0f)
@@ -64,7 +74,7 @@ void FloatingWindow::WindowUpdateBase()
 
     ImGuiWindowFlags flags = m_WindowFlags;
 
-    if (!m_Visible)
+    if (!m_OverlayStateCurrent->IsVisible)
         flags |= ImGuiWindowFlags_NoInputs;
 
     ImGui::Begin(m_WindowID.c_str(), nullptr, flags);
@@ -103,9 +113,14 @@ void FloatingWindow::WindowUpdateBase()
     ImGui::SetCursorScreenPos({title_rect.z - b_width - style.ItemInnerSpacing.x, title_rect.y + style.FramePadding.y});
 
     //Buttons
-    TextureManager::Get().GetTextureInfo((m_IsPinned) ? tmtex_icon_xxsmall_unpin : tmtex_icon_xxsmall_pin, img_size, img_uv_min, img_uv_max);
+    TextureManager::Get().GetTextureInfo((m_OverlayStateCurrent->IsPinned) ? tmtex_icon_xxsmall_unpin : tmtex_icon_xxsmall_pin, img_size, img_uv_min, img_uv_max);
 
     ImGui::BeginGroup();
+
+    const bool disable_pinning = ( (!m_AllowRoomUnpinning) && (m_OverlayStateCurrentID == floating_window_ovrl_state_room) );
+
+    if (disable_pinning)
+        ImGui::PushItemDisabled();
 
     ImGui::PushID("PinButton");
     if (ImGui::ImageButton(io.Fonts->TexID, img_size, img_uv_min, img_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
@@ -115,6 +130,9 @@ void FloatingWindow::WindowUpdateBase()
     }
     ImGui::PopID();
     ImGui::SameLine(0.0f, 0.0f);
+
+    if (disable_pinning)
+        ImGui::PopItemDisabled();
 
     TextureManager::Get().GetTextureInfo(tmtex_icon_xxsmall_close, img_size, img_uv_min, img_uv_max);
 
@@ -152,15 +170,15 @@ void FloatingWindow::WindowUpdateBase()
     }
 
     //Title bar dragging
-    if ( (m_Visible) && (title_hover) && (UIManager::Get()->IsOpenVRLoaded()) )
+    if ( (m_OverlayStateCurrent->IsVisible) && (title_hover) && (UIManager::Get()->IsOpenVRLoaded()) )
     {
         if ( (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {
-            UIManager::Get()->GetOverlayDragger().DragStart(GetOverlayHandle(), ovrl_origin_dplus_tab);
+            UIManager::Get()->GetOverlayDragger().DragStart(GetOverlayHandle(), m_DragOrigin);
         }
         else if ( (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {
-            UIManager::Get()->GetOverlayDragger().DragGestureStart(GetOverlayHandle(), ovrl_origin_dplus_tab);
+            UIManager::Get()->GetOverlayDragger().DragGestureStart(GetOverlayHandle(), m_DragOrigin);
         }
     }
 
@@ -184,16 +202,16 @@ void FloatingWindow::WindowUpdateBase()
     }
 
     //Blank space drag
-    if ( (ConfigManager::GetValue(configid_bool_interface_blank_space_drag_enabled)) && (m_Visible) && (UIManager::Get()->IsOpenVRLoaded()) && (!ImGui::IsAnyItemHovered()) &&
+    if ( (ConfigManager::GetValue(configid_bool_interface_blank_space_drag_enabled)) && (m_OverlayStateCurrent->IsVisible) && (UIManager::Get()->IsOpenVRLoaded()) && (!ImGui::IsAnyItemHovered()) &&
          (!IsVirtualWindowItemHovered()) && (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) )
     {
         if ( (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {
-            UIManager::Get()->GetOverlayDragger().DragStart(GetOverlayHandle(), ovrl_origin_dplus_tab);
+            UIManager::Get()->GetOverlayDragger().DragStart(GetOverlayHandle(), m_DragOrigin);
         }
         else if ( (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {
-            UIManager::Get()->GetOverlayDragger().DragGestureStart(GetOverlayHandle(), ovrl_origin_dplus_tab);
+            UIManager::Get()->GetOverlayDragger().DragGestureStart(GetOverlayHandle(), m_DragOrigin);
         }
     }
 
@@ -201,6 +219,40 @@ void FloatingWindow::WindowUpdateBase()
 
     if (UIManager::Get()->IsInDesktopMode())
         ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
+}
+
+void FloatingWindow::OverlayStateSwitchCurrent(bool use_dashboard_tab)
+{
+    if (m_OverlayStateCurrent == &m_OverlayStateFading)
+        return;
+
+    //Use transition fade if the overlay position will change
+    m_OverlayStatePending = (use_dashboard_tab) ? &m_OverlayStateDashboardTab : &m_OverlayStateRoom;
+
+    if ( (m_OverlayStateCurrent->TransformAbs != m_OverlayStatePending->TransformAbs) || (!m_OverlayStatePending->IsVisible) )
+    {
+        m_IsTransitionFading = true;
+        m_OverlayStateFading = *m_OverlayStateCurrent;
+        m_OverlayStateCurrent = &m_OverlayStateFading;
+    }
+    else
+    {
+        OverlayStateSwitchFinish();
+    }
+}
+
+void FloatingWindow::OverlayStateSwitchFinish()
+{
+    m_IsTransitionFading = false;
+    m_OverlayStateCurrent = m_OverlayStatePending;
+    m_OverlayStateCurrentID = (m_OverlayStateCurrent == &m_OverlayStateDashboardTab) ? floating_window_ovrl_state_dashboard_tab : floating_window_ovrl_state_room;
+
+    ApplyCurrentOverlayState();
+
+    if (m_OverlayStateCurrent->IsVisible)
+    {
+        Show();
+    }
 }
 
 void FloatingWindow::OnWindowPinButtonPressed()
@@ -300,42 +352,40 @@ void FloatingWindow::Update()
 
 void FloatingWindow::UpdateVisibility()
 {
-    bool is_window_visible = (m_Alpha != 0.0f);
+    //Set state depending on dashboard tab visibility
+    if ( (!UIManager::Get()->IsInDesktopMode()) && (!m_IsTransitionFading) )
+    {
+        const bool is_using_dashboard_state = (m_OverlayStateCurrentID == floating_window_ovrl_state_dashboard_tab);
+
+        if (is_using_dashboard_state != vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard()))
+        {
+            OverlayStateSwitchCurrent(!is_using_dashboard_state);
+        }
+    }
 
     //Overlay position and visibility
     if (UIManager::Get()->IsOpenVRLoaded())
     {
-        vr::VROverlayHandle_t ovrl_handle_dplus = UIManager::Get()->GetOverlayHandleDPlusDashboard();
         vr::VROverlayHandle_t overlay_handle = GetOverlayHandle();
 
-        if ((!m_IsPinned) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) &&
-            (!UIManager::Get()->IsDummyOverlayTransformUnstable()))
+        if ( (m_OverlayStateCurrent->IsVisible) && (!m_OverlayStateCurrent->IsPinned) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) &&
+             (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) && (!UIManager::Get()->IsDummyOverlayTransformUnstable()) )
         {
             vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
-            Matrix4 matrix_m4 = UIManager::Get()->GetOverlayDragger().GetBaseOffsetMatrix(ovrl_origin_dplus_tab) * m_Transform;
+            Matrix4 matrix_m4 = UIManager::Get()->GetOverlayDragger().GetBaseOffsetMatrix(ovrl_origin_dplus_tab) * m_OverlayStateCurrent->Transform;
             vr::HmdMatrix34_t matrix_ovr = matrix_m4.toOpenVR34();
 
             vr::VROverlay()->SetOverlayTransformAbsolute(overlay_handle, origin, &matrix_ovr);
+
+            m_OverlayStateCurrent->TransformAbs = matrix_m4;
         }
 
-        if ( (vr::VROverlay()->IsOverlayVisible(ovrl_handle_dplus)) || (m_IsPinned) )
+        if ((!m_OvrlVisible) && (m_OverlayStateCurrent->IsVisible))
         {
-            if ((!m_OvrlVisible) && (m_Visible))
-            {
-                vr::VROverlay()->ShowOverlay(overlay_handle);
-                m_OvrlVisible = true;
-                m_Visible = true;
-            }
+            vr::VROverlay()->ShowOverlay(overlay_handle);
+            m_OvrlVisible = true;
         }
-        else
-        {
-            if ((m_OvrlVisible) && (!m_IsPinned))
-            {
-                Hide();
-            }
-        }
-
-        if ((m_OvrlVisible) && (!m_Visible) && (!is_window_visible))
+        else if ((m_OvrlVisible) && (!m_OverlayStateCurrent->IsVisible) && (m_Alpha == 0.0f))
         {
             vr::VROverlay()->HideOverlay(overlay_handle);
             m_OvrlVisible = false;
@@ -345,7 +395,7 @@ void FloatingWindow::UpdateVisibility()
 
 void FloatingWindow::Show(bool skip_fade)
 {
-    m_Visible = true;
+    m_OverlayStateCurrent->IsVisible = true;
 
     if (skip_fade)
     {
@@ -355,7 +405,7 @@ void FloatingWindow::Show(bool skip_fade)
 
 void FloatingWindow::Hide(bool skip_fade)
 {
-    m_Visible = false;
+    m_OverlayStateCurrent->IsVisible = false;
 
     if (skip_fade)
     {
@@ -365,12 +415,12 @@ void FloatingWindow::Hide(bool skip_fade)
 
 bool FloatingWindow::IsVisible() const
 {
-    return m_Visible;
+    return m_OverlayStateCurrent->IsVisible;
 }
 
 bool FloatingWindow::IsVisibleOrFading() const
 {
-    return ( (m_Visible) || (m_Alpha != 0.0f) );;
+    return ( (m_OverlayStateCurrent->IsVisible) || (m_Alpha != 0.0f) || (m_IsTransitionFading) );
 }
 
 float FloatingWindow::GetAlpha() const
@@ -380,44 +430,101 @@ float FloatingWindow::GetAlpha() const
 
 bool FloatingWindow::IsPinned() const
 {
-    return m_IsPinned;
+    return m_OverlayStateCurrent->IsPinned;
 }
 
 void FloatingWindow::SetPinned(bool is_pinned)
 {
-    m_IsPinned = is_pinned;
+    m_OverlayStateCurrent->IsPinned = is_pinned;
 
     if (!UIManager::Get()->IsOpenVRLoaded())
         return;
 
     if (!is_pinned)
     {
-        //Re-base transform
-        vr::HmdMatrix34_t hmd_mat;
-        vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
-
-        vr::VROverlay()->GetOverlayTransformAbsolute(GetOverlayHandle(), &universe_origin, &hmd_mat);
-        Matrix4 mat_abs = hmd_mat;
-        Matrix4 mat_origin_inverse = UIManager::Get()->GetOverlayDragger().GetBaseOffsetMatrix(ovrl_origin_dplus_tab);
-
-        mat_origin_inverse.invert();
-        m_Transform = mat_origin_inverse * mat_abs;
+        RebaseTransform();
     }
+    else
+    {
+        if (m_OverlayStateCurrentID == floating_window_ovrl_state_dashboard_tab)
+        {
+            m_OverlayStateRoom = m_OverlayStateDashboardTab;
+        }
+    }
+}
+
+FloatingWindowOverlayState& FloatingWindow::GetOverlayState(FloatingWindowOverlayStateID id)
+{
+    switch (id)
+    {
+        case floating_window_ovrl_state_room:          return m_OverlayStateRoom;
+        case floating_window_ovrl_state_dashboard_tab: return m_OverlayStateDashboardTab;
+    }
+
+    return m_OverlayStateRoom;
+}
+
+FloatingWindowOverlayStateID FloatingWindow::GetOverlayStateCurrentID()
+{
+    return m_OverlayStateCurrentID;
 }
 
 Matrix4& FloatingWindow::GetTransform()
 {
-    return m_Transform;
+    return m_OverlayStateCurrent->Transform;
 }
 
-void FloatingWindow::SetTransform(Matrix4& transform)
+void FloatingWindow::SetTransform(const Matrix4& transform)
 {
-    m_Transform = transform;
+    m_OverlayStateCurrent->Transform = transform;
+
+    //Store last absolute transform
+    vr::HmdMatrix34_t hmd_mat;
+    vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
+
+    vr::VROverlay()->GetOverlayTransformAbsolute(GetOverlayHandle(), &universe_origin, &hmd_mat);
+    m_OverlayStateCurrent->TransformAbs = hmd_mat;
+
+    //Store size multiplier
+    float current_width = m_OvrlWidth;
+    vr::VROverlay()->GetOverlayWidthInMeters(GetOverlayHandle(), &current_width);
+    m_OverlayStateCurrent->Size = current_width / m_OvrlWidth;
+}
+
+void FloatingWindow::ApplyCurrentOverlayState()
+{
+    if (!UIManager::Get()->IsOpenVRLoaded())
+        return;
+
+    if (m_OverlayStateCurrent->IsPinned)
+    {
+        vr::HmdMatrix34_t matrix_ovr = m_OverlayStateCurrent->TransformAbs.toOpenVR34();
+        vr::VROverlay()->SetOverlayTransformAbsolute(GetOverlayHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
+    }
+
+    vr::VROverlay()->SetOverlayWidthInMeters(GetOverlayHandle(), m_OvrlWidth * m_OverlayStateCurrent->Size);
+}
+
+void FloatingWindow::RebaseTransform()
+{
+    vr::HmdMatrix34_t hmd_mat;
+    vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
+
+    vr::VROverlay()->GetOverlayTransformAbsolute(GetOverlayHandle(), &universe_origin, &hmd_mat);
+    Matrix4 mat_abs = hmd_mat;
+    Matrix4 mat_origin_inverse = UIManager::Get()->GetOverlayDragger().GetBaseOffsetMatrix(ovrl_origin_dplus_tab);
+
+    mat_origin_inverse.invert();
+    m_OverlayStateCurrent->Transform = mat_origin_inverse * mat_abs;
 }
 
 void FloatingWindow::ResetTransform()
 {
-    m_Transform.identity();
+    m_OverlayStateDashboardTab.Transform.identity();
+    m_OverlayStateRoom.Transform.identity();
+
+    m_OverlayStateRoom.IsVisible = false;
+    m_OverlayStateRoom.IsPinned  = false;
 }
 
 const ImVec2& FloatingWindow::GetPos() const

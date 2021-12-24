@@ -16,6 +16,8 @@ WindowKeyboard::WindowKeyboard() :
     m_WindowWidth(-1.0f),
     m_IsHovered(false),
     m_IsAnyButtonHovered(false),
+    m_AssignedOverlayIDRoom(-1),
+    m_AssignedOverlayIDDashboardTab(-1),
     m_IsIsoEnterDown(false),
     m_UnstickModifiersLater(false),
     m_SubLayoutOverride(kbdlayout_sub_base),
@@ -32,43 +34,134 @@ WindowKeyboard::WindowKeyboard() :
     m_PosPivot = {0.5f, 0.5f};
 
     m_WindowFlags |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing;
+    m_AllowRoomUnpinning = true;
 
     std::fill(std::begin(m_ManuallyStickingModifiers), std::end(m_ManuallyStickingModifiers), false);
+
+    ResetTransform();
 }
 
-void WindowKeyboard::Show(bool skip_fade)
+void WindowKeyboard::UpdateVisibility()
 {
-    FloatingWindow::Show(skip_fade);
-
-    m_WindowTitleStrID = (UIManager::Get()->GetVRKeyboard().IsTargetUI()) ? tstr_KeyboardWindowTitleSettings : tstr_KeyboardWindowTitle;
-
-    if (!m_IsPinned)
+    //Set state depending on dashboard tab visibility
+    if ( (!UIManager::Get()->IsInDesktopMode()) && (!m_IsTransitionFading) )
     {
-        if (!UIManager::Get()->IsOpenVRLoaded())
-            return;
+        const bool is_using_dashboard_state = (m_OverlayStateCurrentID == floating_window_ovrl_state_dashboard_tab);
 
-        //Not pinned and no dplus dashboard overlay available to use a origin, reset transform and pin the window
-        if (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard()))
+        if (is_using_dashboard_state != vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard()))
         {
-            m_IsPinned = true;
+            OverlayStateSwitchCurrent(!is_using_dashboard_state);
+        }
+    }
 
-            //Reset transform to get something usable outside of the dashboard
-            ResetTransform();
+    //Overlay position and visibility
+    if (UIManager::Get()->IsOpenVRLoaded())
+    {
+        vr::VROverlayHandle_t ovrl_handle_assigned = vr::k_ulOverlayHandleInvalid;
+        vr::VROverlayHandle_t overlay_handle = GetOverlayHandle();
 
-            //Set transform directly as we've changed the pinned state ourselves here
-            vr::HmdMatrix34_t matrix_ovr = m_Transform.toOpenVR34();
-            vr::VROverlay()->SetOverlayTransformAbsolute(GetOverlayHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
+        int assigned_overlay_id = GetAssignedOverlayID();
+
+        if ( (m_OverlayStateCurrentID == floating_window_ovrl_state_room) && (assigned_overlay_id >= 0) )
+        {
+            ovrl_handle_assigned = OverlayManager::Get().FindOverlayHandle((unsigned int)assigned_overlay_id);
+
+            if ( (ovrl_handle_assigned != vr::k_ulOverlayHandleInvalid) && (m_OverlayStateCurrent->IsVisible != vr::VROverlay()->IsOverlayVisible(ovrl_handle_assigned)) )
+            {
+                (m_OverlayStateCurrent->IsVisible) ? Hide() : Show();
+            }
+        }
+
+        if ((!m_OvrlVisible) && (m_OverlayStateCurrent->IsVisible))
+        {
+            vr::VROverlay()->ShowOverlay(overlay_handle);
+            m_OvrlVisible = true;
+
+            ConfigManager::SetValue(configid_bool_state_keyboard_visible, true);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_keyboard_visible, true);
+        }
+
+        if ((m_OvrlVisible) && (!m_OverlayStateCurrent->IsVisible) && (m_Alpha == 0.0f))
+        {
+            vr::VROverlay()->HideOverlay(overlay_handle);
+            m_OvrlVisible = false;
+
+            ConfigManager::SetValue(configid_bool_state_keyboard_visible, false);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_keyboard_visible, false);
+        }
+
+        //Set position
+        if ( (m_OverlayStateCurrent->IsVisible) && (!m_IsTransitionFading) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
+        {
+            if (ovrl_handle_assigned != vr::k_ulOverlayHandleInvalid)                       //Based on assigned overlay
+            {
+                if (!m_OverlayStateCurrent->IsPinned)
+                {
+                    Matrix4 matrix_m4 = OverlayManager::Get().GetOverlayCenterBottomTransform((unsigned int)assigned_overlay_id, ovrl_handle_assigned);
+                    UIManager::Get()->GetOverlayDragger().ApplyDashboardScale(matrix_m4);
+                    matrix_m4 *= m_OverlayStateCurrent->Transform;
+
+                    vr::HmdMatrix34_t matrix_ovr = matrix_m4.toOpenVR34();
+                    vr::VROverlay()->SetOverlayTransformAbsolute(GetOverlayHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
+                    m_OverlayStateCurrent->TransformAbs = matrix_m4;
+                }
+            }
+            else if (m_OverlayStateCurrentID == floating_window_ovrl_state_dashboard_tab)   //Based on dashboard tab
+            {
+                if ((!m_OverlayStateCurrent->IsPinned) && ( (!UIManager::Get()->IsDummyOverlayTransformUnstable()) || (m_Alpha != 1.0f) ) )
+                {
+                    vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
+                    Matrix4 matrix_m4 = UIManager::Get()->GetOverlayDragger().GetBaseOffsetMatrix(ovrl_origin_dplus_tab) * m_OverlayStateCurrent->Transform;
+
+                    vr::HmdMatrix34_t matrix_ovr = matrix_m4.toOpenVR34();
+                    vr::VROverlay()->SetOverlayTransformAbsolute(overlay_handle, origin, &matrix_ovr);
+                    m_OverlayStateCurrent->TransformAbs = matrix_m4;
+                }
+            }
+            else if (!m_OverlayStateCurrent->IsPinned)                                      //Based on m_TransformUIOrigin (fallback when above not available and unpinned)
+            {
+                if (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard()))
+                {
+                    Matrix4 matrix_m4 = m_TransformUIOrigin;
+                    matrix_m4 *= m_OverlayStateCurrent->Transform;
+
+                    vr::HmdMatrix34_t matrix_ovr = matrix_m4.toOpenVR34();
+                    vr::VROverlay()->SetOverlayTransformAbsolute(GetOverlayHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
+                    m_OverlayStateCurrent->TransformAbs = matrix_m4;
+                }
+            }
         }
     }
 }
 
+void WindowKeyboard::Show(bool skip_fade)
+{
+    m_WindowTitleStrID = (UIManager::Get()->GetVRKeyboard().IsTargetUI()) ? tstr_KeyboardWindowTitleSettings : tstr_KeyboardWindowTitle;
+
+    //Update UI origin transform when newly visible, used when there's no overlay assignment to base the position off of
+    if ( (m_Alpha == 0.0f) && (UIManager::Get()->IsOpenVRLoaded()) )
+    {
+        //Get dashboard-similar transform and adjust it down a bit
+        Matrix4 matrix_facing = ComputeHMDFacingTransform(1.15f);
+        matrix_facing.translate_relative(0.0f, -0.50f, 0.0f);
+
+        //dplus_tab origin contains dashboard scale, so apply it to this transform to stay consistent in size
+        UIManager::Get()->GetOverlayDragger().ApplyDashboardScale(matrix_facing);
+
+        m_TransformUIOrigin = matrix_facing;
+    }
+
+    ApplyCurrentOverlayState();
+
+    FloatingWindow::Show(skip_fade);
+}
+
 void WindowKeyboard::Hide(bool skip_fade)
 {
-    //Refuse to hide if window is currently being dragged and assign to global (remove assignment, but stay visible)
+    //Refuse to hide if window is currently being dragged or hovered and remove assignment
     if ( (UIManager::Get()->GetOverlayDragger().IsDragActive()) && (UIManager::Get()->GetOverlayDragger().GetDragOverlayHandle() == GetOverlayHandle()) )
     {
-        ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -3);
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_keyboard_visible_for_overlay_id, -3);
+        SetAssignedOverlayID(-1);
 
         return;
     }
@@ -643,16 +736,6 @@ void WindowKeyboard::WindowUpdate()
     io.KeyRepeatDelay = key_repeat_delay_old;
 }
 
-void WindowKeyboard::OnWindowPinButtonPressed()
-{
-    //If newly pinned, assing to global space to not auto-close later
-    if (m_IsPinned)
-    {
-        ConfigManager::SetValue(configid_int_state_keyboard_visible_for_overlay_id, -3);
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_keyboard_visible_for_overlay_id, -3);
-    }
-}
-
 bool WindowKeyboard::IsVirtualWindowItemHovered() const
 {
     return m_IsAnyButtonHovered;
@@ -1051,18 +1134,55 @@ vr::VROverlayHandle_t WindowKeyboard::GetOverlayHandle() const
     return UIManager::Get()->GetOverlayHandleKeyboard();
 }
 
+void WindowKeyboard::RebaseTransform()
+{
+    if ( (m_OverlayStateCurrentID == floating_window_ovrl_state_room) && (!m_OverlayStateCurrent->IsPinned) )
+    {
+        vr::HmdMatrix34_t hmd_mat = {0};
+        vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
+
+        vr::VROverlay()->GetOverlayTransformAbsolute(GetOverlayHandle(), &universe_origin, &hmd_mat);
+        Matrix4 mat_abs = hmd_mat;
+        Matrix4 mat_origin_inverse;
+
+        int assigned_id = GetAssignedOverlayID();
+
+        if (assigned_id >= 0)
+        {
+            mat_origin_inverse = OverlayManager::Get().GetOverlayCenterBottomTransform((unsigned int)assigned_id);
+            UIManager::Get()->GetOverlayDragger().ApplyDashboardScale(mat_origin_inverse);
+        }
+        else
+        {
+            mat_origin_inverse = m_TransformUIOrigin;
+        }
+
+        mat_origin_inverse.invert();
+        m_OverlayStateCurrent->Transform = mat_origin_inverse * mat_abs;
+    }
+    else
+    {
+        FloatingWindow::RebaseTransform();
+    }
+}
+
 void WindowKeyboard::ResetTransform()
 {
+    FloatingWindow::ResetTransform();
+
     //Offset keyboard position depending on the scaled size
     float overlay_height_m = (m_Size.y / m_Size.x) * OVERLAY_WIDTH_METERS_KEYBOARD;
-    float offset_up = -0.55f - ((overlay_height_m * ConfigManager::GetValue(configid_float_input_keyboard_detached_size)) / 2.0f);
+    float offset_up_room          = -0.55f - ((overlay_height_m * m_OverlayStateRoom.Size)         / 2.0f);
+    float offset_up_dashboard_tab = -0.55f - ((overlay_height_m * m_OverlayStateDashboardTab.Size) / 2.0f);
 
-    m_Transform.identity();
-    m_Transform.rotateX(-45);
-    m_Transform.translate_relative(0.0f, offset_up, 0.00f);
+    m_OverlayStateRoom.Transform.rotateX(-45);
+    m_OverlayStateDashboardTab.Transform = m_OverlayStateRoom.Transform;
+
+    m_OverlayStateRoom.Transform.translate_relative(0.0f, offset_up_room, 0.00f);
+    m_OverlayStateDashboardTab.Transform.translate_relative(0.0f, offset_up_dashboard_tab, 0.00f);
 
     //If visible, pinned and dplus dashboard overlay not available, reset to transform useful outside of the dashboard
-    if ( (m_Visible) && (m_IsPinned) && (UIManager::Get()->IsOpenVRLoaded()) && (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard())) )
+    if ( (m_OverlayStateCurrent->IsVisible) && (m_OverlayStateCurrent->IsPinned) && (UIManager::Get()->IsOpenVRLoaded()) && (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard())) )
     {
         //Get dashboard-similar transform and adjust it down a bit
         Matrix4 matrix_facing = ComputeHMDFacingTransform(1.15f);
@@ -1078,26 +1198,37 @@ void WindowKeyboard::ResetTransform()
         matrix_facing.setTranslation(translation);
 
         //Apply facing transform to normal keyboard position
-        m_Transform = matrix_facing * m_Transform;
+        m_OverlayStateCurrent->Transform = matrix_facing * m_OverlayStateCurrent->Transform;
 
         //Set transform directly as it may not be updated automatically
-        vr::HmdMatrix34_t matrix_ovr = m_Transform.toOpenVR34();
+        vr::HmdMatrix34_t matrix_ovr = m_OverlayStateCurrent->Transform.toOpenVR34();
         vr::VROverlay()->SetOverlayTransformAbsolute(GetOverlayHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
     }
+}
+
+void WindowKeyboard::SetAssignedOverlayID(int assigned_id)
+{
+    (m_OverlayStateCurrentID == floating_window_ovrl_state_dashboard_tab) ? m_AssignedOverlayIDDashboardTab = assigned_id : m_AssignedOverlayIDRoom = assigned_id;
+}
+
+void WindowKeyboard::SetAssignedOverlayID(int assigned_id, FloatingWindowOverlayStateID state_id)
+{
+    (state_id == floating_window_ovrl_state_dashboard_tab) ? m_AssignedOverlayIDDashboardTab = assigned_id : m_AssignedOverlayIDRoom = assigned_id;
+}
+
+int WindowKeyboard::GetAssignedOverlayID() const
+{
+    return (m_OverlayStateCurrentID == floating_window_ovrl_state_dashboard_tab) ? m_AssignedOverlayIDDashboardTab : m_AssignedOverlayIDRoom;
+}
+
+int WindowKeyboard::GetAssignedOverlayID(FloatingWindowOverlayStateID state_id) const
+{
+    return (state_id == floating_window_ovrl_state_dashboard_tab) ? m_AssignedOverlayIDDashboardTab : m_AssignedOverlayIDRoom;
 }
 
 bool WindowKeyboard::IsHovered() const
 {
     return m_IsHovered;
-}
-
-void WindowKeyboard::UpdateOverlaySize() const
-{
-    if (!UIManager::Get()->IsOpenVRLoaded())
-        return;
-
-    if (GetOverlayHandle() != vr::k_ulOverlayHandleInvalid)
-        vr::VROverlay()->SetOverlayWidthInMeters(GetOverlayHandle(), OVERLAY_WIDTH_METERS_KEYBOARD * ConfigManager::GetValue(configid_float_input_keyboard_detached_size));
 }
 
 void WindowKeyboard::ResetButtonState()

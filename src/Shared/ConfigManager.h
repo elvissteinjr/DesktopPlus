@@ -85,6 +85,7 @@ enum ConfigID_Bool
     configid_bool_state_overlay_dragselectmode_show_hidden,   //True if mode is from a popup
     configid_bool_state_overlay_dragmode_temp,
     configid_bool_state_window_focused_process_elevated,
+    configid_bool_state_keyboard_visible,
     configid_bool_state_performance_stats_active,             //Only count when the stats are visible
     configid_bool_state_performance_gpu_copy_active,
     configid_bool_state_misc_process_elevated,                //True if the dashboard application is running with admin privileges
@@ -142,7 +143,6 @@ enum ConfigID_Int
     configid_int_state_action_current_sub,                  //Target variable. 0 = Name, 1 = Function Type. Remaining values depend on the function. Not the cleanest way but easier
     configid_int_state_action_value_int,                    //to set up with existing IPC stuff
     configid_int_state_mouse_dbl_click_assist_duration_ms,  //Internally used value, which will replace -1 with the current double-click delay automatically
-    configid_int_state_keyboard_visible_for_overlay_id,     //-1 = None, -2 = UI (only if newly shown for it), -3 = Global (visible, but unassigned)
     configid_int_state_performance_duplication_fps,
     configid_int_state_interface_desktop_count,             //Count of desktops after optionally filtering virtual WMR displays
     configid_int_state_auto_docking_state,                  //0 = Off, 1 = Left Hand, 2 = Right Hand (matches ETrackedControllerRole). +2 for detaching
@@ -164,7 +164,6 @@ enum ConfigID_Float
     configid_float_overlay_gazefade_opacity,
     configid_float_overlay_update_limit_override_ms,
     configid_float_overlay_MAX,
-    configid_float_input_keyboard_detached_size,
     configid_float_input_detached_interaction_max_distance,
     configid_float_input_global_hmd_pointer_max_distance,
     configid_float_interface_last_vr_ui_scale,
@@ -324,6 +323,11 @@ class ConfigManager
         void SaveOverlayProfile(Ini& config, unsigned int overlay_id = UINT_MAX);
         void LoadMultiOverlayProfile(const Ini& config, bool clear_existing_overlays = true, std::vector<char>* ovrl_inclusion_list = nullptr);
         void SaveMultiOverlayProfile(Ini& config, std::vector<char>* ovrl_inclusion_list = nullptr);
+
+        #ifdef DPLUS_UI
+            void LoadConfigPersistentWindowState(Ini& config);
+            void SaveConfigPersistentWindowState(Ini& config);
+        #endif
 
         static bool IsUIAccessEnabled();
         static void RemoveScaleFromTransform(Matrix4& transform, float* width);

@@ -144,6 +144,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         ui_manager.GetNotificationIcon().Init(hInstance);
     }
 
+    ui_manager.OnInitDone();
+
     //Main loop
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));

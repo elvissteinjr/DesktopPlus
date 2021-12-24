@@ -29,6 +29,10 @@ class WindowKeyboard : public FloatingWindow
         float m_WindowWidth;
         bool m_IsHovered;
         bool m_IsAnyButtonHovered;
+        Matrix4 m_TransformUIOrigin;
+
+        int m_AssignedOverlayIDRoom;            //-1 = None/Global, -2 = UI (only if newly shown for it)
+        int m_AssignedOverlayIDDashboardTab;    //^
 
         bool m_IsIsoEnterDown;
         bool m_UnstickModifiersLater;
@@ -42,7 +46,6 @@ class WindowKeyboard : public FloatingWindow
 
         virtual void WindowUpdate();
 
-        virtual void OnWindowPinButtonPressed();
         virtual bool IsVirtualWindowItemHovered() const;
 
         void OnVirtualKeyDown(unsigned char keycode, bool block_modifiers = false);
@@ -61,13 +64,20 @@ class WindowKeyboard : public FloatingWindow
 
     public:
         WindowKeyboard();
+        virtual void UpdateVisibility();
+
         virtual void Show(bool skip_fade = false);
         virtual void Hide(bool skip_fade = false);
         virtual vr::VROverlayHandle_t GetOverlayHandle() const;
+        virtual void RebaseTransform();
         virtual void ResetTransform();
 
+        void SetAssignedOverlayID(int assigned_id);                                         //Sets for current state
+        void SetAssignedOverlayID(int assigned_id, FloatingWindowOverlayStateID state_id);
+        int GetAssignedOverlayID() const;                                                   //Gets from current state
+        int GetAssignedOverlayID(FloatingWindowOverlayStateID state_id) const;
+
         bool IsHovered() const;
-        void UpdateOverlaySize() const;
         void ResetButtonState();    //Called by VRKeyboard when resetting the keyboard state
 
         bool HandleOverlayEvent(const vr::VREvent_t& vr_event);

@@ -578,14 +578,9 @@ void WindowFloatingUIActionBar::ButtonActionKeyboard(unsigned int overlay_id, Im
     {
         if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 3.0f) //Don't do normal button behavior after reset was just triggered
         {
-            //The keyboard might've just been auto-hidden by changing focus to this very button. What then happens is it appearing again, which is technically correct... but not what anyone wants
-            //We work around this by enforcing a 0.5 second delay since the last auto-hide or else just don't react to the press
-            if (ImGui::GetTime() >= UIManager::Get()->GetVRKeyboard().GetLastAutoHiddenTime() + 0.5)
-            {
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, action_show_keyboard);
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
-            }
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, action_show_keyboard);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
         }
     }
 
