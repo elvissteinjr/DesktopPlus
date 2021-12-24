@@ -1,5 +1,6 @@
 Desktop+, an advanced SteamVR Desktop Overlay, by elvissteinjr
 --------------------------------------------------------------
+! This file has not been adjusted for the NewUI branch yet
 
 Installation (GitHub Version)
 -----------------------------
