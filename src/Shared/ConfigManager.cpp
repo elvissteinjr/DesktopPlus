@@ -1269,7 +1269,10 @@ bool ConfigManager::IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayH
     if (vr::VROverlay() == nullptr)
         return false;
 
-    bool ret = vr::VROverlay()->IsHoverTargetOverlay(ulOverlayHandle);
+    bool ret = false;
+
+    if (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid)
+        ret = vr::VROverlay()->IsHoverTargetOverlay(ulOverlayHandle);
 
     if (!ret)
         return (ulOverlayHandle == m_ConfigHandle[configid_handle_state_dplus_laser_pointer_target_overlay]);
