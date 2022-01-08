@@ -487,8 +487,11 @@ void FloatingWindow::SetTransform(const Matrix4& transform)
 
     //Store size multiplier
     float current_width = m_OvrlWidth;
-    vr::VROverlay()->GetOverlayWidthInMeters(GetOverlayHandle(), &current_width);
-    m_OverlayStateCurrent->Size = current_width / m_OvrlWidth;
+    
+    if (vr::VROverlay()->GetOverlayWidthInMeters(GetOverlayHandle(), &current_width) == vr::VROverlayError_None)
+    {
+        m_OverlayStateCurrent->Size = current_width / m_OvrlWidth;
+    }
 }
 
 void FloatingWindow::ApplyCurrentOverlayState()
