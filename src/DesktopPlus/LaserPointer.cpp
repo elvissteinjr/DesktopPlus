@@ -535,7 +535,14 @@ void LaserPointer::Update()
     }
 
     //Don't do anything if a dashboard pointer is active or we have no primary pointer ourselves
-    bool should_pointer_be_active = ( (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndexInvalid) && (primary_pointer_device != vr::k_unTrackedDeviceIndexInvalid) );
+    bool should_pointer_be_active = IsActive();
+
+    //Also clear active device when we shouldn't be active
+    if (!should_pointer_be_active)
+    {
+        ClearActiveDevice();
+    }
+
     if ( (m_HadPrimaryPointerDevice) || (should_pointer_be_active) )
     {
         for (vr::TrackedDeviceIndex_t i = 0; i <= m_DeviceMaxActiveID; ++i)
@@ -760,7 +767,7 @@ LaserPointerActivationOrigin LaserPointer::GetActivationOrigin() const
 bool LaserPointer::IsActive() const
 {
     vr::TrackedDeviceIndex_t primary_pointer_device = (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device);
-    return ( (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndexInvalid) && (primary_pointer_device != vr::k_unTrackedDeviceIndexInvalid) );
+    return ( (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndexInvalid) && (!vr::VROverlay()->IsDashboardVisible()) && (primary_pointer_device != vr::k_unTrackedDeviceIndexInvalid) );
 }
 
 vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) const
