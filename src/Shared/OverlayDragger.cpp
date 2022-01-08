@@ -422,10 +422,17 @@ void OverlayDragger::ApplyDashboardScale(Matrix4& matrix)
 {
     Matrix4 mat_origin = GetBaseOffsetMatrix(ovrl_origin_dplus_tab);
     Vector3 row_1(mat_origin[0], mat_origin[1], mat_origin[2]);
+    float dashboard_scale = 0.469f;
+
+    //If the dashboard scale cannot be determined yet (D+ tab hasn't been used yet), don't calculate and use the fallback value instead
+    if (row_1 != Vector3(1.0f, 0.0f, 0.0f))
+    {
+        dashboard_scale = row_1.length();
+    }
 
     Vector3 translation = matrix.getTranslation();
     matrix.setTranslation({0.0f, 0.0f, 0.0f});
-    matrix.scale(row_1.length());
+    matrix.scale(dashboard_scale);
     matrix.setTranslation(translation);
 }
 
