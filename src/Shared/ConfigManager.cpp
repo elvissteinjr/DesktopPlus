@@ -429,6 +429,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_input_mouse_render_cursor]                   = config.ReadBool("Mouse", "RenderCursor", true);
     m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]        = config.ReadBool("Mouse", "RenderIntersectionBlob", false);
     m_ConfigInt[configid_int_input_mouse_dbl_click_assist_duration_ms]      = config.ReadInt( "Mouse", "DoubleClickAssistDuration", -1);
+    m_ConfigBool[configid_bool_input_mouse_scroll_smooth]                   = config.ReadBool("Mouse", "ScrollSmooth", false);
     m_ConfigBool[configid_bool_input_mouse_allow_pointer_override]          = config.ReadBool("Mouse", "AllowPointerOverride", true);
 
     m_ConfigString[configid_str_input_keyboard_layout_file]                 = config.ReadString("Keyboard", "LayoutFile", "qwerty_usa.ini");
@@ -894,6 +895,7 @@ void ConfigManager::SaveConfigToFile()
 
     config.WriteBool("Mouse", "RenderCursor",              m_ConfigBool[configid_bool_input_mouse_render_cursor]);
     config.WriteBool("Mouse", "RenderIntersectionBlob",    m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]);
+    config.WriteBool("Mouse", "ScrollSmooth",              m_ConfigBool[configid_bool_input_mouse_scroll_smooth]);
     config.WriteBool("Mouse", "AllowPointerOverride",      m_ConfigBool[configid_bool_input_mouse_allow_pointer_override]);
     config.WriteInt( "Mouse", "DoubleClickAssistDuration", m_ConfigInt[configid_int_input_mouse_dbl_click_assist_duration_ms]);
 
