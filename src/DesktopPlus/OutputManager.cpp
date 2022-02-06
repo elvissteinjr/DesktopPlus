@@ -3448,11 +3448,24 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     if (vr_event.data.controller.button == Button_Dashboard_GoHome)
                     {
-                        DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id));
+                        DoStartAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id));
                     }
                     else if (vr_event.data.controller.button == Button_Dashboard_GoBack)
                     {
-                        DoAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id));
+                        DoStartAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id));
+                    }
+
+                    break;
+                }
+                case vr::VREvent_ButtonUnpress:
+                {
+                    if (vr_event.data.controller.button == Button_Dashboard_GoHome)
+                    {
+                        DoStopAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_home_action_id));
+                    }
+                    else if (vr_event.data.controller.button == Button_Dashboard_GoBack)
+                    {
+                        DoStopAction((ActionID)ConfigManager::Get().GetConfigInt(configid_int_input_go_back_action_id));
                     }
 
                     break;
