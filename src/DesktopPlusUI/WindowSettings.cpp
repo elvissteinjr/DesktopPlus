@@ -2039,6 +2039,11 @@ void WindowSettings::UpdateCatInterface()
 
 void WindowSettings::UpdateCatActions()
 {
+    //We want to show binding callouts further below, but as of writing this code, showing the callouts via the API only appears to work if they've been previously displayed in the session.
+    //Displaying them from the controller settings screen works. And after that, the API calls work as well (we use a hacky way here, but this applies to regular ones as well afaik).
+    //When it works, the binding callout overlay exists, so we can use that info to not offer a broken menu item at least. Still not so great, but maybe it'll get fixed.
+    static bool is_binding_callout_overlay_available = false;
+
     ImGui::Text("Actions");
 
     //Horizontal separator
@@ -2050,7 +2055,17 @@ void WindowSettings::UpdateCatActions()
     ImGui::BeginChild("ViewActionsSettings");
 
     if (ImGui::IsWindowAppearing())
+    {
         UIManager::Get()->RepeatFrame();
+
+        //Check if the binding callout overlay exists
+        if (UIManager::Get()->IsOpenVRLoaded())
+        {
+            vr::VROverlayHandle_t ovrl_handle = vr::k_ulOverlayHandleInvalid;
+            vr::VROverlay()->FindOverlay("system.vrwebhelper.bindingcallouts", &ovrl_handle);
+            is_binding_callout_overlay_available = (ovrl_handle != vr::k_ulOverlayHandleInvalid);
+        }
+    }
 
     const float column_width_0 = ImGui::GetFontSize() * 15.0f;
 
@@ -2060,7 +2075,7 @@ void WindowSettings::UpdateCatActions()
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
         if (UIManager::Get()->IsOpenVRLoaded())
         {
-            ImGui::FixedHelpMarker("Controller bindings when pointing at the overlay.\nClick here to configure the VR Dashboard controller bindings and change which buttons these are.");
+            ImGui::FixedHelpMarker("Controller bindings when pointing at the overlay.\nClick here to show or configure the VR Dashboard controller bindings and change which buttons these are.");
 
             //Somewhat hidden, but still convenient shortcut to the controller binding page
             if ((UIManager::Get()->IsOpenVRLoaded()) && (ImGui::IsItemClicked()))
@@ -2070,7 +2085,26 @@ void WindowSettings::UpdateCatActions()
 
             if (ImGui::BeginPopup("PopupOpenControllerBindingsCompositor"))
             {
-                if (ImGui::Selectable("Open VR Dashboard Controller Bindings"))
+                if ( (is_binding_callout_overlay_available) && (ImGui::Selectable("Show VR Dashboard Controller Bindings")) )
+                {
+                    //Pretend to be the VR Dashboard app for a split second to get the action set handle and show the bindings for it
+                    //Unfortunately there are no APIs to read binding data of other applications... or even the own when not actively using it as far as I can tell
+                    vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), "openvr.component.vrcompositor");
+
+                    vr::VRActionSetHandle_t handle_actionset = vr::k_ulInvalidActionSetHandle;
+
+                    if (vr::VRInput()->GetActionSetHandle("/actions/lasermouse", &handle_actionset) == vr::VRInputError_None)
+                    {
+                        vr::VRActiveActionSet_t actionset_desc = {0};
+                        actionset_desc.ulActionSet = handle_actionset;
+
+                        vr::VRInput()->ShowBindingsForActionSet(&actionset_desc, sizeof(vr::VRActiveActionSet_t), 1, vr::k_ulInvalidInputValueHandle);
+                    }
+
+                    vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
+                }
+
+                if (ImGui::Selectable("Configure VR Dashboard Controller Bindings"))
                 {
                     //OpenBindingUI does not use that app key argument it takes, it always opens the bindings of the calling application
                     //To work around this, we pretend to be the app we want to open the bindings for during the call
@@ -2108,7 +2142,7 @@ void WindowSettings::UpdateCatActions()
         ImGui::AlignTextToFramePadding();
         ImGui::Text("\"Go Back\" Action");
         ImGui::NextColumn();
-            
+
         if (ButtonAction("ActionGoBack", actionid_back))
         {
             ConfigManager::Get().SetConfigInt(configid_int_input_go_back_action_id, actionid_back);
@@ -2124,7 +2158,7 @@ void WindowSettings::UpdateCatActions()
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
         if (UIManager::Get()->IsOpenVRLoaded())
         {
-            ImGui::FixedHelpMarker("Controller bindings when the dashboard is closed and not pointing at an overlay.\nClick here to configure the Desktop+ controller bindings and change which buttons these are.");
+            ImGui::FixedHelpMarker("Controller bindings when the dashboard is closed and not pointing at an overlay.\nClick here to show or configure the Desktop+ controller bindings and change which buttons these are.");
 
             //Somewhat hidden, but still convenient shortcut to the controller binding page
             if ((UIManager::Get()->IsOpenVRLoaded()) && (ImGui::IsItemClicked()))
@@ -2134,13 +2168,32 @@ void WindowSettings::UpdateCatActions()
 
             if (ImGui::BeginPopup("PopupOpenControllerBindingsDesktopPlus"))
             {
-                if (ImGui::Selectable("Open Desktop+ Controller Bindings"))
+                if ( (is_binding_callout_overlay_available) && (ImGui::Selectable("Show Desktop+ Controller Bindings")) )
+                {
+                    //See comment on the active controller buttons
+                    vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
+
+                    vr::VRActionSetHandle_t handle_actionset = vr::k_ulInvalidActionSetHandle;
+
+                    if (vr::VRInput()->GetActionSetHandle("/actions/shortcuts", &handle_actionset) == vr::VRInputError_None)
+                    {
+                        vr::VRActiveActionSet_t actionset_desc = {0};
+                        actionset_desc.ulActionSet = handle_actionset;
+
+                        vr::VRInput()->ShowBindingsForActionSet(&actionset_desc, sizeof(vr::VRActiveActionSet_t), 1, vr::k_ulInvalidInputValueHandle);
+                    }
+
+                    vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
+                }
+
+                if (ImGui::Selectable("Configure Desktop+ Controller Bindings"))
                 {
                     //See comment on the active controller buttons
                     vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
                     vr::VRInput()->OpenBindingUI(g_AppKeyDashboardApp, vr::k_ulInvalidActionSetHandle, vr::k_ulInvalidInputValueHandle, UIManager::Get()->IsInDesktopMode());
                     vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
                 }
+
                 ImGui::EndPopup();
             }
         }
