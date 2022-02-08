@@ -2,6 +2,7 @@
 
 #include <dwmapi.h>
 #include <windowsx.h>
+#include <ShlDisp.h>
 using namespace DirectX;
 #include <sstream>
 
@@ -2157,6 +2158,11 @@ void OutputManager::DoAction(ActionID action_id)
                 ToggleOverlayGroupEnabled(1 + ((int)action_id - action_toggle_overlay_enabled_group_1) );
                 break;
             }
+            case action_switch_task:
+            {
+                ShowWindowSwitcher();
+                break;
+            }
             default: break;
         }
     }
@@ -4066,6 +4072,17 @@ bool OutputManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
     return false;
 }
 
+void OutputManager::InitComIfNeeded()
+{
+    if (!m_ComInitDone)
+    {
+        if (::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) != RPC_E_CHANGED_MODE)
+        {
+            m_ComInitDone = true;
+        }
+    }
+}
+
 void OutputManager::LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8)
 {
     if (ConfigManager::Get().GetConfigBool(configid_bool_state_misc_elevated_mode_active))
@@ -4081,21 +4098,28 @@ void OutputManager::LaunchApplication(const std::string& path_utf8, const std::s
         return;
     }
 
-    if (!m_ComInitDone) //Let's only do this if really needed
-    {
-        if (::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) != RPC_E_CHANGED_MODE)
-        {
-            m_ComInitDone = true;
-        }
-    }
-
     //Convert path and arg to utf16
     std::wstring path_wstr = WStringConvertFromUTF8(path_utf8.c_str());
     std::wstring arg_wstr  = WStringConvertFromUTF8(arg_utf8.c_str());
 
     if (!path_wstr.empty())
-    {   
+    {
+        InitComIfNeeded();
+
         ::ShellExecute(nullptr, nullptr, path_wstr.c_str(), arg_wstr.c_str(), nullptr, SW_SHOWNORMAL);
+    }
+}
+
+void OutputManager::ShowWindowSwitcher()
+{
+    InitComIfNeeded();
+
+    Microsoft::WRL::ComPtr<IShellDispatch5> shell_dispatch;
+    HRESULT sc = ::CoCreateInstance(CLSID_Shell, nullptr, CLSCTX_SERVER, IID_IDispatch, &shell_dispatch);
+
+    if (SUCCEEDED(sc))
+    {
+        shell_dispatch->WindowSwitcher();
     }
 }
 

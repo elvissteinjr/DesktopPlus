@@ -24,6 +24,7 @@ enum TMNGRTexID
     tmtex_icon_desktop_prev,
     tmtex_icon_settings,
     tmtex_icon_keyboard,
+    tmtex_icon_switch_task,
     tmtex_icon_small_close,
     tmtex_icon_small_move,
     tmtex_icon_small_actionbar,

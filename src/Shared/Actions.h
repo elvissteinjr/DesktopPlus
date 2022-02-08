@@ -18,6 +18,7 @@ enum ActionID: int
     action_toggle_overlay_enabled_group_1,
     action_toggle_overlay_enabled_group_2,
     action_toggle_overlay_enabled_group_3,
+    action_switch_task,
     action_built_in_MAX,
     //Leaving some room here, as we don't want to mess with user order later
     action_custom = 1000          //+ Custom Action ID

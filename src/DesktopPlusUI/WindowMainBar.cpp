@@ -240,7 +240,8 @@ void WindowMainBar::UpdateActionButtons(unsigned int overlay_id)
                 //Button action is always the same but we want to use icons if available
                 switch (order_data.action_id)
                 {
-                    case action_show_keyboard: TextureManager::Get().GetTextureInfo(tmtex_icon_keyboard, b_size, b_uv_min, b_uv_max); break;                     
+                    case action_show_keyboard: TextureManager::Get().GetTextureInfo(tmtex_icon_keyboard,    b_size, b_uv_min, b_uv_max); break;
+                    case action_switch_task:   TextureManager::Get().GetTextureInfo(tmtex_icon_switch_task, b_size, b_uv_min, b_uv_max); break;
                     default:                   has_icon = false;
                 }
 

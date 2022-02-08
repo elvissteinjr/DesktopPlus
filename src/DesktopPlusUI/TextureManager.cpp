@@ -35,6 +35,7 @@ const wchar_t* TextureManager::s_TextureFilenames[] =
     L"images/icons/desktop_previous.png",
     L"images/icons/settings.png",
     L"images/icons/keyboard.png",
+    L"images/icons/task_switch.png",
     L"images/icons/small_close.png",
     L"images/icons/small_move.png",
     L"images/icons/small_actionbar.png",
