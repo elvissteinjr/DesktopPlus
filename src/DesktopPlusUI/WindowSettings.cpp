@@ -157,9 +157,9 @@ void WindowSettings::UpdateWarnings()
 
             if (ImGui::BeginPopup("FocusedElevatedContext"))
             {
-                if (ImGui::Selectable("Try changing Focus"))
+                if (ImGui::Selectable("Switch Task"))
                 {
-                    UIManager::Get()->TryChangingWindowFocus();
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, action_switch_task);
                     UIManager::Get()->RepeatFrame();
                 }
                 else if ((UIManager::Get()->IsElevatedTaskSetUp()) && ImGui::Selectable("Enter Elevated Mode"))
@@ -3076,7 +3076,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.6.1");
+        ImGui::Text("Desktop+ Version 2.6.2 Beta");
 
         ImGui::Columns(1);
     }
@@ -4197,7 +4197,7 @@ void WindowSettings::PopupQuickStartGuide()
                                    "\n"
                                    "The first overlay is special. It's only visible in and fixed to the Desktop+ dashboard tab.\n"
                                    "If you wish to bring an desktop into the game world for example, you need to add another overlay.\n");
-                
+
                 ImGui::AlignTextToFramePadding();
                 ImGui::Text("Additional overlays can be created by clicking on ");
                 ImGui::SameLine(0.0f, 0.0f);
@@ -4225,7 +4225,7 @@ void WindowSettings::PopupQuickStartGuide()
                 ImGui::TextWrapped("Actions in Desktop+ are functions which can be bound to controller inputs, added to the Action Bar at the bottom as buttons and more.\n\n"
                                    "There are built-in and user-defined custom actions. Custom actions can do things like pressing keyboard shortcuts, text input, execute applications, and control overlay state.\n"
                                    "\n"
-                                   "\"Switch Task\", \"Open ReadMe\" and \"Middle/Back Mouse Button\" are examples of custom actions.\n"
+                                   "\"Open ReadMe\" and \"Middle/Back Mouse Button\" are examples of custom actions.\n"
                                    "You may change or even remove them entirely if you want to.");
                 break;
             }
