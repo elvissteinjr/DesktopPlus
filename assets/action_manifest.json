@@ -52,27 +52,27 @@
     },
     {
       "name": "/actions/laserpointer/in/Aux01Click",
-      "requirement" : "optional",
+      "requirement": "optional",
       "type": "boolean"
     },
     {
       "name": "/actions/laserpointer/in/Aux02Click",
-      "requirement" : "optional",
+      "requirement": "optional",
       "type": "boolean"
     },
     {
       "name": "/actions/scroll_discrete/in/ScrollDiscrete",
-      "requirement" : "suggested",
+      "requirement": "suggested",
       "type": "vector2"
     },
     {
       "name": "/actions/scroll_smooth/in/ScrollSmooth",
-      "requirement" : "suggested",
+      "requirement": "suggested",
       "type": "vector2"
     },
     {
       "name": "/actions/laserpointer/out/Haptic",
-      "requirement" : "suggested",
+      "requirement": "suggested",
       "type": "vibration"
     }
   ],
@@ -87,10 +87,12 @@
     },
     {
       "name": "/actions/scroll_discrete",
+      "display_with": "/actions/laserpointer",
       "usage": "single"
     },
     {
       "name": "/actions/scroll_smooth",
+      "display_with": "/actions/laserpointer",
       "usage": "single"
     }
   ],
