@@ -90,6 +90,7 @@
       <AdditionalDependencies>Windowscodecs.lib;dwmapi.lib;dxgi.lib;openvr_api.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)Shared</AdditionalLibraryDirectories>
       <DelayLoadDLLs>CoreMessaging.dll;D3D11.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
