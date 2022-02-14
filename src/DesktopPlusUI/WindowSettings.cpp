@@ -40,7 +40,7 @@ WindowSettings::WindowSettings() :
     m_PageStack.push_back(wndsettings_page_main);
     std::fill(std::begin(m_ScrollMainCatPos), std::end(m_ScrollMainCatPos), -1.0f);
 
-    ResetTransform();
+    FloatingWindow::ResetTransformAll();
 }
 
 void WindowSettings::Hide(bool skip_fade)
@@ -50,14 +50,14 @@ void WindowSettings::Hide(bool skip_fade)
     ConfigManager::Get().SaveConfigToFile();
 }
 
-void WindowSettings::ResetTransform()
+void WindowSettings::ResetTransform(FloatingWindowOverlayStateID state_id)
 {
-    FloatingWindow::ResetTransform();
+    FloatingWindow::ResetTransform(state_id);
 
-    m_OverlayStateDashboardTab.Transform.rotateY(-15.0f);
-    m_OverlayStateDashboardTab.Transform.translate_relative(OVERLAY_WIDTH_METERS_DASHBOARD_UI / 3.0f, 0.70f, 0.15f);
+    FloatingWindowOverlayState& overlay_state = GetOverlayState(state_id);
 
-    m_OverlayStateRoom.Transform = m_OverlayStateDashboardTab.Transform;
+    overlay_state.Transform.rotateY(-15.0f);
+    overlay_state.Transform.translate_relative(OVERLAY_WIDTH_METERS_DASHBOARD_UI / 3.0f, 0.70f, 0.15f);
 }
 
 vr::VROverlayHandle_t WindowSettings::GetOverlayHandle() const
@@ -149,6 +149,7 @@ void WindowSettings::WindowUpdate()
             switch (page_id)
             {
                 case wndsettings_page_main:                    UpdatePageMain();                    break;
+                case wndsettings_page_persistent_ui:           UpdatePagePersistentUI();            break;
                 case wndsettings_page_keyboard:                UpdatePageKeyboardLayout();          break;
                 case wndsettings_page_profiles:                UpdatePageProfiles();                break;
                 case wndsettings_page_profiles_overlay_select: UpdatePageProfilesOverlaySelect();   break;
@@ -631,6 +632,26 @@ void WindowSettings::UpdatePageMainCatInterface()
         }
 
         ImGui::Unindent();
+
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
+        {
+            ImGui::Spacing();
+            ImGui::Columns(2, "ColumnInterface2", false);
+            ImGui::SetColumnWidth(0, m_Column0Width);
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUI));
+            ImGui::NextColumn();
+
+            ImGui::PushID(tstr_SettingsInterfacePersistentUI);  //Avoid ID conflict from common "Manage" label
+            if (ImGui::Button(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIManage)))
+            {
+                PageGoForward(wndsettings_page_persistent_ui);
+            }
+            ImGui::PopID();
+
+            ImGui::Columns(1);
+        }
     }
 }
 
@@ -668,10 +689,12 @@ void WindowSettings::UpdatePageMainCatProfiles()
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsProfilesOverlays));
         ImGui::NextColumn();
 
+        ImGui::PushID(tstr_SettingsProfilesManage);  //Avoid ID conflict from common "Manage" label
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesManage)))
         {
             PageGoForward(wndsettings_page_profiles);
         }
+        ImGui::PopID();
 
         ImGui::Columns(1);
     }
@@ -721,7 +744,7 @@ void WindowSettings::UpdatePageMainCatInput()
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsKeyboardSize));
         ImGui::NextColumn();
 
-        //Keyboard size setting uses size of currently visible overlay state (usually dashboard tab)
+        //Keyboard size setting shows size of currently visible overlay state (usually dashboard tab) and applies it to all
         WindowKeyboard& window_keyboard = UIManager::Get()->GetVRKeyboard().GetWindow();
         float& size = window_keyboard.GetOverlayState(window_keyboard.GetOverlayStateCurrentID()).Size;
 
@@ -730,6 +753,9 @@ void WindowSettings::UpdatePageMainCatInput()
         {
             if (size < 0.10f)
                 size = 0.10f;
+
+            window_keyboard.GetOverlayState(floating_window_ovrl_state_room).Size          = size;
+            window_keyboard.GetOverlayState(floating_window_ovrl_state_dashboard_tab).Size = size;
 
             UIManager::Get()->GetVRKeyboard().GetWindow().ApplyCurrentOverlayState();
         }
@@ -1157,6 +1183,258 @@ void WindowSettings::UpdatePageMainCatMisc()
         }
 
         ImGui::Unindent();
+    }
+}
+
+void WindowSettings::UpdatePagePersistentUI()
+{
+    static float tab_item_height = 0.0f;
+    //We only use half the size for column 0 on this page since we can really use the space for other things
+    const float column_0_width = m_Column0Width / 2.0f;
+    const float column_1_width = (ImGui::GetContentRegionAvail().x - column_0_width) / 2.0f;
+
+    auto window_state_tab_item = [&](const char* label, FloatingWindow& window, bool& config_var_state_restore) 
+    {
+        if (ImGui::BeginTabItem(label, 0, ImGuiTabItemFlags_NoPushId))  //NoPushId avoids flickering from size calculations and is not problematic two controls are never active at the same time
+        {
+            if (ImGui::IsWindowAppearing())
+            {
+                UIManager::Get()->RepeatFrame();
+            }
+
+            ImGuiStyle& style = ImGui::GetStyle();
+            FloatingWindowOverlayState& state_room      = window.GetOverlayState(floating_window_ovrl_state_room);
+            FloatingWindowOverlayState& state_dplus_tab = window.GetOverlayState(floating_window_ovrl_state_dashboard_tab);
+
+            const bool use_lazy_resize = (&window == &UIManager::Get()->GetSettingsWindow()); //Lazily resize for settings window since the input is done through it
+
+            //Draw background and border manually to merge with the tab-bar
+            ImVec2 border_min = ImGui::GetCursorScreenPos();
+            ImVec2 border_max = border_min;
+            border_min.y -= ImGui::GetStyle().ItemSpacing.y + 1;
+            border_max.x += ImGui::GetContentRegionAvail().x;
+            border_max.y += tab_item_height;
+            ImGui::GetWindowDrawList()->AddRectFilled(border_min, border_max, ImGui::GetColorU32(ImGuiCol_ChildBg));
+            ImGui::GetWindowDrawList()->AddRect(      border_min, border_max, ImGui::GetColorU32(ImGuiCol_Border ));
+
+            //Window state table
+            ImGui::Columns(3, "ColumnPersistWindowState", false);
+            ImGui::SetColumnWidth(0, column_0_width);
+            ImGui::SetColumnWidth(1, column_1_width);
+            ImGui::SetColumnWidth(2, column_1_width);
+
+            //Headers
+            ImGui::NextColumn();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStateGlobal));
+    
+            ImGui::NextColumn();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStateDashboardTab));
+            ImGui::NextColumn();
+
+            //Visible
+            ImGui::Spacing();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStateVisible));
+            ImGui::NextColumn();
+
+            ImGui::Spacing();
+            if (ImGui::Checkbox("##CheckVisibleRoom", &state_room.IsVisible))
+            {
+                //Pin automatically if in room state and unpinned is not allowed
+                if ( (!window.CanUnpinRoom()) && (!state_room.IsPinned) )
+                {
+                    //Pin and unpin (if needed) current state to have it apply to the room state. This is only needed when there's no pinned transform yet
+                    const bool current_pinned = window.IsPinned();
+
+                    window.SetPinned(true);
+
+                    if (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_dashboard_tab)
+                    {
+                        window.SetPinned(current_pinned, true);
+                    }
+                }
+
+                if (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_room)
+                {
+                    window.ApplyCurrentOverlayState();
+                }
+
+                //When hiding keyboard, the assigned overlay also needs to be cleared so it doesn't automatically reappear
+                if ( (!state_room.IsVisible) && (&window == &UIManager::Get()->GetVRKeyboard().GetWindow()) )
+                {
+                    UIManager::Get()->GetVRKeyboard().GetWindow().SetAssignedOverlayID(-1, floating_window_ovrl_state_room);
+                }
+            }
+            ImGui::NextColumn();
+
+            ImGui::Spacing();
+            if (ImGui::Checkbox("##CheckVisibleDPlusTab", &state_dplus_tab.IsVisible))
+            {
+                if (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_dashboard_tab)
+                {
+                    window.ApplyCurrentOverlayState();
+                }
+            }
+            ImGui::NextColumn();
+
+            //Pinned
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStatePinned));
+            ImGui::NextColumn();
+
+            if (!window.CanUnpinRoom())
+                ImGui::PushItemDisabled();
+
+            if (ImGui::Checkbox("##CheckPinnedRoom", &state_room.IsPinned))
+            {
+                if (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_room)
+                {
+                    window.SetPinned(state_room.IsPinned, true);
+                }
+                else
+                {
+                    //Pin and unpin current state to have it apply to the room state
+                    const bool current_pinned = window.IsPinned();
+
+                    window.SetPinned(state_room.IsPinned);
+                    window.SetPinned(current_pinned, true);
+                }
+            }
+
+            if (!window.CanUnpinRoom())
+                ImGui::PopItemDisabled();
+
+            ImGui::NextColumn();
+
+            if (ImGui::Checkbox("##CheckPinnedDPlusTab", &state_dplus_tab.IsPinned))
+            {
+                if (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_dashboard_tab)
+                {
+                    window.SetPinned(state_dplus_tab.IsPinned, true);
+                }
+            }
+            ImGui::NextColumn();
+
+            //Position
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStatePosition));
+            ImGui::NextColumn();
+
+            ImGui::PushID(floating_window_ovrl_state_room);
+            if (ImGui::Button(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStatePositionReset)))
+            {
+                window.ResetTransform(floating_window_ovrl_state_room);
+
+                if (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_room)
+                {
+                    window.ApplyCurrentOverlayState();
+                }
+            }
+            ImGui::PopID();
+            ImGui::NextColumn();
+
+            ImGui::PushID(floating_window_ovrl_state_dashboard_tab);
+            if (ImGui::Button(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStatePositionReset)))
+            {
+                if (state_dplus_tab.IsPinned)
+                {
+                    if (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_dashboard_tab)
+                    {
+                        window.SetPinned(false, true);
+                    }
+                }
+
+                window.ResetTransform(floating_window_ovrl_state_dashboard_tab);
+            }
+            ImGui::PopID();
+            ImGui::NextColumn();
+
+            //Size
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStateSize));
+            ImGui::NextColumn();
+
+            if (ImGui::SliderWithButtonsFloatPercentage("SizeRoom", state_room.Size, 5, 1, 50, 200, "%d%%"))
+            {
+                if (state_dplus_tab.Size < 0.10f)
+                {
+                    state_dplus_tab.Size = 0.10f;
+                }
+
+                if ( (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_room) && (!use_lazy_resize) )
+                {
+                    window.ApplyCurrentOverlayState();
+                }
+            }
+            else if ( (ImGui::IsItemDeactivated()) && (use_lazy_resize) && (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_room) )
+            {
+                window.ApplyCurrentOverlayState();
+            }
+            ImGui::NextColumn();
+
+            if (ImGui::SliderWithButtonsFloatPercentage("SizeDPlusTab", state_dplus_tab.Size, 5, 1, 50, 200, "%d%%"))
+            {
+                if (state_dplus_tab.Size < 0.10f)
+                {
+                    state_dplus_tab.Size = 0.10f;
+                }
+
+                if ( (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_dashboard_tab) && (!use_lazy_resize) )
+                {
+                    window.ApplyCurrentOverlayState();
+                }
+            }
+            else if ( (ImGui::IsItemDeactivated()) && (use_lazy_resize) && (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_dashboard_tab) )
+            {
+                window.ApplyCurrentOverlayState();
+            }
+
+            ImGui::Columns(1);
+
+            ImGui::Indent();
+            ImGui::Spacing();
+            ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStateLaunchRestore), &config_var_state_restore);
+            ImGui::Unindent();
+
+            ImGui::EndTabItem();
+
+            tab_item_height = ImGui::GetCursorScreenPos().y - border_min.y;
+        }
+    };
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsInterfacePersistentUI));
+
+    ImGui::Indent();
+
+    ImGui::PushTextWrapPos();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIHelp));
+    ImGui::Spacing();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIHelp2));
+    ImGui::PopTextWrapPos();
+
+    ImGui::Unindent();
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsHeader));
+
+    ImGui::Indent();
+
+    if (ImGui::BeginTabBar("TabBarPersist"))
+    {
+        window_state_tab_item(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsSettings),  *this, 
+                              ConfigManager::GetRef(configid_bool_interface_window_settings_restore_state));
+        window_state_tab_item(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsProperties), UIManager::Get()->GetOverlayPropertiesWindow(), 
+                              ConfigManager::GetRef(configid_bool_interface_window_properties_restore_state));
+        window_state_tab_item(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsKeyboard),   UIManager::Get()->GetVRKeyboard().GetWindow(),  
+                              ConfigManager::GetRef(configid_bool_interface_window_keyboard_restore_state));
+
+        ImGui::EndTabBar();
+    }
+
+    ImGui::Unindent();
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+
+    ImGui::Separator();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogDone))) 
+    {
+        PageGoBack();
     }
 }
 

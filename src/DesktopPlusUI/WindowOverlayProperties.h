@@ -65,7 +65,7 @@ class WindowOverlayProperties : public FloatingWindow
         WindowOverlayProperties();
         virtual void Show(bool skip_fade = false);
         virtual void Hide(bool skip_fade = false);
-        virtual void ResetTransform();
+        virtual void ResetTransform(FloatingWindowOverlayStateID state_id);
         virtual vr::VROverlayHandle_t GetOverlayHandle() const;
 
         unsigned int GetActiveOverlayID() const;

@@ -164,7 +164,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
             {
                 FloatingWindow& overlay_properties = UIManager::Get()->GetOverlayPropertiesWindow();
                 overlay_properties.SetPinned(false);
-                overlay_properties.ResetTransform();
+                overlay_properties.ResetTransformAll();
                 io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so transform changes don't get blocked
             }
             else if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] > 0.5f)
@@ -708,7 +708,7 @@ void WindowOverlayBar::Update()
         {
             FloatingWindow& floating_settings = UIManager::Get()->GetSettingsWindow();
             floating_settings.SetPinned(false);
-            floating_settings.ResetTransform();
+            floating_settings.ResetTransformAll();
             io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so transform changes don't get blocked
         }
         else if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] > 0.5f)

@@ -180,6 +180,7 @@ public:
     bool    isZero() const;                             // return if the matrix is a zero matrix
 
     Matrix4&    identity();
+    Matrix4&    zero();
     Matrix4&    transpose();                            // transpose itself and return reference
     Matrix4&    invert();                               // check best inverse method before inverse
     Matrix4&    invertEuclidean();                      // inverse of Euclidean transform matrix
@@ -803,6 +804,12 @@ inline Matrix4& Matrix4::identity()
 {
     m[0] = m[5] = m[10] = m[15] = 1.0f;
     m[1] = m[2] = m[3] = m[4] = m[6] = m[7] = m[8] = m[9] = m[11] = m[12] = m[13] = m[14] = 0.0f;
+    return *this;
+}
+
+inline Matrix4& Matrix4::zero()
+{
+    m[0] = m[1] = m[2] = m[3] = m[4] = m[5] = m[6] = m[7] = m[8] = m[9] = m[10] = m[11] = m[12] = m[13] = m[14] = m[15] = 0.0f;
     return *this;
 }
 

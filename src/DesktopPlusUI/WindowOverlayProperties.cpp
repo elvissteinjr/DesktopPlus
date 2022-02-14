@@ -35,7 +35,7 @@ WindowOverlayProperties::WindowOverlayProperties() :
 
     m_PageStack.push_back(wndovrlprop_page_main);
 
-    ResetTransform();
+    FloatingWindow::ResetTransformAll();
 }
 
 void WindowOverlayProperties::Show(bool skip_fade)
@@ -56,14 +56,14 @@ void WindowOverlayProperties::Hide(bool skip_fade)
     }
 }
 
-void WindowOverlayProperties::ResetTransform()
+void WindowOverlayProperties::ResetTransform(FloatingWindowOverlayStateID state_id)
 {
-    FloatingWindow::ResetTransform();
+    FloatingWindow::ResetTransform(state_id);
 
-    m_OverlayStateDashboardTab.Transform.rotateY(15.0f);
-    m_OverlayStateDashboardTab.Transform.translate_relative(-OVERLAY_WIDTH_METERS_DASHBOARD_UI / 3.0f, 0.70f, 0.15f);
+    FloatingWindowOverlayState& overlay_state = GetOverlayState(state_id);
 
-    m_OverlayStateRoom.Transform = m_OverlayStateDashboardTab.Transform;
+    overlay_state.Transform.rotateY(15.0f);
+    overlay_state.Transform.translate_relative(-OVERLAY_WIDTH_METERS_DASHBOARD_UI / 3.0f, 0.70f, 0.15f);
 }
 
 vr::VROverlayHandle_t WindowOverlayProperties::GetOverlayHandle() const

@@ -78,8 +78,9 @@ class FloatingWindow
         bool IsVisibleOrFading() const;  //Returns true if m_Visible is true *or* m_Alpha isn't 0 yet
         float GetAlpha() const;
 
+        bool CanUnpinRoom() const;
         bool IsPinned() const;
-        void SetPinned(bool is_pinned);
+        void SetPinned(bool is_pinned, bool no_state_copy = false);  //no_state_copy = don't copy dashboard state to room (default behavior for pin button)
 
         FloatingWindowOverlayState& GetOverlayState(FloatingWindowOverlayStateID id);
         FloatingWindowOverlayStateID GetOverlayStateCurrentID();
@@ -88,7 +89,9 @@ class FloatingWindow
         void SetTransform(const Matrix4& transform);
         virtual void ApplyCurrentOverlayState(); //Applies current absolute transform to the overlay if pinned and sets the width
         virtual void RebaseTransform();
-        virtual void ResetTransform();
+        virtual void ResetTransformAll();
+        virtual void ResetTransform(FloatingWindowOverlayStateID state_id);
+
         const ImVec2& GetPos() const;
         const ImVec2& GetSize() const;
         virtual vr::VROverlayHandle_t GetOverlayHandle() const = 0;

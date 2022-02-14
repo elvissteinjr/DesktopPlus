@@ -373,10 +373,13 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_interface_blank_space_drag_enabled]           = config.ReadBool("Interface", "BlankSpaceDragEnabled", true);
     m_ConfigFloat[configid_float_interface_last_vr_ui_scale]                 = config.ReadInt( "Interface", "LastVRUIScale", 100) / 100.0f;
     m_ConfigBool[configid_bool_interface_warning_compositor_res_hidden]      = config.ReadBool("Interface", "WarningCompositorResolutionHidden", false);
-    m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]  = config.ReadBool("Interface", "WarningCompositorQualityHidden", false);
-    m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]   = config.ReadBool("Interface", "WarningProcessElevationHidden", false);
-    m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]       = config.ReadBool("Interface", "WarningElevatedModeHidden", false);
-    m_ConfigBool[configid_bool_interface_warning_welcome_hidden]             = config.ReadBool("Interface", "WarningWelcomeHidden", false);
+    m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]  = config.ReadBool("Interface", "WarningCompositorQualityHidden",    false);
+    m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]   = config.ReadBool("Interface", "WarningProcessElevationHidden",     false);
+    m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]       = config.ReadBool("Interface", "WarningElevatedModeHidden",         false);
+    m_ConfigBool[configid_bool_interface_warning_welcome_hidden]             = config.ReadBool("Interface", "WarningWelcomeHidden",              false);
+    m_ConfigBool[configid_bool_interface_window_settings_restore_state]      = config.ReadBool("Interface", "WindowSettingsRestoreState",   false);
+    m_ConfigBool[configid_bool_interface_window_properties_restore_state]    = config.ReadBool("Interface", "WindowPropertiesRestoreState", false);
+    m_ConfigBool[configid_bool_interface_window_keyboard_restore_state]      = config.ReadBool("Interface", "WindowKeyboardRestoreState",   true);
     m_ConfigInt[configid_int_interface_wmr_ignore_vscreens]                  = config.ReadInt( "Interface", "WMRIgnoreVScreens", -1);
 
     OverlayManager::Get().SetCurrentOverlayID(m_ConfigInt[configid_int_interface_overlay_current_id]);
@@ -707,6 +710,10 @@ void ConfigManager::LoadConfigPersistentWindowState(Ini& config)
         const std::string key_base = window_names[i];
         std::string transform_str;
 
+        //Skip if set to not restore state
+        if (!m_ConfigBool[configid_bool_interface_window_settings_restore_state + i])
+            continue;
+
         ovrl_state_room.IsVisible = config.ReadBool(  "Interface",  (key_base + "RoomVisible").c_str(), false);
         ovrl_state_room.IsPinned  = config.ReadBool(  "Interface",  (key_base + "RoomPinned").c_str(),  false);
         ovrl_state_room.Size      = config.ReadInt(   "Interface",  (key_base + "RoomSize").c_str(),      100) / 100.0f;
@@ -854,6 +861,9 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Interface", "WarningProcessElevationHidden",         m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]);
     config.WriteBool("Interface", "WarningElevatedModeHidden",             m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]);
     config.WriteBool("Interface", "WarningWelcomeHidden",                  m_ConfigBool[configid_bool_interface_warning_welcome_hidden]);
+    config.WriteBool("Interface", "WindowSettingsRestoreState",            m_ConfigBool[configid_bool_interface_window_settings_restore_state]);
+    config.WriteBool("Interface", "WindowPropertiesRestoreState",          m_ConfigBool[configid_bool_interface_window_properties_restore_state]);
+    config.WriteBool("Interface", "WindowKeyboardRestoreState",            m_ConfigBool[configid_bool_interface_window_keyboard_restore_state]);
 
     //Only write WMR settings when they're not -1 since they get set to that when using a non-WMR system. We want to preserve them for HMD-switching users
     if (m_ConfigInt[configid_int_interface_wmr_ignore_vscreens] != -1)

@@ -597,7 +597,7 @@ void WindowFloatingUIActionBar::ButtonActionKeyboard(unsigned int overlay_id, Im
                 keyboard_window.SetPinned(false);
             }
 
-            keyboard_window.ResetTransform();
+            keyboard_window.ResetTransformAll();
             io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so transform changes don't get blocked
         }
         else if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] > 0.5f)

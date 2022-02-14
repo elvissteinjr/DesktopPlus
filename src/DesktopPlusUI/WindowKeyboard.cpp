@@ -38,7 +38,7 @@ WindowKeyboard::WindowKeyboard() :
 
     std::fill(std::begin(m_ManuallyStickingModifiers), std::end(m_ManuallyStickingModifiers), false);
 
-    ResetTransform();
+    FloatingWindow::ResetTransformAll();
 }
 
 void WindowKeyboard::UpdateVisibility()
@@ -1166,23 +1166,22 @@ void WindowKeyboard::RebaseTransform()
     }
 }
 
-void WindowKeyboard::ResetTransform()
+void WindowKeyboard::ResetTransform(FloatingWindowOverlayStateID state_id)
 {
-    FloatingWindow::ResetTransform();
+    FloatingWindow::ResetTransform(state_id);
+
+    FloatingWindowOverlayState& overlay_state = GetOverlayState(state_id);
 
     //Offset keyboard position depending on the scaled size
     float overlay_height_m = (m_Size.y / m_Size.x) * OVERLAY_WIDTH_METERS_KEYBOARD;
-    float offset_up_room          = -0.55f - ((overlay_height_m * m_OverlayStateRoom.Size)         / 2.0f);
-    float offset_up_dashboard_tab = -0.55f - ((overlay_height_m * m_OverlayStateDashboardTab.Size) / 2.0f);
+    float offset_up        = -0.55f - ((overlay_height_m * overlay_state.Size) / 2.0f);
 
-    m_OverlayStateRoom.Transform.rotateX(-45);
-    m_OverlayStateDashboardTab.Transform = m_OverlayStateRoom.Transform;
-
-    m_OverlayStateRoom.Transform.translate_relative(0.0f, offset_up_room, 0.00f);
-    m_OverlayStateDashboardTab.Transform.translate_relative(0.0f, offset_up_dashboard_tab, 0.00f);
+    overlay_state.Transform.rotateX(-45);
+    overlay_state.Transform.translate_relative(0.0f, offset_up, 0.00f);
 
     //If visible, pinned and dplus dashboard overlay not available, reset to transform useful outside of the dashboard
-    if ( (m_OverlayStateCurrent->IsVisible) && (m_OverlayStateCurrent->IsPinned) && (UIManager::Get()->IsOpenVRLoaded()) && (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard())) )
+    if ( (state_id == m_OverlayStateCurrentID) && (overlay_state.IsVisible) && (overlay_state.IsPinned) && (UIManager::Get()->IsOpenVRLoaded()) && 
+         (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard())) )
     {
         //Get dashboard-similar transform and adjust it down a bit
         Matrix4 matrix_facing = ComputeHMDFacingTransform(1.15f);
@@ -1198,10 +1197,10 @@ void WindowKeyboard::ResetTransform()
         matrix_facing.setTranslation(translation);
 
         //Apply facing transform to normal keyboard position
-        m_OverlayStateCurrent->Transform = matrix_facing * m_OverlayStateCurrent->Transform;
+        overlay_state.Transform = matrix_facing * overlay_state.Transform;
 
         //Set transform directly as it may not be updated automatically
-        vr::HmdMatrix34_t matrix_ovr = m_OverlayStateCurrent->Transform.toOpenVR34();
+        vr::HmdMatrix34_t matrix_ovr = overlay_state.Transform.toOpenVR34();
         vr::VROverlay()->SetOverlayTransformAbsolute(GetOverlayHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
     }
 }

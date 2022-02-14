@@ -6,6 +6,7 @@ enum WindowSettingsPage
 {
     wndsettings_page_none,
     wndsettings_page_main,
+    wndsettings_page_persistent_ui,
     wndsettings_page_keyboard,
     wndsettings_page_profiles,
     wndsettings_page_profiles_overlay_select,
@@ -70,6 +71,7 @@ class WindowSettings : public FloatingWindow
         void UpdatePageMainCatInput();
         void UpdatePageMainCatWindows();
         void UpdatePageMainCatMisc();
+        void UpdatePagePersistentUI();
         void UpdatePageKeyboardLayout();
         void UpdatePageProfiles();
         void UpdatePageProfilesOverlaySelect();
@@ -85,7 +87,7 @@ class WindowSettings : public FloatingWindow
     public:
         WindowSettings();
         virtual void Hide(bool skip_fade = false);
-        virtual void ResetTransform();
+        virtual void ResetTransform(FloatingWindowOverlayStateID state_id);
         virtual vr::VROverlayHandle_t GetOverlayHandle() const;
 
         void ClearCachedTranslationStrings();

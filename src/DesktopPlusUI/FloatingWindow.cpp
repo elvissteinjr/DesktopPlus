@@ -26,6 +26,9 @@ FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
     m_Pos.x = FLT_MIN;
     m_WindowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
     m_WindowID = "###" + std::to_string((unsigned long long)this);
+
+    m_OverlayStateDashboardTab.TransformAbs.zero();
+    m_OverlayStateRoom.TransformAbs.zero();
 }
 
 void FloatingWindow::WindowUpdateBase()
@@ -257,7 +260,11 @@ void FloatingWindow::OverlayStateSwitchFinish()
 
 void FloatingWindow::OnWindowPinButtonPressed()
 {
-    //No-op
+    //If pin button pressed from dashboard tab, also make it visible for the room state so it can be used there
+    if ( (m_OverlayStateCurrentID == floating_window_ovrl_state_dashboard_tab) && (m_OverlayStateDashboardTab.IsPinned) )
+    {
+        m_OverlayStateRoom.IsVisible = true;
+    }
 }
 
 bool FloatingWindow::IsVirtualWindowItemHovered() const
@@ -428,12 +435,17 @@ float FloatingWindow::GetAlpha() const
     return m_Alpha;
 }
 
+bool FloatingWindow::CanUnpinRoom() const
+{
+    return m_AllowRoomUnpinning;
+}
+
 bool FloatingWindow::IsPinned() const
 {
     return m_OverlayStateCurrent->IsPinned;
 }
 
-void FloatingWindow::SetPinned(bool is_pinned)
+void FloatingWindow::SetPinned(bool is_pinned, bool no_state_copy)
 {
     m_OverlayStateCurrent->IsPinned = is_pinned;
 
@@ -444,11 +456,19 @@ void FloatingWindow::SetPinned(bool is_pinned)
     {
         RebaseTransform();
     }
-    else
+    else if (!no_state_copy)
     {
         if (m_OverlayStateCurrentID == floating_window_ovrl_state_dashboard_tab)
         {
-            m_OverlayStateRoom = m_OverlayStateDashboardTab;
+            m_OverlayStateRoom.IsPinned     = m_OverlayStateDashboardTab.IsPinned;
+            m_OverlayStateRoom.Transform    = m_OverlayStateDashboardTab.Transform;
+            m_OverlayStateRoom.TransformAbs = m_OverlayStateDashboardTab.TransformAbs;
+        }
+
+        //Reset transform if TransformAbs doesn't have anything of value yet
+        if (m_OverlayStateRoom.TransformAbs.isZero())
+        {
+            ResetTransform(floating_window_ovrl_state_room);
         }
     }
 }
@@ -521,13 +541,32 @@ void FloatingWindow::RebaseTransform()
     m_OverlayStateCurrent->Transform = mat_origin_inverse * mat_abs;
 }
 
-void FloatingWindow::ResetTransform()
+void FloatingWindow::ResetTransformAll()
 {
-    m_OverlayStateDashboardTab.Transform.identity();
-    m_OverlayStateRoom.Transform.identity();
+    ResetTransform(floating_window_ovrl_state_dashboard_tab);
+    ResetTransform(floating_window_ovrl_state_room);
 
     m_OverlayStateRoom.IsVisible = false;
     m_OverlayStateRoom.IsPinned  = false;
+}
+
+void FloatingWindow::ResetTransform(FloatingWindowOverlayStateID state_id)
+{
+    GetOverlayState(state_id).Transform.identity();
+
+    //Set absolute transform to the dashboard tab one (as if pinning)
+    if (state_id == floating_window_ovrl_state_room)
+    {
+        if (!m_OverlayStateDashboardTab.TransformAbs.isZero())
+        {
+            m_OverlayStateRoom.TransformAbs = m_OverlayStateDashboardTab.TransformAbs;
+        }
+        else if ((UIManager::Get() != nullptr) && (UIManager::Get()->IsOpenVRLoaded())) //If the dashboard tab transform is still zero, generate a HMD facing transform instead (needs startup to be done though)
+        {
+            m_OverlayStateRoom.TransformAbs = ComputeHMDFacingTransform(1.25f);
+            UIManager::Get()->GetOverlayDragger().ApplyDashboardScale(m_OverlayStateRoom.TransformAbs);
+        }
+    }
 }
 
 const ImVec2& FloatingWindow::GetPos() const
