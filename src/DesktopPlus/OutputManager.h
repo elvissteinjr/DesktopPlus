@@ -102,7 +102,9 @@ class OutputManager
         void HandleKeyboardMessage(IPCActionID ipc_action_id, LPARAM lparam);
         bool HandleOverlayProfileLoadMessage(LPARAM lparam);
 
+        void InitComIfNeeded();
         void LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8);
+        void ShowWindowSwitcher();
         void ResetMouseLastLaserPointerPos();
         void CropToActiveWindow();
         void CropToDisplay(int display_id, bool do_not_apply_setting = false);

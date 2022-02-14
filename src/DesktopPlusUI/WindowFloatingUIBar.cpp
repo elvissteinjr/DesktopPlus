@@ -480,10 +480,11 @@ void WindowFloatingUIActionBar::UpdateActionButtons(unsigned int overlay_id)
                 bool has_button_func = false;
                 bool has_icon = false;
 
-                //Some built-in actions use their own button function to adjust to current state
+                //Some built-in actions use their own button function to adjust to current state, others just their own icon
                 switch (order_data.action_id)
                 {
-                    case action_show_keyboard: ButtonActionKeyboard(overlay_id, b_size_default); has_button_func = true; break;                     
+                    case action_show_keyboard: ButtonActionKeyboard(overlay_id, b_size_default); has_button_func = true;                                  break;
+                    case action_switch_task:   TextureManager::Get().GetTextureInfo(tmtex_icon_switch_task, b_size, b_uv_min, b_uv_max); has_icon = true; break;
                     default:                   has_icon = false;
                 }
 

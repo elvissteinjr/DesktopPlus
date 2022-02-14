@@ -12,6 +12,7 @@ const char* g_ActionNames[] =
     "Toggle Overlay Group 1 Enabled State",
     "Toggle Overlay Group 2 Enabled State",
     "Toggle Overlay Group 3 Enabled State",
+    "Switch Task",
     //Custom
 };
 
@@ -24,6 +25,7 @@ const char* g_ActionButtonLabel[] =
     "Toggle Overlay Group 1",
     "Toggle Overlay Group 2",
     "Toggle Overlay Group 3 ",
+    "",
     //Custom
 };
 

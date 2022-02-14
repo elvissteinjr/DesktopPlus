@@ -38,6 +38,7 @@ const wchar_t* TextureManager::s_TextureFilenames[tmtex_MAX] =
     L"images/icons/performance_monitor.png",
     L"images/icons/settings.png",
     L"images/icons/keyboard.png",
+    L"images/icons/task_switch.png",
     L"images/icons/add.png",
     L"images/icons/window_overlay.png",
     L"images/icons_small/small_close.png",
