@@ -306,9 +306,9 @@ void WindowSettings::UpdateWarnings()
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
             if (ImGui::BeginPopup("FocusedElevatedContext"))
             {
-                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuFocusTry)))
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_ActionSwitchTask)))
                 {
-                    UIManager::Get()->TryChangingWindowFocus();
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, action_switch_task);
                     UIManager::Get()->RepeatFrame();
                 }
                 else if ((UIManager::Get()->IsElevatedTaskSetUp()) && ImGui::Selectable(TranslationManager::GetString(tstr_SettingsTroubleshootingElevatedModeEnter)))

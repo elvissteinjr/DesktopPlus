@@ -32,7 +32,6 @@ enum TRMGRStrID
     tstr_SettingsWarningGraphicsCaptureError,        //%ERRORCODE% == WinRT HRESULT in hex notation
     tstr_SettingsWarningMenuDontShowAgain,
     tstr_SettingsWarningMenuDismiss,
-    tstr_SettingsWarningMenuFocusTry,
     tstr_SettingsInterfaceLanguage,
     tstr_SettingsInterfaceAdvancedSettings,
     tstr_SettingsInterfaceAdvancedSettingsTip,

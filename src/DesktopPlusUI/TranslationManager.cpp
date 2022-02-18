@@ -33,7 +33,6 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsWarningGraphicsCaptureError",
     "tstr_SettingsWarningMenuDontShowAgain",
     "tstr_SettingsWarningMenuDismiss",
-    "tstr_SettingsWarningMenuFocusTry",
     "tstr_SettingsInterfaceLanguage",
     "tstr_SettingsInterfaceAdvancedSettings",
     "tstr_SettingsInterfaceAdvancedSettingsTip",
