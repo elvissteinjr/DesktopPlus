@@ -216,6 +216,12 @@ void WindowKeyboard::WindowUpdate()
     {
         vr::TrackedDeviceIndex_t primary_device = ConfigManager::Get().GetPrimaryLaserPointerDevice();
         bool dashboard_device_exists = (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid);
+
+        //Use pos/size from ImGui since our stored members describe center pivoted max window space
+        const ImVec2 cur_pos  = ImGui::GetWindowPos();
+        const ImVec2 cur_size = ImGui::GetWindowSize();
+        const ImRect window_bb(cur_pos.x, cur_pos.y, cur_pos.x + cur_size.x, cur_pos.y + cur_size.y);
+
         for (auto& state : m_LaserInputStates)
         {
             if ( (state.DeviceIndex != vr::k_unTrackedDeviceIndexOther) && (state.DeviceIndex != primary_device) )
@@ -230,7 +236,8 @@ void WindowKeyboard::WindowUpdate()
                     std::fill(std::begin(state.MouseState.MouseDown), std::end(state.MouseState.MouseDown), false);
                 }
 
-                if (state.MouseState.MousePos.x != -FLT_MAX)
+                //Only render if inside window
+                if (window_bb.Contains(state.MouseState.MousePos))
                 {
                     ImGui::GetForegroundDrawList()->AddCircleFilled(state.MouseState.MousePos, 7.0f, ImGui::GetColorU32(Style_ImGuiCol_SteamVRCursorBorder));
                     ImGui::GetForegroundDrawList()->AddCircleFilled(state.MouseState.MousePos, 5.0f, ImGui::GetColorU32(Style_ImGuiCol_SteamVRCursor));

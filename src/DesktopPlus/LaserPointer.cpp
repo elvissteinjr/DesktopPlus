@@ -159,6 +159,7 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
 
     //Find the nearest intersecting overlay
     vr::VROverlayHandle_t nearest_target_overlay = vr::k_ulOverlayHandleInvalid;
+    bool is_nearest_target_overlay_ui = false;
     vr::VROverlayIntersectionResults_t nearest_results = {0};
     nearest_results.fDistance = FLT_MAX;
 
@@ -167,6 +168,10 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
     {
         skip_intersection_test = true;
         nearest_target_overlay = m_ForceTargetOverlayHandle;
+
+        //Check if forced target overlay is UI overlay
+        is_nearest_target_overlay_ui = ( (std::find(m_OverlayHandlesUI.begin(), m_OverlayHandlesUI.end(), nearest_target_overlay) != m_OverlayHandlesUI.end()) || 
+                                         (std::find(m_OverlayHandlesMultiLaser.begin(), m_OverlayHandlesMultiLaser.end(), nearest_target_overlay) != m_OverlayHandlesMultiLaser.end()) );
     }
 
     //If input is held down, do not switch overlays and act as if overlay space is extending past the surface when not hitting it
@@ -182,7 +187,11 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
             {
                 if (vr::VROverlay()->ComputeOverlayIntersection(lp_device.OvrlHandleTargetLast, &params, &results))
                 {
-                    nearest_target_overlay = lp_device.OvrlHandleTargetLast;
+                    //Check UI intersection mask if the target overlay was an UI overlay
+                    if ( (!lp_device.IsHandleOvrlTargetLastUI) || (UIIntersectionMaskHitTest(results.vUVs)) )
+                    {
+                        nearest_target_overlay = lp_device.OvrlHandleTargetLast;
+                    }
                 }
 
                 //These results are still valid even when not actually hitting
@@ -231,8 +240,9 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     if ( (input_method == vr::VROverlayInputMethod_Mouse) && (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && 
                          (results.fDistance < nearest_results.fDistance) && (UIIntersectionMaskHitTest(results.vUVs)) )
                     {
-                        nearest_target_overlay = overlay_handle;
-                        nearest_results        = results;
+                        nearest_target_overlay       = overlay_handle;
+                        is_nearest_target_overlay_ui = true;
+                        nearest_results              = results;
                     }
                 }
             }
@@ -249,9 +259,10 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     if ( (input_method == vr::VROverlayInputMethod_Mouse) && (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && 
                          (results.fDistance < nearest_results.fDistance) && (UIIntersectionMaskHitTest(results.vUVs)) )
                     {
-                        hit_multilaser         = true;
-                        nearest_target_overlay = overlay_handle;
-                        nearest_results        = results;
+                        hit_multilaser               = true;
+                        nearest_target_overlay       = overlay_handle;
+                        is_nearest_target_overlay_ui = true;
+                        nearest_results              = results;
                     }
                 }
             }
@@ -259,7 +270,8 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
             //Non-MultiLaser hits are discared when not using the primary device
             if ( (!hit_multilaser) && (!is_primary_device) )
             {
-                nearest_target_overlay = vr::k_ulOverlayHandleInvalid;
+                nearest_target_overlay       = vr::k_ulOverlayHandleInvalid;
+                is_nearest_target_overlay_ui = false;
             }
 
             lp_device.IsActiveForMultiLaserInput = hit_multilaser;
@@ -356,8 +368,15 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
 
         vr::VROverlayView()->PostOverlayEvent(lp_device.OvrlHandleTargetLast, &vr_event);
 
+        //Clear cursor override when we're off the overlay since the override won't go past it like the real cursor would
+        if (is_primary_device)
+        {
+            vr::VROverlay()->ClearOverlayCursorPositionOverride(lp_device.OvrlHandleTargetLast);
+        }
+
         //Act as if the overlay was hit for the rest of this function
-        nearest_target_overlay = lp_device.OvrlHandleTargetLast;
+        nearest_target_overlay       = lp_device.OvrlHandleTargetLast;
+        is_nearest_target_overlay_ui = lp_device.IsHandleOvrlTargetLastUI;
     }
     else
     {
@@ -470,7 +489,8 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
 
     if (nearest_target_overlay != lp_device.OvrlHandleTargetLast)
     {
-        lp_device.OvrlHandleTargetLast = nearest_target_overlay;
+        lp_device.OvrlHandleTargetLast     = nearest_target_overlay;
+        lp_device.IsHandleOvrlTargetLastUI = is_nearest_target_overlay_ui;
 
         if (is_primary_device)
         {

@@ -13,6 +13,7 @@ struct LaserPointerDevice
     float LaserLength = 0.0f;
 
     vr::VROverlayHandle_t OvrlHandleTargetLast = vr::k_ulOverlayHandleInvalid;
+    bool IsHandleOvrlTargetLastUI = false;
     bool IsActiveForMultiLaserInput = false;
     int InputDownCount = 0;
 };
