@@ -404,6 +404,7 @@ bool ConfigManager::LoadConfigFromFile()
     }
 
     #ifdef DPLUS_UI
+        TranslationManager::Get().LoadTranslationFromFile( m_ConfigString[configid_str_interface_language_file].c_str() );
         LoadConfigPersistentWindowState(config);
     #endif
 
@@ -511,9 +512,10 @@ bool ConfigManager::LoadConfigFromFile()
                 break;
             }
         }
-        
+
         #ifdef DPLUS_UI
             action.IconFilename = config.ReadString("CustomActions", (action_ini_name + "IconFilename").c_str());
+            action.UpdateNameTranslationID();
         #endif
 
         custom_actions.push_back(action);
@@ -608,8 +610,6 @@ bool ConfigManager::LoadConfigFromFile()
         UIManager::Get()->GetOverlayPropertiesWindow().ApplyCurrentOverlayState();
         UIManager::Get()->GetVRKeyboard().LoadCurrentLayout();
         UIManager::Get()->GetVRKeyboard().GetWindow().ApplyCurrentOverlayState();
-
-        TranslationManager::Get().LoadTranslationFromFile( m_ConfigString[configid_str_interface_language_file].c_str() );
 
         UIManager::Get()->UpdateAnyWarningDisplayedState();
     #endif
@@ -786,7 +786,7 @@ void ConfigManager::SaveConfigPersistentWindowState(Ini& config)
     config.WriteInt("Interface", "WindowKeyboardLastAssignedOverlayID", UIManager::Get()->GetVRKeyboard().GetWindow().GetAssignedOverlayID(floating_window_ovrl_state_room));
 }
 
-#endif //DPLUS_UI
+#endif //ifdef DPLUS_UI
 
 bool ConfigManager::IsUIAccessEnabled()
 {
@@ -996,7 +996,7 @@ void ConfigManager::SaveConfigToFile()
     config.Save();
 }
 
-#endif //DPLUS_UI
+#endif //ifdef DPLUS_UI
 
 void ConfigManager::RestoreConfigFromDefault()
 {

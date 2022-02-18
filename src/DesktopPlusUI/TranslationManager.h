@@ -251,8 +251,20 @@ enum TRMGRStrID
     tstr_FloatingUIWindowAddTip,
     tstr_FloatingUIActionBarShowTip,
     tstr_FloatingUIActionBarHideTip,
+    tstr_ActionNone,
     tstr_ActionKeyboardShow,
     tstr_ActionKeyboardHide,
+    tstr_ActionWindowCrop,
+    tstr_ActionOverlayGroupToggle1,
+    tstr_ActionOverlayGroupToggle2,
+    tstr_ActionOverlayGroupToggle3,
+    tstr_ActionSwitchTask,
+    tstr_ActionButtonOverlayGroupToggle1,
+    tstr_ActionButtonOverlayGroupToggle2,
+    tstr_ActionButtonOverlayGroupToggle3,
+    tstr_DefActionMiddleMouse,
+    tstr_DefActionBackMouse,
+    tstr_DefActionReadMe,
     tstr_PerformanceMonitorCPU,
     tstr_PerformanceMonitorGPU,
     tstr_PerformanceMonitorRAM,
@@ -317,6 +329,7 @@ class TranslationManager
         TranslationManager();
         static TranslationManager& Get();
         static const char* GetString(TRMGRStrID str_id);      //Strings are not sanitized in any way, so probably a bad idea to feed straight into ImGui functions calling printf
+        static TRMGRStrID GetStringID(const char* str);       //May return tstr_NONE
         static std::string GetTranslationNameFromFile(const std::string& filename);
 
         void LoadTranslationFromFile(const std::string& filename);

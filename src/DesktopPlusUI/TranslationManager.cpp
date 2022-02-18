@@ -252,8 +252,20 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_FloatingUIWindowAddTip",
     "tstr_FloatingUIActionBarShowTip",
     "tstr_FloatingUIActionBarHideTip",
+    "tstr_ActionNone",
     "tstr_ActionKeyboardShow",
     "tstr_ActionKeyboardHide",
+    "tstr_ActionWindowCrop",
+    "tstr_ActionOverlayGroupToggle1",
+    "tstr_ActionOverlayGroupToggle2",
+    "tstr_ActionOverlayGroupToggle3",
+    "tstr_ActionSwitchTask",
+    "tstr_ActionButtonOverlayGroupToggle1",
+    "tstr_ActionButtonOverlayGroupToggle2",
+    "tstr_ActionButtonOverlayGroupToggle3",
+    "tstr_DefActionMiddleMouse",
+    "tstr_DefActionBackMouse",
+    "tstr_DefActionReadMe",
     "tstr_PerformanceMonitorCPU",
     "tstr_PerformanceMonitorGPU",
     "tstr_PerformanceMonitorRAM",
@@ -321,6 +333,17 @@ TranslationManager& TranslationManager::Get()
 const char* TranslationManager::GetString(TRMGRStrID str_id)
 {
     return Get().m_Strings[str_id].c_str();
+}
+
+TRMGRStrID TranslationManager::GetStringID(const char* str)
+{
+    const auto it_begin = std::begin(s_StringIDNames), it_end = std::end(s_StringIDNames);
+    const auto it = std::find_if(it_begin, it_end, [&](const char* str_id_name){ return (strcmp(str_id_name, str) == 0); });
+
+    if (it != it_end)
+        return (TRMGRStrID)std::distance(it_begin, it);
+
+    return tstr_NONE;
 }
 
 std::string TranslationManager::GetTranslationNameFromFile(const std::string& filename)

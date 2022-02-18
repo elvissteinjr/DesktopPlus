@@ -4,30 +4,31 @@
 #include "OverlayManager.h"
 #include "InterprocessMessaging.h"
 
-const char* g_ActionNames[] =
+#ifdef DPLUS_UI
+
+static const TRMGRStrID g_ActionNameIDs[] =
 {
-    "[None]",
-    "Show Keyboard",
-    "Crop to Active Window",
-    "Toggle Overlay Group 1 Enabled State",
-    "Toggle Overlay Group 2 Enabled State",
-    "Toggle Overlay Group 3 Enabled State",
-    "Switch Task",
-    //Custom
+    tstr_ActionNone,
+    tstr_ActionKeyboardShow,
+    tstr_ActionWindowCrop,
+    tstr_ActionOverlayGroupToggle1,
+    tstr_ActionOverlayGroupToggle2,
+    tstr_ActionOverlayGroupToggle3,
+    tstr_ActionSwitchTask
 };
 
-//Blank labels use g_ActionNames entry
-const char* g_ActionButtonLabel[] =
+static const TRMGRStrID g_ActionButtonLabelIDs[] =
 {
-    "",
-    "",
-    "",
-    "Toggle Overlay Group 1",
-    "Toggle Overlay Group 2",
-    "Toggle Overlay Group 3 ",
-    "",
-    //Custom
+    tstr_ActionNone,
+    tstr_ActionKeyboardShow,
+    tstr_ActionWindowCrop,
+    tstr_ActionButtonOverlayGroupToggle1,
+    tstr_ActionButtonOverlayGroupToggle2,
+    tstr_ActionButtonOverlayGroupToggle3,
+    tstr_ActionSwitchTask
 };
+
+#endif
 
 
 void CustomAction::ApplyIntFromConfig()
@@ -81,6 +82,10 @@ void CustomAction::ApplyStringFromConfig()
             case caction_type_string:
             {
                 StrMain = value;
+
+                #ifdef DPLUS_UI
+                    UpdateNameTranslationID();
+                #endif
                 break;
             }
             case caction_launch_application:
@@ -96,6 +101,23 @@ void CustomAction::ApplyStringFromConfig()
         }
     }
 }
+
+#ifdef DPLUS_UI
+
+void CustomAction::UpdateNameTranslationID()
+{
+    //If the name starts with the translation string prefix, try finding the ID for it
+    if (Name.find("tstr_") == 0)
+    {
+        NameTranslationID = TranslationManager::Get().GetStringID(Name.c_str());
+    }
+    else
+    {
+        NameTranslationID = tstr_NONE;
+    }
+}
+
+#endif
 
 void CustomAction::SendUpdateToDashboardApp(int id, HWND window_handle) const
 {
@@ -162,13 +184,16 @@ bool ActionManager::IsActionIDValid(ActionID action_id) const
 {
     if (action_id >= action_custom)
     {
-        return (ConfigManager::Get().GetCustomActions().size() > action_id - action_custom);
+        int custom_id = action_id - action_custom;
+        return (m_CustomActions.size() > custom_id);
     }
     else
     {
         return (action_id < action_built_in_MAX);
     }
 }
+
+#ifdef DPLUS_UI
 
 const char* ActionManager::GetActionName(ActionID action_id) const
 {
@@ -178,20 +203,22 @@ const char* ActionManager::GetActionName(ActionID action_id) const
 
         if (m_CustomActions.size() > custom_id)
         {
-            return m_CustomActions[custom_id].Name.c_str();
+            //Use translation string if the action has one
+            TRMGRStrID name_str_id = m_CustomActions[custom_id].NameTranslationID;
+            return (name_str_id == tstr_NONE) ? m_CustomActions[custom_id].Name.c_str() : TranslationManager::GetString(name_str_id);
         }
         else //Custom action actually doesn't exist... shouldn't normally happen
         {
-            return g_ActionNames[action_none];
+            return TranslationManager::GetString(tstr_ActionNone);
         }
     }
     else if ( (action_id >= action_none) && (action_id < action_built_in_MAX) )
     {
-        return g_ActionNames[action_id];
+        return TranslationManager::GetString(g_ActionNameIDs[action_id]);
     }
     else
     {
-        return g_ActionNames[action_none];
+        return TranslationManager::GetString(tstr_ActionNone);
     }
 }
 
@@ -203,18 +230,15 @@ const char* ActionManager::GetActionButtonLabel(ActionID action_id) const
     }
     else if ( (action_id >= action_none) && (action_id < action_built_in_MAX) )
     {
-        if (g_ActionButtonLabel[action_id][0] != '\0')
-        {
-            return g_ActionButtonLabel[action_id];
-        }
-        
-        return g_ActionNames[action_id];
+        return TranslationManager::GetString(g_ActionButtonLabelIDs[action_id]);
     }
     else
     {
-        return g_ActionNames[action_none];
+        return TranslationManager::GetString(tstr_ActionNone);
     }
 }
+
+#endif //ifdef DPLUS_UI
 
 void ActionManager::EraseCustomAction(int custom_action_id)
 {

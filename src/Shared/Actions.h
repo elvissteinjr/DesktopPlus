@@ -8,6 +8,7 @@
 
 #ifdef DPLUS_UI
     #include "imgui.h" //Don't include ImGui stuff for dashboard application
+    #include "TranslationManager.h"
 #endif
 
 enum ActionID: int
@@ -49,13 +50,17 @@ struct CustomAction
 
     #ifdef DPLUS_UI
         std::string IconFilename;
-        int IconImGuiRectID = -1; //-1 when no icon loaded (ID on ImGui end is not valid after building the font)
-        ImVec2 IconAtlasSize = {0.0f, 0.0f};
-        ImVec4 IconAtlasUV   = {0.0f, 0.0f, 0.0f, 0.0f};
+        int IconImGuiRectID          = -1; //-1 when no icon loaded (ID on ImGui end is not valid after building the font)
+        ImVec2 IconAtlasSize         = {0.0f, 0.0f};
+        ImVec4 IconAtlasUV           = {0.0f, 0.0f, 0.0f, 0.0f};
+        TRMGRStrID NameTranslationID = tstr_NONE;
     #endif
 
     void ApplyIntFromConfig();
     void ApplyStringFromConfig();
+    #ifdef DPLUS_UI
+        void UpdateNameTranslationID();
+    #endif
     void SendUpdateToDashboardApp(int id, HWND window_handle) const;
 };
 
@@ -72,8 +77,10 @@ class ActionManager
         std::vector<ActionMainBarOrderData>& GetActionMainBarOrder();
 
         bool IsActionIDValid(ActionID action_id) const;
-        const char* GetActionName(ActionID action_id) const;
-        const char* GetActionButtonLabel(ActionID action_id) const;
+        #ifdef DPLUS_UI
+            const char* GetActionName(ActionID action_id) const;
+            const char* GetActionButtonLabel(ActionID action_id) const;
+        #endif
         void EraseCustomAction(int custom_action_id);
 
         static CustomActionFunctionID ParseCustomActionFunctionString(const std::string& str);

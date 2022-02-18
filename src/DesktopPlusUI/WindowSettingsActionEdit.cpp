@@ -304,9 +304,10 @@ void WindowSettingsActionEdit::UpdateCatActions()
         int act_index = 0;
         for (CustomAction& action : actions)
         {
-            ImGui::PushID(&action);
+            ActionID action_id = (ActionID)(act_index + action_custom);
 
-            if (ImGui::Selectable(action.Name.c_str(), (list_selected_index == act_index)))
+            ImGui::PushID(&action);
+            if (ImGui::Selectable(ActionManager::Get().GetActionName(action_id), (list_selected_index == act_index) ))
             {
                 list_selected_index = act_index;
                 delete_confirm_state = false;
@@ -680,10 +681,12 @@ bool WindowSettingsActionEdit::ButtonAction(const char* str_id, ActionID& action
         int act_index = 0;
         for (CustomAction& action : ConfigManager::Get().GetCustomActions())
         {
+            ActionID action_id = (ActionID)(act_index + action_custom);
+
             ImGui::PushID(&action);
-            if (ImGui::Selectable(action.Name.c_str(), (act_index + action_custom == list_id)))
+            if (ImGui::Selectable(ActionManager::Get().GetActionName(action_id), (action_id == list_id) ))
             {
-                list_id = (ActionID)(act_index + action_custom);
+                list_id = action_id;
             }
             ImGui::PopID();
 
@@ -1126,6 +1129,14 @@ void WindowSettingsActionEdit::PopupActionEdit(CustomAction& action, int id)
 
         ImGui::AlignTextToFramePadding();
         ImGui::Text("Name");
+
+        //Add a tooltip when translation ID is used to minimize confusion about the name not matching what's displayed outside this popup
+        if (action.NameTranslationID != tstr_NONE)
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::FixedHelpMarker("This action currently uses a translation string ID as a name to automatically match the chosen application language");
+        }
+
         ImGui::NextColumn();
 
         ImGui::SetNextItemWidth(-1.0f);
@@ -1365,6 +1376,7 @@ void WindowSettingsActionEdit::PopupActionEdit(CustomAction& action, int id)
             }
 
             action.IconFilename = str_icon_file;
+            action.UpdateNameTranslationID();
 
             //Reload textures later in case the icon has changed or a previously unloaded character is part of the name now
             TextureManager::Get().ReloadAllTexturesLater();
@@ -1375,7 +1387,7 @@ void WindowSettingsActionEdit::PopupActionEdit(CustomAction& action, int id)
 
             ImGui::CloseCurrentPopup();
         }
-            
+
         ImGui::SameLine();
 
         if (ImGui::Button("Cancel")) 
