@@ -36,6 +36,7 @@ class WindowSettings : public FloatingWindow
         int m_PageStackPos;
         int m_PageStackPosAnimation;
         WindowSettingsPage m_PageAppearing; //Similar to ImGui::IsWindowAppearing(), equals the current page ID for a single frame if it or the window is newly appearing
+        WindowSettingsPage m_PageReturned;  //Equals the previous page ID after PageGoBack() was called, ideally cleared after making use of its value
 
         int m_PageAnimationDir;
         float m_PageAnimationProgress;

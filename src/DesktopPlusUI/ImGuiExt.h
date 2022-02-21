@@ -54,8 +54,11 @@ namespace ImGui
     bool ColorEdit4Simple(const char* label, float col[4], ImGuiColorEditFlags flags = 0);
 
     //ImGuiItemFlags_Disabled is not exposed public API yet and has no styling, so here's something that does the job
+    //BeginDisabled()/EndDisabled() exists now, but behaves slightly differently and styling may change, so let's keep this for the time being
     void PushItemDisabled();
-    void PopItemDisabled();
+    void PopItemDisabled();    
+    void PushItemDisabledNoVisual();
+    void PopItemDisabledNoVisual();
 
     //Just straight up brought into the public API, use -1.0f on one axis to leave as-is
     void SetNextWindowScroll(const ImVec2& scroll);

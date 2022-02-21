@@ -798,17 +798,27 @@ namespace ImGui
         return value_changed;
     }
 
-    //ImGuiItemFlags_Disabled is not exposed public API yet and has no styling, so here's something that does the job
     void PushItemDisabled()
     {
+        const ImGuiStyle& style = ImGui::GetStyle();
         ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, style.Alpha * style.DisabledAlpha);
     }
 
     void PopItemDisabled()
     {
         ImGui::PopItemFlag();
         ImGui::PopStyleVar();
+    }
+
+    void PushItemDisabledNoVisual()
+    {
+        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+    }
+
+    void PopItemDisabledNoVisual()
+    {
+        ImGui::PopItemFlag();
     }
 
     bool PopupContextMenuInputText(const char* str_id, char* str_buffer, size_t buffer_size, bool paste_remove_newlines)

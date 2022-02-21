@@ -19,7 +19,8 @@ WindowOverlayProperties::WindowOverlayProperties() :
     m_PageAnimationOffset(0.0f),
     m_PageFadeDir(0),
     m_PageFadeAlpha(1.0f),
-    m_PageAppearing(wndovrlprop_page_main),
+    m_PageAppearing(wndovrlprop_page_none),
+    m_PageReturned(wndovrlprop_page_none),
     m_ActiveOverlayID(k_ulOverlayID_None),
     m_Column0Width(0.0f),
     m_IsConfigDataModified(false),
@@ -232,6 +233,14 @@ void WindowOverlayProperties::WindowUpdate()
         if (child_id >= IM_ARRAYSIZE(child_str_id))
             break;
 
+        //Disable items when the page isn't active
+        const bool is_inactive_page = (child_id + 1 < stack_size);
+
+        if (is_inactive_page)
+        {
+            ImGui::PushItemDisabledNoVisual();
+        }
+
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
 
         if ((ImGui::BeginChild(child_str_id[child_id], {page_width, ImGui::GetContentRegionAvail().y})) || (m_PageAppearing == page_id)) //Process page if currently appearing
@@ -252,14 +261,19 @@ void WindowOverlayProperties::WindowUpdate()
             ImGui::PopStyleColor(); //ImGuiCol_ChildBg
         }
 
+        if (is_inactive_page)
+        {
+            ImGui::PopItemDisabledNoVisual();
+        }
+
         ImGui::EndChild();
 
-        child_id++;
-
-        if (stack_size > child_id)
+        if (is_inactive_page)
         {
             ImGui::SameLine();
         }
+
+        child_id++;
     }
 
     m_PageAppearing = wndovrlprop_page_none;
@@ -2093,6 +2107,7 @@ void WindowOverlayProperties::PageGoBack()
     {
         OnPageLeaving(m_PageStack[m_PageStackPos]);
         m_PageStackPos--;
+        m_PageReturned = m_PageStack.back();
     }
 }
 

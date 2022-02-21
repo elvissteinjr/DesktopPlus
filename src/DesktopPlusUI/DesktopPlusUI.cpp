@@ -821,11 +821,11 @@ void InitImGui(HWND hwnd)
     ImGui::StyleColorsDark();
     //Do a bit of custom styling
     ImGuiStyle& style = ImGui::GetStyle();
+    style.DisabledAlpha  = 0.5f;
     style.WindowRounding = 7.0f;
-
-    style.FrameRounding = 4.0f;
-    style.GrabRounding = 3.0f;
-    style.IndentSpacing = style.ItemSpacing.x;
+    style.FrameRounding  = 4.0f;
+    style.GrabRounding   = 3.0f;
+    style.IndentSpacing  = style.ItemSpacing.x;
 
     ImVec4* colors = style.Colors;
     colors[ImGuiCol_Text]                  = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
