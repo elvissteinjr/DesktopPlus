@@ -442,7 +442,7 @@ const char* TranslationManager::GetDesktopIDString(int desktop_id)
     desktop_id = clamp(desktop_id, 0, desktop_count - 1);
 
     //Generate desktop ID strings based on current translation
-    while (m_StringsDesktopID.size() < desktop_count)
+    while ((int)m_StringsDesktopID.size() < desktop_count)
     {
         std::string str = GetString(tstr_SourceDesktopID);
         StringReplaceAll(str, "%ID%", std::to_string(m_StringsDesktopID.size() + 1));
