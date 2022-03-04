@@ -571,9 +571,13 @@ void WindowFloatingUIActionBar::ButtonActionKeyboard(unsigned int overlay_id, Im
 {
     FloatingWindow& keyboard_window = UIManager::Get()->GetVRKeyboard().GetWindow();
     ImGuiIO& io = ImGui::GetIO();
+    const bool is_keyboard_visible = keyboard_window.IsVisible();
     ImVec2 b_size, b_uv_min, b_uv_max;
 
     TextureManager::Get().GetTextureInfo(tmtex_icon_keyboard, b_size, b_uv_min, b_uv_max);
+
+    if (is_keyboard_visible)
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
     if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
     {
@@ -585,10 +589,13 @@ void WindowFloatingUIActionBar::ButtonActionKeyboard(unsigned int overlay_id, Im
         }
     }
 
-    //Reset tranform when holding the button for 3 or more seconds
-    TRMGRStrID tooltip_strid = (keyboard_window.IsVisible()) ? tstr_ActionKeyboardHide : tstr_ActionKeyboardShow;
+    if (is_keyboard_visible)
+        ImGui::PopStyleColor();
 
-    if (ImGui::IsItemActive())  
+    //Reset tranform when holding the button for 3 or more seconds
+    TRMGRStrID tooltip_strid = (is_keyboard_visible) ? tstr_ActionKeyboardHide : tstr_ActionKeyboardShow;
+
+    if (ImGui::IsItemActive())
     {
         if (io.MouseDownDuration[ImGuiMouseButton_Left] > 3.0f)
         {
