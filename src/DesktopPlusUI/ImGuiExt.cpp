@@ -683,7 +683,8 @@ namespace ImGui
         ImGui::PopStyleColor();
     }
 
-    bool ColorEdit4Simple(const char* label, float col[4], ImGuiColorEditFlags flags)
+    //Takes a nicely adjustable function and bolts it down to the options we need after making a few modifications
+    bool ColorPicker4Simple(const char* str_id, float col[4], float ref_col[4], const char* label_color_current, const char* label_color_original)
     {
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems)
@@ -703,89 +704,30 @@ namespace ImGui
 
         ImGuiContext& g = *GImGui;
         const ImGuiStyle& style = g.Style;
-        const float square_sz = GetFrameHeight();
-        const float w_full = CalcItemWidth();
-        const float w_button = (flags & ImGuiColorEditFlags_NoSmallPreview) ? 0.0f : (square_sz + style.ItemInnerSpacing.x);
-        const float w_inputs = w_full - w_button;
-        const char* label_display_end = FindRenderedTextEnd(label);
+
+        //Fixed flags, but we still kept some checks below in case we need to adjust later
+        const ImGuiColorEditFlags flags = ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreview |
+                                          ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
+
+        const float start_y           = ImGui::GetCursorScreenPos().y;
+        const float square_sz         = ImGui::GetFrameHeight();
+        const float picker_width      = square_sz * 15.5f;
+        const float picker_bar_height = picker_width - (2.0f * (square_sz + style.ItemInnerSpacing.x));
         g.NextItemData.ClearFlags();
 
-        BeginGroup();
-        PushID(label);
-
-        const bool alpha = (flags & ImGuiColorEditFlags_NoAlpha) == 0;
+        ImGui::BeginGroup();
+        ImGui::PushID(str_id);
 
         bool value_changed = false;
-        bool value_changed_as_float = false;
 
-        const ImVec2 pos = window->DC.CursorPos;
-        const float inputs_offset_x = (style.ColorButtonPosition == ImGuiDir_Left) ? w_button : 0.0f;
-        window->DC.CursorPos.x = pos.x + inputs_offset_x;
+        ImGuiColorEditFlags picker_flags_to_forward = ImGuiColorEditFlags_DataTypeMask_ | ImGuiColorEditFlags_PickerMask_ | ImGuiColorEditFlags_InputMask_ | ImGuiColorEditFlags_HDR | 
+                                                      ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
 
-        ImGuiWindow* picker_active_window = NULL;
-        if (!(flags & ImGuiColorEditFlags_NoSmallPreview))
-        {
-            window->DC.CursorPos = ImVec2(pos.x, pos.y);
+        ImGuiColorEditFlags picker_flags = (flags & picker_flags_to_forward) | ImGuiColorEditFlags_DisplayMask_ | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoSidePreview | 
+                                           ImGuiColorEditFlags_NoSmallPreview | ImGuiColorEditFlags_NoOptions;
 
-            const ImVec4 col_v4(col[0], col[1], col[2], alpha ? col[3] : 1.0f);
-            if (ColorButton("##ColorButton", col_v4, flags))
-            {
-                if (!(flags & ImGuiColorEditFlags_NoPicker))
-                {
-                    // Store current color and open a picker
-                    g.ColorPickerRef = col_v4;
-                    OpenPopup("picker");
-                    SetNextWindowPos(g.LastItemData.Rect.GetBL() + ImVec2(-1, style.ItemSpacing.y));
-                }
-            }
-
-            //Centered and no move is better for the VR use-case
-            ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, ImGui::GetStyle().WindowRounding);
-
-            ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-            if (BeginPopup("picker", ImGuiWindowFlags_NoMove))
-            {
-                picker_active_window = g.CurrentWindow;
-                if (label != label_display_end)
-                {
-                    TextEx(label, label_display_end);
-                    Spacing();
-                }
-                ImGuiColorEditFlags picker_flags_to_forward = ImGuiColorEditFlags_DataTypeMask_ | ImGuiColorEditFlags_PickerMask_ | ImGuiColorEditFlags_InputMask_ | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
-                ImGuiColorEditFlags picker_flags = (flags & picker_flags_to_forward) | ImGuiColorEditFlags_DisplayMask_ | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaPreview;
-                SetNextItemWidth(square_sz * 12.0f); // Use 256 + bar sizes?
-                value_changed |= ColorPicker4("##picker", col, picker_flags, &g.ColorPickerRef.x);
-
-                //Hack: Catch active drag&drop and cancel in to disable that feature
-                //ImGuiColorEditFlags_NoDragDrop does not get forwarded in ColorPicker4() but we don't want to copy the whole function for a small change
-                if (g.DragDropActive)
-                {
-                    ImGui::ClearDragDrop();
-                    ImGui::ClearActiveID();
-                }
-
-                EndPopup();
-            }
-
-            ImGui::PopStyleVar();
-        }
-
-        if (label != label_display_end && !(flags & ImGuiColorEditFlags_NoLabel))
-        {
-            const float text_offset_x = (flags & ImGuiColorEditFlags_NoInputs) ? w_button : w_full + style.ItemInnerSpacing.x;
-            window->DC.CursorPos = ImVec2(pos.x + text_offset_x, pos.y + style.FramePadding.y);
-            TextEx(label, label_display_end);
-        }
-
-        PopID();
-        EndGroup();
-
-        // When picker is being actively used, use its active id so IsItemActive() will function on ColorEdit4().
-        if (picker_active_window && g.ActiveId != 0 && g.ActiveIdWindow == picker_active_window)
-            g.LastItemData.ID = g.ActiveId;
-
-        if (value_changed)
-            MarkItemEdited(g.LastItemData.ID);
+        ImGui::SetNextItemWidth(picker_width);
+        value_changed |= ImGui::ColorPicker4("##picker", col, picker_flags, &g.ColorPickerRef.x);
 
         //Restore hack
         io.MouseClicked[ImGuiMouseButton_Left] = mouse_left_clicked_old;
@@ -794,6 +736,50 @@ namespace ImGui
         {
             io.KeyMods &= ~ImGuiKeyModFlags_Ctrl;
         }
+
+        //Picker style switching without popup
+        if ( (ImGui::IsItemClicked(ImGuiMouseButton_Right)) && (ImGui::GetMousePos().y <= start_y + picker_bar_height) ) //(don't react to text input clicks)
+        {
+            ImGuiColorEditFlags picker_flags = (g.ColorEditOptions & ImGuiColorEditFlags_PickerHueBar) ? ImGuiColorEditFlags_PickerHueWheel : ImGuiColorEditFlags_PickerHueBar;
+
+            g.ColorEditOptions = (g.ColorEditOptions & ~ImGuiColorEditFlags_PickerMask_) | (picker_flags & ImGuiColorEditFlags_PickerMask_);
+        }
+
+        //Side previews, but translatable
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+        window->DC.CursorPos.y -= style.ItemSpacing.y;
+
+        ImGui::BeginGroup();
+
+        ImGui::PushItemFlag(ImGuiItemFlags_NoNavDefaultFocus, true);
+        ImVec4 col_v4(col[0], col[1], col[2], (flags & ImGuiColorEditFlags_NoAlpha) ? 1.0f : col[3]);
+        if ((flags & ImGuiColorEditFlags_NoLabel))
+            ImGui::TextUnformatted(label_color_current);
+
+        ImGuiColorEditFlags sub_flags_to_forward = ImGuiColorEditFlags_InputMask_ | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_AlphaPreviewHalf | 
+                                                   ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
+
+        ImGui::ColorButton("##current", col_v4, (flags & sub_flags_to_forward), ImVec2(square_sz * 3, square_sz * 2));
+        if (ref_col != nullptr)
+        {
+            ImGui::TextUnformatted(label_color_original);
+
+            ImVec4 ref_col_v4(ref_col[0], ref_col[1], ref_col[2], (flags & ImGuiColorEditFlags_NoAlpha) ? 1.0f : ref_col[3]);
+            if (ImGui::ColorButton("##original", ref_col_v4, (flags & sub_flags_to_forward), ImVec2(square_sz * 3, square_sz * 2)))
+            {
+                memcpy(col, ref_col, ((flags & ImGuiColorEditFlags_NoAlpha) ? 3 : 4) * sizeof(float));
+                value_changed = true;
+            }
+        }
+
+        ImGui::PopItemFlag();
+        ImGui::EndGroup();
+
+        ImGui::PopID();
+        ImGui::EndGroup();
+
+        if (value_changed)
+            ImGui::MarkItemEdited(g.LastItemData.ID);
 
         return value_changed;
     }

@@ -10,12 +10,14 @@ enum WindowSettingsPage
     wndsettings_page_keyboard,
     wndsettings_page_profiles,
     wndsettings_page_profiles_overlay_select,
+    wndsettings_page_color_picker,
     wndsettings_page_reset_confirm
 };
 
 enum WindowSettingsMainCategory
 {
     wndsettings_cat_interface,
+    wndsettings_cat_environment,
     wndsettings_cat_profiles,
     wndsettings_cat_actions,
     wndsettings_cat_keyboard,
@@ -76,6 +78,7 @@ class WindowSettings : public FloatingWindow
         void UpdatePageKeyboardLayout();
         void UpdatePageProfiles();
         void UpdatePageProfilesOverlaySelect();
+        void UpdatePageColorPicker();
         void UpdatePageResetConfirm();
 
         void PageGoForward(WindowSettingsPage new_page);

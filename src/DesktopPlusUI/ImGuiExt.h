@@ -51,7 +51,8 @@ namespace ImGui
     //Shortcut for unformatted colored text
     void TextColoredUnformatted(const ImVec4& col, const char* text, const char* text_end = nullptr);
 
-    bool ColorEdit4Simple(const char* label, float col[4], ImGuiColorEditFlags flags = 0);
+    //ColorPicker simplified for embedded widget use instead having of popups + translation support
+    bool ColorPicker4Simple(const char* str_id, float col[4], float ref_col[4], const char* label_color_current = nullptr, const char* label_color_original = nullptr);
 
     //ImGuiItemFlags_Disabled is not exposed public API yet and has no styling, so here's something that does the job
     //BeginDisabled()/EndDisabled() exists now, but behaves slightly differently and styling may change, so let's keep this for the time being

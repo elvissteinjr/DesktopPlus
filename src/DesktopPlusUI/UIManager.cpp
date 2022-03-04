@@ -1117,14 +1117,23 @@ void UIManager::OnTranslationChanged()
 
 void UIManager::UpdateOverlayDimming()
 {
-    if (ConfigManager::GetValue(configid_bool_interface_dim_ui))
+    if ( (ConfigManager::GetValue(configid_bool_interface_dim_ui)) && (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleDPlusDashboard)) )
     {
+        for (const auto& overlay_handle : GetUIOverlayHandles())
+        {
+            vr::VROverlay()->SetOverlayColor(overlay_handle, 0.05f, 0.05f, 0.05f);
+        }
+
         vr::VROverlay()->SetOverlayColor(m_OvrlHandleOverlayBar, 0.05f, 0.05f, 0.05f);
         ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 1.0f; //Set window bg alpha to 100% to not have the contrast be even worse on light backgrounds
     }
     else
     {
-        vr::VROverlay()->SetOverlayColor(m_OvrlHandleOverlayBar, 1.0f, 1.0f, 1.0f);
+        for (const auto& overlay_handle : GetUIOverlayHandles())
+        {
+            vr::VROverlay()->SetOverlayColor(overlay_handle, 1.0f, 1.0f, 1.0f);
+        }
+        
         ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 0.96f;
     }
 }
@@ -1439,6 +1448,7 @@ void UIManager::PositionOverlay()
             {
                 vr::VROverlay()->ShowOverlay(m_OvrlHandleOverlayBar);
                 m_OvrlVisible = true;
+                UpdateOverlayDimming();
 
                 //We prevent the fade-out when Overlay Bar is newly visible while the dashboard SystemUI is being hovered until ithe pointer leaves that overlay at least once
                 if (is_systemui_hovered)
@@ -1505,6 +1515,7 @@ void UIManager::PositionOverlay()
             {
                 vr::VROverlay()->HideOverlay(m_OvrlHandleOverlayBar);
                 m_WindowOverlayBar.HideMenus();
+                UpdateOverlayDimming();
 
                 m_OvrlVisible = false;
             }

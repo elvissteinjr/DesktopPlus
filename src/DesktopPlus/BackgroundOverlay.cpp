@@ -68,10 +68,10 @@ void BackgroundOverlay::Update()
         {
             //Unpack color value
             unsigned int rgba = pun_cast<unsigned int, int>(ConfigManager::GetValue(configid_int_interface_background_color));
-            float r = ((rgba & 0xFF000000) >> 24) / 255.0f;
-            float g = ((rgba & 0x00FF0000) >> 16) / 255.0f;
-            float b = ((rgba & 0x0000FF00) >> 8)  / 255.0f;
-            float a =  (rgba & 0x000000FF)        / 255.0f;
+            float r =  (rgba & 0x000000FF)        / 255.0f;
+            float g = ((rgba & 0x0000FF00) >> 8)  / 255.0f;
+            float b = ((rgba & 0x00FF0000) >> 16) / 255.0f;
+            float a = ((rgba & 0xFF000000) >> 24) / 255.0f;
 
             vr::VROverlay()->SetOverlayColor(m_OvrlHandle, r, g, b);
             vr::VROverlay()->SetOverlayAlpha(m_OvrlHandle, a);

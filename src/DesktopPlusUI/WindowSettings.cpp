@@ -162,6 +162,7 @@ void WindowSettings::WindowUpdate()
                 case wndsettings_page_keyboard:                UpdatePageKeyboardLayout();          break;
                 case wndsettings_page_profiles:                UpdatePageProfiles();                break;
                 case wndsettings_page_profiles_overlay_select: UpdatePageProfilesOverlaySelect();   break;
+                case wndsettings_page_color_picker:            UpdatePageColorPicker();             break;
                 case wndsettings_page_reset_confirm:           UpdatePageResetConfirm();            break;
                 default: break;
             }
@@ -477,6 +478,7 @@ void WindowSettings::UpdatePageMain()
     const TRMGRStrID jumpto_strings[wndsettings_cat_MAX] = 
     {
         tstr_SettingsCatInterface, 
+        tstr_SettingsCatEnvironment,
         tstr_SettingsCatProfiles,
         tstr_SettingsCatActions,
         tstr_SettingsCatKeyboard,
@@ -667,6 +669,60 @@ void WindowSettings::UpdatePageMainCatInterface()
             ImGui::Columns(1);
         }
     }
+
+    //Environment (still Interface, but not really)
+    {
+        static ImVec4 background_color_vec4;
+
+        if ( (m_PageAppearing == wndsettings_page_main) || (m_PageReturned == wndsettings_page_color_picker) )
+        {
+            background_color_vec4 = ImGui::ColorConvertU32ToFloat4(*(ImU32*)&ConfigManager::Get().GetRef(configid_int_interface_background_color));
+            m_PageReturned = wndsettings_page_none;
+        }
+
+        ImGui::Spacing();
+        m_ScrollMainCatPos[wndsettings_cat_environment] = ImGui::GetCursorPosY();
+
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatEnvironment)); 
+        ImGui::Columns(2, "ColumnEnvironment", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text(TranslationManager::GetString(tstr_SettingsEnvironmentBackgroundColor));
+        ImGui::NextColumn();
+
+        if (ImGui::ColorButton("##BackgroundColor", background_color_vec4, ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop))
+        {
+            PageGoForward(wndsettings_page_color_picker);
+        }
+
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+        int& mode_display = ConfigManager::GetRef(configid_int_interface_background_color_display_mode);
+
+        ImGui::SetNextItemWidth(-1);
+        if (TranslatedComboAnimated("##ComboBackgroundDisplay", mode_display, tstr_SettingsEnvironmentBackgroundColorDispModeNever, tstr_SettingsEnvironmentBackgroundColorDispModeAlways))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_interface_background_color_display_mode, mode_display);
+        }
+
+        ImGui::NextColumn();
+
+        bool& dim_ui = ConfigManager::Get().GetRef(configid_bool_interface_dim_ui);
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsEnvironmentDimInterface), &dim_ui))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_interface_dim_ui, dim_ui);
+
+            if (UIManager::Get()->IsOpenVRLoaded())
+            {
+                UIManager::Get()->UpdateOverlayDimming();
+            }
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_SettingsEnvironmentDimInterfaceTip));
+
+        ImGui::Columns(1);
+    }
 }
 
 void WindowSettings::UpdatePageMainCatActions()
@@ -693,6 +749,7 @@ void WindowSettings::UpdatePageMainCatProfiles()
 {
     //Profiles
     {
+        ImGui::Spacing();
         m_ScrollMainCatPos[wndsettings_cat_profiles] = ImGui::GetCursorPosY();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatProfiles)); 
@@ -2305,6 +2362,60 @@ void WindowSettings::UpdatePageProfilesOverlaySelect()
         ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextError);
         ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileSaveSelectDoFailed));
         ImGui::PopStyleColor();
+    }
+}
+
+void WindowSettings::UpdatePageColorPicker()
+{
+    static ImVec4 color_current;
+    static ImVec4 color_original;
+    const ConfigID_Int config_id = configid_int_interface_background_color; //Currently only need this one, so we keep it simple
+
+    if (m_PageAppearing == wndsettings_page_color_picker)
+    {
+        color_current  = ImGui::ColorConvertU32ToFloat4( pun_cast<ImU32, int>(ConfigManager::Get().GetValue(config_id)) );
+        color_original = color_current;
+    }
+
+    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogColorPickerHeader)); 
+    ImGui::Indent();
+
+    vr_keyboard.VRKeyboardInputBegin("#ColorPicker");
+    if (ImGui::ColorPicker4Simple("#ColorPicker", &color_current.x, &color_original.x, 
+                                  TranslationManager::GetString(tstr_DialogColorPickerCurrent), TranslationManager::GetString(tstr_DialogColorPickerOriginal)))
+    {
+        int rgba = pun_cast<int, ImU32>( ImGui::ColorConvertFloat4ToU32(color_current) );
+
+        ConfigManager::Get().SetValue(config_id, rgba);
+        IPCManager::Get().PostConfigMessageToDashboardApp(config_id, rgba);
+    }
+    vr_keyboard.VRKeyboardInputEnd();
+    
+    ImGui::Unindent();
+    
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+
+    //Confirmation buttons
+    ImGui::Separator();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogOk))) 
+    {
+        PageGoBack();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
+    {
+        //Restore previous setting
+        ImU32 rgba = ImGui::ColorConvertFloat4ToU32(color_original);
+
+        ConfigManager::Get().SetValue(config_id, *(int*)&rgba);
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(config_id), *(int*)&rgba);
+
+        PageGoBack();
     }
 }
 
