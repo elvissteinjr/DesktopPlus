@@ -60,7 +60,8 @@ class FloatingWindow
         void OverlayStateSwitchCurrent(bool use_dashboard_tab);
         void OverlayStateSwitchFinish();
 
-        virtual void OnWindowPinButtonPressed();         //Called when the pin button is pressed, after updating m_IsPinned
+        virtual void OnWindowPinButtonPressed();         //Called when the pin button is pressed, after updating overlay state
+        virtual void OnWindowCloseButtonPressed();       //Called when the close button is pressed, after updating overlay state
         virtual bool IsVirtualWindowItemHovered() const; //Returns false by default, can be overridden to signal hover state of widgets that don't touch global ImGui state (used for blank space drag)
 
         void HelpMarker(const char* desc, const char* marker_str = "(?)") const;    //Help marker, but tooltip is fixed to top or bottom of the window

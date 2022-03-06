@@ -46,6 +46,7 @@ class WindowKeyboard : public FloatingWindow
 
         virtual void WindowUpdate();
 
+        virtual void OnWindowCloseButtonPressed();
         virtual bool IsVirtualWindowItemHovered() const;
 
         void OnVirtualKeyDown(unsigned char keycode, bool block_modifiers = false);

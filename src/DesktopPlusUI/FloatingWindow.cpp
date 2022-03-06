@@ -143,6 +143,7 @@ void FloatingWindow::WindowUpdateBase()
     if (ImGui::ImageButton(io.Fonts->TexID, img_size, img_uv_min, img_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
     {
         Hide();
+        OnWindowCloseButtonPressed();
     }
     ImGui::PopID();
 
@@ -265,6 +266,11 @@ void FloatingWindow::OnWindowPinButtonPressed()
     {
         m_OverlayStateRoom.IsVisible = true;
     }
+}
+
+void FloatingWindow::OnWindowCloseButtonPressed()
+{
+    //Do nothing by default
 }
 
 bool FloatingWindow::IsVirtualWindowItemHovered() const

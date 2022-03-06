@@ -743,6 +743,15 @@ void WindowKeyboard::WindowUpdate()
     io.KeyRepeatDelay = key_repeat_delay_old;
 }
 
+void WindowKeyboard::OnWindowCloseButtonPressed()
+{
+    //Remove assignment on close button press to not just have to pop up again from overlay visbility tracking (but only when in room state)
+    if (m_OverlayStateCurrentID == floating_window_ovrl_state_room)
+    {
+        SetAssignedOverlayID(-1);
+    }
+}
+
 bool WindowKeyboard::IsVirtualWindowItemHovered() const
 {
     return m_IsAnyButtonHovered;
