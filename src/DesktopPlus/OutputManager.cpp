@@ -924,8 +924,8 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
     }
 
-    //Count frames if performance stats are active
-    if ( (has_updated_overlay) && (ConfigManager::GetValue(configid_bool_state_performance_stats_active)) )
+    //Count frames
+    if (has_updated_overlay)
     {
         m_PerformanceFrameCount++;
     }
@@ -1356,15 +1356,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         ApplySettingInputMode();
                         break;
                     }
-                    case configid_bool_state_performance_stats_active:
-                    {
-                        if (msg.lParam) //Update GPU Copy state
-                        {
-                            ConfigManager::SetValue(configid_bool_state_performance_gpu_copy_active, (m_MultiGPUTargetDevice != nullptr));
-                            IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_performance_gpu_copy_active, (m_MultiGPUTargetDevice != nullptr));
-                        }
-                        break;
-                    }
                     case configid_bool_state_misc_elevated_mode_active:
                     {
                         m_InputSim.SetElevatedModeForwardingActive(msg.lParam);
@@ -1665,6 +1656,25 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
         {
             //We get capture lost messages for each affected overlay, so just forward the error to the UI so a warning can be displayed for now
             IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_winrt_thread_error, msg.lParam);
+            break;
+        }
+        case WM_DPLUSWINRT_FPS:
+        {
+            const unsigned int overlay_id = OverlayManager::Get().FindOverlayID(msg.wParam);
+
+            if (overlay_id == k_ulOverlayID_None)
+            {
+                break;
+            }
+
+            OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+            data.ConfigInt[configid_int_overlay_state_fps] = msg.lParam;
+
+            //Send update to UI
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_fps, msg.lParam);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+
             break;
         }
     }
@@ -2322,7 +2332,7 @@ VRInput& OutputManager::GetVRInput()
 void OutputManager::UpdatePerformanceStates()
 {
     //Frame counter, the frames themselves are counted in Update()
-    if ( (ConfigManager::GetValue(configid_bool_state_performance_stats_active)) && (::GetTickCount64() >= m_PerformanceFrameCountStartTick + 1000) )
+    if (::GetTickCount64() >= m_PerformanceFrameCountStartTick + 1000)
     {
         //A second has passed, reset the value
         ConfigManager::SetValue(configid_int_state_performance_duplication_fps, m_PerformanceFrameCount);

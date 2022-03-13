@@ -235,6 +235,11 @@ const ImVec2& WindowFloatingUIMainBar::GetSize() const
     return m_Size;
 }
 
+float WindowFloatingUIMainBar::GetAnimationProgress() const
+{
+    return m_AnimationProgress;
+}
+
 void WindowFloatingUIMainBar::MarkCurrentWindowCapturableStateOutdated()
 {
     //Mark state as outdated. We don't do the update here as the current window can change a lot while the UI isn't even displaying... no need to bother then.
@@ -715,4 +720,58 @@ float WindowFloatingUIActionBar::GetAlpha() const
 double WindowFloatingUIActionBar::GetLastDesktopSwitchTime() const
 {
     return m_LastDesktopSwitchTime;
+}
+
+
+//-WindowFloatingUIOverlayStats
+void WindowFloatingUIOverlayStats::Update(const WindowFloatingUIMainBar& mainbar, const WindowFloatingUIActionBar& actionbar, unsigned int overlay_id)
+{
+    //Don't display if disabled
+    if (!ConfigManager::Get().GetValue(configid_bool_performance_show_fps))
+        return;
+
+    const OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(overlay_id);
+
+    int fps = -1;
+    if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+    {
+        fps = ConfigManager::GetValue(configid_int_state_performance_duplication_fps);
+    }
+    else if (overlay_data.ConfigInt[configid_int_overlay_capture_source] != ovrl_capsource_ui)
+    {
+        fps = overlay_data.ConfigInt[configid_int_overlay_state_fps];
+    }
+
+    //Don't display window if no fps value available
+    if (fps == -1)
+        return;
+
+    const ImGuiStyle& style = ImGui::GetStyle();
+
+    //This is a fixed size window, which seems like a bad idea for localization, but since it uses performance monitor strings it already uses size constrained text
+    //(and "FPS" will be untranslated in practice)
+    const float window_width = ImGui::GetFontSize() * 3.5f; 
+
+    //Position the window left to either action- or main-bar, depending on visibility of action-bar (switching is animated alongside mainbar)
+    //Additionally moves the window down if the action-bar occupies all horizontal space
+    const ImVec2 actionbar_pos  = actionbar.GetPos();
+    const ImVec2 actionbar_size = actionbar.GetSize();
+    bool is_actionbar_blocking = (actionbar_pos.x < window_width + style.ItemSpacing.x);
+    ImVec2 pos;
+
+    float max_x = (is_actionbar_blocking) ? actionbar_pos.x + window_width + style.ItemSpacing.x : actionbar_pos.x;
+    pos.x  = smoothstep(mainbar.GetAnimationProgress(), mainbar.GetPos().x, max_x);
+    pos.x -= ImGui::GetStyle().ItemSpacing.x;
+    pos.y  = smoothstep(mainbar.GetAnimationProgress(), actionbar_pos.y, (is_actionbar_blocking) ? actionbar_pos.y + actionbar_size.y + style.ItemSpacing.y : actionbar_pos.y);
+
+    //Actual window
+    ImGui::SetNextWindowPos(pos, 0, ImVec2(1.0f, 0.0f));    
+    ImGui::SetNextWindowSize(ImVec2(window_width, -1.0f));
+    ImGui::Begin("WindowFloatingUIStats", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
+
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorFPS));
+    ImGui::SameLine();
+    ImGui::TextRight(0.0f, "%d", fps);
+
+    ImGui::End();
 }

@@ -342,6 +342,25 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
         m_FramePool.Recreate(m_Device, m_PixelFormat, 2, m_LastContentSize);
     }
 
+    //Frame counter
+    m_FrameCount++;
+    if (::GetTickCount64() >= m_FrameCountStartTick + 1000)
+    {
+        //A second has passed, send fps messages and reset the value
+        if (m_FrameCount != m_FrameCountLast)
+        {
+            m_FrameCountLast = m_FrameCount;
+
+            for (const auto& overlay : m_Overlays)
+            {
+                ::PostThreadMessage(m_GlobalMainThreadID, WM_DPLUSWINRT_FPS, overlay.Handle, m_FrameCount);
+            }
+        }
+
+        m_FrameCountStartTick = ::GetTickCount64();
+        m_FrameCount = 0;
+    }
+
     //Set frame limiter starting time after we're done with everything
     if (update_limiter_active)
     {

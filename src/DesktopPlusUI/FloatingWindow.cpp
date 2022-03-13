@@ -327,11 +327,10 @@ void FloatingWindow::HelpMarker(const char* desc, const char* marker_str) const
 
         if (is_invisible)
             ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
-
     }
 }
 
-bool FloatingWindow::TranslatedComboAnimated(const char* label, int& value, TRMGRStrID trstr_min, TRMGRStrID trstr_max) const
+bool FloatingWindow::TranslatedComboAnimated(const char* label, int& value, TRMGRStrID trstr_min, TRMGRStrID trstr_max)
 {
     bool ret = false;
 
@@ -356,6 +355,116 @@ bool FloatingWindow::TranslatedComboAnimated(const char* label, int& value, TRMG
     }
 
     return ret;
+}
+
+void FloatingWindow::UpdateLimiterSetting(bool is_override) const
+{
+    const ConfigID_Int   configid_mode = (is_override) ? configid_int_overlay_update_limit_override_mode : configid_int_performance_update_limit_mode;
+    const ConfigID_Int   configid_fps  = (is_override) ? configid_int_overlay_update_limit_override_fps  : configid_int_performance_update_limit_fps;
+    const ConfigID_Float configid_ms   = (is_override) ? configid_float_overlay_update_limit_override_ms : configid_float_performance_update_limit_ms;
+
+    int& update_limit_mode = ConfigManager::GetRef(configid_mode);
+    bool limit_updates = (update_limit_mode != update_limit_mode_off);
+
+    if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings)) //Advanced view, choose limiter mode
+    {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString((is_override) ? tstr_SettingsPerformanceUpdateLimiterModeOverride : tstr_SettingsPerformanceUpdateLimiterMode));
+
+        if (update_limit_mode == update_limit_mode_ms)
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceUpdateLimiterModeMSTip));
+        }
+        else if (is_override)
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceUpdateLimiterOverrideTip));
+        }
+
+        ImGui::NextColumn();
+
+        //Manually set up combo items here to support different first string for override setting
+        const TRMGRStrID combo_strings[] = 
+        {
+            (is_override) ? tstr_SettingsPerformanceUpdateLimiterModeOffOverride : tstr_SettingsPerformanceUpdateLimiterModeOff,
+            tstr_SettingsPerformanceUpdateLimiterModeMS,
+            tstr_SettingsPerformanceUpdateLimiterModeFPS
+        };
+
+        update_limit_mode = clamp(update_limit_mode, 0, IM_ARRAYSIZE(combo_strings) - 1);   //Avoid accessing past limits with invalid values
+
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::BeginComboAnimated("##ComboUpdateLimitMode", TranslationManager::GetString(combo_strings[update_limit_mode]) ))
+        {
+            int i = 0;
+            for (const auto& item : combo_strings)
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(item), (update_limit_mode == i)))
+                {
+                    update_limit_mode = i;
+
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_mode, update_limit_mode);
+                }
+
+                ++i;
+            }
+
+            ImGui::EndCombo();
+        }
+
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+    }
+    else //Simple view, only switch between off and fps mode (still shows ms below if previously set active)
+    {
+        if (ImGui::Checkbox(TranslationManager::GetString((is_override) ? tstr_SettingsPerformanceUpdateLimiterOverride : tstr_SettingsPerformanceUpdateLimiter), &limit_updates))
+        {
+            update_limit_mode = (limit_updates) ? update_limit_mode_fps : update_limit_mode_off;
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_mode, update_limit_mode);
+        }
+
+        if (is_override)
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceUpdateLimiterOverrideTip));
+        }
+
+        ImGui::NextColumn();
+    }
+
+    if (update_limit_mode == update_limit_mode_ms)
+    {
+        float& update_limit_ms = ConfigManager::Get().GetRef(configid_ms);
+
+        if (ImGui::SliderWithButtonsFloat("UpdateLimitMS", update_limit_ms, 0.5f, 0.05f, 0.0f, 100.0f, "%.2f ms", ImGuiSliderFlags_Logarithmic))
+        {
+            if (update_limit_ms < 0.0f)
+                update_limit_ms = 0.0f;
+
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_ms, pun_cast<LPARAM, float>(update_limit_ms));
+        }
+    }
+    else
+    {
+        if (!limit_updates)
+            ImGui::PushItemDisabled();
+
+        int& update_limit_fps = ConfigManager::Get().GetRef(configid_fps);
+        const int update_limit_fps_max = 9;
+        if (ImGui::SliderWithButtonsInt("UpdateLimitFPS", update_limit_fps, 1, 1, 0, update_limit_fps_max, "##%d", ImGuiSliderFlags_NoInput, nullptr, 
+                                        TranslationManager::Get().GetFPSLimitString(update_limit_fps)))
+        {
+            update_limit_fps = clamp(update_limit_fps, 0, update_limit_fps_max);
+
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_fps, update_limit_fps);
+        }
+
+        if (!limit_updates)
+            ImGui::PopItemDisabled();
+    }
+
+    ImGui::NextColumn();
 }
 
 void FloatingWindow::Update()

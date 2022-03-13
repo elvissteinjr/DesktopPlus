@@ -17,6 +17,7 @@ enum TRMGRStrID
     tstr_SettingsCatMouse,
     tstr_SettingsCatLaserPointer,
     tstr_SettingsCatWindowOverlays,
+    tstr_SettingsCatPerformance,
     tstr_SettingsCatVersionInfo,
     tstr_SettingsCatWarnings,
     tstr_SettingsCatStartup,
@@ -125,6 +126,22 @@ enum TRMGRStrID
     tstr_SettingsWindowOverlaysOnCaptureLossDoNothing,
     tstr_SettingsWindowOverlaysOnCaptureLossHide,
     tstr_SettingsWindowOverlaysOnCaptureLossRemove,
+    tstr_SettingsPerformanceUpdateLimiter,
+    tstr_SettingsPerformanceUpdateLimiterMode,
+    tstr_SettingsPerformanceUpdateLimiterModeOff,
+    tstr_SettingsPerformanceUpdateLimiterModeMS,
+    tstr_SettingsPerformanceUpdateLimiterModeFPS,
+    tstr_SettingsPerformanceUpdateLimiterModeOffOverride,
+    tstr_SettingsPerformanceUpdateLimiterModeMSTip,
+    tstr_SettingsPerformanceUpdateLimiterFPSValue,        //%FPS% == FPS value
+    tstr_SettingsPerformanceUpdateLimiterOverride,
+    tstr_SettingsPerformanceUpdateLimiterOverrideTip,
+    tstr_SettingsPerformanceUpdateLimiterModeOverride,
+    tstr_SettingsPerformanceRapidUpdates,
+    tstr_SettingsPerformanceRapidUpdatesTip,
+    tstr_SettingsPerformanceSingleDesktopMirror,
+    tstr_SettingsPerformanceSingleDesktopMirrorTip,
+    tstr_SettingsPerformanceShowFPS,
     tstr_SettingsWarningsHidden,
     tstr_SettingsWarningsReset,
     tstr_SettingsStartupAutoLaunch,
@@ -145,6 +162,7 @@ enum TRMGRStrID
     tstr_OvrlPropsCatCapture,
     tstr_OvrlPropsCatPerformanceMonitor,
     tstr_OvrlPropsCatAdvanced,
+    tstr_OvrlPropsCatPerformance,
     tstr_OvrlPropsCatInterface,
     tstr_OvrlPropsPositionOrigin,
     tstr_OvrlPropsPositionOriginRoom,
@@ -202,9 +220,6 @@ enum TRMGRStrID
     tstr_OvrlPropsCaptureMethodGCUnsupportedPartialTip,
     tstr_OvrlPropsCaptureSource,
     tstr_OvrlPropsCaptureGCSource,
-    tstr_OvrlPropsCaptureFPSLimit,
-    tstr_OvrlPropsCaptureFPSUnit,
-    tstr_OvrlPropsCaptureInvUpdate,
     tstr_OvrlPropsPerfMonDesktopModeTip,
     tstr_OvrlPropsPerfMonGlobalTip,
     tstr_OvrlPropsPerfMonStyle,
@@ -236,6 +251,8 @@ enum TRMGRStrID
     tstr_OvrlPropsAdvancedInput,
     tstr_OvrlPropsAdvancedInputInGame,
     tstr_OvrlPropsAdvancedInputFloatingUI,
+    tstr_OvrlPropsPerformanceInvisibleUpdate,
+    tstr_OvrlPropsPerformanceInvisibleUpdateTip,
     tstr_OvrlPropsInterfaceOverlayName,
     tstr_OvrlPropsInterfaceOverlayNameAuto,
     tstr_OvrlPropsInterfaceActions,
@@ -329,7 +346,10 @@ class TranslationManager
     private:
         static const char* s_StringIDNames[tstr_MAX];
         std::string m_Strings[tstr_MAX];
+
+        //Precomputed strings, updated after loading different translations
         std::vector<std::string> m_StringsDesktopID;
+        std::vector<std::string> m_StringsFPSLimit;
 
         std::string m_CurrentTranslationName;
         bool m_IsCurrentTranslationComplete;
@@ -348,4 +368,5 @@ class TranslationManager
         void AddStringsToFontBuilder(ImFontGlyphRangesBuilder& builder) const;
 
         const char* GetDesktopIDString(int desktop_id);
+        const char* GetFPSLimitString(int fps_limit_id);
 };

@@ -485,6 +485,7 @@ void WindowSettings::UpdatePageMain()
         tstr_SettingsCatMouse,
         tstr_SettingsCatLaserPointer,
         tstr_SettingsCatWindowOverlays,
+        tstr_SettingsCatPerformance,
         tstr_SettingsCatVersionInfo,
         tstr_SettingsCatWarnings,
         tstr_SettingsCatStartup,
@@ -534,6 +535,7 @@ void WindowSettings::UpdatePageMain()
     UpdatePageMainCatActions();
     UpdatePageMainCatInput();
     UpdatePageMainCatWindows();
+    UpdatePageMainCatPerformance();
     UpdatePageMainCatMisc();
 
     //Scrolling
@@ -1055,6 +1057,57 @@ void WindowSettings::UpdatePageMainCatWindows()
                 IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_windows_winrt_capture_lost_behavior, behavior_capture_loss);
             }
         }
+
+        ImGui::Columns(1);
+    }
+}
+
+void WindowSettings::UpdatePageMainCatPerformance()
+{
+    //Performance
+    {
+        ImGui::Spacing();
+        m_ScrollMainCatPos[wndsettings_cat_performance] = ImGui::GetCursorPosY();
+
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatPerformance)); 
+        ImGui::Columns(2, "ColumnPerformance", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+
+        UpdateLimiterSetting(false);
+
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
+        {
+            ImGui::Spacing();
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsCaptureMethodDup));
+            ImGui::NextColumn();
+
+            ImGui::Spacing();
+            bool& rapid_updates = ConfigManager::Get().GetRef(configid_bool_performance_rapid_laser_pointer_updates);
+            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceRapidUpdates), &rapid_updates))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_performance_rapid_laser_pointer_updates), rapid_updates);
+            }
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceRapidUpdatesTip));
+
+            ImGui::NextColumn();
+            ImGui::NextColumn();
+
+            bool& single_desktop = ConfigManager::Get().GetRef(configid_bool_performance_single_desktop_mirroring);
+            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceSingleDesktopMirror), &single_desktop))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_performance_single_desktop_mirroring), single_desktop);
+            }
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceSingleDesktopMirrorTip));
+
+            ImGui::NextColumn();
+            ImGui::Spacing();       //Only use additional spacing when this is visible since it looks odd with just 2 checkboxes
+        }
+
+        bool& show_fps = ConfigManager::Get().GetRef(configid_bool_performance_show_fps);
+        ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceShowFPS), &show_fps);
 
         ImGui::Columns(1);
     }

@@ -18,6 +18,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsCatMouse",
     "tstr_SettingsCatLaserPointer",
     "tstr_SettingsCatWindowOverlays",
+    "tstr_SettingsCatPerformance",
     "tstr_SettingsCatVersionInfo",
     "tstr_SettingsCatWarnings",
     "tstr_SettingsCatStartup",
@@ -126,6 +127,22 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsWindowOverlaysOnCaptureLossDoNothing",
     "tstr_SettingsWindowOverlaysOnCaptureLossHide",
     "tstr_SettingsWindowOverlaysOnCaptureLossRemove",
+    "tstr_SettingsPerformanceUpdateLimiter",
+    "tstr_SettingsPerformanceUpdateLimiterMode",
+    "tstr_SettingsPerformanceUpdateLimiterModeOff",
+    "tstr_SettingsPerformanceUpdateLimiterModeMS",
+    "tstr_SettingsPerformanceUpdateLimiterModeFPS",
+    "tstr_SettingsPerformanceUpdateLimiterModeOffOverride",
+    "tstr_SettingsPerformanceUpdateLimiterModeMSTip",
+    "tstr_SettingsPerformanceUpdateLimiterFPSValue",
+    "tstr_SettingsPerformanceUpdateLimiterOverride",
+    "tstr_SettingsPerformanceUpdateLimiterOverrideTip",
+    "tstr_SettingsPerformanceUpdateLimiterModeOverride",
+    "tstr_SettingsPerformanceRapidUpdates",
+    "tstr_SettingsPerformanceRapidUpdatesTip",
+    "tstr_SettingsPerformanceSingleDesktopMirror",
+    "tstr_SettingsPerformanceSingleDesktopMirrorTip",
+    "tstr_SettingsPerformanceShowFPS",
     "tstr_SettingsWarningsHidden",
     "tstr_SettingsWarningsReset",
     "tstr_SettingsStartupAutoLaunch",
@@ -146,6 +163,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsCatCapture",
     "tstr_OvrlPropsCatPerformanceMonitor",
     "tstr_OvrlPropsCatAdvanced",
+    "tstr_OvrlPropsCatPerformance",
     "tstr_OvrlPropsCatInterface",
     "tstr_OvrlPropsPositionOrigin",
     "tstr_OvrlPropsPositionOriginRoom",
@@ -203,9 +221,6 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsCaptureMethodGCUnsupportedPartialTip",
     "tstr_OvrlPropsCaptureSource",
     "tstr_OvrlPropsCaptureGCSource",
-    "tstr_OvrlPropsCaptureFPSLimit",
-    "tstr_OvrlPropsCaptureFPSUnit",
-    "tstr_OvrlPropsCaptureInvUpdate",
     "tstr_OvrlPropsPerfMonDesktopModeTip",
     "tstr_OvrlPropsPerfMonGlobalTip",
     "tstr_OvrlPropsPerfMonStyle",
@@ -237,6 +252,8 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsAdvancedInput",
     "tstr_OvrlPropsAdvancedInputInGame",
     "tstr_OvrlPropsAdvancedInputFloatingUI",
+    "tstr_OvrlPropsPerformanceInvisibleUpdate",
+    "tstr_OvrlPropsPerformanceInvisibleUpdateTip",
     "tstr_OvrlPropsInterfaceOverlayName",
     "tstr_OvrlPropsInterfaceOverlayNameAuto",
     "tstr_OvrlPropsInterfaceActions",
@@ -401,8 +418,9 @@ void TranslationManager::LoadTranslationFromFile(const std::string& filename)
         m_CurrentTranslationName = lang_file.ReadString("TranslationInfo", "Name", "Unknown");
         m_IsCurrentTranslationComplete = true;
 
-        //Clear desktop ID strings to regenerate them with new translation later
+        //Clear precomputed strings to regenerate them with new translation later
         m_StringsDesktopID.clear();
+        m_StringsFPSLimit.clear();
 
         //Try loading all possible strings
         for (size_t i = 0; i < tstr_MAX; ++i)
@@ -440,6 +458,14 @@ const char* TranslationManager::GetCurrentTranslationName() const
     return m_CurrentTranslationName.c_str();
 }
 
+void TranslationManager::AddStringsToFontBuilder(ImFontGlyphRangesBuilder& builder) const
+{
+    for (const auto& str : m_Strings)
+    {
+        builder.AddText(str.c_str());
+    }
+}
+
 const char* TranslationManager::GetDesktopIDString(int desktop_id)
 {
     if (desktop_id < 0)
@@ -463,10 +489,33 @@ const char* TranslationManager::GetDesktopIDString(int desktop_id)
     return m_StringsDesktopID[desktop_id].c_str();
 }
 
-void TranslationManager::AddStringsToFontBuilder(ImFontGlyphRangesBuilder& builder) const
+const char* TranslationManager::GetFPSLimitString(int fps_limit_id)
 {
-    for (const auto& str : m_Strings)
+    const int fps_limits[10] = { 1, 2, 5, 10, 15, 20, 25, 30, 40, 50 };
+
+    //Set out of range value to ID 10
+    if ( (fps_limit_id < 0) || (fps_limit_id > 9) )
     {
-        builder.AddText(str.c_str());
+        fps_limit_id = 10;
     }
+
+    //Generate fps limit strings based on current translation if needed
+    if (m_StringsFPSLimit.empty())
+    {
+        for (int limit : fps_limits)
+        {
+            std::string str = GetString(tstr_SettingsPerformanceUpdateLimiterFPSValue);
+            StringReplaceAll(str, "%FPS%", std::to_string(limit));
+
+            m_StringsFPSLimit.push_back(str);
+        }
+
+        //Out of range string
+        std::string str = GetString(tstr_SettingsPerformanceUpdateLimiterFPSValue);
+        StringReplaceAll(str, "%FPS%", "?");
+
+        m_StringsFPSLimit.push_back(str);
+    }
+
+    return m_StringsFPSLimit[fps_limit_id].c_str();
 }

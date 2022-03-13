@@ -308,6 +308,7 @@ void WindowOverlayProperties::UpdatePageMain()
     UpdatePageMainCatCapture();
     UpdatePageMainCatPerformanceMonitor();
     UpdatePageMainCatAdvanced();
+    UpdatePageMainCatPerformance();
     UpdatePageMainCatInterface();
 
     ImGui::EndChild();
@@ -1044,6 +1045,39 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
         if (!input_enabled)
             ImGui::PopItemDisabled();
+    }
+
+    ImGui::Columns(1);
+}
+
+void WindowOverlayProperties::UpdatePageMainCatPerformance()
+{
+    //Don't show performance settings for UI source overlays
+    if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_ui)
+        return;
+
+    ImGui::Spacing();
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatPerformance));
+    ImGui::Columns(2, "ColumnPerformance", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
+    UpdateLimiterSetting(true);
+
+    if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
+    {
+        ImGui::Spacing();
+
+        bool& update_invisible = ConfigManager::GetRef(configid_bool_overlay_update_invisible);
+
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerformanceInvisibleUpdate), &update_invisible))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_update_invisible, update_invisible);
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_OvrlPropsPerformanceInvisibleUpdateTip));
+
+        ImGui::NextColumn();
+        ImGui::NextColumn();
     }
 
     ImGui::Columns(1);

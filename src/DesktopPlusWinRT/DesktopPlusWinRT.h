@@ -37,6 +37,7 @@
 #define WM_DPLUSWINRT_THREAD_QUIT   WM_DPLUSWINRT+5  //Sent to capture thread to quit when no overlays are left to capture
 #define WM_DPLUSWINRT_THREAD_ERROR  WM_DPLUSWINRT+6  //Sent to main thread when an unexpected error occured in the capture thread. wParam = thread ID, lParam = hresult
 #define WM_DPLUSWINRT_THREAD_ACK    WM_DPLUSWINRT+7  //Sent to main thread to acknowledge thread messages from StopCapture() (main thread is blocked until this is received)
+#define WM_DPLUSWINRT_FPS           WM_DPLUSWINRT+8  //Sent to main thread when fps count has changed. wParam = overlay handle, lParam = frames per second
 
 #ifdef __cplusplus
 extern "C" {

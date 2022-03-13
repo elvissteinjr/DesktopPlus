@@ -88,6 +88,7 @@ void FloatingUI::Update()
 
         m_WindowActionBar.Update(m_OvrlIDCurrentUITarget);
         m_WindowMainBar.Update(m_WindowActionBar.GetSize().y, m_OvrlIDCurrentUITarget);
+        m_WindowOverlayStats.Update(m_WindowMainBar, m_WindowActionBar, m_OvrlIDCurrentUITarget);
 
         if (m_AutoFitFrames > 0)
         {

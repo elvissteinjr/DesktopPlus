@@ -67,5 +67,9 @@ private:
     LARGE_INTEGER m_UpdateLimiterFrequency = {0, 0};
     LARGE_INTEGER m_UpdateLimiterDelay = {0, 0};
 
+    int m_FrameCount = 0;
+    int m_FrameCountLast = -1;
+    ULONGLONG m_FrameCountStartTick = 0;
+
     std::vector<OUtoSBSConverter> m_OUConverters; //Rarely used, so the cache is kept here instead of directly as part of the overlay data
 };

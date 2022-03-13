@@ -52,6 +52,7 @@ enum ConfigID_Bool
     configid_bool_interface_window_keyboard_restore_state,
     configid_bool_performance_rapid_laser_pointer_updates,
     configid_bool_performance_single_desktop_mirroring,
+    configid_bool_performance_show_fps,
     configid_bool_performance_monitor_large_style,
     configid_bool_performance_monitor_show_graphs,
     configid_bool_performance_monitor_show_time,
@@ -89,7 +90,6 @@ enum ConfigID_Bool
     configid_bool_state_overlay_dragmode_temp,
     configid_bool_state_window_focused_process_elevated,
     configid_bool_state_keyboard_visible,
-    configid_bool_state_performance_stats_active,             //Only count when the stats are visible
     configid_bool_state_performance_gpu_copy_active,
     configid_bool_state_misc_process_elevated,                //True if the dashboard application is running with admin privileges
     configid_bool_state_misc_elevated_mode_active,            //True if the elevated mode process is running
@@ -115,6 +115,7 @@ enum ConfigID_Int
     configid_int_overlay_group_id,
     configid_int_overlay_state_content_width,
     configid_int_overlay_state_content_height,
+    configid_int_overlay_state_fps,
     configid_int_overlay_MAX,
     configid_int_interface_overlay_current_id,
     configid_int_interface_mainbar_desktop_listing,

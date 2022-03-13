@@ -9,6 +9,7 @@ class FloatingUI
     private:
         WindowFloatingUIMainBar m_WindowMainBar;
         WindowFloatingUIActionBar m_WindowActionBar;
+        WindowFloatingUIOverlayStats m_WindowOverlayStats;
 
         vr::VROverlayHandle_t m_OvrlHandleCurrentUITarget;
         unsigned int m_OvrlIDCurrentUITarget;

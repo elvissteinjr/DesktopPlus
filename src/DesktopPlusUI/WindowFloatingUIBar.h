@@ -22,6 +22,7 @@ class WindowFloatingUIMainBar
 
         const ImVec2& GetPos() const;
         const ImVec2& GetSize() const;
+        float GetAnimationProgress() const;
 
         void MarkCurrentWindowCapturableStateOutdated();
 };
@@ -55,4 +56,11 @@ class WindowFloatingUIActionBar
         float GetAlpha() const;
 
         double GetLastDesktopSwitchTime() const;
+};
+
+//Extra window currently only showing capture fps of the overlay if enabled
+class WindowFloatingUIOverlayStats
+{
+    public:
+        void Update(const WindowFloatingUIMainBar& mainbar, const WindowFloatingUIActionBar& actionbar, unsigned int overlay_id);
 };
