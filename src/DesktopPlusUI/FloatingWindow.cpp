@@ -163,14 +163,19 @@ void FloatingWindow::WindowUpdateBase()
     //Shorten title bar string if it doesn't fit (this is destructive, but doesn't matter for the windows using this)
     if ((m_WindowTitleStrID == tstr_NONE) && (title_text_width > m_TitleBarTitleMaxWidth))
     {
-        m_WindowTitle = ImGui::StringEllipsis(m_WindowTitle.c_str(), m_TitleBarTitleMaxWidth);
-
-        //Repeat frame to not make title shortening visible
-        if (m_Alpha != 1.0f)
+        //Don't attempt to shorten the string during repeat frames as the size can still be adjusting in corner cases and throw us into a loop
+        if (!UIManager::Get()->GetRepeatFrame())
         {
-            m_Alpha -= 0.1f; //Also adjust alpha to keep fade smooth
+            m_WindowTitle = ImGui::StringEllipsis(m_WindowTitle.c_str(), m_TitleBarTitleMaxWidth);
+
+            //Repeat frame to not make title shortening visible
+            if (m_Alpha != 1.0f)
+            {
+                m_Alpha -= 0.1f; //Also adjust alpha to keep fade smooth
+            }
+
+            UIManager::Get()->RepeatFrame();
         }
-        UIManager::Get()->RepeatFrame();
     }
 
     //Title bar dragging
