@@ -60,9 +60,8 @@ OverlayCapture::OverlayCapture(winrt::IDirect3DDevice const& device, winrt::Grap
         vr::VROverlay()->SetOverlayMouseScale(overlay.Handle, &mouse_scale);
     }
 
-    //Init update limiter variables
+    //Init update limiter frequency (we don't init starting time until after the first frame)
     ::QueryPerformanceFrequency(&m_UpdateLimiterFrequency);
-    ::QueryPerformanceCounter(&m_UpdateLimiterStartingTime);
 
     OnOverlayDataRefresh();
 

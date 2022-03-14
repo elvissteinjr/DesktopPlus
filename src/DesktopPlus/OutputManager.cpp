@@ -4614,6 +4614,7 @@ void OutputManager::ApplySettingCaptureSource()
                         {
                             overlay.SetTextureSource(ovrl_texsource_winrt_capture);
                             ApplySetting3DMode(); //Syncs 3D state if needed
+                            ApplySettingUpdateLimiter();
 
                             //Pause if not visible
                             if (!overlay.IsVisible())
@@ -4634,6 +4635,7 @@ void OutputManager::ApplySettingCaptureSource()
                         {
                             overlay.SetTextureSource(ovrl_texsource_winrt_capture);
                             ApplySetting3DMode();
+                            ApplySettingUpdateLimiter();
 
                             //Pause if not visible
                             if (!overlay.IsVisible())
