@@ -848,9 +848,9 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     {
         const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
 
-        if (overlay.IsVisible())
+        if ( (overlay.IsVisible()) && ( (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication) || (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication_3dou_converted) ) )
         {
-            const DPRect& cropping_region = OverlayManager::Get().GetOverlay(i).GetValidatedCropRect();
+            const DPRect& cropping_region = overlay.GetValidatedCropRect();
 
             if (DirtyRectTotal.Overlaps(cropping_region))
             {
