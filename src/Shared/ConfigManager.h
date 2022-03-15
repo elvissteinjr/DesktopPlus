@@ -303,7 +303,7 @@ class OverlayConfigData
         uint64_t ConfigHandle[configid_handle_overlay_MAX];
         std::string ConfigStr[configid_str_overlay_MAX];
         Matrix4 ConfigTransform;
-        std::vector<ActionMainBarOrderData> ConfigActionBarOrder;
+        ActionOrderList ConfigActionBarOrder;
 
         OverlayConfigData();
 };
@@ -335,6 +335,9 @@ class ConfigManager
 
         static bool IsUIAccessEnabled();
         static void RemoveScaleFromTransform(Matrix4& transform, float* width);
+
+        static void LoadActionOrderList(ActionOrderList& action_order, const std::string& order_str);
+        static std::string GetActionOrderListString(const ActionOrderList& action_order);
 
     public:
         ConfigManager();
@@ -380,7 +383,7 @@ class ConfigManager
 
         ActionManager& GetActionManager();
         std::vector<CustomAction>& GetCustomActions();
-        std::vector<ActionMainBarOrderData>& GetActionMainBarOrder();
+        ActionOrderList& GetActionMainBarOrder();
         Matrix4& GetOverlayDetachedTransform();
 
         const std::string& GetApplicationPath() const;

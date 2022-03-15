@@ -683,6 +683,12 @@ void WindowOverlayBar::Update()
 
     ImGui::SameLine();
 
+    //Action Buttons, if any
+    if (!ActionManager::Get().GetActionOverlayBarOrder().empty())
+    {
+        UIManager::Get()->GetFloatingUI().GetActionBarWindow().UpdateActionButtons(k_ulOverlayID_None);
+    }
+
     //Settings Button
     bool settings_shown = UIManager::Get()->GetSettingsWindow().IsVisible();
     if (settings_shown)

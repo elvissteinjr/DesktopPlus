@@ -33,11 +33,13 @@ enum CustomActionFunctionID
     caction_toggle_overlay_enabled_state
 };
 
-struct ActionMainBarOrderData
+struct ActionOrderData
 {
     ActionID action_id = action_none;
     bool visible = true;
 };
+
+typedef std::vector<ActionOrderData> ActionOrderList;
 
 struct CustomAction
 {
@@ -68,13 +70,15 @@ class ActionManager
 {
     private:
         std::vector<CustomAction> m_CustomActions;
-        std::vector<ActionMainBarOrderData> m_ActionMainBarOrder;
+        ActionOrderList m_ActionMainBarOrder;
+        ActionOrderList m_ActionOverlayBarOrder;
 
     public:
         static ActionManager& Get();
 
         std::vector<CustomAction>& GetCustomActions();
-        std::vector<ActionMainBarOrderData>& GetActionMainBarOrder();
+        ActionOrderList& GetActionMainBarOrder();
+        ActionOrderList& GetActionOverlayBarOrder();
 
         bool IsActionIDValid(ActionID action_id) const;
         #ifdef DPLUS_UI

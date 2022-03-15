@@ -175,9 +175,14 @@ std::vector<CustomAction>& ActionManager::GetCustomActions()
     return m_CustomActions;
 }
 
-std::vector<ActionMainBarOrderData>& ActionManager::GetActionMainBarOrder()
+ActionOrderList& ActionManager::GetActionMainBarOrder()
 {
     return m_ActionMainBarOrder;
+}
+
+ActionOrderList& ActionManager::GetActionOverlayBarOrder()
+{
+    return m_ActionOverlayBarOrder;
 }
 
 bool ActionManager::IsActionIDValid(ActionID action_id) const

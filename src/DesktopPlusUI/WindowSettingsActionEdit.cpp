@@ -469,7 +469,26 @@ void WindowSettingsActionEdit::UpdateCatActions()
 
     //Action Buttons
     {
-        ActionOrderSetting();
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Floating UI/Overlay Bar Action Buttons");
+
+        ImGui::Indent();
+
+        if (ImGui::BeginTabBar("TabBarActionOrder"))
+        {
+            if (ImGui::BeginTabItem("Floating UI", 0, ImGuiTabItemFlags_NoPushId))
+            {
+                ActionOrderSetting();
+            }
+
+            if (ImGui::BeginTabItem("Overlay Bar", 0, ImGuiTabItemFlags_NoPushId))
+            {
+                ActionOrderSetting(k_ulOverlayID_None - 1);
+            }
+
+            ImGui::EndTabBar();
+        }
+
+        ImGui::Unindent();
     }
 
     ImGui::EndChild();
@@ -909,10 +928,9 @@ void WindowSettingsActionEdit::ActionOrderSetting(unsigned int overlay_id)
 {
     static int list_selected_pos = -1;
     bool use_global_order = false;
+    bool is_overlay_bar = (overlay_id == k_ulOverlayID_None -1);    //This isn't consistent with what the other UI code does, but this is hacked in for now
 
-    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Floating UI Action Buttons");
-
-    if (overlay_id != UINT_MAX)
+    /*if (overlay_id != UINT_MAX)
     {
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
 
@@ -922,7 +940,7 @@ void WindowSettingsActionEdit::ActionOrderSetting(unsigned int overlay_id)
         }
 
         use_global_order = ConfigManager::GetValue(configid_bool_overlay_actionbar_order_use_global);
-    }
+    }*/
 
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
 
@@ -944,7 +962,10 @@ void WindowSettingsActionEdit::ActionOrderSetting(unsigned int overlay_id)
     ImGui::BeginChild("ViewActionButtons", ImVec2(0.0f, viewbuttons_height), true);
 
     auto& actions = ConfigManager::Get().GetCustomActions();
-    auto& action_order = (overlay_id == UINT_MAX) ? ConfigManager::Get().GetActionMainBarOrder() : OverlayManager::Get().GetConfigData(overlay_id).ConfigActionBarOrder;
+
+    auto& action_order = (is_overlay_bar) ? ActionManager::Get().GetActionOverlayBarOrder() : 
+                         (overlay_id == UINT_MAX) ? ConfigManager::Get().GetActionMainBarOrder() : OverlayManager::Get().GetConfigData(overlay_id).ConfigActionBarOrder;
+
     int list_id = 0;
     for (auto& order_data : action_order)
     {
@@ -1014,7 +1035,11 @@ void WindowSettingsActionEdit::ActionOrderSetting(unsigned int overlay_id)
 
 bool WindowSettingsActionEdit::ActionButtonRow(ActionID action_id, int list_pos, int& list_selected_pos, unsigned int overlay_id)
 {
-    auto& action_order = (overlay_id == UINT_MAX) ? ConfigManager::Get().GetActionMainBarOrder() : OverlayManager::Get().GetConfigData(overlay_id).ConfigActionBarOrder;
+    bool is_overlay_bar = (overlay_id == k_ulOverlayID_None -1);
+
+    auto& action_order = (is_overlay_bar) ? ActionManager::Get().GetActionOverlayBarOrder() : 
+                         (overlay_id == UINT_MAX) ? ConfigManager::Get().GetActionMainBarOrder() : OverlayManager::Get().GetConfigData(overlay_id).ConfigActionBarOrder;
+
     bool delete_pressed = false;
 
     static float column_width_1 = 0.0f;

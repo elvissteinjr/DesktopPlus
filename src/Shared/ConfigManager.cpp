@@ -201,31 +201,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     if (!transform_str.empty())
         data.ConfigTransform = transform_str;
 
-    //Load action order
-    auto& action_order_global = ConfigManager::GetActionMainBarOrder();
-    auto& action_order = data.ConfigActionBarOrder;
-    action_order.clear();
-    std::string order_str = config.ReadString(section.c_str(), "ActionBarOrderCustom");
-    std::stringstream ss(order_str);
-    int id;
-    bool visible;
-    char sep;
-
-    for (;;)
-    {
-        ss >> id >> visible >> sep;
-
-        if (ss.fail())
-            break;
-
-        action_order.push_back({ (ActionID)id, visible });
-    }
-
-    //If there is a mismatch or it's fully missing, reset to global
-    if (action_order.size() != action_order_global.size())
-    {
-        action_order = action_order_global;
-    }
+    LoadActionOrderList(data.ConfigActionBarOrder, config.ReadString(section.c_str(), "ActionBarOrderCustom"));
 
     #ifdef DPLUS_UI
     //When loading an UI overlay, send config state over to ensure the correct process has rendering access even if the UI was restarted at some point
@@ -332,15 +308,7 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteString(section.c_str(), "WinRTLastWindowExeName",   last_window_exe_name.c_str());
     config.WriteInt(section.c_str(), "WinRTDesktopID", data.ConfigInt[configid_int_overlay_winrt_desktop_id]);
 
-    //Save action order
-    std::stringstream ss;
-
-    for (auto& data_order : data.ConfigActionBarOrder)
-    {
-        ss << data_order.action_id << ' ' << data_order.visible << ";";
-    }
-
-    config.WriteString(section.c_str(), "ActionBarOrderCustom", ss.str().c_str());
+    config.WriteString(section.c_str(), "ActionBarOrderCustom", GetActionOrderListString(data.ConfigActionBarOrder).c_str() );
 }
 
 bool ConfigManager::LoadConfigFromFile()
@@ -384,24 +352,8 @@ bool ConfigManager::LoadConfigFromFile()
 
     OverlayManager::Get().SetCurrentOverlayID(m_ConfigInt[configid_int_interface_overlay_current_id]);
 
-    //Load action order
-    auto& action_order = m_ActionManager.GetActionMainBarOrder();
-    action_order.clear();
-    std::string order_str = config.ReadString("Interface", "ActionOrder");
-    std::stringstream ss(order_str);
-    int id;
-    bool visible;
-    char sep;
-
-    for (;;)
-    {
-        ss >> id >> visible >> sep;
-
-        if (ss.fail())
-            break;
-
-        action_order.push_back({ (ActionID)id, visible });
-    }
+    LoadActionOrderList(m_ActionManager.GetActionMainBarOrder(),    config.ReadString("Interface", "ActionOrder"));
+    LoadActionOrderList(m_ActionManager.GetActionOverlayBarOrder(), config.ReadString("Interface", "ActionOrderOverlayBar"));
 
     #ifdef DPLUS_UI
         TranslationManager::Get().LoadTranslationFromFile( m_ConfigString[configid_str_interface_language_file].c_str() );
@@ -523,6 +475,7 @@ bool ConfigManager::LoadConfigFromFile()
     }
 
     //Provide default for empty order list
+    auto& action_order = ActionManager::Get().GetActionMainBarOrder();
     if (action_order.empty()) 
     {
         for (int i = action_show_keyboard; i < action_built_in_MAX; ++i)
@@ -540,7 +493,7 @@ bool ConfigManager::LoadConfigFromFile()
         //Validate order list in case some manual editing was made
         action_order.erase(std::remove_if(action_order.begin(),
                                           action_order.end(),
-                                          [](const ActionMainBarOrderData& data) { return !ActionManager::Get().IsActionIDValid(data.action_id); }),
+                                          [](const ActionOrderData& data) { return !ActionManager::Get().IsActionIDValid(data.action_id); }),
                                           action_order.end());
 
         //Automatically add actions if they're missing
@@ -832,6 +785,56 @@ void ConfigManager::RemoveScaleFromTransform(Matrix4& transform, float* width)
         *width *= scale_x;
 }
 
+void ConfigManager::LoadActionOrderList(ActionOrderList& action_order, const std::string& order_str)
+{
+    //Load action order
+    action_order.clear();
+
+    std::stringstream ss(order_str);
+    int id;
+    bool visible;
+    char sep;
+
+    for (;;)
+    {
+        ss >> id >> visible >> sep;
+
+        if (ss.fail())
+            break;
+
+        action_order.push_back({ (ActionID)id, visible });
+    }
+
+    //If there is a mismatch or it's fully missing, reset to global
+    auto& action_order_global = ActionManager::Get().GetActionMainBarOrder();
+
+    if (action_order.size() != action_order_global.size())
+    {
+        action_order = action_order_global;
+
+        //If overlay bar order, reset to all invisible
+        if (&action_order == &ActionManager::Get().GetActionOverlayBarOrder())
+        {
+            for (ActionOrderData& data : action_order)
+            {
+                data.visible = false;
+            }
+        }
+    }
+}
+
+std::string ConfigManager::GetActionOrderListString(const ActionOrderList& action_order)
+{
+    std::stringstream ss;
+
+    for (const auto& data : action_order)
+    {
+        ss << data.action_id << ' ' << data.visible << ";";
+    }
+
+    return ss.str();
+}
+
 #ifdef DPLUS_UI
 
 void ConfigManager::SaveConfigToFile()
@@ -870,17 +873,10 @@ void ConfigManager::SaveConfigToFile()
     if (m_ConfigInt[configid_int_interface_wmr_ignore_vscreens] != -1)
         config.WriteInt("Interface", "WMRIgnoreVScreens", m_ConfigInt[configid_int_interface_wmr_ignore_vscreens]);
 
-    //Save action order
-    ss = std::stringstream();
-
-    for (auto& data : m_ActionManager.GetActionMainBarOrder())
-    {
-        ss << data.action_id << ' ' << data.visible << ";";
-    }
-
     SaveConfigPersistentWindowState(config);
 
-    config.WriteString("Interface", "ActionOrder", ss.str().c_str());
+    config.WriteString("Interface", "ActionOrder",           GetActionOrderListString(m_ActionManager.GetActionMainBarOrder()).c_str() );
+    config.WriteString("Interface", "ActionOrderOverlayBar", GetActionOrderListString(m_ActionManager.GetActionOverlayBarOrder()).c_str() );
 
     config.WriteInt( "Input",  "GoHomeButtonActionID",               m_ConfigInt[configid_int_input_go_home_action_id]);
     config.WriteInt( "Input",  "GoBackButtonActionID",               m_ConfigInt[configid_int_input_go_back_action_id]);
@@ -1239,7 +1235,7 @@ std::vector<CustomAction>& ConfigManager::GetCustomActions()
     return m_ActionManager.GetCustomActions();
 }
 
-std::vector<ActionMainBarOrderData>& ConfigManager::GetActionMainBarOrder()
+ActionOrderList& ConfigManager::GetActionMainBarOrder()
 {
     return m_ActionManager.GetActionMainBarOrder();
 }

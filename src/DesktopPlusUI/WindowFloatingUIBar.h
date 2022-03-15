@@ -37,10 +37,10 @@ class WindowFloatingUIActionBar
         float m_Alpha;
 
         double m_LastDesktopSwitchTime;
+        bool m_TooltipPositionForOverlayBar;                //This is used instead of an extra argument to no have every custom button code need to be aware of this corner case
 
         void DisplayTooltipIfHovered(const char* text);
         void UpdateDesktopButtons(unsigned int overlay_id);
-        void UpdateActionButtons(unsigned int overlay_id);
 
         void ButtonActionKeyboard(unsigned int overlay_id, ImVec2& b_size_default);
 
@@ -56,6 +56,8 @@ class WindowFloatingUIActionBar
         float GetAlpha() const;
 
         double GetLastDesktopSwitchTime() const;
+
+        void UpdateActionButtons(unsigned int overlay_id);  //WindowOverlayBar can piggyback this function with k_ulOverlayID_None to get action buttons in its window
 };
 
 //Extra window currently only showing capture fps of the overlay if enabled
