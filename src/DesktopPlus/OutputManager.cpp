@@ -5148,6 +5148,12 @@ void OutputManager::ApplySettingMouseInput()
             vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
         }
         //Mouse scale for ovrl_texsource_winrt_capture is set by WinRT library | Mouse scale for ovrl_texsource_ui is set by UI process
+
+        //Reset intersection mask if not UI overlay
+        if (overlay.GetTextureSource() != ovrl_texsource_ui)
+        {
+            vr::VROverlay()->SetOverlayIntersectionMask(ovrl_handle, nullptr, 0);
+        }
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
@@ -6022,6 +6028,27 @@ void OutputManager::OnSetOverlayWinRTCaptureWindow(unsigned int overlay_id)
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+}
+
+void OutputManager::FinishQueuedWinRTOverlayRemovals()
+{
+    if (m_WinRTRemoveOverlayQueue.empty())
+        return;
+
+    //Sort in descending order since removals from end will end up with less re-ordering if the top removed overlay is also the last one
+    std::sort(m_WinRTRemoveOverlayQueue.rbegin(), m_WinRTRemoveOverlayQueue.rend());
+
+    for (unsigned int overlay_id : m_WinRTRemoveOverlayQueue)
+    {
+        OverlayManager::Get().RemoveOverlay(overlay_id);
+
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlay_remove, overlay_id);
+    }
+
+    m_WinRTRemoveOverlayQueue.clear();
+
+    //RemoveOverlay() may have changed active ID, keep in sync
+    ConfigManager::SetValue(configid_int_interface_overlay_current_id, OverlayManager::Get().GetCurrentOverlayID());
 }
 
 void OutputManager::UpdateDashboardHMD_Y()
