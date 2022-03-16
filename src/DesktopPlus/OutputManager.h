@@ -138,6 +138,7 @@ class OutputManager
         void OnDragFinish();            //Called before calling m_OverlayDragger.DragFinish() to handle OutputManager post drag state adjustments (like auto docking)
 
         void OnSetOverlayWinRTCaptureWindow(unsigned int overlay_id); //Called when configid_intptr_overlay_state_winrt_hwnd changed
+        void FinishQueuedOverlayRemovals();                           //Overlay removals are currently only queued up when requested during HandleWinRTMessage()
 
         void UpdateDashboardHMD_Y();
         bool HasDashboardMoved();
@@ -236,6 +237,7 @@ class OutputManager
         LARGE_INTEGER m_PerformanceUpdateLimiterDelay;
 
         std::vector<int> m_ProfileAddOverlayIDQueue;
+        std::vector<unsigned int> m_RemoveOverlayQueue;
 
         bool m_IsAnyHotkeyActive;
         bool m_IsHotkeyDown[3];

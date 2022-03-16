@@ -1635,12 +1635,8 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
             }
             else if (ConfigManager::GetValue(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_remove_overlay) //Or remove it
             {
-                OverlayManager::Get().RemoveOverlay(overlay_id);
-                //RemoveOverlay() may have changed active ID, keep in sync
-                ConfigManager::SetValue(configid_int_interface_overlay_current_id, OverlayManager::Get().GetCurrentOverlayID());
-
-                //Send to UI
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlay_remove, overlay_id);
+                //Queue up removal instead of doing it right away in case there are multiple overlays with the same target lost at once (which breaks otherwise)
+                m_RemoveOverlayQueue.push_back(overlay_id);
                 break;
             }
 
@@ -3818,6 +3814,8 @@ bool OutputManager::HandleOpenVREvents()
     {
         UpdatePendingDashboardDummyHeight();
     }
+
+    FinishQueuedOverlayRemovals();
 
     return false;
 }
@@ -6030,22 +6028,22 @@ void OutputManager::OnSetOverlayWinRTCaptureWindow(unsigned int overlay_id)
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
-void OutputManager::FinishQueuedWinRTOverlayRemovals()
+void OutputManager::FinishQueuedOverlayRemovals()
 {
-    if (m_WinRTRemoveOverlayQueue.empty())
+    if (m_RemoveOverlayQueue.empty())
         return;
 
-    //Sort in descending order since removals from end will end up with less re-ordering if the top removed overlay is also the last one
-    std::sort(m_WinRTRemoveOverlayQueue.rbegin(), m_WinRTRemoveOverlayQueue.rend());
+    //Sort in descending order since removals from end will end up with less re-ordering (or even none if the top removed overlay is also the last one)
+    std::sort(m_RemoveOverlayQueue.rbegin(), m_RemoveOverlayQueue.rend());
 
-    for (unsigned int overlay_id : m_WinRTRemoveOverlayQueue)
+    for (unsigned int overlay_id : m_RemoveOverlayQueue)
     {
         OverlayManager::Get().RemoveOverlay(overlay_id);
 
         IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlay_remove, overlay_id);
     }
 
-    m_WinRTRemoveOverlayQueue.clear();
+    m_RemoveOverlayQueue.clear();
 
     //RemoveOverlay() may have changed active ID, keep in sync
     ConfigManager::SetValue(configid_int_interface_overlay_current_id, OverlayManager::Get().GetCurrentOverlayID());
