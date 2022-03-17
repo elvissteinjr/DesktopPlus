@@ -15,7 +15,8 @@ WindowOverlayBar::WindowOverlayBar() : m_Visible(true),
                                        m_OverlayButtonActiveMenuID(k_ulOverlayID_None),
                                        m_IsAddOverlayButtonActive(false),
                                        m_MenuAlpha(0.0f),
-                                       m_IsMenuRemoveConfirmationVisible(false)
+                                       m_IsMenuRemoveConfirmationVisible(false),
+                                       m_IsDraggingOverlayButtons(false)
 {
     m_Size.x = 32.0f;
 }
@@ -87,7 +88,6 @@ void WindowOverlayBar::UpdateOverlayButtons()
     //List of unique IDs for overlays so ImGui can identify the same list entries after reordering or list expansion (needed for drag reordering)
     static std::vector<int> list_unique_ids;
     static unsigned int drag_last_hovered_button = k_ulOverlayID_None;
-    static bool drag_done_since_last_mouse_down = false;
 
     const int overlay_count = (int)OverlayManager::Get().GetOverlayCount();
     unsigned int properties_active_overlay = (UIManager::Get()->GetOverlayPropertiesWindow().IsVisible()) ? (UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID()) : k_ulOverlayID_None;
@@ -135,7 +135,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
         {
             if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 3.0f) //Don't do normal button behavior after reset was just triggered
             {
-                if ((m_OverlayButtonActiveMenuID != i) && (!drag_done_since_last_mouse_down))
+                if ((m_OverlayButtonActiveMenuID != i) && (!m_IsDraggingOverlayButtons))
                 {
                     HideMenus();
                     m_OverlayButtonActiveMenuID = i;
@@ -158,7 +158,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
         //Reset transform when holding the button for 3 or more seconds
         bool show_hold_message = false;
 
-        if ( (button_active) && (!drag_done_since_last_mouse_down) )
+        if ( (button_active) && (!m_IsDraggingOverlayButtons) )
         {
             if (io.MouseDownDuration[ImGuiMouseButton_Left] > 3.0f)
             {
@@ -192,7 +192,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
                 std::iter_swap(list_unique_ids.begin() + i, list_unique_ids.begin() + index_swap);
 
                 ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
-                drag_done_since_last_mouse_down = true;
+                m_IsDraggingOverlayButtons = true;
 
                 //Also adjust the active properties window if we just swapped that
                 if (properties_active_overlay == i)
@@ -264,11 +264,11 @@ void WindowOverlayBar::UpdateOverlayButtons()
     if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
     {
         //If we did a swap, finalize all swapping changes
-        if (drag_done_since_last_mouse_down)
+        if (m_IsDraggingOverlayButtons)
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_swap_finish);
             OverlayManager::Get().SwapOverlaysFinish();
-            drag_done_since_last_mouse_down = false;
+            m_IsDraggingOverlayButtons = false;
         }
     }
 }
@@ -777,6 +777,11 @@ bool WindowOverlayBar::IsAnyMenuVisible() const
 bool WindowOverlayBar::IsScrollBarVisible() const
 {
     return m_IsScrollBarVisible;
+}
+
+bool WindowOverlayBar::IsDraggingOverlayButtons() const
+{
+    return m_IsDraggingOverlayButtons;
 }
 
 float WindowOverlayBar::GetAlpha() const

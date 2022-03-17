@@ -19,6 +19,7 @@ class WindowOverlayBar
         bool m_IsAddOverlayButtonActive;
         float m_MenuAlpha;
         bool m_IsMenuRemoveConfirmationVisible;
+        bool m_IsDraggingOverlayButtons;
 
         void DisplayTooltipIfHovered(const char* text, unsigned int overlay_id = k_ulOverlayID_None);
         void UpdateOverlayButtons();
@@ -39,6 +40,7 @@ class WindowOverlayBar
         bool IsVisible() const;
         bool IsAnyMenuVisible() const;
         bool IsScrollBarVisible() const;
+        bool IsDraggingOverlayButtons() const;
 
         float GetAlpha() const;
 };

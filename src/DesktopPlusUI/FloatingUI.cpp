@@ -126,14 +126,16 @@ void FloatingUI::UpdateUITargetState()
         //Disable input so the pointer will no longer hit the UI window
         vr::VROverlay()->SetOverlayInputMethod(ovrl_handle_floating_ui, vr::VROverlayInputMethod_None);
     }
-    else if ( (m_Visible) && (has_pointer_device) && (ConfigManager::Get().IsLaserPointerTargetOverlay(ovrl_handle_floating_ui)) )  //Use as target Floating UI if it's hovered
+    else if ( (has_pointer_device) && (ConfigManager::Get().IsLaserPointerTargetOverlay(ovrl_handle_floating_ui)) )  //Use as target Floating UI if it's hovered
     {
         ovrl_handle_hover_target = ovrl_handle_floating_ui;
     }
 
     //Don't show UI if ImGui popup is open (which blocks all input so just hide this)
     //ImGui::IsPopupOpen() doesn't just check for modals though so it could get in the way at some point
-    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) && (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) )
+    //Also don't show while reordering overlays since config changes may cause the UI to jump around while doing that
+    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) && (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) &&
+         (!UIManager::Get()->GetOverlayBarWindow().IsDraggingOverlayButtons()) )
     {
         if (has_pointer_device)
         {
@@ -157,8 +159,9 @@ void FloatingUI::UpdateUITargetState()
                     {
                         ovrl_id_primary_dashboard = i;
 
-                        //First dashboard origin with non-scene display mode is considered to be the primary dashboard overlay, but only really use it if enabled with FloatingUI on
-                        if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (data.ConfigBool[configid_bool_overlay_floatingui_enabled]) && (vr::VROverlay()->IsOverlayVisible(ovrl_handle)) )
+                        //First dashboard origin with non-scene display mode is considered to be the primary dashboard overlay, but only really use it if enabled with FloatingUI on and in dashboard
+                        if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (data.ConfigBool[configid_bool_overlay_floatingui_enabled]) && (UIManager::Get()->IsOverlayBarOverlayVisible()) && 
+                             (vr::VROverlay()->IsOverlayVisible(ovrl_handle)) )
                         {
                             ovrl_handle_primary_dashboard = ovrl_handle;
                         }
@@ -254,8 +257,8 @@ void FloatingUI::UpdateUITargetState()
         {
             m_FadeOutDelayCount += ImGui::GetIO().DeltaTime;
 
-            //Delay normal fade in order to not flicker when switching hover target between mirror overlay and floating UI
-            if (m_FadeOutDelayCount > 0.8f)
+            //Delay normal fade in order to not flicker when switching hover target between mirror overlay and floating UI (or don't while reordering overlays)
+            if ( (m_FadeOutDelayCount > 0.8f) || (UIManager::Get()->GetOverlayBarWindow().IsDraggingOverlayButtons()) )
             {
                 //Hide
                 m_Visible = false;
