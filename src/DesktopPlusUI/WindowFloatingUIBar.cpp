@@ -570,7 +570,7 @@ void WindowFloatingUIActionBar::Update(unsigned int overlay_id)
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, offset_y), 0, ImVec2(0.5f, 0.0f));
 
     ImGui::Begin("WindowFloatingUIActionBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
-                                                       ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
+                                                       ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
