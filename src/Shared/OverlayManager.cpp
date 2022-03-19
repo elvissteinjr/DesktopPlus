@@ -339,6 +339,17 @@ void OverlayManager::SwapOverlays(unsigned int id, unsigned int id2)
     //We don't swap the overlays themselves, instead we reset the overlays with the swapped config data
     //To prevent most flickering from this, we collect all swaps and do the resetting and related actions once the UI app is done with swapping drag
     m_PendingSwaps.push_back({id, id2});
+
+    #ifdef DPLUS_UI
+        //Swap assigned keyboard overlay ID as well if it is one of the affected ones
+        WindowKeyboard& window_keyboard = UIManager::Get()->GetVRKeyboard().GetWindow();
+        int assigned_id = -1;
+
+        assigned_id = window_keyboard.GetAssignedOverlayID(floating_window_ovrl_state_dashboard_tab);
+        window_keyboard.SetAssignedOverlayID( (assigned_id == id) ? id2 : (assigned_id == id2) ? id : assigned_id, floating_window_ovrl_state_dashboard_tab);
+        assigned_id = window_keyboard.GetAssignedOverlayID(floating_window_ovrl_state_room);
+        window_keyboard.SetAssignedOverlayID( (assigned_id == id) ? id2 : (assigned_id == id2) ? id : assigned_id, floating_window_ovrl_state_room);
+    #endif
 }
 
 void OverlayManager::SwapOverlaysFinish()
@@ -451,6 +462,32 @@ void OverlayManager::RemoveOverlay(unsigned int id)
                 {
                     outmgr->ResetOverlayActiveCount();
                 }
+            }
+        #else
+            //Remove assigned keyboard overlay ID or fix it up if it was the removed one
+            WindowKeyboard& window_keyboard = UIManager::Get()->GetVRKeyboard().GetWindow();
+            int assigned_id = -1;
+
+            assigned_id = window_keyboard.GetAssignedOverlayID(floating_window_ovrl_state_dashboard_tab);
+            if (assigned_id == id)
+            {
+                window_keyboard.SetAssignedOverlayID(-1, floating_window_ovrl_state_dashboard_tab);
+                window_keyboard.GetOverlayState(floating_window_ovrl_state_dashboard_tab).IsVisible = false;
+            }
+            else if (assigned_id > id)
+            {
+                window_keyboard.SetAssignedOverlayID(assigned_id - 1, floating_window_ovrl_state_dashboard_tab);
+            }
+
+            assigned_id = window_keyboard.GetAssignedOverlayID(floating_window_ovrl_state_room);
+            if (assigned_id == id)
+            {
+                window_keyboard.SetAssignedOverlayID(-1, floating_window_ovrl_state_room);
+                window_keyboard.GetOverlayState(floating_window_ovrl_state_room).IsVisible = false;
+            }
+            else if (assigned_id > id)
+            {
+                window_keyboard.SetAssignedOverlayID(assigned_id - 1, floating_window_ovrl_state_room);
             }
         #endif
 
