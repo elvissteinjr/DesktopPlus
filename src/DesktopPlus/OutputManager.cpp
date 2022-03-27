@@ -906,7 +906,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         //Only handle cursor if it's in cropping region
         if (mouse_rect.Overlaps(DirtyRectTotal))
         {
-            ret = (DUPL_RETURN_UPD)DrawMouseToOverlayTex(PointerInfo);
+            DrawMouseToOverlayTex(PointerInfo);
         }
         else if (PointerInfo->CursorShapeChanged) //But remember if the cursor changed for next time
         {
@@ -920,7 +920,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         const D3D11_RECT rect_scissor_full = { 0, 0, m_DesktopWidth, m_DesktopHeight };
         m_DeviceContext->RSSetScissorRects(1, &rect_scissor_full);
 
-        has_updated_overlay = (ret == DUPL_RETURN_UPD_SUCCESS);
+        has_updated_overlay = (ret == DUPL_RETURN_UPD_SUCCESS_REFRESHED_OVERLAY);
     }
 
     //Set cached mouse values
@@ -3244,7 +3244,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
         }
     }
 
-    return DUPL_RETURN_UPD_SUCCESS;
+    return DUPL_RETURN_UPD_SUCCESS_REFRESHED_OVERLAY;
 }
 
 bool OutputManager::HandleOpenVREvents()

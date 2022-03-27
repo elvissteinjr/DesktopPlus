@@ -73,7 +73,7 @@ typedef struct
     UINT    WaitCount;
 }WAIT_BAND;
 
-#define WAIT_BAND_COUNT 4
+#define WAIT_BAND_COUNT 5
 #define WAIT_BAND_STOP 0
 
 class DYNAMIC_WAIT
@@ -98,7 +98,8 @@ class DYNAMIC_WAIT
     BOOL                    m_QPCValid;
 };
 const WAIT_BAND DYNAMIC_WAIT::m_WaitBands[WAIT_BAND_COUNT] = {
-                                                                 {10, 20},
+                                                                 {10, 40},
+                                                                 {50, 20},
                                                                  {250, 20},
                                                                  {2000, 60},
                                                                  {5000, WAIT_BAND_STOP}   // Never move past this band
@@ -448,12 +449,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             //Map return value to DUPL_RETRUN Ret
             switch (RetUpdate)
             {
-                case DUPL_RETURN_UPD_QUIT:  Ret = DUPL_RETURN_ERROR_UNEXPECTED; break;
-                case DUPL_RETURN_UPD_RETRY: Ret = DUPL_RETURN_SUCCESS; break;
-                default:                    Ret = (DUPL_RETURN)RetUpdate;
+                case DUPL_RETURN_UPD_QUIT:                      Ret = DUPL_RETURN_ERROR_UNEXPECTED; break;
+                case DUPL_RETURN_UPD_RETRY:                     Ret = DUPL_RETURN_SUCCESS;          break;
+                case DUPL_RETURN_UPD_SUCCESS_REFRESHED_OVERLAY: Ret = DUPL_RETURN_SUCCESS;          break;
+                default:                                        Ret = (DUPL_RETURN)RetUpdate;
             }
 
-            if ( (!SkipFrame) && (update_limiter_active) )
+            if ( (RetUpdate == DUPL_RETURN_UPD_SUCCESS_REFRESHED_OVERLAY) && (update_limiter_active) )
             {
                 QueryPerformanceCounter(&UpdateLimiterStartingTime);
             }
