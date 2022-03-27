@@ -308,6 +308,7 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
             if (tex_source != ovrl_texsource_ui)
             {
                 vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, ::GetCurrentProcessId());
+                vr::VROverlay()->SetOverlayIntersectionMask(m_OvrlHandle, nullptr, 0);
             }
             break;
         }

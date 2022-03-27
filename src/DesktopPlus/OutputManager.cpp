@@ -4846,6 +4846,12 @@ void OutputManager::ApplySettingMouseInput()
             vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
         }
         //Mouse scale for ovrl_texsource_winrt_capture is set by WinRT library | Mouse scale for ovrl_texsource_ui is set by UI process
+
+        //Reset intersection mask if not UI overlay
+        if (overlay.GetTextureSource() != ovrl_texsource_ui)
+        {
+            vr::VROverlay()->SetOverlayIntersectionMask(ovrl_handle, nullptr, 0);
+        }
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
