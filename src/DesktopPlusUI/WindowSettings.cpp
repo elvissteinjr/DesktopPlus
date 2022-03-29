@@ -700,6 +700,21 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_opacity), *(LPARAM*)&opacity);
         }
 
+        ImGui::NextColumn();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Brightness");
+        ImGui::NextColumn();
+
+        float& brightness = ConfigManager::Get().GetConfigFloatRef(configid_float_overlay_brightness);
+
+        if (ImGui::SliderWithButtonsFloatPercentage("OverlayBrightness", brightness, 5, 1, 0, 100, "%d%%"))
+        {
+            brightness = clamp(brightness, 0.0f, 1.0f);
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_overlay_brightness), *(LPARAM*)&brightness);
+        }
+
         ImGui::Columns(1);
     }
 
@@ -5755,8 +5770,11 @@ void WindowSettings::HighlightOverlay(int overlay_id)
 
             if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
             {
+                const OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)overlay_id);
+                float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]);
                 ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
-                vr::VROverlay()->SetOverlayColor(ovrl_handle, col.x, col.y, col.z);
+
+                vr::VROverlay()->SetOverlayColor(ovrl_handle, col.x * brightness, col.y * brightness, col.z * brightness);
 
                 colored_id = overlay_id;
             }
@@ -5767,7 +5785,10 @@ void WindowSettings::HighlightOverlay(int overlay_id)
 
             if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
             {
-                vr::VROverlay()->SetOverlayColor(ovrl_handle, 1.0f, 1.0f, 1.0f);
+                const OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)colored_id);
+                float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]);
+
+                vr::VROverlay()->SetOverlayColor(ovrl_handle, brightness, brightness, brightness);
             }
 
             colored_id = -1;
