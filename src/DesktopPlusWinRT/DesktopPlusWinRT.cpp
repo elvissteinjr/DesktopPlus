@@ -66,30 +66,53 @@ bool DPWinRT_Internal_StartCapture(vr::VROverlayHandle_t overlay_handle, const D
     //Make sure this overlay handle is not already used by a thread
     DPWinRT_StopCapture(overlay_handle);
 
-    std::lock_guard<std::mutex> lock(g_ThreadsMutex);
+    HANDLE thread_handle = nullptr;
+    DWORD thread_id = 0;
 
-    DPWinRTOverlayData overlay_data;
-    overlay_data.Handle = overlay_handle;
-
-    //Try to find a thread already capturing this item
-    for (auto& thread : g_Threads)
     {
-        if ( (thread.DesktopID == data.DesktopID) && (thread.SourceWindow == data.SourceWindow) )
-        {
-            thread.Overlays.push_back(overlay_data);
+        std::lock_guard<std::mutex> lock(g_ThreadsMutex);
 
-            ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_UPDATE_DATA, 0, 0);
-            return true;
+        DPWinRTOverlayData overlay_data;
+        overlay_data.Handle = overlay_handle;
+
+        //Try to find a thread already capturing this item
+        for (auto& thread : g_Threads)
+        {
+            if ((thread.DesktopID == data.DesktopID) && (thread.SourceWindow == data.SourceWindow))
+            {
+                thread.Overlays.push_back(overlay_data);
+
+                ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_UPDATE_DATA, 0, 0);
+                return true;
+            }
         }
+
+        //Create new thread if no existing one was found
+        g_Threads.push_back(data);
+        g_Threads.back().Overlays.push_back(overlay_data);
+        g_Threads.back().IsCursorEnabledInitial = g_IsCursorEnabled;
+
+        //Thread may run before CreateThread() returns, but the thread will have to wait on the mutex so it's fine
+        thread_handle = ::CreateThread(nullptr, 0, WinRTCaptureThreadEntry, &g_Threads.back(), 0, &thread_id);
+
+        g_Threads.back().ThreadHandle = thread_handle;
+        g_Threads.back().ThreadID     = thread_id;
     }
 
-    //Create new thread if no existing one was found
-    g_Threads.push_back(data);
-    g_Threads.back().Overlays.push_back(overlay_data);
-    g_Threads.back().IsCursorEnabledInitial = g_IsCursorEnabled;
+    if (thread_handle == nullptr)
+    {
+        return false;
+    }
 
-    //Thread may run before CreateThread() returns, but the thread will have to wait on the mutex so it's fine
-    g_Threads.back().ThreadHandle = ::CreateThread(nullptr, 0, WinRTCaptureThreadEntry, &g_Threads.back(), 0, &g_Threads.back().ThreadID);
+    //Wait for the thread's message queue to be ready to not risk any messages getting lost
+    BOOL is_ready = false;
+
+    do
+    {
+        is_ready = ::PostThreadMessage(thread_id, WM_NULL, 0, 0);
+        ::Sleep(10);
+    }
+    while (is_ready == 0);
 
     return true;
 }
