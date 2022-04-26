@@ -178,6 +178,7 @@ enum ConfigID_Float
 
 enum ConfigID_Handle
 {
+    configid_handle_overlay_state_overlay_handle,             //Overlay handle for syncing with the UI. Shouldn't change during runtime
     configid_handle_overlay_state_winrt_hwnd,                 //HWNDs are technically always in 32-bit range, but avoiding truncation warnings and perhaps some other issues here
     configid_handle_overlay_state_winrt_last_hicon,           //HICON kept around for when window goes missing but the icon itself is still cached in UI app
     configid_handle_overlay_MAX,

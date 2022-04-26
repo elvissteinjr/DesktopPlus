@@ -56,7 +56,6 @@ DPLUSWINRT_API bool DPWinRT_StartCaptureFromOverlay(vr::VROverlayHandle_t overla
 DPLUSWINRT_API bool DPWinRT_PauseCapture(vr::VROverlayHandle_t overlay_handle, bool pause);
 DPLUSWINRT_API bool DPWinRT_StopCapture(vr::VROverlayHandle_t overlay_handle);
 
-DPLUSWINRT_API void DPWinRT_SwapCaptureTargetOverlays(vr::VROverlayHandle_t overlay_handle, vr::VROverlayHandle_t overlay_handle_2);
 DPLUSWINRT_API bool DPWinRT_SetOverlayUpdateLimitDelay(vr::VROverlayHandle_t overlay_handle, LONGLONG delay_quadpart);
 DPLUSWINRT_API bool DPWinRT_SetOverlayOverUnder3D(vr::VROverlayHandle_t overlay_handle, bool is_over_under_3D, int crop_x, int crop_y, int crop_width, int crop_height);
 DPLUSWINRT_API void DPWinRT_SetCaptureCursorEnabled(bool is_cursor_enabled);

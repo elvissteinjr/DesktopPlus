@@ -40,12 +40,12 @@ Overlay& Overlay::operator=(Overlay&& b)
             vr::VROverlay()->DestroyOverlay(m_OvrlHandle);
         }
 
-        m_ID = b.m_ID;
-        m_OvrlHandle = b.m_OvrlHandle;
-        m_Visible = b.m_Visible;
-        m_Opacity = b.m_Opacity;
+        m_ID                = b.m_ID;
+        m_OvrlHandle        = b.m_OvrlHandle;
+        m_Visible           = b.m_Visible;
+        m_Opacity           = b.m_Opacity;
         m_ValidatedCropRect = b.m_ValidatedCropRect;
-        m_TextureSource = b.m_TextureSource;
+        m_TextureSource     = b.m_TextureSource;
         //m_OUtoSBSConverter should just be left alone, it only holds cached state anyways
 
         b.m_OvrlHandle = vr::k_ulOverlayHandleInvalid;
@@ -70,7 +70,21 @@ Overlay::~Overlay()
 
 void Overlay::InitOverlay()
 {
-    std::string key = "elvissteinjr.DesktopPlus" + std::to_string(m_ID);
+    unsigned int id_offset = 0;
+    std::string key;
+    vr::VROverlayHandle_t overlay_handle_find;
+
+    //Generate overlay key from ID and check if it's not used yet, add to it if it's not
+    //Overlay keys & handles are fixed and don't change when overlays are re-ordered or deleted
+    do
+    {
+        key = "elvissteinjr.DesktopPlus" + std::to_string(m_ID + id_offset);
+        overlay_handle_find = vr::k_ulOverlayHandleInvalid;
+        id_offset++;
+
+        vr::VROverlay()->FindOverlay(key.c_str(), &overlay_handle_find);
+    }
+    while (overlay_handle_find != vr::k_ulOverlayHandleInvalid);
 
     vr::VROverlayError ovrl_error = vr::VROverlayError_None;
     ovrl_error = vr::VROverlay()->CreateOverlay(key.c_str(), "Desktop+", &m_OvrlHandle);

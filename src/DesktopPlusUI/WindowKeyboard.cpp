@@ -64,7 +64,7 @@ void WindowKeyboard::UpdateVisibility()
 
         if ( (m_OverlayStateCurrentID == floating_window_ovrl_state_room) && (assigned_overlay_id >= 0) )
         {
-            ovrl_handle_assigned = OverlayManager::Get().FindOverlayHandle((unsigned int)assigned_overlay_id);
+            ovrl_handle_assigned = OverlayManager::Get().GetConfigData((unsigned int)assigned_overlay_id).ConfigHandle[configid_handle_overlay_state_overlay_handle];
 
             if ( (ovrl_handle_assigned != vr::k_ulOverlayHandleInvalid) && (m_OverlayStateCurrent->IsVisible != vr::VROverlay()->IsOverlayVisible(ovrl_handle_assigned)) )
             {

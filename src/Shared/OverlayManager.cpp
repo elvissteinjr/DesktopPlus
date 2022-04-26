@@ -142,6 +142,15 @@ unsigned int OverlayManager::DuplicateOverlay(const OverlayConfigData& data)
         }
     #endif
 
+    //Send handle over to UI
+    #ifndef DPLUS_UI
+        new_data.ConfigHandle[configid_handle_overlay_state_overlay_handle] = m_Overlays.back().GetHandle();
+
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)id);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, new_data.ConfigHandle[configid_handle_overlay_state_overlay_handle]);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+    #endif
+
     return id;
 }
 
@@ -204,6 +213,15 @@ unsigned int OverlayManager::AddOverlay(OverlayCaptureSource capture_source, int
 
     #ifdef DPLUS_UI
         SetOverlayNameAuto(id);
+    #endif
+
+    //Send handle over to UI
+    #ifndef DPLUS_UI
+        data.ConfigHandle[configid_handle_overlay_state_overlay_handle] = m_Overlays.back().GetHandle();
+
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)id);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, data.ConfigHandle[configid_handle_overlay_state_overlay_handle]);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
     #endif
 
     return id;
@@ -274,13 +292,6 @@ Overlay& OverlayManager::GetPrimaryDashboardOverlay()
     return (it != m_Overlays.end()) ? *it : m_OverlayNull;
 }
 
-unsigned int OverlayManager::FindOverlayID(vr::VROverlayHandle_t handle)
-{
-    const auto it = std::find_if(m_Overlays.begin(), m_Overlays.end(), [&](const auto& overlay){ return (overlay.GetHandle() == handle); });
-
-    return (it != m_Overlays.end()) ? it->GetID() : k_ulOverlayID_None;
-}
-
 #endif
 
 OverlayConfigData& OverlayManager::GetConfigData(unsigned int id)
@@ -314,15 +325,32 @@ void OverlayManager::SetCurrentOverlayID(unsigned int id)
     m_CurrentOverlayID = id;
 }
 
-vr::VROverlayHandle_t OverlayManager::FindOverlayHandle(unsigned int id) const
+
+#ifndef DPLUS_UI
+
+unsigned int OverlayManager::FindOverlayID(vr::VROverlayHandle_t handle) const
 {
-    vr::VROverlayHandle_t ret = vr::k_ulOverlayHandleInvalid;
-    std::string key = "elvissteinjr.DesktopPlus" + std::to_string(id);
+    const auto it = std::find_if(m_Overlays.cbegin(), m_Overlays.cend(), [&](const auto& overlay){ return (overlay.GetHandle() == handle); });
 
-    vr::VROverlay()->FindOverlay(key.c_str(), &ret);
-
-    return ret;
+    return (it != m_Overlays.cend()) ? it->GetID() : k_ulOverlayID_None;
 }
+
+#else
+
+unsigned int OverlayManager::FindOverlayID(vr::VROverlayHandle_t handle) const
+{
+    for (unsigned int i = 0; i < m_OverlayConfigData.size(); ++i)
+    {
+        if (m_OverlayConfigData[i].ConfigHandle[configid_handle_overlay_state_overlay_handle] == handle)
+        {
+            return i;
+        }
+    }
+
+    return k_ulOverlayID_None;
+}
+
+#endif
 
 unsigned int OverlayManager::GetOverlayCount() const
 {
@@ -334,11 +362,15 @@ void OverlayManager::SwapOverlays(unsigned int id, unsigned int id2)
     if ( (id == id2) || (id >= m_OverlayConfigData.size()) || (id2 >= m_OverlayConfigData.size()) )
         return;
 
+    //Swap config data
     std::iter_swap(m_OverlayConfigData.begin() + id, m_OverlayConfigData.begin() + id2);
 
-    //We don't swap the overlays themselves, instead we reset the overlays with the swapped config data
-    //To prevent most flickering from this, we collect all swaps and do the resetting and related actions once the UI app is done with swapping drag
-    m_PendingSwaps.push_back({id, id2});
+    #ifndef DPLUS_UI
+        //Swap overlays and fix IDs
+        std::iter_swap(m_Overlays.begin() + id, m_Overlays.begin() + id2);
+        m_Overlays[id].SetID(id);
+        m_Overlays[id2].SetID(id2);
+    #endif
 
     #ifdef DPLUS_UI
         //Swap assigned keyboard overlay ID as well if it is one of the affected ones
@@ -352,50 +384,6 @@ void OverlayManager::SwapOverlays(unsigned int id, unsigned int id2)
     #endif
 }
 
-void OverlayManager::SwapOverlaysFinish()
-{
-    #ifndef DPLUS_UI
-        for (const auto& id_pair : m_PendingSwaps)
-        {
-            Overlay& overlay   = GetOverlay(id_pair.first);
-            Overlay& overlay_2 = GetOverlay(id_pair.second);
-
-            //If any if the swapped overlays are active WinRT capture targets, swap them there as well
-            if ((overlay.GetTextureSource() == ovrl_texsource_winrt_capture) || (overlay_2.GetTextureSource() == ovrl_texsource_winrt_capture))
-            {
-                DPWinRT_SwapCaptureTargetOverlays(overlay.GetHandle(), overlay_2.GetHandle());
-
-                //Despite below comment, set texture sources directly if needed to avoid interruption of capture from resetting the overlays later
-                OverlayTextureSource source_temp = overlay.GetTextureSource();
-
-                if (overlay_2.GetTextureSource() == ovrl_texsource_winrt_capture)
-                    overlay.SetTextureSource(ovrl_texsource_winrt_capture);
-                else if (source_temp == ovrl_texsource_winrt_capture)
-                    overlay_2.SetTextureSource(ovrl_texsource_winrt_capture);
-
-            }
-        }
-
-        if (OutputManager* outmgr = OutputManager::Get())
-        {
-            outmgr->ResetOverlays();
-        }
-    #else
-        for (const auto& id_pair : m_PendingSwaps)
-        {
-            const OverlayConfigData& data   = GetConfigData(id_pair.first);
-            const OverlayConfigData& data_2 = GetConfigData(id_pair.second);
-
-            if ((data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui) || (data_2.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui))
-            {
-                UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
-            }
-        }
-    #endif
-
-    m_PendingSwaps.clear();
-}
-
 void OverlayManager::RemoveOverlay(unsigned int id)
 {
     if (id < m_OverlayConfigData.size())
@@ -403,65 +391,24 @@ void OverlayManager::RemoveOverlay(unsigned int id)
         m_OverlayConfigData.erase(m_OverlayConfigData.begin() + id);
 
         #ifndef DPLUS_UI
-            //If the overlay isn't the last one we set its handle to invalid so it won't get destroyed and can be reused below
-            if (id + 1 != m_Overlays.size())
+            m_Overlays.erase(m_Overlays.begin() + id);
+
+            //Fixup IDs for overlays past it if the overlay wasn't the last one
+            if (id != m_Overlays.size())
             {
-                if (m_Overlays[id].GetTextureSource() == ovrl_texsource_winrt_capture)
-                {
-                    //Manually stop the capture if there is one since the destructor won't be able to do it
-                    DPWinRT_StopCapture(m_Overlays[id].GetHandle());
-                }
-
-                m_Overlays[id].SetHandle(vr::k_ulOverlayHandleInvalid);
-                m_Overlays.erase(m_Overlays.begin() + id);
-
-                //Fixup IDs for overlays past it
                 for (auto& overlay : m_Overlays)
                 {
                     if (overlay.GetID() > id)
                     {
                         overlay.SetID(overlay.GetID() - 1);
-
-                        //OpenVR overlay keys can't be renamed, yet we want the ID to match the overlay key.
-                        //It's kind of awkward, but we swap around overlay handles here to make it work regardless
-                        vr::VROverlayHandle_t ovrl_handle = FindOverlayHandle(overlay.GetID());
-
-                        if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
-                        {
-                            if (overlay.GetTextureSource() == ovrl_texsource_winrt_capture)
-                            {
-                                DPWinRT_SwapCaptureTargetOverlays(overlay.GetHandle(), ovrl_handle);
-                            }
-
-                            overlay.SetHandle(ovrl_handle);
-
-                            //Update cached visibility/opacity to new handle's state
-                            float alpha = 1.0f;
-                            vr::VROverlay()->GetOverlayAlpha(ovrl_handle, &alpha);
-                            overlay.SetOpacity(alpha);
-                            overlay.SetVisible(vr::VROverlay()->IsOverlayVisible(ovrl_handle));
-                        }
                     }
                 }
-
-                //After swapping around overlay handles, the previously highest ID has been abandonned, so get rid of it manually
-                vr::VROverlay()->DestroyOverlay(FindOverlayHandle(m_Overlays.size()));
-
-                //After swapping, the states also need to be applied again to the new handles
-                if (OutputManager* outmgr = OutputManager::Get())
-                {
-                    outmgr->ResetOverlays();
-                }
             }
-            else //It's the last overlay so it can just be straight up erased and everything will be fine
-            {
-                m_Overlays.erase(m_Overlays.begin() + id);
 
-                //Keep active count correct
-                if (OutputManager* outmgr = OutputManager::Get())
-                {
-                    outmgr->ResetOverlayActiveCount();
-                }
+            //Keep active count correct
+            if (OutputManager* outmgr = OutputManager::Get())
+            {
+                outmgr->ResetOverlayActiveCount();
             }
         #else
             //Remove assigned keyboard overlay ID or fix it up if it was the removed one
@@ -709,7 +656,7 @@ Matrix4 OverlayManager::GetOverlayMiddleTransform(unsigned int id, vr::VROverlay
     if (ovrl_handle == vr::k_ulOverlayHandleInvalid)
     {
         #ifdef DPLUS_UI
-            ovrl_handle = FindOverlayHandle(id);
+            ovrl_handle = GetConfigData(id).ConfigHandle[configid_handle_overlay_state_overlay_handle];
         #else
             ovrl_handle = GetOverlay(id).GetHandle();
         #endif
@@ -730,7 +677,7 @@ Matrix4 OverlayManager::GetOverlayCenterBottomTransform(unsigned int id, vr::VRO
     if (ovrl_handle == vr::k_ulOverlayHandleInvalid)
     {
         #ifdef DPLUS_UI
-            ovrl_handle = FindOverlayHandle(id);
+            ovrl_handle = GetConfigData(id).ConfigHandle[configid_handle_overlay_state_overlay_handle];
         #else
             ovrl_handle = GetOverlay(id).GetHandle();
         #endif

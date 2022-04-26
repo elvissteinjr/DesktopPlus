@@ -1290,7 +1290,7 @@ void WindowPerformance::CheckScheduledOverlaySharedTextureUpdate()
 
             if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
             {
-                vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(i);
+                vr::VROverlayHandle_t ovrl_handle = data.ConfigHandle[configid_handle_overlay_state_overlay_handle];
 
                 if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
                 {
@@ -1361,7 +1361,7 @@ void WindowPerformance::OnWindowBoundsChanged()
 
         if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
         {
-            vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(i);
+            vr::VROverlayHandle_t ovrl_handle = data.ConfigHandle[configid_handle_overlay_state_overlay_handle];
 
             if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
             {
@@ -1482,7 +1482,7 @@ bool WindowPerformance::IsAnyOverlayUsingPerformanceMonitor()
 
         if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui) )
         {
-            vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(i);
+            vr::VROverlayHandle_t ovrl_handle = data.ConfigHandle[configid_handle_overlay_state_overlay_handle];
 
             if ( (ovrl_handle != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsOverlayVisible(ovrl_handle)) )
             {

@@ -476,7 +476,7 @@ void VRKeyboard::OnImGuiNewFrame()
             }
             else if (assigned_id >= 0)  //else do it if the assigned overlay is invisible
             {
-                vr::VROverlayHandle_t ovrl_handle_assigned = OverlayManager::Get().FindOverlayHandle((unsigned int)assigned_id);
+                vr::VROverlayHandle_t ovrl_handle_assigned = OverlayManager::Get().GetConfigData((unsigned int)assigned_id).ConfigHandle[configid_handle_overlay_state_overlay_handle];
                 do_assign_to_ui = !vr::VROverlay()->IsOverlayVisible(ovrl_handle_assigned);
             }
 

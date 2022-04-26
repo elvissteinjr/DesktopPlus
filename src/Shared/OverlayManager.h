@@ -26,8 +26,6 @@ class OverlayManager
         unsigned int m_CurrentOverlayID;
         OverlayConfigData m_OverlayConfigDataNull;
 
-        std::vector< std::pair<unsigned int, unsigned int> > m_PendingSwaps; //Stores swaps that still need to be finalized by calling SwapOverlaysFinish()
-
         Matrix4 GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handle, unsigned int id, bool add_bottom_offset) const;
 
     public:
@@ -41,7 +39,6 @@ class OverlayManager
             Overlay& GetOverlay(unsigned int id);                       //Returns m_OverlayNull on error
             Overlay& GetCurrentOverlay();
             Overlay& GetPrimaryDashboardOverlay();                      //Returns first visible overlay with dashboard origin, or m_OverlayNull if none exists
-            unsigned int FindOverlayID(vr::VROverlayHandle_t handle);   //Returns k_ulOverlayID_None on error
         #endif
         OverlayConfigData& GetConfigData(unsigned int id);
         const OverlayConfigData& GetConfigData(unsigned int id) const;
@@ -50,10 +47,9 @@ class OverlayManager
         unsigned int GetCurrentOverlayID() const;
         void SetCurrentOverlayID(unsigned int id);
 
-        vr::VROverlayHandle_t FindOverlayHandle(unsigned int id) const; //For UI app since it doesn't keep track of existing overlay handles
+        unsigned int FindOverlayID(vr::VROverlayHandle_t handle) const; //Returns k_ulOverlayID_None on error
         unsigned int GetOverlayCount() const;
         void SwapOverlays(unsigned int id, unsigned int id2);
-        void SwapOverlaysFinish();
         void RemoveOverlay(unsigned int id);
         void RemoveAllOverlays();
 

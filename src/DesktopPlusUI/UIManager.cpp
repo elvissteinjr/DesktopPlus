@@ -173,7 +173,7 @@ void UIManager::DisplayDashboardAppError(const std::string& str) //Ideally this 
     //Hide all dashboard app overlays as well. Usually the dashboard app closes, but it may sometimes get stuck which could put its overlays in the way of the message overlay.
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
-        vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(i);
+        vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetConfigData(i).ConfigHandle[configid_handle_overlay_state_overlay_handle];;
 
         if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
         {
@@ -1628,31 +1628,23 @@ void UIManager::HighlightOverlay(unsigned int overlay_id)
     //Indicate the current overlay by tinting it when hovering the overlay selector
     if (m_OpenVRLoaded)
     {
-        static unsigned int colored_id = k_ulOverlayID_None;
+        static vr::VROverlayHandle_t colored_handle = vr::k_ulOverlayHandleInvalid;
+
+        vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().GetConfigData(overlay_id).ConfigHandle[configid_handle_overlay_state_overlay_handle];;
 
         //Tint overlay if no other overlay is currently tinted (adds one frame delay on switching but it doesn't really matter)
-        if ( (overlay_id != k_ulOverlayID_None) && (colored_id == k_ulOverlayID_None) )
+        if ( (ovrl_handle != vr::k_ulOverlayHandleInvalid) && (colored_handle == vr::k_ulOverlayHandleInvalid) )
         {
-            vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(overlay_id);
+            ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+            vr::VROverlay()->SetOverlayColor(ovrl_handle, col.x, col.y, col.z);
 
-            if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
-            {
-                ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
-                vr::VROverlay()->SetOverlayColor(ovrl_handle, col.x, col.y, col.z);
-
-                colored_id = overlay_id;
-            }
+            colored_handle = ovrl_handle;
         }
-        else if ( (colored_id != k_ulOverlayID_None) && (colored_id != overlay_id) ) //Remove tint if overlay id is different or k_ulOverlayID_None
+        else if ( (colored_handle != vr::k_ulOverlayHandleInvalid) && (colored_handle != ovrl_handle) ) //Remove tint if overlay handle is different or vr::k_ulOverlayHandleInvalid
         {
-            vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(colored_id);
+            vr::VROverlay()->SetOverlayColor(colored_handle, 1.0f, 1.0f, 1.0f);
 
-            if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
-            {
-                vr::VROverlay()->SetOverlayColor(ovrl_handle, 1.0f, 1.0f, 1.0f);
-            }
-
-            colored_id = k_ulOverlayID_None;
+            colored_handle = vr::k_ulOverlayHandleInvalid;
         }
     }
 }

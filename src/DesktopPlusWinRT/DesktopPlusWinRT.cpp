@@ -307,61 +307,6 @@ bool DPWinRT_StopCapture(vr::VROverlayHandle_t overlay_handle)
     return false; //Overlay wasn't used in a capture in the first place
 }
 
-void DPWinRT_SwapCaptureTargetOverlays(vr::VROverlayHandle_t overlay_handle, vr::VROverlayHandle_t overlay_handle_2)
-{
-    #ifndef DPLUSWINRT_STUB
-
-    std::lock_guard<std::mutex> lock(g_ThreadsMutex);
-
-    //Find overlay data for the given overlay handles
-    std::vector<DPWinRTOverlayData>::iterator ovrl_data_it, ovrl_data_it_2;
-    DWORD ovrl_data_thread_id = 0, ovrl_data_thread_id_2 = 0;
-
-    for (auto thread_it = g_Threads.begin(); thread_it != g_Threads.end(); ++thread_it)
-    {
-        auto& thread = *thread_it;
-
-        //Look for first handle
-        if (ovrl_data_thread_id == 0)
-        {
-            ovrl_data_it = std::find_if(thread.Overlays.begin(), thread.Overlays.end(), [&](const auto& data) { return (data.Handle == overlay_handle); });
-            
-            if (ovrl_data_it != thread.Overlays.end())
-            {
-                ovrl_data_thread_id = thread.ThreadID;
-            }
-        }
-        //Look for second handle
-        if (ovrl_data_thread_id_2 == 0)
-        {
-            ovrl_data_it_2 = std::find_if(thread.Overlays.begin(), thread.Overlays.end(), [&](const auto& data) { return (data.Handle == overlay_handle_2); });
-
-            if (ovrl_data_it_2 != thread.Overlays.end())
-            {
-                ovrl_data_thread_id_2 = thread.ThreadID;
-            }
-        }
-    }
-
-    //Swap overlay handles if we can and send update messages to affected threads (unless same thread, which would be no-op)
-    if (ovrl_data_thread_id != ovrl_data_thread_id_2)
-    {
-        if (ovrl_data_thread_id != 0)
-        {
-            ovrl_data_it->Handle = overlay_handle_2;
-            ::PostThreadMessage(ovrl_data_thread_id, WM_DPLUSWINRT_UPDATE_DATA, 0, 0);
-        }
-
-        if (ovrl_data_thread_id_2 != 0)
-        {
-            ovrl_data_it_2->Handle = overlay_handle;
-            ::PostThreadMessage(ovrl_data_thread_id_2, WM_DPLUSWINRT_UPDATE_DATA, 0, 0);
-        }
-    }
-
-    #endif
-}
-
 bool DPWinRT_SetOverlayUpdateLimitDelay(vr::VROverlayHandle_t overlay_handle, LONGLONG delay_quadpart)
 {
     #ifndef DPLUSWINRT_STUB

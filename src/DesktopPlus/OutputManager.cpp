@@ -1101,11 +1101,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     OverlayManager::Get().SwapOverlays(OverlayManager::Get().GetCurrentOverlayID(), (unsigned int)msg.lParam);
                     break;
                 }
-                case ipcact_overlay_swap_finish:
-                {
-                    OverlayManager::Get().SwapOverlaysFinish();
-                    break;
-                }
                 case ipcact_overlay_gaze_fade_auto:
                 {
                     DetachedOverlayGazeFadeAutoConfigure();
@@ -1205,13 +1200,14 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)i);
 
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle,  data.ConfigHandle[configid_handle_overlay_state_overlay_handle]);
+
                         IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_width,  data.ConfigInt[configid_int_overlay_state_content_width]);
                         IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_height, data.ConfigInt[configid_int_overlay_state_content_height]);
 
                         //Send over current HWND if there's an active capture
                         if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0))
                         {
-
                             IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_winrt_hwnd, data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]);
                         }
 

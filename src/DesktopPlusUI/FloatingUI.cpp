@@ -141,12 +141,11 @@ void FloatingUI::UpdateUITargetState()
         {
             for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
             {
-                vr::VROverlayHandle_t ovrl_handle = OverlayManager::Get().FindOverlayHandle(i);
+                const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+                vr::VROverlayHandle_t ovrl_handle = data.ConfigHandle[configid_handle_overlay_state_overlay_handle];
 
                 if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
                 {
-                    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
-
                     if ( (data.ConfigBool[configid_bool_overlay_floatingui_enabled]) && (ConfigManager::Get().IsLaserPointerTargetOverlay(ovrl_handle)) )
                     {
                         ovrl_handle_hover_target = ovrl_handle;

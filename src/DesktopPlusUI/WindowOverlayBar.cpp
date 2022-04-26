@@ -253,7 +253,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
     }
 
     //Don't change overlay highlight while mouse down as it won't be correct while dragging and flicker just before it
-    if ( (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) && (hovered_overlay_id_last != hovered_overlay_id) )
+    if ( (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) && ((hovered_overlay_id_last != k_ulOverlayID_None) || (hovered_overlay_id != k_ulOverlayID_None)) )
     {
         UIManager::Get()->HighlightOverlay(hovered_overlay_id);
         hovered_overlay_id_last = hovered_overlay_id;
@@ -263,13 +263,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
 
     if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
     {
-        //If we did a swap, finalize all swapping changes
-        if (m_IsDraggingOverlayButtons)
-        {
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_swap_finish);
-            OverlayManager::Get().SwapOverlaysFinish();
-            m_IsDraggingOverlayButtons = false;
-        }
+        m_IsDraggingOverlayButtons = false;
     }
 }
 
