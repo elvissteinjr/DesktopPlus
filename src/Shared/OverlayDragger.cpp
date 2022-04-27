@@ -131,7 +131,7 @@ void OverlayDragger::DragStart(unsigned int overlay_id)
     m_DragModeDeviceID      = -1;
     m_DragModeOverlayID     = overlay_id;
     m_DragModeOverlayOrigin = (OverlayOrigin)data.ConfigInt[configid_int_overlay_origin];
-    m_DragModeOverlayHandle = data.ConfigInt[configid_handle_overlay_state_overlay_handle];
+    m_DragModeOverlayHandle = data.ConfigHandle[configid_handle_overlay_state_overlay_handle];
 
     DragStartBase(false);
 }
@@ -553,7 +553,7 @@ void OverlayDragger::DragGestureStart(unsigned int overlay_id)
     m_DragModeDeviceID      = -1;
     m_DragModeOverlayID     = overlay_id;
     m_DragModeOverlayOrigin = (OverlayOrigin)data.ConfigInt[configid_int_overlay_origin];
-    m_DragModeOverlayHandle = data.ConfigInt[configid_handle_overlay_state_overlay_handle];
+    m_DragModeOverlayHandle = data.ConfigHandle[configid_handle_overlay_state_overlay_handle];
 
     DragGestureStartBase();
 }
