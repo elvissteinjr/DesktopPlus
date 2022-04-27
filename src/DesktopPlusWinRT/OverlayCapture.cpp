@@ -210,7 +210,7 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
             m_LastContentSize = frame_content_size;
             recreate_frame_pool = true; //Recreate frame pool after we're done with the frame
 
-            m_OverlaySharedTextureSetupsNeeded = 2;
+            m_OverlaySharedTextureSetupsNeeded = 5;
         }
 
         //Direct3D11CaptureFrame::ContentSize isn't always matching the size of the texture (lagging behind if content resized but frame pool hasn't yet)
@@ -224,7 +224,7 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
             m_LastTextureSize.Width = texture_desc.Width;
             m_LastTextureSize.Height = texture_desc.Height;
 
-            m_OverlaySharedTextureSetupsNeeded = 2;
+            m_OverlaySharedTextureSetupsNeeded = 5;
 
             //Send overlay size updates and set mouse scale
             //If the initial sizing has not been done yet, wait until there's no frame pool recreation pending before setting it
@@ -317,7 +317,7 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
         }
     }
 
-    //We can only be sure about not needing to set the shared overlay texture after doing it at least twice after resize. Not entirely sure why, but it works.
+    //We can only be sure about not needing to set the shared overlay texture after doing it a few times after resize. Not entirely sure why, but it works.
     if (m_OverlaySharedTextureSetupsNeeded > 0)
     {
         m_OverlaySharedTextureSetupsNeeded--;
