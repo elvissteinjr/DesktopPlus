@@ -203,6 +203,7 @@ enum TRMGRStrID
     tstr_OvrlPropsAppearanceWidth,
     tstr_OvrlPropsAppearanceCurve,
     tstr_OvrlPropsAppearanceOpacity,
+    tstr_OvrlPropsAppearanceBrightness,
     tstr_OvrlPropsAppearanceCrop,
     tstr_OvrlPropsAppearanceCropValueMax,
     tstr_OvrlPropsCrop,

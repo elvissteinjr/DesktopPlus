@@ -59,6 +59,11 @@ inline float smoothstep(float step, float value_min, float value_max)
     return ((step) * (step) * (3 - 2 * (step))) * (value_max - value_min) + value_min;
 }
 
+inline float lin2log(float value_normalized)
+{
+    return value_normalized * (logf(value_normalized + 1.0f) / logf(2.0f));
+}
+
 //Display stuff
 DEVMODE GetDevmodeForDisplayID(int display_id, HMONITOR* hmon = nullptr); //DEVMODE.dmSize != 0 on success
 int GetMonitorRefreshRate(int display_id);

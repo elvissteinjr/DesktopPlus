@@ -160,6 +160,7 @@ enum ConfigID_Float
     configid_float_overlay_width,
     configid_float_overlay_curvature,
     configid_float_overlay_opacity,
+    configid_float_overlay_brightness,
     configid_float_overlay_offset_right,
     configid_float_overlay_offset_up,
     configid_float_overlay_offset_forward,

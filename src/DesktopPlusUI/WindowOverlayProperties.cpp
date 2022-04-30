@@ -505,6 +505,24 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
 
     ImGui::NextColumn();
 
+    //Brightness
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAppearanceBrightness));
+    ImGui::NextColumn();
+
+    float& brightness = ConfigManager::GetRef(configid_float_overlay_brightness);
+
+    vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayBrightness") );
+    if (ImGui::SliderWithButtonsFloatPercentage("OverlayBrightness", brightness, 5, 1, 0, 100, "%d%%"))
+    {
+        brightness = clamp(brightness, 0.0f, 1.0f);
+
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_brightness, pun_cast<LPARAM, float>(brightness));
+    }
+    vr_keyboard.VRKeyboardInputEnd();
+
+    ImGui::NextColumn();
+
     //Crop
     if (ConfigManager::GetValue(configid_int_overlay_capture_source) != ovrl_capsource_ui) //Don't show crop settings for UI source overlays
     {

@@ -1635,14 +1635,20 @@ void UIManager::HighlightOverlay(unsigned int overlay_id)
         //Tint overlay if no other overlay is currently tinted (adds one frame delay on switching but it doesn't really matter)
         if ( (ovrl_handle != vr::k_ulOverlayHandleInvalid) && (colored_handle == vr::k_ulOverlayHandleInvalid) )
         {
+            const OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)overlay_id);
+            float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]);
             ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
-            vr::VROverlay()->SetOverlayColor(ovrl_handle, col.x, col.y, col.z);
+
+            vr::VROverlay()->SetOverlayColor(ovrl_handle, col.x * brightness, col.y * brightness, col.z * brightness);
 
             colored_handle = ovrl_handle;
         }
         else if ( (colored_handle != vr::k_ulOverlayHandleInvalid) && (colored_handle != ovrl_handle) ) //Remove tint if overlay handle is different or vr::k_ulOverlayHandleInvalid
         {
-            vr::VROverlay()->SetOverlayColor(colored_handle, 1.0f, 1.0f, 1.0f);
+            const OverlayConfigData& data = OverlayManager::Get().GetConfigData(OverlayManager::Get().FindOverlayID(colored_handle));
+            float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]);
+
+            vr::VROverlay()->SetOverlayColor(colored_handle, brightness, brightness, brightness);
 
             colored_handle = vr::k_ulOverlayHandleInvalid;
         }

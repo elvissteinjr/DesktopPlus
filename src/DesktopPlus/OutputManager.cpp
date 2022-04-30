@@ -1491,6 +1491,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_float_overlay_width:
                     case configid_float_overlay_curvature:
                     case configid_float_overlay_opacity:
+                    case configid_float_overlay_brightness:
                     case configid_float_overlay_offset_right:
                     case configid_float_overlay_offset_up:
                     case configid_float_overlay_offset_forward:
@@ -4934,6 +4935,11 @@ void OutputManager::ApplySettingTransform()
 
     //Update Curvature
     vr::VROverlay()->SetOverlayCurvature(ovrl_handle, ConfigManager::GetValue(configid_float_overlay_curvature));
+
+    //Update Brightness
+    //We use the logarithmic counterpart since the changes in higher steps are barely visible while the lower range can really use those additional steps
+    float brightness = lin2log(ConfigManager::Get().GetValue(configid_float_overlay_brightness));
+    vr::VROverlay()->SetOverlayColor(ovrl_handle, brightness, brightness, brightness);
 
     //Set last tick for dashboard dummy delayed update
     m_LastApplyTransformTick = ::GetTickCount64();
