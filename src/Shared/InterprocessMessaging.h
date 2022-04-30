@@ -146,13 +146,13 @@ class IPCManager
         void PostMessageToDashboardApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
         void PostConfigMessageToDashboardApp(ConfigID_Bool   configid, LPARAM l_param = 0) const;
         void PostConfigMessageToDashboardApp(ConfigID_Int    configid, LPARAM l_param = 0) const;
-        void PostConfigMessageToDashboardApp(ConfigID_Float  configid, LPARAM l_param = 0) const;
+        void PostConfigMessageToDashboardApp(ConfigID_Float  configid, float value = 0.0f) const;
         void PostConfigMessageToDashboardApp(ConfigID_Handle configid, LPARAM l_param = 0) const;
 
         void PostMessageToUIApp(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;
         void PostConfigMessageToUIApp(ConfigID_Bool   configid, LPARAM l_param = 0) const;
         void PostConfigMessageToUIApp(ConfigID_Int    configid, LPARAM l_param = 0) const;
-        void PostConfigMessageToUIApp(ConfigID_Float  configid, LPARAM l_param = 0) const;
+        void PostConfigMessageToUIApp(ConfigID_Float  configid, float value = 0.0f) const;
         void PostConfigMessageToUIApp(ConfigID_Handle configid, LPARAM l_param = 0) const;
 
         void PostMessageToElevatedModeProcess(IPCMsgID IPC_id, WPARAM w_param = 0, LPARAM l_param = 0) const;

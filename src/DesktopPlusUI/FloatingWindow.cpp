@@ -447,7 +447,7 @@ void FloatingWindow::UpdateLimiterSetting(bool is_override) const
             if (update_limit_ms < 0.0f)
                 update_limit_ms = 0.0f;
 
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_ms, pun_cast<LPARAM, float>(update_limit_ms));
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_ms, update_limit_ms);
         }
     }
     else

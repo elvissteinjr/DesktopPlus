@@ -1589,7 +1589,7 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
 
             if (adaptive_size_apply)
             {
-                IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_width, pun_cast<LPARAM, float>(data.ConfigFloat[configid_float_overlay_width]));
+                IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_width, data.ConfigFloat[configid_float_overlay_width]);
             }
 
             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
@@ -4551,7 +4551,7 @@ unsigned int OutputManager::AddOverlayDrag(float source_distance, OverlayCapture
     ConfigManager::SetValue(configid_float_overlay_width, overlay_width);
 
     IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)new_id);
-    IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_width, pun_cast<LPARAM, float>(overlay_width));
+    IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_width, overlay_width);
     IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
 
     //Start drag and apply overlay config
@@ -5261,7 +5261,7 @@ void OutputManager::DetachedTransformSync(unsigned int overlay_id)
     const float* values = OverlayManager::Get().GetConfigData(overlay_id).ConfigTransform.get();
     for (size_t i = 0; i < 16; ++i)
     {
-        IPCManager::Get().PostConfigMessageToUIApp(configid_float_state_overlay_transform_sync_value, pun_cast<LPARAM, float>(values[i]));
+        IPCManager::Get().PostConfigMessageToUIApp(configid_float_state_overlay_transform_sync_value, values[i]);
     }
 
     IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_transform_sync_target_id, -1);
@@ -5758,8 +5758,8 @@ void OutputManager::DetachedOverlayGazeFadeAutoConfigure()
         data.ConfigFloat[configid_float_overlay_gazefade_distance] = gaze_distance;
         data.ConfigFloat[configid_float_overlay_gazefade_rate]     = fade_rate;
 
-        IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_gazefade_distance, pun_cast<LPARAM, float>(gaze_distance));
-        IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_gazefade_rate,     pun_cast<LPARAM, float>(fade_rate));
+        IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_gazefade_distance, gaze_distance);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_gazefade_rate,     fade_rate);
     }
 }
 

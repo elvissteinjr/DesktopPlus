@@ -1,5 +1,7 @@
 #include "InterprocessMessaging.h"
 
+#include "Util.h"
+
 static IPCManager g_IPCManager;
 
 IPCManager::IPCManager()
@@ -116,9 +118,9 @@ void IPCManager::PostConfigMessageToDashboardApp(ConfigID_Int configid, LPARAM l
     PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
 }
 
-void IPCManager::PostConfigMessageToDashboardApp(ConfigID_Float configid, LPARAM l_param) const
+void IPCManager::PostConfigMessageToDashboardApp(ConfigID_Float configid, float value) const
 {
-    PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
+    PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), pun_cast<LPARAM, float>(value));
 }
 
 void IPCManager::PostConfigMessageToDashboardApp(ConfigID_Handle configid, LPARAM l_param) const
@@ -144,9 +146,9 @@ void IPCManager::PostConfigMessageToUIApp(ConfigID_Int configid, LPARAM l_param)
     PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
 }
 
-void IPCManager::PostConfigMessageToUIApp(ConfigID_Float configid, LPARAM l_param) const
+void IPCManager::PostConfigMessageToUIApp(ConfigID_Float configid, float value) const
 {
-    PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), l_param);
+    PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid), pun_cast<LPARAM, float>(value));
 }
 
 void IPCManager::PostConfigMessageToUIApp(ConfigID_Handle configid, LPARAM l_param) const
