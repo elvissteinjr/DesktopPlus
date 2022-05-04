@@ -484,6 +484,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
     }
 
+    //Remove all overlays since they may access things on destruction after we're shut them down otherwise
+    OverlayManager::Get().RemoveAllOverlays();
+
     //Quit Browser processes if they're running (we do this early since the browser doesn't poll for VREvent_Quit itself)
     DPBrowserAPIClient::Get().Quit();
 
