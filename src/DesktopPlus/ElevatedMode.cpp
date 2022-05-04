@@ -136,7 +136,7 @@ bool HandleIPCMessage(MSG msg)
         COPYDATASTRUCT* pcds = (COPYDATASTRUCT*)msg.lParam;
 
         //Arbitrary size limit to prevent some malicous applications from sending bad data
-        if ( (pcds->cbData > 0) && (pcds->cbData <= 4096) ) 
+        if (pcds->cbData <= 4096)
         {
             std::string copystr((char*)pcds->lpData, pcds->cbData); //We rely on the data length. The data is sent without the NUL byte
 

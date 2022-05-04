@@ -381,7 +381,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
         COPYDATASTRUCT* pcds = (COPYDATASTRUCT*)msg.lParam;
         
         //Arbitrary size limit to prevent some malicous applications from sending bad data
-        if ( (pcds->dwData < configid_str_MAX) && (pcds->cbData > 0) && (pcds->cbData <= 4096) ) 
+        if ( (pcds->dwData < configid_str_MAX) && (pcds->cbData <= 4096) ) 
         {
             //Apply overlay id override if needed
             unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
