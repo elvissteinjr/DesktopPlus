@@ -699,7 +699,7 @@ bool TextureManager::AddFontBuilderString(const std::string& str)
 
 TMNGRTexID TextureManager::GetOverlayIconTextureID(const OverlayConfigData& data, bool is_xsmall, bool* has_window_icon)
 {
-    TMNGRTexID texture_id = (is_xsmall) ? tmtex_icon_xsmall_desktop : tmtex_icon_desktop;
+    TMNGRTexID texture_id = (is_xsmall) ? tmtex_icon_xsmall_desktop_none : tmtex_icon_desktop_none;
     int desktop_id = -2;
 
     if (has_window_icon != nullptr)

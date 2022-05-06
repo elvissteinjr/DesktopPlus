@@ -598,6 +598,18 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
 
     ImGui::Spacing();
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatCapture));
+
+    //Show some warning when an unknown capture source is used and don't go further
+    if (capture_method > ovrl_capsource_browser)
+    {
+        ImGui::Indent();
+        ImGui::PushTextWrapPos();
+        ImGui::TextColoredUnformatted(Style_ImGuiCol_TextWarning, TranslationManager::GetString(tstr_OvrlPropsCaptureSourceUnknownWarning));
+        ImGui::PopTextWrapPos();
+        ImGui::Unindent();
+        return;
+    }
+
     ImGui::Columns(2, "ColumnCapture", false);
     ImGui::SetColumnWidth(0, m_Column0Width);
 

@@ -228,6 +228,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsCaptureMethodGCUnsupportedPartialTip",
     "tstr_OvrlPropsCaptureSource",
     "tstr_OvrlPropsCaptureGCSource",
+    "tstr_OvrlPropsCaptureSourceUnknownWarning",
     "tstr_OvrlPropsPerfMonDesktopModeTip",
     "tstr_OvrlPropsPerfMonGlobalTip",
     "tstr_OvrlPropsPerfMonStyle",

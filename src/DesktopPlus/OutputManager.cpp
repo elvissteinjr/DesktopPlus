@@ -4870,6 +4870,11 @@ void OutputManager::ApplySettingCaptureSource()
 
             break;
         }
+        default:
+        {
+            //Unknown capture source, perhaps from the future. Set to texture source none.
+            overlay.SetTextureSource(ovrl_texsource_none);
+        }
     }
 }
 
