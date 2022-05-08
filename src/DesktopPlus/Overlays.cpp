@@ -179,9 +179,14 @@ void Overlay::SetOpacity(float opacity)
             outmgr->ShowOverlay(m_ID);
         }
     }
-    else if ( (opacity == 0.0f) && (m_Visible) ) //If it's 0% now, hide if currently visible
+    else if (opacity == 0.0f) //If it's 0% now, hide if it shouldn't be visible (Update when Invisble setting can make ShouldBeVisible() return true still)
     {
-        outmgr->HideOverlay(m_ID);
+        m_Opacity = opacity;
+
+        if (!ShouldBeVisible())
+        {
+            outmgr->HideOverlay(m_ID);
+        }
     }
 
     m_Opacity = opacity;
