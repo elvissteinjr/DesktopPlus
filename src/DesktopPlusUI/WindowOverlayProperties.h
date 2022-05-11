@@ -37,6 +37,7 @@ class WindowOverlayProperties : public FloatingWindow
         std::string m_CropButtonLabel;
         std::string m_WinRTSourceButtonLabel;
         char m_BufferOverlayName[1024];
+        bool m_IsBrowserURLChanged;
 
         virtual void WindowUpdate();
         void OverlayPositionReset();
@@ -46,6 +47,7 @@ class WindowOverlayProperties : public FloatingWindow
         void UpdatePageMainCatAppearance();
         void UpdatePageMainCatCapture();
         void UpdatePageMainCatPerformanceMonitor();
+        void UpdatePageMainCatBrowser();
         void UpdatePageMainCatAdvanced();
         void UpdatePageMainCatPerformance();
         void UpdatePageMainCatInterface();
@@ -72,4 +74,6 @@ class WindowOverlayProperties : public FloatingWindow
 
         unsigned int GetActiveOverlayID() const;
         void SetActiveOverlayID(unsigned int overlay_id, bool skip_fade = false);              //Call with same as active ID to refresh window title and icon
+
+        void MarkBrowserURLChanged();
 };

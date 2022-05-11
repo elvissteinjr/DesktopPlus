@@ -36,6 +36,7 @@ const wchar_t* TextureManager::s_TextureFilenames[tmtex_MAX] =
     L"images/icons/desktop_previous.png",
     L"images/icons/desktop_none.png",
     L"images/icons/performance_monitor.png",
+    L"images/icons/browser.png",
     L"images/icons/settings.png",
     L"images/icons/keyboard.png",
     L"images/icons/task_switch.png",
@@ -45,6 +46,10 @@ const wchar_t* TextureManager::s_TextureFilenames[tmtex_MAX] =
     L"images/icons_small/small_move.png",
     L"images/icons_small/small_add_window.png",
     L"images/icons_small/small_actionbar.png",
+    L"images/icons_small/small_browser_back.png",
+    L"images/icons_small/small_browser_forward.png",
+    L"images/icons_small/small_browser_refresh.png",
+    L"images/icons_small/small_browser_stop.png",
     L"images/icons_small/xsmall_desktop.png",
     L"images/icons_small/xsmall_desktop_all.png",
     L"images/icons_small/xsmall_desktop_1.png",
@@ -55,6 +60,7 @@ const wchar_t* TextureManager::s_TextureFilenames[tmtex_MAX] =
     L"images/icons_small/xsmall_desktop_6.png",
     L"images/icons_small/xsmall_desktop_none.png",
     L"images/icons_small/xsmall_performance_monitor.png",
+    L"images/icons_small/xsmall_browser.png",
     L"images/icons_small/xsmall_settings.png",
     L"images/icons_small/xsmall_keyboard.png",
     L"images/icons_small/xsmall_origin_playspace.png",
@@ -728,6 +734,11 @@ TMNGRTexID TextureManager::GetOverlayIconTextureID(const OverlayConfigData& data
         case ovrl_capsource_ui:
         {
             texture_id = (is_xsmall) ? tmtex_icon_xsmall_performance_monitor : tmtex_icon_performance_monitor;
+            break;
+        }
+        case ovrl_capsource_browser:
+        {
+            texture_id = (is_xsmall) ? tmtex_icon_xsmall_browser : tmtex_icon_browser;
             break;
         }
     }

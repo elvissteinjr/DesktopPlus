@@ -36,6 +36,7 @@ class OutputManager
         DUPL_RETURN InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
         vr::EVRInitError InitOverlay();
         DUPL_RETURN_UPD Update(_In_ PTR_INFO* PointerInfo, _In_ DPRect& DirtyRegionTotal, bool NewFrame, bool SkipFrame);
+        void BusyUpdate();                        //Updates minimal state (i.e. OverlayDragger) during busy waits (i.e. waiting for browser startup) to appear more responsive
         bool HandleIPCMessage(const MSG& msg);    //Returns true if message caused a duplication reset (i.e. desktop switch)
         void HandleWinRTMessage(const MSG& msg);  //Messages sent by the Desktop+ WinRT library
         void HandleHotkeyMessage(const MSG& msg);
@@ -85,6 +86,7 @@ class OutputManager
         int EnumerateOutputs(int target_desktop_id = -1, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_preferred = nullptr, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_vr = nullptr);
         void CropToDisplay(int display_id, int& crop_x, int& crop_y, int& crop_width, int& crop_height);
         bool CropToActiveWindow(int& crop_x, int& crop_y, int& crop_width, int& crop_height);             //Returns true if values have changed
+        void InitComIfNeeded();
 
         void ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter);
 
@@ -103,7 +105,6 @@ class OutputManager
         void HandleKeyboardMessage(IPCActionID ipc_action_id, LPARAM lparam);
         bool HandleOverlayProfileLoadMessage(LPARAM lparam);
 
-        void InitComIfNeeded();
         void LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8);
         void ShowWindowSwitcher();
         void ResetMouseLastLaserPointerPos();

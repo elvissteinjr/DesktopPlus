@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   viewBox="0 0 32 32"
+   version="1.1"
+   id="svg8"
+   width="32"
+   height="32">
+  <defs
+     id="defs12" />
+  <path
+     id="path2"
+     d="m 14,4 c -3.767779,4.1331529 -7.1751334,7.921943 -11,12 3.9699114,4.231941 7.372334,8.111981 11,12 1.00552,1.00552 0.994642,1.005358 2,0 l 1.5,-1.5 c 0.997062,-0.997062 1.001838,-0.998162 0,-2 L 12.5,19 H 28 c 0.999886,0 1,-0.0035 1,-1 v -4 c 0,-1.000025 -0.0035,-1 -1,-1 H 12.5 l 5,-5.5 c 1.005045,-1.0050452 1.005514,-0.9944861 0,-2 L 16,4 C 14.993282,2.9932817 15.001635,2.9983648 14,4 Z"
+     style="fill:#ffffff;stroke-width:1" />
+  <metadata
+     id="metadata11">
+    <rdf:RDF>
+      <cc:Work>
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+        <dc:title></dc:title>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>

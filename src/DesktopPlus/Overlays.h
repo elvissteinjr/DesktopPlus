@@ -16,12 +16,13 @@
 
 enum OverlayTextureSource
 {
-    ovrl_texsource_invalid = -1,                        //Initial state, shouldn't be set to
+    ovrl_texsource_invalid = -1,                        //Initial state, shouldn't be set to unless immediately calling SetTextureSource() to explicitly re-apply certain sources
     ovrl_texsource_none,                                //Used with capture sources other than desktop duplication while capture is not active
     ovrl_texsource_desktop_duplication,
     ovrl_texsource_desktop_duplication_3dou_converted,
     ovrl_texsource_winrt_capture,
-    ovrl_texsource_ui
+    ovrl_texsource_ui,
+    ovrl_texsource_browser
 };
 
 class Overlay

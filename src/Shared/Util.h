@@ -4,7 +4,10 @@
 
 #include <algorithm>
 #include <string>
-#define NOMINMAX
+
+#ifndef NOMINMAX
+    #define NOMINMAX
+#endif
 #include <windows.h>
 #include <d3d11.h>
 
@@ -64,6 +67,11 @@ inline float lin2log(float value_normalized)
     return value_normalized * (logf(value_normalized + 1.0f) / logf(2.0f));
 }
 
+//64-bit packed value helpers for window messages (we don't support building for 32-bit so this is fine)
+#define MAKEQWORD(a, b)     ((DWORD64)(((DWORD)(((DWORD64)(a)) & 0xffffffff)) | ((DWORD64)((DWORD)(((DWORD64)(b)) & 0xffffffff))) << 32))
+#define LODWORD(qw)         ((DWORD)(qw))
+#define HIDWORD(qw)         ((DWORD)(((qw) >> 32) & 0xffffffff))
+
 //Display stuff
 DEVMODE GetDevmodeForDisplayID(int display_id, HMONITOR* hmon = nullptr); //DEVMODE.dmSize != 0 on success
 int GetMonitorRefreshRate(int display_id);
@@ -74,6 +82,7 @@ void ForceScreenRefresh();
 //Misc
 bool IsProcessElevated();
 bool IsProcessElevated(DWORD process_id);
+bool ShellExecuteUnelevated(LPCWSTR lpFile, LPCWSTR lpParameters = nullptr, LPCWSTR lpDirectory = nullptr, LPCWSTR lpOperation = nullptr, INT nShowCmd = SW_SHOWNORMAL);
 bool FileExists(LPCTSTR path);
 bool DirectoryExists(LPCTSTR path);
 void StopProcessByWindowClass(LPCTSTR class_name); //Used to stop the previous instance of the application

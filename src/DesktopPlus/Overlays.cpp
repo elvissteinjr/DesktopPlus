@@ -6,6 +6,7 @@
 #include "OverlayManager.h"
 #include "OutputManager.h"
 #include "DesktopPlusWinRT.h"
+#include "DPBrowserAPIClient.h"
 
 Overlay::Overlay(unsigned int id) : m_ID(id),
                                     m_OvrlHandle(vr::k_ulOverlayHandleInvalid),
@@ -36,6 +37,10 @@ Overlay& Overlay::operator=(Overlay&& b)
             {
                 DPWinRT_StopCapture(m_OvrlHandle);
             }
+            else if (m_TextureSource == ovrl_texsource_browser)
+            {
+                DPBrowserAPIClient::Get().DPBrowser_StopBrowser(m_OvrlHandle);
+            }
 
             vr::VROverlay()->DestroyOverlay(m_OvrlHandle);
         }
@@ -61,6 +66,10 @@ Overlay::~Overlay()
         if (m_TextureSource == ovrl_texsource_winrt_capture)
         {
             DPWinRT_StopCapture(m_OvrlHandle);
+        }
+        else if (m_TextureSource == ovrl_texsource_browser)
+        {
+            DPBrowserAPIClient::Get().DPBrowser_StopBrowser(m_OvrlHandle);
         }
 
         vr::VROverlay()->DestroyOverlay(m_OvrlHandle);
@@ -315,8 +324,8 @@ const DPRect& Overlay::GetValidatedCropRect() const
 
 void Overlay::SetTextureSource(OverlayTextureSource tex_source)
 {
-    //Skip if nothing changed (except texsource_ui which is always re-applied)
-    if ( (m_TextureSource == tex_source) && (tex_source != ovrl_texsource_ui) )
+    //Skip if nothing changed (except texsource_ui/browser which are always re-applied)
+    if ( (m_TextureSource == tex_source) && (tex_source != ovrl_texsource_ui) && (tex_source != ovrl_texsource_browser) )
         return;
 
     //Cleanup old sources if needed
@@ -333,25 +342,34 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
             }
             break;
         }
+        case ovrl_texsource_browser:
+        {
+            if (tex_source != ovrl_texsource_browser)
+            {
+                DPBrowserAPIClient::Get().DPBrowser_StopBrowser(m_OvrlHandle);
+                vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, ::GetCurrentProcessId());
+            }
+            break;
+        }
         default: break;
     }
 
     m_TextureSource = tex_source;
 
-    if (m_TextureSource == ovrl_texsource_none)
+    switch (m_TextureSource)
     {
-        if (OutputManager* outmgr = OutputManager::Get())
+        case ovrl_texsource_none:
         {
-            outmgr->SetOutputErrorTexture(m_OvrlHandle);
+            if (OutputManager* outmgr = OutputManager::Get())
+            {
+                outmgr->SetOutputErrorTexture(m_OvrlHandle);
+            }
+            break;
         }
-    }
-    else if (m_TextureSource == ovrl_texsource_desktop_duplication)
-    {
-        AssignDesktopDuplicationTexture();
-    }
-    else if (m_TextureSource == ovrl_texsource_ui)
-    {
-        vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, IPCManager::GetUIAppProcessID());
+        case ovrl_texsource_desktop_duplication: AssignDesktopDuplicationTexture();                                                                        break;
+        case ovrl_texsource_ui:                  vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, IPCManager::GetUIAppProcessID());                   break;
+        case ovrl_texsource_browser:             vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, DPBrowserAPIClient::Get().GetServerAppProcessID()); break;
+        default: break;
     }
 }
 

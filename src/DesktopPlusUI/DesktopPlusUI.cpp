@@ -24,6 +24,7 @@
 #include "ImGuiExt.h"
 
 #include "DesktopPlusWinRT.h"
+#include "DPBrowserAPIClient.h"
 
 // Data
 static ID3D11Device*            g_pd3dDevice = nullptr;
@@ -77,6 +78,15 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     //Init UITextureSpaces
     UITextureSpaces::Get().Init(desktop_mode);
+
+    //Init WinRT DLL
+    DPWinRT_Init();
+
+    //Init BrowserClientAPI (this doesn't start the browser process, only checks for presence)
+    DPBrowserAPIClient::Get().Init();
+
+    //Allow IPC messages even when elevated (though in normal operation, this process should not be elevated)
+    IPCManager::Get().DisableUIPForRegisteredMessages(hwnd);
 
     //Init UIManager and load config
     UIManager ui_manager(desktop_mode);
@@ -134,9 +144,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     }
 
     float clear_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-
-    //Init WinRT DLL
-    DPWinRT_Init();
 
     //Init notification icon if OpenVR is running (no need for it in pure desktop mode without switching back)
     if ( (!ConfigManager::GetValue(configid_bool_interface_no_notification_icon)) && (ui_manager.IsOpenVRLoaded()) )

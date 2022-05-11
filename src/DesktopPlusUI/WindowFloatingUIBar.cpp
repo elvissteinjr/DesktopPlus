@@ -8,6 +8,7 @@
 #include "OverlayManager.h"
 #include "WindowManager.h"
 #include "DesktopPlusWinRT.h"
+#include "DPBrowserAPIClient.h"
 
 //-WindowFloatingUIMainBar
 WindowFloatingUIMainBar::WindowFloatingUIMainBar() : m_IsCurrentWindowCapturable(-1), m_AnimationProgress(0.0f)
@@ -61,7 +62,7 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     ImGuiIO& io = ImGui::GetIO();
 
     ImVec2 b_size, b_uv_min, b_uv_max;
-    TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
+    TextureManager::Get().GetTextureInfo(tmtex_icon_small_close, b_size, b_uv_min, b_uv_max);
     const ImGuiStyle& style = ImGui::GetStyle();
 
     //Put window near the bottom of the overlay with space for the tooltips + padding (touching action-bar when visible)
@@ -160,7 +161,12 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     }
     //
 
-    ImGui::SameLine();
+    //Browser navigation/reload buttons (only show if browser overlay)
+    if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+    {
+        UpdateBrowserButtons(overlay_id);
+    }
+    //
 
     //Drag-Mode Toggle Button (this is a global state)
     bool& is_dragmode_enabled = ConfigManager::GetRef(configid_bool_state_overlay_dragmode);
@@ -223,6 +229,77 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     {
         m_AnimationProgress = (is_actionbar_enabled) ? 1.0f : 0.0f;
     }
+}
+
+void WindowFloatingUIMainBar::UpdateBrowserButtons(unsigned int overlay_id)
+{
+    //Use overlay data of duplication ID if one is set
+    int duplication_id = OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_duplication_id];
+    OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData((duplication_id == -1) ? overlay_id : (unsigned int)duplication_id);
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    ImVec2 b_size, b_uv_min, b_uv_max;
+    TextureManager::Get().GetTextureInfo(tmtex_icon_small_close, b_size, b_uv_min, b_uv_max);
+    const ImGuiStyle& style = ImGui::GetStyle();
+
+    //Go Back Button
+    if (!overlay_data.ConfigBool[configid_bool_overlay_state_browser_nav_can_go_back])
+        ImGui::PushItemDisabled();
+
+    ImGui::PushID(tmtex_icon_small_browser_back);
+    TextureManager::Get().GetTextureInfo(tmtex_icon_small_browser_back, b_size, b_uv_min, b_uv_max);
+    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    {
+        DPBrowserAPIClient::Get().DPBrowser_GoBack(overlay_data.ConfigHandle[configid_handle_overlay_state_overlay_handle]);
+    }
+
+    if (!overlay_data.ConfigBool[configid_bool_overlay_state_browser_nav_can_go_back])
+        ImGui::PopItemDisabled();
+
+    DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIBrowserGoBackTip));
+
+    ImGui::PopID();
+    //
+
+    ImGui::SameLine();
+
+    //Go Forward Button
+    if (!overlay_data.ConfigBool[configid_bool_overlay_state_browser_nav_can_go_forward])
+        ImGui::PushItemDisabled();
+
+    ImGui::PushID(tmtex_icon_small_browser_forward);
+    TextureManager::Get().GetTextureInfo(tmtex_icon_small_browser_forward, b_size, b_uv_min, b_uv_max);
+    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    {
+        DPBrowserAPIClient::Get().DPBrowser_GoForward(overlay_data.ConfigHandle[configid_handle_overlay_state_overlay_handle]);
+    }
+
+    if (!overlay_data.ConfigBool[configid_bool_overlay_state_browser_nav_can_go_forward])
+        ImGui::PopItemDisabled();
+
+    DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIBrowserGoForwardTip));
+
+    ImGui::PopID();
+    //
+
+    ImGui::SameLine();
+
+    //Refresh Button
+    ImGui::PushID(tmtex_icon_small_browser_refresh);
+    const bool is_loading = overlay_data.ConfigBool[configid_bool_overlay_state_browser_nav_is_loading];
+    TextureManager::Get().GetTextureInfo((is_loading) ? tmtex_icon_small_browser_stop : tmtex_icon_small_browser_refresh, b_size, b_uv_min, b_uv_max);
+    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    {
+        DPBrowserAPIClient::Get().DPBrowser_Refresh(overlay_data.ConfigHandle[configid_handle_overlay_state_overlay_handle]);
+    }
+
+    DisplayTooltipIfHovered(TranslationManager::GetString((is_loading) ? tstr_FloatingUIBrowserStopTip : tstr_FloatingUIBrowserRefreshTip));
+
+    ImGui::PopID();
+    //
+
+    ImGui::SameLine();
 }
 
 const ImVec2& WindowFloatingUIMainBar::GetPos() const
@@ -749,7 +826,9 @@ void WindowFloatingUIOverlayStats::Update(const WindowFloatingUIMainBar& mainbar
     if (!ConfigManager::Get().GetValue(configid_bool_performance_show_fps))
         return;
 
-    const OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(overlay_id);
+    //Use overlay data of duplication ID if one is set
+    int duplication_id = OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_duplication_id];
+    const OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData((duplication_id == -1) ? overlay_id : (unsigned int)duplication_id);
 
     int fps = -1;
     if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)

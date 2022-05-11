@@ -1,6 +1,7 @@
 #include "InterprocessMessaging.h"
 
 #include "Util.h"
+#include "DPBrowserAPIClient.h"
 
 static IPCManager g_IPCManager;
 
@@ -12,7 +13,7 @@ IPCManager::IPCManager()
     m_RegisteredMessages[ipcmsg_elevated_action] = ::RegisterWindowMessage(L"WMIPC_DPLUS_ElevatedAction");
 }
 
-IPCManager & IPCManager::Get()
+IPCManager& IPCManager::Get()
 {
     return g_IPCManager;
 }
@@ -29,6 +30,10 @@ void IPCManager::DisableUIPForRegisteredMessages(HWND window_handle) const
             ::ChangeWindowMessageFilterEx(window_handle, msgid, MSGFLT_ALLOW, nullptr);
         }
     }
+
+    //Also allow message ID used by DPBrowserAPI
+    ::ChangeWindowMessageFilterEx(window_handle, DPBrowserAPIClient::Get().GetRegisteredMessageID(), MSGFLT_ALLOW, nullptr);
+    
     //We could return the success state of this, but the resulting behavior wouldn't change. Should usually not fail anyways.
 }
 

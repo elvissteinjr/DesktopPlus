@@ -47,6 +47,9 @@
       <Filter>Shared</Filter>
     </ClCompile>
     <ClCompile Include="LaserPointer.cpp" />
+    <ClCompile Include="..\Shared\DPBrowserAPIClient.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -100,6 +103,12 @@
       <Filter>Shared</Filter>
     </ClInclude>
     <ClInclude Include="LaserPointer.h" />
+    <ClInclude Include="..\Shared\DPBrowserAPI.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\DPBrowserAPIClient.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DesktopPlus.rc" />

@@ -2,6 +2,9 @@
 
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <shldisp.h>
+#include <shlobj.h>
+#include <shellapi.h>
 
 std::string StringConvertFromUTF16(LPCWSTR str)
 {
@@ -11,7 +14,7 @@ std::string StringConvertFromUTF16(LPCWSTR str)
     if (length_utf8 != 0)
     {
         char* str_utf8 = new char[length_utf8];
-        
+
         if (WideCharToMultiByte(CP_UTF8, 0, str, -1, str_utf8, length_utf8, nullptr, nullptr) != 0)
         {
             stdstr = str_utf8;
@@ -19,7 +22,7 @@ std::string StringConvertFromUTF16(LPCWSTR str)
 
         delete[] str_utf8;
     }
-        
+
     return stdstr;
 }
 
@@ -511,6 +514,105 @@ bool IsProcessElevated(DWORD process_id)
     }
 
     return ret;
+}
+
+bool ShellExecuteUnelevated(LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, LPCWSTR lpOperation, INT nShowCmd)
+{
+    //This function will fail if explorer.exe is not running, but it could be argued that this scenario is not exactly the sanest for a desktop viewing application
+    //Elevated mode should be avoided in the first place to be fair
+
+    //Use desktop automation to get the active shell view for the desktop
+    Microsoft::WRL::ComPtr<IShellView> shell_view;
+    Microsoft::WRL::ComPtr<IShellWindows> shell_windows;
+    HRESULT hr = ::CoCreateInstance(CLSID_ShellWindows, nullptr, CLSCTX_LOCAL_SERVER, IID_IShellWindows, &shell_windows);
+
+    if (SUCCEEDED(hr))
+    {
+        HWND hwnd = nullptr;
+        Microsoft::WRL::ComPtr<IDispatch> dispatch;
+        VARIANT v_empty = {};
+
+        if (shell_windows->FindWindowSW(&v_empty, &v_empty, SWC_DESKTOP, (long*)&hwnd, SWFO_NEEDDISPATCH, &dispatch) == S_OK)
+        {
+            Microsoft::WRL::ComPtr<IServiceProvider> service_provider;
+            hr = dispatch.As(&service_provider);
+
+            if (SUCCEEDED(hr))
+            {
+                Microsoft::WRL::ComPtr<IShellBrowser> shell_browser;
+                hr = service_provider->QueryService(SID_STopLevelBrowser, __uuidof(IShellBrowser), (void**)&shell_browser);
+
+                if (SUCCEEDED(hr))
+                {
+                    hr = shell_browser->QueryActiveShellView(&shell_view);
+                }
+            }
+        }
+        else
+        {
+            hr = E_FAIL;
+        }
+    }
+
+    if (FAILED(hr))
+        return false;
+
+    //Use the shell view to get the shell dispatch interface
+    Microsoft::WRL::ComPtr<IShellDispatch2> shell_dispatch2;
+    Microsoft::WRL::ComPtr<IDispatch> dispatch_background;
+    hr = shell_view->GetItemObject(SVGIO_BACKGROUND, __uuidof(IDispatch), (void**)&dispatch_background);
+    if (SUCCEEDED(hr))
+    {
+        Microsoft::WRL::ComPtr<IShellFolderViewDual> shell_folderview_dual;
+        hr = dispatch_background.As(&shell_folderview_dual);
+
+        if (SUCCEEDED(hr))
+        {
+            Microsoft::WRL::ComPtr<IDispatch> dispatch;
+            hr = shell_folderview_dual->get_Application(&dispatch);
+
+            if (SUCCEEDED(hr))
+            {
+                hr = dispatch.As(&shell_dispatch2);
+            }
+        }
+    }
+
+    if (FAILED(hr))
+        return false;
+
+    //Use the shell dispatch interface to call ShellExecuteW() in the explorer process, which is running unelevated in most cases
+    BSTR bstr_file = ::SysAllocString(lpFile);
+    hr = (bstr_file != nullptr) ? S_OK : E_OUTOFMEMORY;
+
+    if (SUCCEEDED(hr))
+    {
+        VARIANT v_args = {};
+        VARIANT v_dir = {};
+        VARIANT v_operation = {};
+        VARIANT v_show = {};
+        v_show.vt = VT_I4;
+        v_show.intVal = nShowCmd;
+
+        //Optional parameters (SysAllocString() returns nullptr on nullptr input)
+        v_args.bstrVal      = ::SysAllocString(lpParameters);
+        v_dir.bstrVal       = ::SysAllocString(lpDirectory);
+        v_operation.bstrVal = ::SysAllocString(lpOperation);
+        v_args.vt       = (v_args.bstrVal != nullptr)      ? VT_BSTR : VT_EMPTY;
+        v_dir.vt        = (v_dir.bstrVal != nullptr)       ? VT_BSTR : VT_EMPTY;
+        v_operation.vt  = (v_operation.bstrVal != nullptr) ? VT_BSTR : VT_EMPTY;
+
+        hr = shell_dispatch2->ShellExecuteW(bstr_file, v_args, v_dir, v_operation, v_show);
+
+        ::SysFreeString(bstr_file);
+        ::SysFreeString(v_args.bstrVal);
+        ::SysFreeString(v_dir.bstrVal);
+        ::SysFreeString(v_operation.bstrVal);
+
+        return true;
+    }
+
+    return false;
 }
 
 bool FileExists(LPCTSTR path)

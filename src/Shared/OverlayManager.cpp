@@ -3,6 +3,7 @@
 #ifndef DPLUS_UI
     #include "OutputManager.h"
     #include "DesktopPlusWinRT.h"
+    #include "DPBrowserAPIClient.h"
 #else
     #include "UIManager.h"
     #include "TranslationManager.h"
@@ -117,6 +118,12 @@ Matrix4 OverlayManager::GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handl
             }
         #endif
 
+        //Browser overlays are using flipped UVs, so flip offset_to_bottom to match
+        if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+        {
+            offset_to_bottom *= -1.0f;
+        }
+
         //Move to bottom
         TransformOpenVR34TranslateRelative(matrix, 0.0f, offset_to_bottom, 0.0f);
     }
@@ -124,7 +131,7 @@ Matrix4 OverlayManager::GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handl
     return matrix;
 }
 
-unsigned int OverlayManager::DuplicateOverlay(const OverlayConfigData& data)
+unsigned int OverlayManager::DuplicateOverlay(const OverlayConfigData& data, unsigned int source_id)
 {
     unsigned int id = (unsigned int)m_OverlayConfigData.size();
 
@@ -141,6 +148,21 @@ unsigned int OverlayManager::DuplicateOverlay(const OverlayConfigData& data)
             UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
         }
     #endif
+
+    //Store duplication ID for browser overlays
+    if ( (source_id != k_ulOverlayID_None) && (new_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser) )
+    {
+        //If this is duplicated from an already duplicating overlay, keep the ID
+        if (new_data.ConfigInt[configid_int_overlay_duplication_id] == -1)
+        {
+            new_data.ConfigInt[configid_int_overlay_duplication_id] = (int)source_id;
+        }
+
+        //Also clear strings which won't match after any navigation has been done on the source overlay but would hang around forever in profiles
+        new_data.ConfigStr[configid_str_overlay_browser_url] = "";
+        new_data.ConfigStr[configid_str_overlay_browser_url_user_last] = "";
+        new_data.ConfigStr[configid_str_overlay_browser_title] = "";
+    }
 
     //Send handle over to UI
     #ifndef DPLUS_UI
@@ -382,12 +404,50 @@ void OverlayManager::SwapOverlays(unsigned int id, unsigned int id2)
         assigned_id = window_keyboard.GetAssignedOverlayID(floating_window_ovrl_state_room);
         window_keyboard.SetAssignedOverlayID( (assigned_id == id) ? id2 : (assigned_id == id2) ? id : assigned_id, floating_window_ovrl_state_room);
     #endif
+
+    //Find and swap overlay duplication IDs
+    for (auto& data : m_OverlayConfigData)
+    {
+        if (data.ConfigInt[configid_int_overlay_duplication_id] == (int)id)
+            data.ConfigInt[configid_int_overlay_duplication_id] = (int)id2;
+        else if (data.ConfigInt[configid_int_overlay_duplication_id] == (int)id2)
+            data.ConfigInt[configid_int_overlay_duplication_id] = (int)id;
+    }
 }
 
 void OverlayManager::RemoveOverlay(unsigned int id)
 {
     if (id < m_OverlayConfigData.size())
     {
+        //Find and fix overlays referencing the to-be-deleted overlay with their duplication ID first
+        unsigned int replacement_id = k_ulOverlayID_None;
+        for (unsigned int i = 0; i < m_OverlayConfigData.size(); ++i)
+        {
+            OverlayConfigData& data = m_OverlayConfigData[i];
+            int& duplication_id = data.ConfigInt[configid_int_overlay_duplication_id];
+
+            if (duplication_id == (int)id)
+            {
+                //Take the first of the duplicating overlays and convert it to standalone as the new source
+                if (replacement_id == k_ulOverlayID_None)
+                {
+                    ConvertDuplicatedOverlayToStandalone(i, true);
+                    replacement_id = i;
+                }
+                else    //We already have one, so just change the ID
+                {
+                    duplication_id = (int)replacement_id;
+                }
+            }
+
+            //Also fix overlay duplication IDs reference overlays that had an higher ID than the removed one
+            if ( (duplication_id != -1) && (duplication_id > (int)id) )
+            {
+                duplication_id--;
+            }
+        }
+
+        //Then delete the config
         m_OverlayConfigData.erase(m_OverlayConfigData.begin() + id);
 
         #ifndef DPLUS_UI
@@ -411,7 +471,7 @@ void OverlayManager::RemoveOverlay(unsigned int id)
                 outmgr->ResetOverlayActiveCount();
             }
         #else
-            //Remove assigned keyboard overlay ID or fix it up if it was the removed one
+            //Remove assigned keyboard overlay ID or fix it up if it was higher than the removed one
             WindowKeyboard& window_keyboard = UIManager::Get()->GetVRKeyboard().GetWindow();
             int assigned_id = -1;
 
@@ -579,6 +639,54 @@ std::vector<unsigned int> OverlayManager::FindInactiveOverlaysForWindow(const Wi
 
 #endif //ifndef DPLUS_UI
 
+void OverlayManager::ConvertDuplicatedOverlayToStandalone(unsigned int id, bool no_reset)
+{
+    if (id < m_OverlayConfigData.size())
+    {
+        OverlayConfigData& data = m_OverlayConfigData[id];
+
+        //Nothing to do if there's no valid duplication source ID
+        if ( (data.ConfigInt[configid_int_overlay_duplication_id] == -1) && ((unsigned int)data.ConfigInt[configid_int_overlay_duplication_id] >= m_OverlayConfigData.size()) )
+            return;
+
+        OverlayConfigData& data_source = m_OverlayConfigData[data.ConfigInt[configid_int_overlay_duplication_id]];
+
+        //Currently only works and used on browser overlays
+        if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+        {
+            //Copy relevant properties over
+            data.ConfigStr[configid_str_overlay_browser_url]           = data_source.ConfigStr[configid_str_overlay_browser_url];
+            data.ConfigStr[configid_str_overlay_browser_url_user_last] = data_source.ConfigStr[configid_str_overlay_browser_url_user_last];
+            data.ConfigInt[configid_int_overlay_user_width]            = data_source.ConfigInt[configid_int_overlay_user_width];
+            data.ConfigInt[configid_int_overlay_user_height]           = data_source.ConfigInt[configid_int_overlay_user_height];
+            data.ConfigFloat[configid_float_overlay_browser_zoom]      = data_source.ConfigFloat[configid_float_overlay_browser_zoom];
+        }
+
+        data.ConfigInt[configid_int_overlay_state_content_width]  = data_source.ConfigInt[configid_int_overlay_state_content_width];
+        data.ConfigInt[configid_int_overlay_state_content_height] = data_source.ConfigInt[configid_int_overlay_state_content_height];
+
+        //Remove duplication ID and reset the overlay
+        data.ConfigInt[configid_int_overlay_duplication_id] = -1;
+
+        #ifndef DPLUS_UI
+            if (!no_reset)
+            {
+                if (OutputManager* outmgr = OutputManager::Get())
+                {
+                    unsigned int current_overlay_old = m_CurrentOverlayID;
+                    m_CurrentOverlayID = id;
+
+                    GetOverlay(id).SetTextureSource(ovrl_texsource_invalid);    //Invalidate capture source so browser source is re-initialized with a new context
+                    
+                    outmgr->ResetCurrentOverlay();
+
+                    m_CurrentOverlayID = current_overlay_old;
+                }
+            }
+        #endif
+    }
+}
+
 #ifdef DPLUS_UI
 
 void OverlayManager::SetCurrentOverlayNameAuto(const WindowInfo* window_info)
@@ -631,6 +739,23 @@ void OverlayManager::SetOverlayNameAuto(unsigned int id, const WindowInfo* windo
             case ovrl_capsource_ui:
             {
                 data.ConfigNameStr += TranslationManager::GetString(tstr_SourcePerformanceMonitor); //So far all UI overlays are just that
+                break;
+            }
+            case ovrl_capsource_browser:
+            {
+                //Use duplication IDs' title if any is set
+                const int duplication_id = data.ConfigInt[configid_int_overlay_duplication_id];
+                const std::string& title = (duplication_id == -1) ? data.ConfigStr[configid_str_overlay_browser_title] : 
+                                                                    GetConfigData((unsigned int)duplication_id).ConfigStr[configid_str_overlay_browser_title];
+
+                if (!title.empty())
+                {
+                    data.ConfigNameStr += title;
+                }
+                else
+                {
+                    data.ConfigNameStr += TranslationManager::GetString(tstr_SourceBrowserNoPage);
+                }
                 break;
             }
         }

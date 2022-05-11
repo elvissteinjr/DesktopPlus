@@ -32,7 +32,7 @@ class OverlayManager
         static OverlayManager& Get();
 
         OverlayManager();
-        unsigned int DuplicateOverlay(const OverlayConfigData& data);
+        unsigned int DuplicateOverlay(const OverlayConfigData& data, unsigned int source_id = k_ulOverlayID_None);
         unsigned int AddOverlay(OverlayCaptureSource capture_source, int desktop_id = -2, HWND window_handle = nullptr);
         unsigned int AddUIOverlay();                                    //Adds UI overlay without using any base data
         #ifndef DPLUS_UI
@@ -57,6 +57,8 @@ class OverlayManager
             //Returns list of inactive (not current capturing) overlay IDs with winrt_last_* strings matching the given window
             std::vector<unsigned int> FindInactiveOverlaysForWindow(const WindowInfo& window_info) const;
         #endif
+
+        void ConvertDuplicatedOverlayToStandalone(unsigned int id, bool no_reset = false);
 
         #ifdef DPLUS_UI
             void SetCurrentOverlayNameAuto(const WindowInfo* window_info = nullptr);

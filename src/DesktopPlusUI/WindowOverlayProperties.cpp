@@ -7,6 +7,7 @@
 #include "WindowManager.h"
 #include "Util.h"
 #include "DesktopPlusWinRT.h"
+#include "DPBrowserAPIClient.h"
 
 #include <sstream>
 
@@ -24,7 +25,8 @@ WindowOverlayProperties::WindowOverlayProperties() :
     m_ActiveOverlayID(k_ulOverlayID_None),
     m_Column0Width(0.0f),
     m_IsConfigDataModified(false),
-    m_BufferOverlayName{0}
+    m_BufferOverlayName{0},
+    m_IsBrowserURLChanged(false)
 {
     m_WindowIcon = tmtex_icon_xsmall_settings;
     m_OvrlWidth = OVERLAY_WIDTH_METERS_SETTINGS;
@@ -95,6 +97,7 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
     //These need to always reset in case of underlying changes or even just language switching
     m_CropButtonLabel = "";
     m_WinRTSourceButtonLabel = "";
+    MarkBrowserURLChanged();
 
     m_ActiveOverlayID = overlay_id;
 
@@ -133,6 +136,11 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
     }
 
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_interface_overlay_current_id, (int)overlay_id);
+}
+
+void WindowOverlayProperties::MarkBrowserURLChanged()
+{
+    m_IsBrowserURLChanged = true;
 }
 
 void WindowOverlayProperties::WindowUpdate()
@@ -307,6 +315,7 @@ void WindowOverlayProperties::UpdatePageMain()
     UpdatePageMainCatAppearance();
     UpdatePageMainCatCapture();
     UpdatePageMainCatPerformanceMonitor();
+    UpdatePageMainCatBrowser();
     UpdatePageMainCatAdvanced();
     UpdatePageMainCatPerformance();
     UpdatePageMainCatInterface();
@@ -568,13 +577,14 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
         return;
 
     ImGuiStyle& style = ImGui::GetStyle();
+    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
     static float winrt_source_label_width = 0.0f;
 
     int& capture_method = ConfigManager::GetRef(configid_int_overlay_capture_source);
 
-    //Don't show capture settings for UI source overlays
-    if (capture_method == ovrl_capsource_ui)
+    //Don't show capture settings for UI or Browser source overlays
+    if ( (capture_method == ovrl_capsource_ui) || (capture_method == ovrl_capsource_browser) )
         return;
 
     int& winrt_selected_desktop = ConfigManager::GetRef(configid_int_overlay_winrt_desktop_id);
@@ -674,7 +684,7 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
 
         ImGui::NextColumn();
     }
-    else //ovrl_capsource_winrt_capture
+    else if (capture_method == ovrl_capsource_winrt_capture)
     {
         ImVec2 button_size(0.0f, 0.0f);
 
@@ -872,6 +882,297 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     }
 
     ImGui::Unindent();
+}
+
+void WindowOverlayProperties::UpdatePageMainCatBrowser()
+{
+    //Don't show these settings if not browser overlay
+    if (ConfigManager::GetValue(configid_int_overlay_capture_source) != ovrl_capsource_browser)
+        return;
+
+    //Use duplication IDs' data if any is set
+    const int duplication_id = ConfigManager::GetValue(configid_int_overlay_duplication_id);
+    OverlayConfigData& data = (duplication_id == -1) ? OverlayManager::Get().GetCurrentConfigData() : OverlayManager::Get().GetConfigData((unsigned int)duplication_id);
+    //We also need to set overrides for most changes done here if the duplication is used
+    const int config_overlay_id = (duplication_id == -1) ? (int)OverlayManager::Get().GetCurrentOverlayID() : duplication_id;
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
+    ImGui::Spacing();
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatBrowser));
+
+    if (!DPBrowserAPIClient::Get().IsBrowserAvailable())
+    {
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_OvrlPropsBrowserNotAvailableTip), "(!)");
+    }
+
+    ImGui::Columns(2, "ColumnBrowser", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
+    //Cloned Output
+    if (duplication_id != -1)
+    {
+        static std::string clone_tip_text;
+        static unsigned int highlit_overlay_id_last = k_ulOverlayID_None;
+        unsigned int highlit_overlay_id = k_ulOverlayID_None;
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsBrowserCloned));
+
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(clone_tip_text.c_str());
+
+        if (ImGui::IsItemHovered())
+        {
+            //Highlight clone source overlay to give the user a better idea which one is the source (names are usually the same and the ID is not a good indicator)
+            highlit_overlay_id = (unsigned int)duplication_id;
+
+            //If newly hovered, generate tooltip text
+            if (clone_tip_text.empty())
+            {
+                clone_tip_text = TranslationManager::GetString(tstr_OvrlPropsBrowserClonedTip);
+                StringReplaceAll(clone_tip_text, "%OVERLAYNAME%", data.ConfigNameStr);
+
+                UIManager::Get()->RepeatFrame(3);   //Tooltip needs more frames to adjust to changing text since we changed it after it already rendered here
+            }
+        }
+        else if (!clone_tip_text.empty())
+        {
+            //Clear when not hovering so it'll be updated next time
+            clone_tip_text = "";
+        }
+
+        if (highlit_overlay_id_last != highlit_overlay_id)
+        {
+            UIManager::Get()->HighlightOverlay(highlit_overlay_id);
+            highlit_overlay_id_last = highlit_overlay_id;
+        }
+
+        ImGui::NextColumn();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_OvrlPropsBrowserClonedConvert)))
+        {
+            //Send string over to dashboard app so it uses the right URLs during conversion (it doesn't get or need updated URLs during runtime in most other cases)
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
+            IPCManager::Get().SendStringToDashboardApp(configid_str_overlay_browser_url,           data.ConfigStr[configid_str_overlay_browser_url],           UIManager::Get()->GetWindowHandle());
+            IPCManager::Get().SendStringToDashboardApp(configid_str_overlay_browser_url_user_last, data.ConfigStr[configid_str_overlay_browser_url_user_last], UIManager::Get()->GetWindowHandle());
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+
+            OverlayManager::Get().ConvertDuplicatedOverlayToStandalone(m_ActiveOverlayID);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_make_standalone, (int)m_ActiveOverlayID);
+        }
+
+        ImGui::Spacing();
+        ImGui::NextColumn();
+    }
+
+    //URL
+    {
+        static char buffer_url[1024] = "";
+        static bool can_restore_last_user_input = false;
+        bool has_pressed_enter_on_url = false;
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsBrowserURL));
+        ImGui::NextColumn();
+
+        ImGui::PushItemWidth(-1.0f);
+        vr_keyboard.VRKeyboardInputBegin("##InputURL");
+        if (ImGui::InputTextWithHint("##InputURL", TranslationManager::GetString(tstr_OvrlPropsBrowserURLHint), buffer_url, IM_ARRAYSIZE(buffer_url), 
+                                     ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
+        {
+            has_pressed_enter_on_url = true;
+        }
+        vr_keyboard.VRKeyboardInputEnd();
+        
+        if (ImGui::IsItemEdited())
+        {
+            //Add unmapped characters if they appear while typing
+            if (ImGui::StringContainsUnmappedCharacter(buffer_url))
+            {
+                TextureManager::Get().AddFontBuilderString(buffer_url);
+                TextureManager::Get().ReloadAllTexturesLater();
+            }
+
+            can_restore_last_user_input = true;
+        }
+        else if ( ((m_IsBrowserURLChanged) || (m_PageAppearing == wndovrlprop_page_main)) && (!ImGui::IsItemActive()) )
+        {
+            //Update buffer if URL changed externally or window/page is appearing while text input isn't active
+            size_t copied_length = data.ConfigStr[configid_str_overlay_browser_url].copy(buffer_url, IM_ARRAYSIZE(buffer_url) - 1);
+            buffer_url[copied_length] = '\0';
+
+            //Enable "Restore Last Input" only when they're actually different
+            can_restore_last_user_input = (data.ConfigStr[configid_str_overlay_browser_url] != data.ConfigStr[configid_str_overlay_browser_url_user_last]);
+
+            m_IsBrowserURLChanged = false;
+        }
+
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+
+        if ( (ImGui::Button(TranslationManager::GetString(tstr_OvrlPropsBrowserGo))) || (has_pressed_enter_on_url) )
+        {
+            //If buffer is not empty, set URL from user input, otherwise fall back to current URL
+            if (buffer_url[0] != '\0')
+            {
+                data.ConfigStr[configid_str_overlay_browser_url]           = buffer_url;
+                data.ConfigStr[configid_str_overlay_browser_url_user_last] = data.ConfigStr[configid_str_overlay_browser_url];
+
+                //Send string over to dashboard app so it can call SetURL()
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
+                IPCManager::Get().SendStringToDashboardApp(configid_str_overlay_browser_url, data.ConfigStr[configid_str_overlay_browser_url], UIManager::Get()->GetWindowHandle());
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_browser_navigate_to_url, config_overlay_id);
+
+                can_restore_last_user_input = false;
+            }
+            else
+            {
+                //This doesn't update the last user entered URL
+                m_IsBrowserURLChanged = true;
+            }
+        }
+
+        ImGui::SameLine();
+
+        const bool disable_restore_button = !can_restore_last_user_input;
+
+        if (disable_restore_button)
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_OvrlPropsBrowserRestore)))
+        {
+            //This button only changes the input buffer. It doesn't set the url or navigates anywhere.
+            size_t copied_length = data.ConfigStr[configid_str_overlay_browser_url_user_last].copy(buffer_url, IM_ARRAYSIZE(buffer_url) - 1);
+            buffer_url[copied_length] = '\0';
+
+            can_restore_last_user_input = false;
+        }
+
+        if (disable_restore_button)
+            ImGui::PopItemDisabled();
+
+        ImGui::Spacing();
+        ImGui::NextColumn();
+    }
+
+    //Resolution
+    {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsBrowserWidth));
+        ImGui::NextColumn();
+
+        int& user_width = data.ConfigInt[configid_int_overlay_user_width];
+
+        vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("UserWidth") );
+        if (ImGui::SliderWithButtonsInt("UserWidth", user_width, 5, 1, 1, 3840, "%d px"))
+        {
+            user_width = clamp(user_width, 1, 7680);
+
+            //Don't do live updates from text input (can lead to undesirable visuals, especially when removing all text)
+            if (!ImGui::IsAnyTempInputTextActive())
+            {
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_user_width, user_width);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+            }
+        }
+        vr_keyboard.VRKeyboardInputEnd();
+
+        if (ImGui::IsItemDeactivatedAfterEdit())
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_user_width, user_width);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+        }
+
+        ImGui::NextColumn();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsBrowserHeight));
+        ImGui::NextColumn();
+
+        int& user_height = data.ConfigInt[configid_int_overlay_user_height];
+
+        vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("UserHeight") );
+        if (ImGui::SliderWithButtonsInt("UserHeight", user_height, 5, 1, 1, 2160, "%d px"))
+        {
+            user_height = clamp(user_height, 1, 4320);
+
+            if (!ImGui::IsAnyTempInputTextActive())
+            {
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_user_height, user_height);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+            }
+        }
+        vr_keyboard.VRKeyboardInputEnd();
+
+        if (ImGui::IsItemDeactivatedAfterEdit())
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_user_height, user_height);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+        }
+
+        ImGui::NextColumn();
+    }
+
+    //Zoom
+    {
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsBrowserZoom));
+        ImGui::NextColumn();
+
+        float& zoom_level = data.ConfigFloat[configid_float_overlay_browser_zoom];
+
+        vr_keyboard.VRKeyboardInputBegin(ImGui::SliderWithButtonsGetSliderID("ZoomLevel"));
+        if (ImGui::SliderWithButtonsFloatPercentage("ZoomLevel", zoom_level, 5, 1, 50, 400, "%d%%"))
+        {
+            zoom_level = clamp(zoom_level, 0.01f, 8.0f);
+
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_browser_zoom, zoom_level);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+        }
+        vr_keyboard.VRKeyboardInputEnd();
+
+        ImGui::Spacing();
+        ImGui::NextColumn();
+    }
+
+    //Transparent Background
+    {
+        bool& allow_transparency = data.ConfigBool[configid_bool_overlay_browser_allow_transparency];
+        bool& is_allow_transparency_pending = data.ConfigBool[configid_bool_overlay_state_browser_allow_transparency_is_pending];
+
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsBrowserAllowTransparency), &allow_transparency))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_browser_allow_transparency, allow_transparency);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+
+            is_allow_transparency_pending = !is_allow_transparency_pending; //If it was already pending, then the value is back to what's already applied
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_OvrlPropsBrowserAllowTransparencyTip));
+
+        ImGui::NextColumn();
+
+        if ( (is_allow_transparency_pending) && (UIManager::Get()->IsOpenVRLoaded()) )
+        {
+            if (ImGui::Button(TranslationManager::GetString(tstr_OvrlPropsBrowserRecreateContext)))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_browser_recreate_context, config_overlay_id);
+                is_allow_transparency_pending = false;
+            }
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_OvrlPropsBrowserRecreateContextTip));
+        }
+    }
+
+    ImGui::Columns(1);
 }
 
 void WindowOverlayProperties::UpdatePageMainCatAdvanced()
@@ -1079,7 +1380,34 @@ void WindowOverlayProperties::UpdatePageMainCatPerformance()
     ImGui::Columns(2, "ColumnPerformance", false);
     ImGui::SetColumnWidth(0, m_Column0Width);
 
-    UpdateLimiterSetting(true);
+    //Max FPS setting for browser overlays
+    if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_browser)
+    {
+        OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+        VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsBrowserMaxFrameRate));
+        ImGui::NextColumn();
+
+        int& max_fps = data.ConfigInt[configid_int_overlay_browser_max_fps_override];
+        const char* alt_text = (max_fps < 1) ? TranslationManager::GetString(tstr_SettingsBrowserMaxFrameRateOverrideOff) : nullptr;
+
+        vr_keyboard.VRKeyboardInputBegin(ImGui::SliderWithButtonsGetSliderID("MaxFPS"));
+        if (ImGui::SliderWithButtonsInt("MaxFPS", max_fps, 5, 1, 0, 144, (max_fps < 1) ? "" : "%d", 0, nullptr, alt_text))
+        {
+            if (max_fps < 1)
+                max_fps = -1;
+
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_browser_max_fps_override, max_fps);
+        }
+        vr_keyboard.VRKeyboardInputEnd();
+
+        ImGui::NextColumn();
+    }
+    else    //Update limiter for everyhting else
+    {
+        UpdateLimiterSetting(true);
+    }
 
     if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
     {

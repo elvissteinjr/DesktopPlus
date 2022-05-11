@@ -9,6 +9,7 @@
 #include "InterprocessMessaging.h"
 #include "WindowManager.h"
 #include "DesktopPlusWinRT.h"
+#include "DPBrowserAPIClient.h"
 
 #ifdef DPLUS_UI
     #include "UIManager.h"
@@ -122,17 +123,25 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigBool[configid_bool_overlay_enabled]                     = config.ReadBool(section.c_str(),   "Enabled", true);
     data.ConfigInt[configid_int_overlay_desktop_id]                    = config.ReadInt(section.c_str(),    "DesktopID", 0);
     data.ConfigInt[configid_int_overlay_capture_source]                = config.ReadInt(section.c_str(),    "CaptureSource", ovrl_capsource_desktop_duplication);
+    data.ConfigInt[configid_int_overlay_duplication_id]                = config.ReadInt(section.c_str(),    "DuplicationID", -1);
     data.ConfigInt[configid_int_overlay_winrt_desktop_id]              = config.ReadInt(section.c_str(),    "WinRTDesktopID", -2);
     data.ConfigStr[configid_str_overlay_winrt_last_window_title]       = config.ReadString(section.c_str(), "WinRTLastWindowTitle");
     data.ConfigStr[configid_str_overlay_winrt_last_window_class_name]  = config.ReadString(section.c_str(), "WinRTLastWindowClassName");
     data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name]    = config.ReadString(section.c_str(), "WinRTLastWindowExeName");
+    data.ConfigStr[configid_str_overlay_browser_url]                   = config.ReadString(section.c_str(), "BrowserURL");
+    data.ConfigStr[configid_str_overlay_browser_url_user_last]         = config.ReadString(section.c_str(), "BrowserURLUserLast");
+    data.ConfigStr[configid_str_overlay_browser_title]                 = config.ReadString(section.c_str(), "BrowserTitle");
+    data.ConfigBool[configid_bool_overlay_browser_allow_transparency]  = config.ReadBool(section.c_str(),   "BrowserAllowTransparency", false);
     data.ConfigFloat[configid_float_overlay_width]                     = config.ReadInt(section.c_str(),    "Width", 165) / 100.0f;
     data.ConfigFloat[configid_float_overlay_curvature]                 = config.ReadInt(section.c_str(),    "Curvature", 17) / 100.0f;
     data.ConfigFloat[configid_float_overlay_opacity]                   = config.ReadInt(section.c_str(),    "Opacity", 100) / 100.0f;
     data.ConfigFloat[configid_float_overlay_brightness]                = config.ReadInt(section.c_str(),    "Brightness", 100) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_browser_zoom]              = config.ReadInt(section.c_str(),    "BrowserZoom", 100) / 100.0f;
     data.ConfigFloat[configid_float_overlay_offset_right]              = config.ReadInt(section.c_str(),    "OffsetRight", 0) / 100.0f;
     data.ConfigFloat[configid_float_overlay_offset_up]                 = config.ReadInt(section.c_str(),    "OffsetUp", 0) / 100.0f;
     data.ConfigFloat[configid_float_overlay_offset_forward]            = config.ReadInt(section.c_str(),    "OffsetForward", 0) / 100.0f;
+    data.ConfigInt[configid_int_overlay_user_width]                    = config.ReadInt(section.c_str(),    "UserWidth", 1280);
+    data.ConfigInt[configid_int_overlay_user_height]                   = config.ReadInt(section.c_str(),    "UserHeight", 720);
     data.ConfigInt[configid_int_overlay_display_mode]                  = config.ReadInt(section.c_str(),    "DisplayMode", ovrl_dispmode_always);
     data.ConfigInt[configid_int_overlay_origin]                        = config.ReadInt(section.c_str(),    "Origin", ovrl_origin_room);
 
@@ -152,6 +161,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigInt[configid_int_overlay_update_limit_override_mode]    = config.ReadInt(section.c_str(),  "UpdateLimitModeOverride", update_limit_mode_off);
     data.ConfigFloat[configid_float_overlay_update_limit_override_ms]  = config.ReadInt(section.c_str(),  "UpdateLimitMS", 0) / 100.0f;
     data.ConfigInt[configid_int_overlay_update_limit_override_fps]     = config.ReadInt(section.c_str(),  "UpdateLimitFPS", update_limit_fps_30);
+    data.ConfigInt[configid_int_overlay_browser_max_fps_override]      = config.ReadInt(section.c_str(),  "BrowserMaxFPSOverride", -1);
     data.ConfigBool[configid_bool_overlay_input_enabled]               = config.ReadBool(section.c_str(), "InputEnabled", true);
     data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]      = config.ReadBool(section.c_str(), "InputDPlusLPEnabled", true);
     data.ConfigInt[configid_int_overlay_group_id]                      = config.ReadInt(section.c_str(),  "GroupID", 0);
@@ -214,6 +224,12 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
 
         UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
     }
+    else if ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser) && (!DPBrowserAPIClient::Get().IsBrowserAvailable()) )
+    {
+        //Set warning if no browser available but overlays using it are loaded
+        m_ConfigBool[configid_bool_state_misc_browser_used_but_missing] = true;
+        UIManager::Get()->UpdateAnyWarningDisplayedState();
+    }
 
     //Set auto name if there's a new window match
     if (do_set_auto_name)
@@ -247,13 +263,17 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteBool(section.c_str(), "Enabled",                data.ConfigBool[configid_bool_overlay_enabled]);
     config.WriteInt( section.c_str(), "DesktopID",              data.ConfigInt[configid_int_overlay_desktop_id]);
     config.WriteInt( section.c_str(), "CaptureSource",          data.ConfigInt[configid_int_overlay_capture_source]);
+    config.WriteInt( section.c_str(), "DuplicationID",          data.ConfigInt[configid_int_overlay_duplication_id]);
     config.WriteInt( section.c_str(), "Width",              int(data.ConfigFloat[configid_float_overlay_width]           * 100.0f));
     config.WriteInt( section.c_str(), "Curvature",          int(data.ConfigFloat[configid_float_overlay_curvature]       * 100.0f));
     config.WriteInt( section.c_str(), "Opacity",            int(data.ConfigFloat[configid_float_overlay_opacity]         * 100.0f));
     config.WriteInt( section.c_str(), "Brightness",         int(data.ConfigFloat[configid_float_overlay_brightness]      * 100.0f));
+    config.WriteInt( section.c_str(), "BrowserZoom",        int(data.ConfigFloat[configid_float_overlay_browser_zoom]    * 100.0f));
     config.WriteInt( section.c_str(), "OffsetRight",        int(data.ConfigFloat[configid_float_overlay_offset_right]    * 100.0f));
     config.WriteInt( section.c_str(), "OffsetUp",           int(data.ConfigFloat[configid_float_overlay_offset_up]       * 100.0f));
     config.WriteInt( section.c_str(), "OffsetForward",      int(data.ConfigFloat[configid_float_overlay_offset_forward]  * 100.0f));
+    config.WriteInt( section.c_str(), "UserWidth",              data.ConfigInt[configid_int_overlay_user_width]);
+    config.WriteInt( section.c_str(), "UserHeight",             data.ConfigInt[configid_int_overlay_user_height]);
     config.WriteInt( section.c_str(), "DisplayMode",            data.ConfigInt[configid_int_overlay_display_mode]);
     config.WriteInt( section.c_str(), "Origin",                 data.ConfigInt[configid_int_overlay_origin]);
 
@@ -273,6 +293,7 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteInt( section.c_str(), "UpdateLimitModeOverride",data.ConfigInt[configid_int_overlay_update_limit_override_mode]);
     config.WriteInt( section.c_str(), "UpdateLimitMS",      int(data.ConfigFloat[configid_float_overlay_update_limit_override_ms] * 100.0f));
     config.WriteInt( section.c_str(), "UpdateLimitFPS",         data.ConfigInt[configid_int_overlay_update_limit_override_fps]);
+    config.WriteInt( section.c_str(), "BrowserMaxFPSOverride",  data.ConfigInt[configid_int_overlay_browser_max_fps_override]);
     config.WriteBool(section.c_str(), "InputEnabled",           data.ConfigBool[configid_bool_overlay_input_enabled]);
     config.WriteBool(section.c_str(), "InputDPlusLPEnabled",    data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]);
     config.WriteInt( section.c_str(), "GroupID",                data.ConfigInt[configid_int_overlay_group_id]);
@@ -308,7 +329,13 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteString(section.c_str(), "WinRTLastWindowTitle",     last_window_title.c_str());
     config.WriteString(section.c_str(), "WinRTLastWindowClassName", last_window_class_name.c_str());
     config.WriteString(section.c_str(), "WinRTLastWindowExeName",   last_window_exe_name.c_str());
-    config.WriteInt(section.c_str(), "WinRTDesktopID", data.ConfigInt[configid_int_overlay_winrt_desktop_id]);
+    config.WriteInt(   section.c_str(), "WinRTDesktopID",           data.ConfigInt[configid_int_overlay_winrt_desktop_id]);
+
+    //Browser
+    config.WriteString(section.c_str(), "BrowserURL",               data.ConfigStr[configid_str_overlay_browser_url].c_str());
+    config.WriteString(section.c_str(), "BrowserURLUserLast",       data.ConfigStr[configid_str_overlay_browser_url_user_last].c_str());
+    config.WriteString(section.c_str(), "BrowserTitle",             data.ConfigStr[configid_str_overlay_browser_title].c_str());
+    config.WriteBool(  section.c_str(), "BrowserAllowTransparency", data.ConfigBool[configid_bool_overlay_browser_allow_transparency]);
 
     config.WriteString(section.c_str(), "ActionBarOrderCustom", GetActionOrderListString(data.ConfigActionBarOrder).c_str() );
 }
@@ -338,19 +365,21 @@ bool ConfigManager::LoadConfigFromFile()
     //Read color string as unsigned int but store it as signed
     m_ConfigInt[configid_int_interface_background_color] = pun_cast<unsigned int, int>( std::stoul(config.ReadString("Interface", "EnvironmentBackgroundColor", "00000080"), nullptr, 16) );
 
-    m_ConfigInt[configid_int_interface_background_color_display_mode]        = config.ReadInt( "Interface", "EnvironmentBackgroundColorDisplayMode", ui_bgcolor_dispmode_never);
-    m_ConfigBool[configid_bool_interface_dim_ui]                             = config.ReadBool("Interface", "DimUI", false);
-    m_ConfigBool[configid_bool_interface_blank_space_drag_enabled]           = config.ReadBool("Interface", "BlankSpaceDragEnabled", true);
-    m_ConfigFloat[configid_float_interface_last_vr_ui_scale]                 = config.ReadInt( "Interface", "LastVRUIScale", 100) / 100.0f;
-    m_ConfigBool[configid_bool_interface_warning_compositor_res_hidden]      = config.ReadBool("Interface", "WarningCompositorResolutionHidden", false);
-    m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]  = config.ReadBool("Interface", "WarningCompositorQualityHidden",    false);
-    m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]   = config.ReadBool("Interface", "WarningProcessElevationHidden",     false);
-    m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]       = config.ReadBool("Interface", "WarningElevatedModeHidden",         false);
-    m_ConfigBool[configid_bool_interface_warning_welcome_hidden]             = config.ReadBool("Interface", "WarningWelcomeHidden",              false);
-    m_ConfigBool[configid_bool_interface_window_settings_restore_state]      = config.ReadBool("Interface", "WindowSettingsRestoreState",   false);
-    m_ConfigBool[configid_bool_interface_window_properties_restore_state]    = config.ReadBool("Interface", "WindowPropertiesRestoreState", false);
-    m_ConfigBool[configid_bool_interface_window_keyboard_restore_state]      = config.ReadBool("Interface", "WindowKeyboardRestoreState",   true);
-    m_ConfigInt[configid_int_interface_wmr_ignore_vscreens]                  = config.ReadInt( "Interface", "WMRIgnoreVScreens", -1);
+    m_ConfigInt[configid_int_interface_background_color_display_mode]             = config.ReadInt( "Interface", "EnvironmentBackgroundColorDisplayMode", ui_bgcolor_dispmode_never);
+    m_ConfigBool[configid_bool_interface_dim_ui]                                  = config.ReadBool("Interface", "DimUI", false);
+    m_ConfigBool[configid_bool_interface_blank_space_drag_enabled]                = config.ReadBool("Interface", "BlankSpaceDragEnabled", true);
+    m_ConfigFloat[configid_float_interface_last_vr_ui_scale]                      = config.ReadInt( "Interface", "LastVRUIScale", 100) / 100.0f;
+    m_ConfigBool[configid_bool_interface_warning_compositor_res_hidden]           = config.ReadBool("Interface", "WarningCompositorResolutionHidden",   false);
+    m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]       = config.ReadBool("Interface", "WarningCompositorQualityHidden",      false);
+    m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]        = config.ReadBool("Interface", "WarningProcessElevationHidden",       false);
+    m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]            = config.ReadBool("Interface", "WarningElevatedModeHidden",           false);
+    m_ConfigBool[configid_bool_interface_warning_browser_missing_hidden]          = config.ReadBool("Interface", "WarningBrowserMissingHidden",         false);
+    m_ConfigBool[configid_bool_interface_warning_browser_version_mismatch_hidden] = config.ReadBool("Interface", "WarningBrowserVersionMismatchHidden", false);
+    m_ConfigBool[configid_bool_interface_warning_welcome_hidden]                  = config.ReadBool("Interface", "WarningWelcomeHidden",                false);
+    m_ConfigBool[configid_bool_interface_window_settings_restore_state]           = config.ReadBool("Interface", "WindowSettingsRestoreState",   false);
+    m_ConfigBool[configid_bool_interface_window_properties_restore_state]         = config.ReadBool("Interface", "WindowPropertiesRestoreState", false);
+    m_ConfigBool[configid_bool_interface_window_keyboard_restore_state]           = config.ReadBool("Interface", "WindowKeyboardRestoreState",   true);
+    m_ConfigInt[configid_int_interface_wmr_ignore_vscreens]                       = config.ReadInt( "Interface", "WMRIgnoreVScreens", -1);
 
     OverlayManager::Get().SetCurrentOverlayID(m_ConfigInt[configid_int_interface_overlay_current_id]);
 
@@ -406,6 +435,9 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_windows_winrt_auto_focus_scene_app]          = config.ReadBool("Windows", "WinRTAutoFocusSceneApp", false);
     m_ConfigBool[configid_bool_windows_winrt_window_matching_strict]        = config.ReadBool("Windows", "WinRTWindowMatchingStrict", false);
     m_ConfigInt[configid_int_windows_winrt_capture_lost_behavior]           = config.ReadInt( "Windows", "WinRTOnCaptureLost", window_caplost_hide_overlay);
+
+    m_ConfigString[configid_str_browser_extra_arguments]                    = config.ReadString("Browser",     "CommandLineArguments");
+    m_ConfigInt[configid_int_browser_max_fps]                               = config.ReadInt(   "Performance", "BrowserMaxFPS", 60);
 
     m_ConfigInt[configid_int_performance_update_limit_mode]                 = config.ReadInt( "Performance", "UpdateLimitMode", update_limit_mode_off);
     m_ConfigFloat[configid_float_performance_update_limit_ms]               = config.ReadInt( "Performance", "UpdateLimitMS", 0) / 100.0f;
@@ -549,10 +581,18 @@ bool ConfigManager::LoadConfigFromFile()
         m_ConfigInt[configid_int_input_shortcut03_action_id] = action_none;
     }
 
-    //Apply render cursor setting for WinRT Capture
     #ifndef DPLUS_UI
+        //Apply render cursor setting for WinRT Capture
         if (DPWinRT_IsCaptureCursorEnabledPropertySupported())
+        {
             DPWinRT_SetCaptureCursorEnabled(m_ConfigBool[configid_bool_input_mouse_render_cursor]);
+        }
+
+        //Apply global settings for DPBrowser
+        if (DPBrowserAPIClient::Get().IsBrowserAvailable())
+        {
+            DPBrowserAPIClient::Get().DPBrowser_GlobalSetFPS(m_ConfigInt[configid_int_browser_max_fps]);
+        }
     #endif
 
     //Set WindowManager active (no longer gets deactivated during runtime)
@@ -866,6 +906,8 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Interface", "WarningCompositorQualityHidden",        m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]);
     config.WriteBool("Interface", "WarningProcessElevationHidden",         m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]);
     config.WriteBool("Interface", "WarningElevatedModeHidden",             m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]);
+    config.WriteBool("Interface", "WarningBrowserMissingHidden",           m_ConfigBool[configid_bool_interface_warning_browser_missing_hidden]);
+    config.WriteBool("Interface", "WarningBrowserVersionMismatchHidden",   m_ConfigBool[configid_bool_interface_warning_browser_version_mismatch_hidden]);
     config.WriteBool("Interface", "WarningWelcomeHidden",                  m_ConfigBool[configid_bool_interface_warning_welcome_hidden]);
     config.WriteBool("Interface", "WindowSettingsRestoreState",            m_ConfigBool[configid_bool_interface_window_settings_restore_state]);
     config.WriteBool("Interface", "WindowPropertiesRestoreState",          m_ConfigBool[configid_bool_interface_window_properties_restore_state]);
@@ -924,6 +966,8 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Windows", "WinRTAutoFocusSceneApp",       m_ConfigBool[configid_bool_windows_winrt_auto_focus_scene_app]);
     config.WriteBool("Windows", "WinRTWindowMatchingStrict",    m_ConfigBool[configid_bool_windows_winrt_window_matching_strict]);
     config.WriteInt("Windows",  "WinRTOnCaptureLost",           m_ConfigInt[configid_int_windows_winrt_capture_lost_behavior]);
+
+    config.WriteInt( "Browser", "BrowserMaxFPS",                m_ConfigInt[configid_int_browser_max_fps]);
     
     config.WriteInt( "Performance", "UpdateLimitMode",                      m_ConfigInt[configid_int_performance_update_limit_mode]);
     config.WriteInt( "Performance", "UpdateLimitMS",                    int(m_ConfigFloat[configid_float_performance_update_limit_ms] * 100.0f));
@@ -1225,6 +1269,14 @@ void ConfigManager::ResetConfigStateValues()
     std::fill(std::begin(m_ConfigBool) + configid_bool_state_overlay_dragmode,           std::begin(m_ConfigBool) + configid_bool_state_misc_process_started_by_steam, false);
     std::fill(std::begin(m_ConfigInt)  + configid_int_state_overlay_current_id_override, std::begin(m_ConfigInt)  + configid_int_state_performance_duplication_fps,    -1);
     //configid_int_state_interface_desktop_count is not reset
+
+    //Also reset overlay states
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+        std::fill(std::begin(data.ConfigBool) + configid_bool_overlay_state_browser_allow_transparency_is_pending, 
+                  std::begin(data.ConfigBool) + configid_bool_overlay_state_browser_nav_is_loading, false);
+    }
 }
 
 ActionManager& ConfigManager::GetActionManager()

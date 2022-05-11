@@ -50,7 +50,10 @@ enum IPCActionID
     ipcact_overlay_transform_sync,    //Sent by the UI application to request a sync of overlay transforms. lParam is ID of overlay to sync transform of (or -1 for full sync)
     ipcact_overlay_swap,              //Sent by the UI application to swap two overlays. lParam is the ID of overlay to swap with the current overlay
     ipcact_overlay_gaze_fade_auto,    //Sent by the UI application to automatically configure gaze fade values. No data in lParam
+    ipcact_overlay_make_standalone,   //Sent by the UI application to converted overlays with duplication ID to standalone ones. lParam is ID of overlay to convert (typically the active ID)
     ipcact_winrt_thread_error,        //Sent by dashboard application when an error occured in a Graphics Capture thread. lParam is HRESULT
+    ipcact_browser_navigate_to_url,   //Sent by UI application to have the overlay's browser navigate to configid_str_overlay_browser_url. lParam is ID of overlay
+    ipcact_browser_recreate_context,  //Sent by UI application to have the overlay's browser context be recreated. lParam is ID of overlay
     ipcact_winmanager_drag_start,     //Sent by dashboard application's WindowManager thread to main thread to start an overlay drag. lParam is ID of overlay to drag
     ipcact_winmanager_winlist_add,    //Sent by either application's WindowManager thread to main thread to add a window to the window list. lParam is HWND
     ipcact_winmanager_winlist_update, //Sent by WindowManager thread to main thread to update a window from the window list. lParam is HWND

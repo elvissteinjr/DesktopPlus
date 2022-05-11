@@ -24,6 +24,7 @@ enum ConfigID_Bool
     configid_bool_overlay_name_custom,
     configid_bool_overlay_enabled,
     configid_bool_overlay_crop_enabled,
+    configid_bool_overlay_browser_allow_transparency,
     configid_bool_overlay_3D_enabled,
     configid_bool_overlay_3D_swapped,
     configid_bool_overlay_gazefade_enabled,
@@ -34,6 +35,10 @@ enum ConfigID_Bool
     configid_bool_overlay_floatingui_desktops_enabled,
     configid_bool_overlay_actionbar_enabled,
     configid_bool_overlay_actionbar_order_use_global,
+    configid_bool_overlay_state_browser_allow_transparency_is_pending,
+    configid_bool_overlay_state_browser_nav_can_go_back,
+    configid_bool_overlay_state_browser_nav_can_go_forward,
+    configid_bool_overlay_state_browser_nav_is_loading,
     configid_bool_overlay_MAX,
     configid_bool_interface_no_ui,
     configid_bool_interface_no_notification_icon,
@@ -46,6 +51,8 @@ enum ConfigID_Bool
     configid_bool_interface_warning_compositor_quality_hidden,
     configid_bool_interface_warning_process_elevation_hidden,
     configid_bool_interface_warning_elevated_mode_hidden,
+    configid_bool_interface_warning_browser_missing_hidden,
+    configid_bool_interface_warning_browser_version_mismatch_hidden,
     configid_bool_interface_warning_welcome_hidden,
     configid_bool_interface_window_settings_restore_state,
     configid_bool_interface_window_properties_restore_state,
@@ -93,6 +100,8 @@ enum ConfigID_Bool
     configid_bool_state_performance_gpu_copy_active,
     configid_bool_state_misc_process_elevated,                //True if the dashboard application is running with admin privileges
     configid_bool_state_misc_elevated_mode_active,            //True if the elevated mode process is running
+    configid_bool_state_misc_browser_used_but_missing,        //True if the browser capture source is used, but browser component isn't available
+    configid_bool_state_misc_browser_version_mismatch,        //True if the browser is available, but the API version isn't compatible
     configid_bool_state_misc_process_started_by_steam,
     configid_bool_state_misc_uiaccess_enabled,
     configid_bool_MAX
@@ -102,7 +111,10 @@ enum ConfigID_Int
 {
     configid_int_overlay_desktop_id,                        //-1 is combined desktop, -2 is a default value that initializes crop to desktop 0
     configid_int_overlay_capture_source,
+    configid_int_overlay_duplication_id,                    //-1 is none, overlay id, only used for browser overlays
     configid_int_overlay_winrt_desktop_id,                  //-1 is combined desktop, -2 is unset
+    configid_int_overlay_user_width,
+    configid_int_overlay_user_height,
     configid_int_overlay_crop_x,
     configid_int_overlay_crop_y,
     configid_int_overlay_crop_width,
@@ -112,6 +124,7 @@ enum ConfigID_Int
     configid_int_overlay_origin,
     configid_int_overlay_update_limit_override_mode,
     configid_int_overlay_update_limit_override_fps,
+    configid_int_overlay_browser_max_fps_override,
     configid_int_overlay_group_id,
     configid_int_overlay_state_content_width,
     configid_int_overlay_state_content_height,
@@ -139,6 +152,7 @@ enum ConfigID_Int
     configid_int_input_mouse_dbl_click_assist_duration_ms,
     configid_int_windows_winrt_dragging_mode,
     configid_int_windows_winrt_capture_lost_behavior,
+    configid_int_browser_max_fps,               //Browser overlays use this instead of update limits
     configid_int_performance_update_limit_mode,
     configid_int_performance_update_limit_fps,              //This is the enum ID, not the actual number. See ApplySettingUpdateLimiter() code for more info
     configid_int_state_overlay_current_id_override,         //This is used to send config changes to overlays which aren't the current, mainly to avoid the UI switching around (-1 is disabled)
@@ -161,6 +175,7 @@ enum ConfigID_Float
     configid_float_overlay_curvature,
     configid_float_overlay_opacity,
     configid_float_overlay_brightness,
+    configid_float_overlay_browser_zoom,
     configid_float_overlay_offset_right,
     configid_float_overlay_offset_up,
     configid_float_overlay_offset_forward,
@@ -193,9 +208,13 @@ enum ConfigID_String
     configid_str_overlay_winrt_last_window_title,
     configid_str_overlay_winrt_last_window_class_name,
     configid_str_overlay_winrt_last_window_exe_name,
+    configid_str_overlay_browser_url,                       //Current URL
+    configid_str_overlay_browser_url_user_last,             //Last manually entered URL
+    configid_str_overlay_browser_title,
     configid_str_overlay_MAX,
     configid_str_interface_language_file,
     configid_str_input_keyboard_layout_file,
+    configid_str_browser_extra_arguments,                   //Extra command-line arguments passed to DPBrowser executable
     configid_str_state_action_value_string,
     configid_str_state_ui_keyboard_string,                  //SteamVR keyboard input for the UI application
     configid_str_state_keyboard_string,                     //VR keyboard input for the dashboard application
@@ -209,7 +228,8 @@ enum OverlayCaptureSource
 {
     ovrl_capsource_desktop_duplication,
     ovrl_capsource_winrt_capture,
-    ovrl_capsource_ui
+    ovrl_capsource_ui,
+    ovrl_capsource_browser
 };
 
 enum Overlay3DMode

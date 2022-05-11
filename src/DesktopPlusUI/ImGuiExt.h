@@ -81,7 +81,11 @@ namespace ImGui
     bool IsAnyItemActiveOrDeactivated();
 
     //Returns true if any InputText is active
+    //Use IsAnyTempInputTextActive() to handle widgets creating temp InputTexts instead as the text state ID doesn't get cleared and it can't tell normal use and text input apart
     bool IsAnyInputTextActive();
+
+    //Returns true if any temp InputText (created for sliders and such) is active
+    bool IsAnyTempInputTextActive();
 
     //Returns true if any mouse button is clicked
     bool IsAnyMouseClicked();

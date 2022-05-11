@@ -105,6 +105,7 @@
   <ItemGroup>
     <ClCompile Include="..\Shared\Actions.cpp" />
     <ClCompile Include="..\Shared\ConfigManager.cpp" />
+    <ClCompile Include="..\Shared\DPBrowserAPIClient.cpp" />
     <ClCompile Include="..\Shared\Ini.cpp" />
     <ClCompile Include="..\Shared\InterprocessMessaging.cpp" />
     <ClCompile Include="..\Shared\Matrices.cpp" />
@@ -131,6 +132,8 @@
   <ItemGroup>
     <ClInclude Include="..\Shared\Actions.h" />
     <ClInclude Include="..\Shared\ConfigManager.h" />
+    <ClInclude Include="..\Shared\DPBrowserAPI.h" />
+    <ClInclude Include="..\Shared\DPBrowserAPIClient.h" />
     <ClInclude Include="..\Shared\DPRect.h" />
     <ClInclude Include="..\Shared\Ini.h" />
     <ClInclude Include="..\Shared\InterprocessMessaging.h" />

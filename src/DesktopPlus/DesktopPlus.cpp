@@ -11,6 +11,7 @@
 #include <userenv.h>
 
 #include "DesktopPlusWinRT.h"
+#include "DPBrowserAPIClient.h"
 
 #include "Util.h"
 #include "DisplayManager.h"
@@ -260,11 +261,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         return 0;
     }
 
-    //Allow IPC messages even when elevated
-    IPCManager::Get().DisableUIPForRegisteredMessages(WindowHandle);
-
     //Init WinRT DLL
     DPWinRT_Init();
+
+    //Init BrowserClientAPI (this doesn't start the browser process, only checks for presence)
+    DPBrowserAPIClient::Get().Init();
+
+    //Allow IPC messages even when elevated
+    IPCManager::Get().DisableUIPForRegisteredMessages(WindowHandle);
 
     THREADMANAGER ThreadMgr;
     OutputManager OutMgr(PauseDuplicationEvent, ResumeDuplicationEvent);
@@ -479,6 +483,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             }
         }
     }
+
+    //Quit Browser processes if they're running (we do this early since the browser doesn't poll for VREvent_Quit itself)
+    DPBrowserAPIClient::Get().Quit();
 
     // Make sure all other threads have exited
     if (SetEvent(TerminateThreadsEvent))

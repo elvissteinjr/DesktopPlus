@@ -10,6 +10,7 @@
 #include "OverlayManager.h"
 #include "Util.h"
 #include "WindowManager.h"
+#include "DPBrowserAPIClient.h"
 
 //This one holds mostly constant data, but depends on how the application was launched
 static UITextureSpaces g_UITextureSpaces;
@@ -375,23 +376,30 @@ vr::EVRInitError UIManager::InitOverlay()
 
 void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
 {
+    //Handle messages sent by browser process in the APIClient
+    if (msg.message == DPBrowserAPIClient::Get().GetRegisteredMessageID())
+    {
+        DPBrowserAPIClient::Get().HandleIPCMessage(msg);
+        return;
+    }
+
+    //Apply overlay id override if needed
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    int overlay_override_id = ConfigManager::GetValue(configid_int_state_overlay_current_id_override);
+
+    if (overlay_override_id != -1)
+    {
+        OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
+    }
+
     //Config strings come as WM_COPYDATA
     if (msg.message == WM_COPYDATA)
     {
         COPYDATASTRUCT* pcds = (COPYDATASTRUCT*)msg.lParam;
-        
+
         //Arbitrary size limit to prevent some malicous applications from sending bad data
         if ( (pcds->dwData < configid_str_MAX) && (pcds->cbData <= 4096) ) 
         {
-            //Apply overlay id override if needed
-            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-            int overlay_override_id = ConfigManager::GetValue(configid_int_state_overlay_current_id_override);
-
-            if (overlay_override_id != -1)
-            {
-                OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
-            }
-
             std::string copystr((char*)pcds->lpData, pcds->cbData); //We rely on the data length. The data is sent without the NUL byte
 
             ConfigID_String str_id = (ConfigID_String)pcds->dwData;
@@ -410,12 +418,16 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     break;
                 }
             }
+        }
+        else if ( (pcds->dwData >= dpbrowser_ipcstr_MIN) && (pcds->dwData < dpbrowser_ipcstr_MAX) ) //Probably a string for DPBrowserAPIClient
+        {
+            DPBrowserAPIClient::Get().HandleIPCMessage(msg);
+        }
 
-            //Restore overlay id override
-            if (overlay_override_id != -1)
-            {
-                OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
-            }
+        //Restore overlay id override
+        if (overlay_override_id != -1)
+        {
+            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
         }
 
         return;
@@ -566,15 +578,6 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
         }
         case ipcmsg_set_config:
         {
-            //Apply overlay id override if needed
-            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-            int overlay_override_id = ConfigManager::GetValue(configid_int_state_overlay_current_id_override);
-
-            if (overlay_override_id != -1)
-            {
-                OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
-            }
-
             if (msg.wParam < configid_bool_MAX)
             {
                 ConfigID_Bool bool_id = (ConfigID_Bool)msg.wParam;
@@ -586,6 +589,8 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     case configid_bool_state_misc_process_elevated:
                     case configid_bool_state_misc_elevated_mode_active:
                     case configid_bool_state_misc_uiaccess_enabled:
+                    case configid_bool_state_misc_browser_version_mismatch:
+                    case configid_bool_state_misc_browser_used_but_missing:
                     {
                         UpdateAnyWarningDisplayedState();
                         break;
@@ -712,14 +717,14 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                 }
             }
 
-            //Restore overlay id override
-            if (overlay_override_id != -1)
-            {
-                OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
-            }
-
             break;
         }
+    }
+
+    //Restore overlay id override
+    if (overlay_override_id != -1)
+    {
+        OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
     }
 }
 
@@ -913,9 +918,10 @@ void UIManager::SendUIIntersectionMaskToDashboardApp(std::vector<vr::VROverlayIn
     last_tick = ::GetTickCount64();
 }
 
-void UIManager::RepeatFrame()
+void UIManager::RepeatFrame(int extra_frame_count)
 {
-    m_RepeatFrame = 2;
+    if (m_RepeatFrame < extra_frame_count)
+        m_RepeatFrame = extra_frame_count;
 }
 
 bool UIManager::GetRepeatFrame() const
@@ -1193,6 +1199,20 @@ void UIManager::UpdateAnyWarningDisplayedState()
 
     //Elevated mode warning (this is different from elevated dashboard process)
     if ( (!ConfigManager::GetValue(configid_bool_interface_warning_elevated_mode_hidden)) && (ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active)) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //Browser missing warning
+    if ( (!ConfigManager::GetValue(configid_bool_interface_warning_browser_missing_hidden)) && (ConfigManager::GetValue(configid_bool_state_misc_browser_used_but_missing)) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //Browser version mismatch warning
+    if ( (!ConfigManager::GetValue(configid_bool_interface_warning_browser_version_mismatch_hidden)) && (ConfigManager::GetValue(configid_bool_state_misc_browser_version_mismatch)) )
     {
         m_HasAnyWarning = true;
         return;

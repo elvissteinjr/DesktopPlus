@@ -7,6 +7,7 @@
 #include "UIManager.h"
 #include "OverlayManager.h"
 #include "DesktopPlusWinRT.h"
+#include "DPBrowserAPIClient.h"
 
 
 WindowOverlayBar::WindowOverlayBar() : m_Visible(true),
@@ -301,7 +302,7 @@ void WindowOverlayBar::MenuOverlayButton(unsigned int overlay_id, ImVec2 pos, bo
         if (ImGui::Selectable(TranslationManager::GetString(tstr_OverlayBarOvrlClone), false))
         {
             //Copy data of overlay and add a new one based on it
-            OverlayManager::Get().DuplicateOverlay(OverlayManager::Get().GetConfigData(overlay_id));
+            OverlayManager::Get().DuplicateOverlay(OverlayManager::Get().GetConfigData(overlay_id), overlay_id);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_duplicate, (int)overlay_id);
 
             HideMenus();
@@ -450,7 +451,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
                     //Take the average between HMD and controller position (at controller's height) and rotate towards that
                     Matrix4 mat_hmd(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
                     Vector3 pos = mat_hmd.getTranslation();
-                    
+
                     if ( (device_index < vr::k_unMaxTrackedDeviceCount) && (poses[device_index].bPoseIsValid) ) //If pointer doesn't have a pose, it falls back to rotating to HMD
                     {
                         Matrix4 mat_controller(poses[device_index].mDeviceToAbsoluteTracking);
@@ -478,7 +479,17 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
             new_overlay_desktop_id = -3;
         }
 
-        //Create new overlay if desktop or UI selectables were triggered
+        if (DPBrowserAPIClient::Get().IsBrowserAvailable())
+        {
+            ImGui::Selectable(TranslationManager::GetString(tstr_SourceBrowser));
+
+            if (ImGui::IsItemActivated())
+            {
+                new_overlay_desktop_id = -4;
+            }
+        }
+
+        //Create new overlay if desktop or UI/Browser selectables were triggered
         if (new_overlay_desktop_id != -255)
         {
             vr::TrackedDeviceIndex_t device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
@@ -505,8 +516,18 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
             ConfigManager::SetValue(configid_int_state_laser_pointer_device_hint, (int)device_index);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_laser_pointer_device_hint, (int)device_index);
 
+            //Choose capture source
+            OverlayCaptureSource capsource;
+
+            switch (new_overlay_desktop_id)
+            {
+                case -3: capsource = ovrl_capsource_ui;      break;
+                case -4: capsource = ovrl_capsource_browser; break;
+                default: capsource = ovrl_capsource_desktop_duplication;
+            }
+
             //Add overlay and sent to dashboard app
-            OverlayManager::Get().AddOverlay((new_overlay_desktop_id == -3) ? ovrl_capsource_ui : ovrl_capsource_desktop_duplication, new_overlay_desktop_id);
+            OverlayManager::Get().AddOverlay(capsource, new_overlay_desktop_id);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new_drag, MAKELPARAM(new_overlay_desktop_id, int(pointer_distance * 100.0f) ));
 
             HideMenus();

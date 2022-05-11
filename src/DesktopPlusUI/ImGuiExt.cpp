@@ -880,6 +880,12 @@ namespace ImGui
         return ( (g.ActiveId != 0) && (g.ActiveId == g.InputTextState.ID) );
     }
 
+    bool IsAnyTempInputTextActive()
+    {
+        const ImGuiContext& g = *GImGui;
+        return ( (g.ActiveId != 0) && (g.ActiveId == g.InputTextState.ID) && (g.TempInputId == g.InputTextState.ID) );
+    }
+
     bool IsAnyMouseClicked()
     {
         const ImGuiContext& g = *GImGui;

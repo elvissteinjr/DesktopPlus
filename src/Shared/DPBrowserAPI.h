@@ -1,0 +1,88 @@
+#pragma once
+
+#ifndef NOMINMAX
+    #define NOMINMAX
+#endif
+#include <windows.h>
+
+#include "openvr.h"
+
+static const int k_lDPBrowserAPIVersion = 1;
+LPCWSTR const g_WindowClassNameBrowserApp        = L"elvdesktopbrowser";
+LPCWSTR const g_WindowMessageNameBrowserApp      = L"WMIPC_DPLUS_BrowserCommand";
+const char* const g_AppKeyBrowserApp             = "elvissteinjr.DesktopPlusBrowser";
+const char* const g_RelativeWorkingDirBrowserApp = "DesktopPlusBrowser";                //Path relative to Desktop+ application directory
+const char* const g_ExeNameBrowserApp            = "DesktopPlusBrowser.exe";            //Path relative to g_RelativeWorkingDirBrowserApp
+
+enum DPBrowserICPCommandID
+{
+    dpbrowser_ipccmd_get_api_version,           //No value in lParam, use SendMessage(), gets the supported API version from the browser process
+    dpbrowser_ipccmd_set_overlay_target,        //lParam = overlay_handle, sets target overlay for commands that use lParam for other arguments | Also sent by browser process
+    dpbrowser_ipccmd_start_browser,             //lParam = use_transparent_background bool, uses set_overlay_target & dpbrowser_ipcstr_url arg
+    dpbrowser_ipccmd_duplicate_browser_output,  //lParam = overlay_handle_dst, uses set_overlay_target arg (overlay_handle_src)
+    dpbrowser_ipccmd_pause_browser,             //lParam = pause bool, uses set_overlay_target arg
+    dpbrowser_ipccmd_recreate_browser,          //lParam = use_transparent_background bool, uses set_overlay_target & dpbrowser_ipcstr_url arg
+    dpbrowser_ipccmd_stop_browser,              //lParam = overlay_handle
+    dpbrowser_ipccmd_set_url,                   //lParam = overlay_handle, uses dpbrowser_ipcstr_url arg
+    dpbrowser_ipccmd_set_resoution,             //lParam = Width & Height (in low/high word order, signed), uses set_overlay_target arg
+    dpbrowser_ipccmd_set_fps,                   //lParam = fps, uses set_overlay_target arg
+    dpbrowser_ipccmd_set_zoom,                  //lParam = Zoom (float packed as LPARAM), uses set_overlay_target arg
+    dpbrowser_ipccmd_mouse_move,                //lParam = X & Y (in low/high word order, signed), uses set_overlay_target arg
+    dpbrowser_ipccmd_mouse_leave,               //lParam = overlay_handle
+    dpbrowser_ipccmd_mouse_down,                //lParam = EVRMouseButton, uses set_overlay_target arg
+    dpbrowser_ipccmd_mouse_up,                  //lParam = EVRMouseButton, uses set_overlay_target arg
+    dpbrowser_ipccmd_scroll,                    //lParam = X-Delta & Y-Delta (in low/high word order, floats packed as DWORDs), uses set_overlay_target arg
+    dpbrowser_ipccmd_go_back,                   //lParam = overlay_handle
+    dpbrowser_ipccmd_go_forward,                //lParam = overlay_handle
+    dpbrowser_ipccmd_refresh,                   //lParam = overlay_handle, will stop if the page is currently loading
+    dpbrowser_ipccmd_global_set_fps,            //lParam = fps, global setting
+    dpbrowser_ipccmd_notify_nav_state,          //lParam = DPBrowserIPCNavStateFlags, uses set_overlay_target arg | Sent by browser process to UI process
+    dpbrowser_ipccmd_notify_url_changed,        //lParam = overlay_handle, uses dpbrowser_ipcstr_url arg | Sent by browser process to UI process
+    dpbrowser_ipccmd_notify_title_changed,      //lParam = overlay_handle, uses dpbrowser_ipcstr_title arg | Sent by browser process to UI process
+    dpbrowser_ipccmd_notify_fps,                //lParam = fps, uses set_overlay_target arg | Sent by browser process to UI process
+    dpbrowser_ipccmd_notify_lpointer_haptics,   //No value in lParam, triggers short UI interaction burst on primary device | Sent by browser process to dashboard process
+};
+
+enum DPBrowserICPStringID
+{
+    dpbrowser_ipcstr_MIN = 1000,                //Start IDs at a higher value to avoid conflicts with config string messages on a client
+    dpbrowser_ipcstr_url = 1000,                //URL string for upcoming command/notification
+    dpbrowser_ipcstr_title,                     //Title string for upcoming notification
+    dpbrowser_ipcstr_MAX
+};
+
+enum DPBrowserIPCNavStateFlags : unsigned char
+{
+    dpbrowser_ipcnavstate_flag_can_go_back    = 1 << 0,
+    dpbrowser_ipcnavstate_flag_can_go_forward = 1 << 1,
+    dpbrowser_ipcnavstate_flag_is_loading     = 1 << 2,
+    dpbrowser_ipcnavstate_flag_MAX            = 1 << 7
+};
+
+//Common interface for implemented by DPBrowserAPIServer and DPBrowserAPIClient
+class DPBrowserAPI
+{
+    public:
+        virtual void DPBrowser_StartBrowser(vr::VROverlayHandle_t overlay_handle, const std::string& url, bool use_transparent_background) = 0;
+        virtual void DPBrowser_DuplicateBrowserOutput(vr::VROverlayHandle_t overlay_handle_src, vr::VROverlayHandle_t overlay_handle_dst) = 0;
+        virtual void DPBrowser_PauseBrowser(vr::VROverlayHandle_t overlay_handle, bool pause) = 0;
+        virtual void DPBrowser_RecreateBrowser(vr::VROverlayHandle_t overlay_handle, bool use_transparent_background) = 0;
+        virtual void DPBrowser_StopBrowser(vr::VROverlayHandle_t overlay_handle) = 0;
+
+        virtual void DPBrowser_SetURL(vr::VROverlayHandle_t overlay_handle, const std::string& url) = 0;
+        virtual void DPBrowser_SetResolution(vr::VROverlayHandle_t overlay_handle, int width, int height) = 0;
+        virtual void DPBrowser_SetFPS(vr::VROverlayHandle_t overlay_handle, int fps) = 0;
+        virtual void DPBrowser_SetZoomLevel(vr::VROverlayHandle_t overlay_handle, float zoom_level) = 0;
+
+        virtual void DPBrowser_MouseMove(vr::VROverlayHandle_t overlay_handle, int x, int y) = 0;
+        virtual void DPBrowser_MouseLeave(vr::VROverlayHandle_t overlay_handle) = 0;
+        virtual void DPBrowser_MouseDown(vr::VROverlayHandle_t overlay_handle, vr::EVRMouseButton button) = 0;
+        virtual void DPBrowser_MouseUp(vr::VROverlayHandle_t overlay_handle, vr::EVRMouseButton button) = 0;
+        virtual void DPBrowser_Scroll(vr::VROverlayHandle_t overlay_handle, float x_delta, float y_delta) = 0;
+
+        virtual void DPBrowser_GoBack(vr::VROverlayHandle_t overlay_handle) = 0;
+        virtual void DPBrowser_GoForward(vr::VROverlayHandle_t overlay_handle) = 0;
+        virtual void DPBrowser_Refresh(vr::VROverlayHandle_t overlay_handle) = 0;
+
+        virtual void DPBrowser_GlobalSetFPS(int fps) = 0;
+};

@@ -9,6 +9,7 @@
 #include "InterprocessMessaging.h"
 #include "Util.h"
 #include "DesktopPlusWinRT.h"
+#include "DPBrowserAPIClient.h"
 
 WindowSettings::WindowSettings() :
     m_PageStackPos(0),
@@ -311,6 +312,56 @@ void WindowSettings::UpdateWarnings()
         }
     }
 
+    //Browser missing warning
+    {
+        bool& hide_browser_missing_warning = ConfigManager::GetRef(configid_bool_interface_warning_browser_missing_hidden);
+
+        if ( (!hide_browser_missing_warning) && (ConfigManager::GetValue(configid_bool_state_misc_browser_used_but_missing)) )
+        {
+            SelectableWarning("##WarningBrowserMissing", "DontShowAgain5", TranslationManager::GetString(tstr_SettingsWarningBrowserMissing));
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DontShowAgain5"))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
+                {
+                    hide_browser_missing_warning = true;
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
+    //Browser mismatch warning
+    {
+        bool& hide_browser_version_mismatch_warning = ConfigManager::GetRef(configid_bool_interface_warning_browser_version_mismatch_hidden);
+
+        if ( (!hide_browser_version_mismatch_warning) && (ConfigManager::GetValue(configid_bool_state_misc_browser_version_mismatch)) )
+        {
+            SelectableWarning("##WarningBrowserMismatch", "DontShowAgain6", TranslationManager::GetString(tstr_SettingsWarningBrowserMismatch));
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DontShowAgain6"))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
+                {
+                    hide_browser_version_mismatch_warning = true;
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
     //Focused process elevation warning
     {
         if (  (ConfigManager::GetValue(configid_bool_state_window_focused_process_elevated)) && (!ConfigManager::GetValue(configid_bool_state_misc_process_elevated)) && 
@@ -485,6 +536,7 @@ void WindowSettings::UpdatePageMain()
         tstr_SettingsCatMouse,
         tstr_SettingsCatLaserPointer,
         tstr_SettingsCatWindowOverlays,
+        tstr_SettingsCatBrowser,
         tstr_SettingsCatPerformance,
         tstr_SettingsCatVersionInfo,
         tstr_SettingsCatWarnings,
@@ -535,6 +587,7 @@ void WindowSettings::UpdatePageMain()
     UpdatePageMainCatActions();
     UpdatePageMainCatInput();
     UpdatePageMainCatWindows();
+    UpdatePageMainCatBrowser();
     UpdatePageMainCatPerformance();
     UpdatePageMainCatMisc();
 
@@ -1062,6 +1115,40 @@ void WindowSettings::UpdatePageMainCatWindows()
     }
 }
 
+void WindowSettings::UpdatePageMainCatBrowser()
+{
+    //Browser
+    if (DPBrowserAPIClient::Get().IsBrowserAvailable())
+    {
+        VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
+        ImGui::Spacing();
+        m_ScrollMainCatPos[wndsettings_cat_browser] = ImGui::GetCursorPosY();
+
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatBrowser));
+
+        ImGui::Columns(2, "ColumnBrowser", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsBrowserMaxFrameRate));
+        ImGui::NextColumn();
+
+        int& max_fps = ConfigManager::Get().GetRef(configid_int_browser_max_fps);
+
+        vr_keyboard.VRKeyboardInputBegin(ImGui::SliderWithButtonsGetSliderID("MaxFPS"));
+        if (ImGui::SliderWithButtonsInt("MaxFPS", max_fps, 5, 1, 1, 144, "%d"))
+        {
+            if (max_fps < 1)
+                max_fps = 1;
+
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_browser_max_fps, max_fps);
+        }
+        vr_keyboard.VRKeyboardInputEnd();
+
+        ImGui::Columns(1);
+    }
+}
+
 void WindowSettings::UpdatePageMainCatPerformance()
 {
     //Performance
@@ -1131,7 +1218,7 @@ void WindowSettings::UpdatePageMainCatMisc()
         ImGui::Columns(2, "ColumnVersion", false);
         ImGui::SetColumnWidth(0, m_Column0Width);
 
-        ImGui::TextUnformatted("Desktop+ NewUI Preview 5");
+        ImGui::TextUnformatted("Desktop+ NewUI Preview 6");
 
         ImGui::Columns(1);
     }
@@ -1155,6 +1242,10 @@ void WindowSettings::UpdatePageMainCatMisc()
             warning_hidden_count++;
         if (ConfigManager::GetValue(configid_bool_interface_warning_elevated_mode_hidden))
             warning_hidden_count++;
+        if (ConfigManager::GetValue(configid_bool_interface_warning_browser_missing_hidden))
+            warning_hidden_count++;
+        if (ConfigManager::GetValue(configid_bool_interface_warning_browser_version_mismatch_hidden))
+            warning_hidden_count++;
         if (ConfigManager::GetValue(configid_bool_interface_warning_welcome_hidden))
             warning_hidden_count++;
 
@@ -1166,11 +1257,13 @@ void WindowSettings::UpdatePageMainCatMisc()
 
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsWarningsReset)))
         {
-            ConfigManager::SetValue(configid_bool_interface_warning_compositor_quality_hidden, false);
-            ConfigManager::SetValue(configid_bool_interface_warning_compositor_res_hidden,     false);
-            ConfigManager::SetValue(configid_bool_interface_warning_process_elevation_hidden,  false);
-            ConfigManager::SetValue(configid_bool_interface_warning_elevated_mode_hidden,      false);
-            ConfigManager::SetValue(configid_bool_interface_warning_welcome_hidden,            false);
+            ConfigManager::SetValue(configid_bool_interface_warning_compositor_quality_hidden,       false);
+            ConfigManager::SetValue(configid_bool_interface_warning_compositor_res_hidden,           false);
+            ConfigManager::SetValue(configid_bool_interface_warning_process_elevation_hidden,        false);
+            ConfigManager::SetValue(configid_bool_interface_warning_elevated_mode_hidden,            false);
+            ConfigManager::SetValue(configid_bool_interface_warning_browser_missing_hidden,          false);
+            ConfigManager::SetValue(configid_bool_interface_warning_browser_version_mismatch_hidden, false);
+            ConfigManager::SetValue(configid_bool_interface_warning_welcome_hidden,                  false);
 
             UIManager::Get()->UpdateAnyWarningDisplayedState();
         }

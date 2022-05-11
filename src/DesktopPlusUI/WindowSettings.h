@@ -24,6 +24,7 @@ enum WindowSettingsMainCategory
     wndsettings_cat_mouse,
     wndsettings_cat_laser_pointer,
     wndsettings_cat_window_overlays,
+    wndsettings_cat_browser,
     wndsettings_cat_performance,
     wndsettings_cat_version_info,
     wndsettings_cat_warnings,
@@ -74,6 +75,7 @@ class WindowSettings : public FloatingWindow
         void UpdatePageMainCatProfiles();
         void UpdatePageMainCatInput();
         void UpdatePageMainCatWindows();
+        void UpdatePageMainCatBrowser();
         void UpdatePageMainCatPerformance();
         void UpdatePageMainCatMisc();
         void UpdatePagePersistentUI();

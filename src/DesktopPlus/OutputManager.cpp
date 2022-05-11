@@ -13,6 +13,7 @@ using namespace DirectX;
 #include "Util.h"
 
 #include "DesktopPlusWinRT.h"
+#include "DPBrowserAPIClient.h"
 
 static OutputManager* g_OutputManager; //May not always exist, but there also should never be two, so this is fine
 
@@ -933,8 +934,33 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     return ret;
 }
 
+void OutputManager::BusyUpdate()
+{
+    //Improve responsiveness of temp drag during overlay creation when applying capture source can take a bit longer (i.e. browser overlays)
+    if ( (m_OverlayDragger.IsDragActive()) && (ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) )
+    {
+        m_OverlayDragger.DragUpdate();
+    }
+}
+
 bool OutputManager::HandleIPCMessage(const MSG& msg)
 {
+    //Handle messages sent by browser process in the APIClient
+    if (msg.message == DPBrowserAPIClient::Get().GetRegisteredMessageID())
+    {
+        DPBrowserAPIClient::Get().HandleIPCMessage(msg);
+        return false;
+    }
+
+    //Apply overlay id override if needed
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    int overlay_override_id = ConfigManager::GetValue(configid_int_state_overlay_current_id_override);
+
+    if (overlay_override_id != -1)
+    {
+        OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
+    }
+
     //Config strings come as WM_COPYDATA
     if (msg.message == WM_COPYDATA)
     {
@@ -976,20 +1002,17 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
             }
         }
 
+        //Restore overlay id override
+        if (overlay_override_id != -1)
+        {
+            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+        }
+
         return false;
     }
 
     bool reset_mirroring = false;
     IPCMsgID msgid = IPCManager::Get().GetIPCMessageID(msg.message);
-
-    //Apply overlay id override if needed
-    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-    int overlay_override_id = ConfigManager::GetValue(configid_int_state_overlay_current_id_override);
-
-    if (overlay_override_id != -1)
-    {
-        OverlayManager::Get().SetCurrentOverlayID(overlay_override_id);
-    }
 
     switch (msgid)
     {
@@ -1075,6 +1098,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         case -2: capsource = ovrl_capsource_winrt_capture;       break;
                         case -3: capsource = ovrl_capsource_ui;                  break;
+                        case -4: capsource = ovrl_capsource_browser;             break;
                         default: capsource = ovrl_capsource_desktop_duplication;
                     }
 
@@ -1101,6 +1125,27 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 case ipcact_overlay_gaze_fade_auto:
                 {
                     DetachedOverlayGazeFadeAutoConfigure();
+                    break;
+                }
+                case ipcact_overlay_make_standalone:
+                {
+                    OverlayManager::Get().ConvertDuplicatedOverlayToStandalone((unsigned int)msg.lParam);
+                    break;
+                }
+                case ipcact_browser_navigate_to_url:
+                {
+                    unsigned int overlay_id = (unsigned int)msg.lParam;
+                    DPBrowserAPIClient::Get().DPBrowser_SetURL(OverlayManager::Get().GetOverlay(overlay_id).GetHandle(), 
+                                                               OverlayManager::Get().GetConfigData(overlay_id).ConfigStr[configid_str_overlay_browser_url]);
+
+                    break;
+                }
+                case ipcact_browser_recreate_context:
+                {
+                    unsigned int overlay_id = (unsigned int)msg.lParam;
+                    DPBrowserAPIClient::Get().DPBrowser_RecreateBrowser(OverlayManager::Get().GetOverlay(overlay_id).GetHandle(), 
+                                                                        OverlayManager::Get().GetConfigData(overlay_id).ConfigBool[configid_bool_overlay_browser_allow_transparency]);
+
                     break;
                 }
                 case ipcact_winmanager_drag_start:
@@ -1400,6 +1445,29 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         }
                         break;
                     }
+                    case configid_int_overlay_user_width:
+                    case configid_int_overlay_user_height:
+                    {
+                        if (OverlayManager::Get().GetCurrentOverlay().GetTextureSource() == ovrl_texsource_browser)
+                        {
+                            const int user_width  = ConfigManager::GetValue(configid_int_overlay_user_width);
+                            const int user_height = ConfigManager::GetValue(configid_int_overlay_user_height);
+
+                            DPBrowserAPIClient::Get().DPBrowser_SetResolution(OverlayManager::Get().GetCurrentOverlay().GetHandle(), user_width, user_height);
+
+                            //Also set as content width
+                            ConfigManager::SetValue(configid_int_overlay_state_content_width,  user_width);
+                            ConfigManager::SetValue(configid_int_overlay_state_content_height, user_height);
+
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)OverlayManager::Get().GetCurrentOverlayID());
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_width,  user_width);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_height, user_height);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+
+                            ApplySettingMouseInput();
+                        }
+                        break;
+                    }
                     case configid_int_overlay_crop_x:
                     case configid_int_overlay_crop_y:
                     case configid_int_overlay_crop_width:
@@ -1424,6 +1492,14 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         DetachedTransformConvertOrigin(OverlayManager::Get().GetCurrentOverlayID(), (OverlayOrigin)previous_value, (OverlayOrigin)msg.lParam);
                         ApplySettingTransform();
+                        break;
+                    }
+                    case configid_int_overlay_browser_max_fps_override:
+                    {
+                        if (OverlayManager::Get().GetCurrentOverlay().GetTextureSource() == ovrl_texsource_browser)
+                        {
+                            DPBrowserAPIClient::Get().DPBrowser_SetFPS(OverlayManager::Get().GetCurrentOverlay().GetHandle(), msg.lParam);
+                        }
                         break;
                     }
                     case configid_int_input_hotkey01_keycode:
@@ -1453,6 +1529,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_int_overlay_update_limit_override_fps:
                     {
                         ApplySettingUpdateLimiter();
+                        break;
+                    }
+                    case configid_int_browser_max_fps:
+                    {
+                        DPBrowserAPIClient::Get().DPBrowser_GlobalSetFPS(msg.lParam);
                         break;
                     }
                     case configid_int_state_action_value_int:
@@ -1494,6 +1575,14 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_float_overlay_offset_forward:
                     {
                         ApplySettingTransform();
+                        break;
+                    }
+                    case configid_float_overlay_browser_zoom:
+                    {
+                        if (OverlayManager::Get().GetCurrentOverlay().GetTextureSource() == ovrl_texsource_browser)
+                        {
+                            DPBrowserAPIClient::Get().DPBrowser_SetZoomLevel(OverlayManager::Get().GetCurrentOverlay().GetHandle(), value);
+                        }
                         break;
                     }
                     case configid_float_performance_update_limit_ms:
@@ -1750,6 +1839,11 @@ IDXGIAdapter* OutputManager::GetDXGIAdapter()
 
 void OutputManager::ResetOverlays()
 {
+    //Check if process is elevated and send that info to the UI too (DPBrowser needs this info so do this first)
+    bool elevated = IsProcessElevated();
+    ConfigManager::SetValue(configid_bool_state_misc_process_elevated, elevated);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_elevated, elevated);
+
     //Reset all overlays
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
@@ -1762,6 +1856,20 @@ void OutputManager::ResetOverlays()
         ApplySetting3DMode();
     }
 
+    //Second pass for browser overlays using a duplication ID that is higher than the overlay's
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        OverlayManager::Get().SetCurrentOverlayID(i);
+        const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+        if ( (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser) && (data.ConfigInt[configid_int_overlay_duplication_id] != -1) )
+        {
+            ApplySettingCrop();
+            ApplySettingCaptureSource();
+            ApplySetting3DMode();
+        }
+    }
+
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
     //These apply to all overlays within the function itself
@@ -1772,11 +1880,6 @@ void OutputManager::ResetOverlays()
 
     //Post overlays reset message to UI app
     IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlays_reset);
-
-    //Check if process is elevated and send that info to the UI too
-    bool elevated = IsProcessElevated();
-    ConfigManager::SetValue(configid_bool_state_misc_process_elevated, elevated);
-    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_elevated, elevated);
 
     //Make sure that the entire overlay texture gets at least one full update for regions that will never be dirty (i.e. blank space not occupied by any desktop)
     m_OutputPendingFullRefresh = true;
@@ -1909,6 +2012,15 @@ void OutputManager::ShowOverlay(unsigned int id)
         //Unpause capture
         DPWinRT_PauseCapture(ovrl_handle, false);
     }
+    else if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+    {
+        //Don't call this before texture source is set (browser process may not be running), ApplySettingCaptureSource() will call it in that case
+        if (overlay.GetTextureSource() == ovrl_texsource_browser)
+        {
+            //Unpause browser
+            DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(overlay.GetHandle(), false);
+        }
+    }
 
     overlay.SetVisible(true);
 
@@ -1974,6 +2086,15 @@ void OutputManager::HideOverlay(unsigned int id)
     {
         //Pause capture
         DPWinRT_PauseCapture(ovrl_handle, true);
+    }
+    else if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+    {
+        //Don't call this before texture source is set (browser process may not be running), ApplySettingCaptureSource() will call it in that case
+        if (overlay.GetTextureSource() == ovrl_texsource_browser)
+        {
+            //Pause browser
+            DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(overlay.GetHandle(), true);
+        }
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
@@ -2498,6 +2619,17 @@ bool OutputManager::CropToActiveWindow(int& crop_x, int& crop_y, int& crop_width
     }
 
     return false;
+}
+
+void OutputManager::InitComIfNeeded()
+{
+    if (!m_ComInitDone)
+    {
+        if (::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) != RPC_E_CHANGED_MODE)
+        {
+            m_ComInitDone = true;
+        }
+    }
 }
 
 void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter)
@@ -3703,6 +3835,13 @@ bool OutputManager::HandleOpenVREvents()
                         ApplySettingTransform();
                     }
 
+                    //For browser overlays, forward leave event to browser process
+                    if (overlay.GetTextureSource() == ovrl_texsource_browser)
+                    {
+                        DPBrowserAPIClient::Get().DPBrowser_MouseLeave(overlay.GetHandle());
+                        break;
+                    }
+
                     break;
                 }
                 case vr::VREvent_ChaperoneUniverseHasChanged:
@@ -3835,10 +3974,15 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
     {
         case vr::VREvent_MouseMove:
         {
-            if ( (!data.ConfigBool[configid_bool_overlay_input_enabled]) || (m_MouseIgnoreMoveEvent) ||
+            if ( (!data.ConfigBool[configid_bool_overlay_input_enabled]) || ( (m_MouseIgnoreMoveEvent) && (overlay_current.GetTextureSource() != ovrl_texsource_browser) ) ||
                  (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) || 
                  (m_OverlayDragger.IsDragActive()) || (overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui) )
             {
+                break;
+            }
+            else if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
+            {
+                DPBrowserAPIClient::Get().DPBrowser_MouseMove(overlay_current.GetHandle(), vr_event.data.mouse.x, vr_event.data.mouse.y);
                 break;
             }
 
@@ -3977,7 +4121,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                             {
                                 const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
 
-                                if ( (overlay.GetTextureSource() != ovrl_texsource_none) && (overlay.GetTextureSource() != ovrl_texsource_ui) )
+                                if ( (overlay.GetTextureSource() != ovrl_texsource_none) && (overlay.GetTextureSource() != ovrl_texsource_ui) && (overlay.GetTextureSource() != ovrl_texsource_browser) )
                                 {
                                     vr::VROverlay()->SetOverlayFlag(overlay.GetHandle(), vr::VROverlayFlags_HideLaserIntersection, true);
                                 }
@@ -4042,6 +4186,11 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                         m_OverlayDragger.DragGestureStart(OverlayManager::Get().GetCurrentOverlayID());
                     }
                 }
+                break;
+            }
+            else if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
+            {
+                DPBrowserAPIClient::Get().DPBrowser_MouseDown(overlay_current.GetHandle(), (vr::EVRMouseButton)vr_event.data.mouse.button);
                 break;
             }
             else if ((overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui))
@@ -4136,6 +4285,11 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
                 break;
             }
+            else if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
+            {
+                DPBrowserAPIClient::Get().DPBrowser_MouseUp(overlay_current.GetHandle(), (vr::EVRMouseButton)vr_event.data.mouse.button);
+                break;
+            }
             else if ((overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui))
             {
                 break;
@@ -4201,6 +4355,14 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             if ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) || 
                  (overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui) )
             {
+                break;
+            }
+            else if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
+            {
+                if ((do_scroll_h) || (do_scroll_v))
+                {
+                    DPBrowserAPIClient::Get().DPBrowser_Scroll(overlay_current.GetHandle(), (do_scroll_h) ? vr_event.data.scroll.xdelta : 0.0f, (do_scroll_v) ? vr_event.data.scroll.ydelta : 0.0f);
+                }
                 break;
             }
 
@@ -4381,17 +4543,6 @@ bool OutputManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
     return false;
 }
 
-void OutputManager::InitComIfNeeded()
-{
-    if (!m_ComInitDone)
-    {
-        if (::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) != RPC_E_CHANGED_MODE)
-        {
-            m_ComInitDone = true;
-        }
-    }
-}
-
 void OutputManager::LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8)
 {
     if (ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active))
@@ -4509,7 +4660,7 @@ void OutputManager::DuplicateOverlay(unsigned int base_id, bool is_ui_overlay)
 
     if (!is_ui_overlay)
     {
-        new_id = OverlayManager::Get().DuplicateOverlay(OverlayManager::Get().GetConfigData(base_id));
+        new_id = OverlayManager::Get().DuplicateOverlay(OverlayManager::Get().GetConfigData(base_id), base_id);
     }
     else
     {
@@ -4660,6 +4811,62 @@ void OutputManager::ApplySettingCaptureSource()
         {
             //Set texture source to UI if possible, which sets the rendering PID to the UI process
             overlay.SetTextureSource(IPCManager::IsUIAppRunning() ? ovrl_texsource_ui : ovrl_texsource_none);
+
+            break;
+        }
+        case ovrl_capsource_browser:
+        {
+            if (overlay.GetTextureSource() != ovrl_texsource_browser)
+            {
+                bool has_started_browser = false;
+
+                if (DPBrowserAPIClient::Get().IsBrowserAvailable())
+                {
+                    OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+                    //Load placeholder texture since browser startup can take a few seconds
+                    vr::VROverlay()->SetOverlayFromFile(overlay.GetHandle(), (ConfigManager::Get().GetApplicationPath() + "images/browser_load.png").c_str());
+
+                    if (data.ConfigInt[configid_int_overlay_duplication_id] == -1)
+                    {
+                        DPBrowserAPIClient::Get().DPBrowser_StartBrowser(overlay.GetHandle(), data.ConfigStr[configid_str_overlay_browser_url], 
+                                                                         data.ConfigBool[configid_bool_overlay_browser_allow_transparency]);
+
+                        DPBrowserAPIClient::Get().DPBrowser_SetResolution(overlay.GetHandle(), data.ConfigInt[configid_int_overlay_user_width], data.ConfigInt[configid_int_overlay_user_height]);
+                        DPBrowserAPIClient::Get().DPBrowser_SetFPS(overlay.GetHandle(),        data.ConfigInt[configid_int_overlay_browser_max_fps_override]);
+                        DPBrowserAPIClient::Get().DPBrowser_SetZoomLevel(overlay.GetHandle(),  data.ConfigFloat[configid_float_overlay_browser_zoom]);
+
+                        has_started_browser = true;
+                    }
+                    else
+                    {
+                        const Overlay& overlay_src = OverlayManager::Get().GetOverlay((unsigned int)data.ConfigInt[configid_int_overlay_duplication_id]);
+
+                        //Source overlay may be invalid on launch or not have texture source set up if duplication ID is higher than this overlay's ID
+                        if ( (overlay_src.GetHandle() != vr::k_ulOverlayHandleInvalid) && (overlay_src.GetTextureSource() == ovrl_texsource_browser) )
+                        {
+                            DPBrowserAPIClient::Get().DPBrowser_DuplicateBrowserOutput(overlay_src.GetHandle(), overlay.GetHandle());
+                            DPBrowserAPIClient::Get().DPBrowser_SetFPS(overlay.GetHandle(), data.ConfigInt[configid_int_overlay_browser_max_fps_override]);
+                            has_started_browser = true;
+                        }
+                    }
+
+                    data.ConfigInt[configid_int_overlay_state_content_width]  = data.ConfigInt[configid_int_overlay_user_width];
+                    data.ConfigInt[configid_int_overlay_state_content_height] = data.ConfigInt[configid_int_overlay_user_height];
+
+                    ApplySetting3DMode();
+                    ApplySettingUpdateLimiter();
+
+                    //Pause if not visible
+                    if (!overlay.IsVisible())
+                    {
+                        DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(overlay.GetHandle(), true);
+                    }
+                }
+
+                //Set texture source to browser if possible, which sets the rendering PID to the browser server process
+                overlay.SetTextureSource((has_started_browser) ? ovrl_texsource_browser : ovrl_texsource_none);
+            }
 
             break;
         }
@@ -5015,6 +5222,14 @@ void OutputManager::ApplySettingCrop()
     {
         DPWinRT_SetOverlayOverUnder3D(ovrl_handle, is_ou3d, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
     }
+    else if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_browser) //Same with browser
+    {
+        //TODO: Handle OU 3D
+
+        //Browser overlay textures are flipped vertically, so swap the UVs to result in a flipped image to correct it
+        tex_bounds.vMin = -tex_bounds.vMin + 1.0f;
+        tex_bounds.vMax = -tex_bounds.vMax + 1.0f;
+    }
     else //For Desktop Duplication, compare old to new bounds to see if a full refresh is required
     {
         vr::VROverlay()->GetOverlayTextureBounds(ovrl_handle, &tex_bounds_prev);
@@ -5120,7 +5335,8 @@ void OutputManager::ApplySettingMouseInput()
 
         //Set intersection blob state
         bool hide_intersection = false;
-        if ( (overlay.GetTextureSource() != ovrl_texsource_none) && (overlay.GetTextureSource() != ovrl_texsource_ui) && (!drag_mode_enabled) && (!select_mode_enabled) )
+        if ( (overlay.GetTextureSource() != ovrl_texsource_none) && (overlay.GetTextureSource() != ovrl_texsource_ui) && (overlay.GetTextureSource() != ovrl_texsource_browser) && 
+             (!drag_mode_enabled) && (!select_mode_enabled) )
         {
             hide_intersection = !ConfigManager::GetValue(configid_bool_input_mouse_render_intersection_blob);
         }
@@ -5128,18 +5344,10 @@ void OutputManager::ApplySettingMouseInput()
         vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, hide_intersection);
 
         //Set mouse scale
-        if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
-        {
-            vr::HmdVector2_t mouse_scale;
-            mouse_scale.v[0] = m_DesktopWidth;
-            mouse_scale.v[1] = m_DesktopHeight;
-
-            vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
-        }
-        else if (overlay.GetTextureSource() == ovrl_texsource_none)
+        if (overlay.GetTextureSource() == ovrl_texsource_none)
         {
             //The mouse scale defines the surface aspect ratio for the intersection test... yeah. If it's off there will be hits over empty space, so try to match it even here
-            vr::HmdVector2_t mouse_scale;
+            vr::HmdVector2_t mouse_scale = {0};
             uint32_t ovrl_tex_width = 1, ovrl_tex_height = 1;
 
             //Content size might not be what the current texture size is in case of ovrl_texsource_none
@@ -5153,6 +5361,26 @@ void OutputManager::ApplySettingMouseInput()
                 mouse_scale.v[0] = k_lOverlayOutputErrorTextureWidth;
                 mouse_scale.v[1] = k_lOverlayOutputErrorTextureHeight;
             }
+
+            vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
+        }
+        else if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
+        {
+            vr::HmdVector2_t mouse_scale = {0};
+            mouse_scale.v[0] = m_DesktopWidth;
+            mouse_scale.v[1] = m_DesktopHeight;
+
+            vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
+        }
+        else if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_browser)
+        {
+            //Use duplication IDs' data if any is set
+            int duplication_id = ConfigManager::GetValue(configid_int_overlay_duplication_id);
+            const OverlayConfigData& overlay_data = (duplication_id != -1) ? OverlayManager::Get().GetConfigData((unsigned int)duplication_id) : OverlayManager::Get().GetCurrentConfigData();
+
+            vr::HmdVector2_t mouse_scale = {0};
+            mouse_scale.v[0] = overlay_data.ConfigInt[configid_int_overlay_state_content_width];
+            mouse_scale.v[1] = overlay_data.ConfigInt[configid_int_overlay_state_content_height];
 
             vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
         }
@@ -5199,7 +5427,7 @@ void OutputManager::ApplySettingUpdateLimiter()
         }
     }
 
-    LARGE_INTEGER limit_delay_global;
+    LARGE_INTEGER limit_delay_global = {0};
     limit_delay_global.QuadPart = 1000.0f * limit_ms;
 
     //See if there are any overrides from visible overlays
@@ -5259,7 +5487,7 @@ void OutputManager::ApplySettingUpdateLimiter()
             DPWinRT_SetOverlayUpdateLimitDelay(overlay.GetHandle(), limit_delay.QuadPart);
         }
     }
-    
+
     m_PerformanceUpdateLimiterDelay.QuadPart = 1000.0f * limit_ms;
 }
 

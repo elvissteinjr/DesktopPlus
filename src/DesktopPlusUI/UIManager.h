@@ -163,8 +163,8 @@ class UIManager
         void SendUIIntersectionMaskToDashboardApp(std::vector<vr::VROverlayIntersectionMaskPrimitive_t>& primitives) const;
 
         //This can be called by functions knowingly making changes which will cause visible layout re-alignment due to ImGui's nature of intermediate UI
-        //This will cause 2 extra frames to be calculated but thrown away instantly to be more pleasing to the eye.
-        void RepeatFrame(); 
+        //This will cause 2 extra frames to be calculated but thrown away instantly to be more pleasing to the eye. In rare cases more are needed and can be specified instead
+        void RepeatFrame(int extra_frame_count = 2); 
         bool GetRepeatFrame() const;
         void DecreaseRepeatFrameCount();
 
