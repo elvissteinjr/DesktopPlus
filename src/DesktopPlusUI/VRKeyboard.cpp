@@ -373,9 +373,8 @@ void VRKeyboard::ResetState()
 
     if (m_CapsLockToggled)
     {
-        SetKeyDown(m_CapsLockToggled, true);
-        SetKeyDown(m_CapsLockToggled, false);
-        m_CapsLockToggled = false;
+        SetKeyDown(VK_CAPITAL, true);
+        SetKeyDown(VK_CAPITAL, false);
     }
 
     m_StringQueue = {}; //Clear
