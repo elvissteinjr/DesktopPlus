@@ -502,6 +502,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     WindowManager::Get().ClearTempTopMostWindow();
     WindowManager::Get().SetActive(false);
 
+    //Do other shutdown steps, like undimming the dashboard if needed
+    OutMgr.OnExit();
+
     //Kindly ask elevated mode process to quit if it exists
     if (HWND window = ::FindWindow(g_WindowClassNameElevatedMode, nullptr))
     {

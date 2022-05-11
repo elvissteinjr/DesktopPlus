@@ -39,6 +39,7 @@ class OutputManager
         bool HandleIPCMessage(const MSG& msg);    //Returns true if message caused a duplication reset (i.e. desktop switch)
         void HandleWinRTMessage(const MSG& msg);  //Messages sent by the Desktop+ WinRT library
         void HandleHotkeyMessage(const MSG& msg);
+        void OnExit();
 
         HWND GetWindowHandle();
         HANDLE GetSharedHandle();

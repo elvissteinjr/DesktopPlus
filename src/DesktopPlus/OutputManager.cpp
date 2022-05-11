@@ -112,9 +112,6 @@ OutputManager::~OutputManager()
 {
     CleanRefs();
     g_OutputManager = nullptr;
-
-    //Undo dimmed dashboard on exit
-    DimDashboard(false);
 }
 
 //
@@ -1687,6 +1684,18 @@ void OutputManager::HandleHotkeyMessage(const MSG& msg)
 
         m_IsHotkeyDown[msg.wParam] = true;
     }
+}
+
+void OutputManager::OnExit()
+{
+    //Release all held keyboard keys. Might be going overboard but better than keeping keys down unexpectedly
+    for (int i = 0; i < 256; ++i) 
+    {
+        m_InputSim.KeyboardSetKeyState((IPCKeyboardKeystateFlags)0, i);
+    }
+
+    //Undo dimmed dashboard
+    DimDashboard(false);
 }
 
 HWND OutputManager::GetWindowHandle()
