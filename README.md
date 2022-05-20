@@ -14,11 +14,12 @@ Advanced desktop access for OpenVR.
 - 3D support (SBS, HSBS, OU, HOU)
 - Overlay visibility and origin settings: Display a desktop/window during gameplay or attach it to a different origin (play space, dashboard, HMD, controllers, tracker)
 - Actions: User-definable functions (input simulation, running applications) which can be bound to controller inputs, hotkeys or UI buttons
-- Keyboard Extension, enabling use of modifier, arrow and function keys from the SteamVR keyboard
+- Custom VR Keyboard with configurable layouts
 - Elevated access toggle, making it possible to deal with UAC prompts and other UIP-restricted UI in VR without using full admin-access at all times
 - Gaze Fade: Fade-out overlay when not looking at it
 - Window Management: Change window focus depending on overlay/dashboard state or drag overlays when dragging the title bar of a mirrored window
 - Performance Monitor: View system performance in real time
+- Browser overlays: View web pages independent from your desktop (CEF-based)
 
 ## Usage
 
@@ -28,7 +29,8 @@ Install Desktop+ from its [Steam store page](https://store.steampowered.com/app/
 
 ### Release Archive
 
-Download and extract the latest archive from the [releases page](https://github.com/elvissteinjr/DesktopPlus/releases). Follow instructions in the included [readme file](assets/readme.txt).
+Download and extract the latest archive from the [releases page](https://github.com/elvissteinjr/DesktopPlus/releases). Follow instructions in the included [readme file](assets/readme.txt).  
+Make sure to also download the [Desktop+ Browser component](https://github.com/elvissteinjr/DesktopPlusBrowser/releases) if you want browser overlay support.
 
 ### Building from Source
 
@@ -36,23 +38,14 @@ The Visual Studio 2019 Solution builds out of the box with no further external d
 Building with Graphics Capture support requires Windows SDK 10.0.19041 or newer, and will download C++/WinRT packages automatically.
 Graphics Capture support can be disabled entirely if desired. Windows 8 SDK or newer is sufficient in that case. See DesktopPlusWinRT.h for details.
 
-Other compilers likely work as well, but are neither tested nor have a build configuration.
+See the [Desktop+ Browser repository](https://github.com/elvissteinjr/DesktopPlusBrowser) for building the browser component.
 
-After building, add the contents of the [assets](assets) directory to the executables.
+Other compilers likely work as well, but are neither tested nor have a build configuration. Building for 32-bit is not supported.
 
 ## Demonstration
 
-[comment]: # (Honestly kind of lost here. Would've preferred to host the clips on the repo, but people probably want them to play in the browser and not download instead)
-
-A few short videos showcasing some of Desktop+'s features:
-- [Version 2.2 Showcase: Multiple Overlays, Floating UI, Scene App Auto-focus, Update Limiter Override](http://www.elvissteinjr.net/dplus/demo_v2_2_showcase.mp4)
-- [Version 2.1 Showcase: Gaze Fade, Auto Interaction Toggle, Crop to Active Window, FPS-based Limiter](http://www.elvissteinjr.net/dplus/demo_v2_1_showcase.mp4)
-- [Custom Actions](http://www.elvissteinjr.net/dplus/demo_custom_action.mp4)
-- [Floating Overlay](http://www.elvissteinjr.net/dplus/demo_detached.mp4)
-- [Cropping & Floating Overlay Origins](http://www.elvissteinjr.net/dplus/demo_detached_cropping.mp4)
-- [Elevated Mode](http://www.elvissteinjr.net/dplus/demo_elevated_mode.mp4)
-
-Most of these are from older builds with a slightly different interface, but the features themselves still work the same in the current version. The trailer on the Steam store page also shows some of Desktop+'s functionality.
+The [Steam announcements](https://store.steampowered.com/news/app/1494460) for New UI Preview releases typically feature short video clips showing off new additions.  
+Please refer to those for now.
 
 ## Documentation
 
