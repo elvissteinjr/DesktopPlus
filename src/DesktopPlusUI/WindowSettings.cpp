@@ -1707,6 +1707,9 @@ void WindowSettings::UpdatePageKeyboardLayout()
         cluster_enabled_prev[kbdlayout_cluster_numpad]     = ConfigManager::GetValue(configid_bool_input_keyboard_cluster_numpad_enabled);
         cluster_enabled_prev[kbdlayout_cluster_extra]      = ConfigManager::GetValue(configid_bool_input_keyboard_cluster_extra_enabled);
 
+        //Reload current layout in case there's a previous pending selection still loaded
+        vr_keyboard.LoadCurrentLayout();
+
         UIManager::Get()->RepeatFrame();
     }
 
