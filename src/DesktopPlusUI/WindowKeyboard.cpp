@@ -606,13 +606,10 @@ void WindowKeyboard::WindowUpdate()
                     button_state.IsHovered = iso_enter_hovered;
 
                     //Restore cursor to normal row position
-                    if (!key.IsRowEnd)
-                    {
-                        ImGui::SameLine(0.0f, 0.0f);
-                        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offset_y);
-                        ImGui::Dummy({0.0f, base_width});
-                        ImGui::SetPreviousLineHeight(ImGui::GetPreviousLineHeight() - offset_y);
-                    }
+                    ImGui::SameLine(0.0f, 0.0f);
+                    ImGui::SetCursorPosY( (key.IsRowEnd) ? ImGui::GetCursorPosY() : ImGui::GetCursorPosY() + offset_y);
+                    ImGui::Dummy({0.0f, base_width});
+                    ImGui::SetPreviousLineHeight(ImGui::GetPreviousLineHeight() - offset_y);
                 }
                 break;
             }
