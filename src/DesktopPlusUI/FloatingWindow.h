@@ -49,7 +49,7 @@ class FloatingWindow
         bool m_AllowRoomUnpinning;       //Set to enable pin button while room overlay state is active
         OverlayOrigin m_DragOrigin;      //Origin passed to OverlayDragger for window drags, doesn't affect overlay positioning (override relevant functions instead)
 
-        float m_TitleBarWidth;
+        float m_TitleBarMinWidth;
         float m_TitleBarTitleMaxWidth;   //Width available for the title string without icon and buttons
         bool m_HasAppearedOnce;
         bool m_IsWindowAppearing;

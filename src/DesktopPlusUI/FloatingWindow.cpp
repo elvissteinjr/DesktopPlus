@@ -18,7 +18,7 @@ FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
                                    m_WindowIconWin32IconCacheID(-1),
                                    m_AllowRoomUnpinning(false),
                                    m_DragOrigin(ovrl_origin_dplus_tab),
-                                   m_TitleBarWidth(64.0f),
+                                   m_TitleBarMinWidth(64.0f),
                                    m_TitleBarTitleMaxWidth(-1.0f),
                                    m_HasAppearedOnce(false),
                                    m_IsWindowAppearing(false)
@@ -72,7 +72,7 @@ void FloatingWindow::WindowUpdateBase()
     }
 
     ImGui::SetNextWindowPos(m_Pos, ImGuiCond_Always, m_PosPivot);
-    ImGui::SetNextWindowSizeConstraints({m_TitleBarWidth, 4.0f}, m_Size);
+    ImGui::SetNextWindowSizeConstraints({m_TitleBarMinWidth, 4.0f}, m_Size);
     ImGui::SetNextWindowScroll({0.0f, -1.0f}); //Prevent real horizontal scrolling from happening
 
     ImGuiWindowFlags flags = m_WindowFlags;
@@ -103,11 +103,16 @@ void FloatingWindow::WindowUpdateBase()
 
     ImGui::Image(io.Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
     ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+    ImVec2 clip_end = ImGui::GetCursorScreenPos();
+    clip_end.x += m_TitleBarTitleMaxWidth;
+    clip_end.y += ImGui::GetFrameHeight();
+
+    ImGui::PushClipRect(ImGui::GetCursorScreenPos(), clip_end, true);
     ImGui::TextUnformatted( (m_WindowTitleStrID == tstr_NONE) ? m_WindowTitle.c_str() : TranslationManager::GetString(m_WindowTitleStrID) );
+    ImGui::PopClipRect();
+
     float title_text_width = ImGui::GetItemRectSize().x;
-    
-    m_TitleBarWidth = img_size_line_height.x  + style.ItemSpacing.x + ImGui::GetItemRectSize().x;
-    m_TitleBarTitleMaxWidth = img_size_line_height.x + style.ItemSpacing.x;
 
     //Right end of title bar
     ImGui::PushStyleColor(ImGuiCol_Button, 0);
@@ -150,18 +155,17 @@ void FloatingWindow::WindowUpdateBase()
     ImGui::EndGroup();
 
     title_hover = ( (title_hover) && (!ImGui::IsItemHovered()) ); //Title was hovered and no title bar element is hovered
-
     b_width = ImGui::GetItemRectSize().x;
-    m_TitleBarWidth += b_width + style.ItemSpacing.x;
-    m_TitleBarTitleMaxWidth += b_width + style.ItemSpacing.x;
 
     ImGui::PopStyleColor();
 
-    m_TitleBarWidth = std::min(m_TitleBarWidth, m_Size.x);
-    m_TitleBarTitleMaxWidth = std::max(ImGui::GetWindowSize().x, m_TitleBarWidth) - m_TitleBarTitleMaxWidth;
+    //Calculate title bar constraints
+    m_TitleBarMinWidth = img_size_line_height.x + b_width + (style.ItemSpacing.x * 2.0f);
+    m_TitleBarTitleMaxWidth = ImGui::GetWindowSize().x - m_TitleBarMinWidth;
+    m_TitleBarMinWidth += style.ItemSpacing.x * 2.0f;
 
     //Shorten title bar string if it doesn't fit (this is destructive, but doesn't matter for the windows using this)
-    if ((m_WindowTitleStrID == tstr_NONE) && (title_text_width > m_TitleBarTitleMaxWidth))
+    if ((m_WindowTitleStrID == tstr_NONE) && (title_text_width > std::max(ImGui::GetFontSize(), m_TitleBarTitleMaxWidth) ))
     {
         //Don't attempt to shorten the string during repeat frames as the size can still be adjusting in corner cases and throw us into a loop
         if (!UIManager::Get()->GetRepeatFrame())
