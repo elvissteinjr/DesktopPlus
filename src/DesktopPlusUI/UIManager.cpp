@@ -528,12 +528,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                                     data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name]   = window_info->GetExeName();
 
                                     OverlayManager::Get().SetOverlayNameAuto(i, window_info);
-
-                                    //Update overlay properties title if this is the current overlay
-                                    if (UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID() == i)
-                                    {
-                                        UIManager::Get()->GetOverlayPropertiesWindow().SetActiveOverlayID(i, true);
-                                    }
+                                    OnOverlayNameChanged();
                                 }
                             }
                         }
@@ -1117,6 +1112,18 @@ void UIManager::OnTranslationChanged()
     m_NotificationIcon.RefreshPopupMenu();
     m_WindowSettings.ClearCachedTranslationStrings();
     m_WindowOverlayProperties.SetActiveOverlayID(m_WindowOverlayProperties.GetActiveOverlayID(), true);
+
+    RepeatFrame();
+}
+
+void UIManager::OnOverlayNameChanged()
+{
+    m_WindowOverlayProperties.SetActiveOverlayID(m_WindowOverlayProperties.GetActiveOverlayID(), true);
+
+    if ( (m_VRKeyboard.GetInputTarget() == kbdtarget_overlay) && (m_VRKeyboard.GetWindow().IsVisible()) )
+    {
+        m_VRKeyboard.GetWindow().Show();
+    }
 
     RepeatFrame();
 }

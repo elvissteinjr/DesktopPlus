@@ -152,11 +152,12 @@ enum ConfigID_Int
     configid_int_input_mouse_dbl_click_assist_duration_ms,
     configid_int_windows_winrt_dragging_mode,
     configid_int_windows_winrt_capture_lost_behavior,
-    configid_int_browser_max_fps,               //Browser overlays use this instead of update limits
+    configid_int_browser_max_fps,                           //Browser overlays use this instead of update limits
     configid_int_performance_update_limit_mode,
     configid_int_performance_update_limit_fps,              //This is the enum ID, not the actual number. See ApplySettingUpdateLimiter() code for more info
     configid_int_state_overlay_current_id_override,         //This is used to send config changes to overlays which aren't the current, mainly to avoid the UI switching around (-1 is disabled)
     configid_int_state_overlay_transform_sync_target_id,    //Target overlay ID for transform sync. -1 = None
+    configid_int_state_overlay_focused_id,                  //Focused overlay ID (set by last click) for keyboard overlay target if applicable. -1 = None
     configid_int_state_action_current,                      //Action changes are synced through a series of individually sent state settings. This one sets the target custom action (ID start 0)
     configid_int_state_action_current_sub,                  //Target variable. 0 = Name, 1 = Function Type. Remaining values depend on the function. Not the cleanest way but easier
     configid_int_state_action_value_int,                    //to set up with existing IPC stuff

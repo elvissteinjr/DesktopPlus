@@ -184,6 +184,7 @@ class UIManager
         ImFont* GetFontCompact() const;
         ImFont* GetFontLarge() const;               //May return nullptr
         void OnTranslationChanged();                //Calls functions in several classes to reset translation-dependent cached strings. Called when translation is changed
+        void OnOverlayNameChanged();                //Calls functions in several classes to reset overlay-name-dependent cached strings. Called when overlay names changed
         void UpdateOverlayDimming();
 
         bool IsCompositorResolutionLow() const;

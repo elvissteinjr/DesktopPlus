@@ -4,11 +4,13 @@
 #include "UIManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
+#include "DPBrowserAPIClient.h"
 
 #include "imgui_internal.h"
 
 VRKeyboard::VRKeyboard() : 
-    m_TargetIsUI(true),
+    m_InputTarget(kbdtarget_desktop),
+    m_InputTargetOverlayID(k_ulOverlayID_None),
     m_CapsLockToggled(false),
     m_ActiveInputText(0),
     m_InputBeginWidgetID(0),
@@ -31,6 +33,16 @@ unsigned char VRKeyboard::GetModifierFlags() const
     if (m_CapsLockToggled)      { flags |= kbd_keystate_flag_capslock_toggled; }
 
     return flags;
+}
+
+vr::VROverlayHandle_t VRKeyboard::GetTargetOverlayHandle() const
+{
+    if (m_InputTargetOverlayID != k_ulOverlayID_None)
+    {
+        return OverlayManager::Get().GetConfigData(m_InputTargetOverlayID).ConfigHandle[configid_handle_overlay_state_overlay_handle];
+    }
+
+    return vr::k_ulOverlayHandleInvalid;
 }
 
 WindowKeyboard& VRKeyboard::GetWindow()
@@ -199,6 +211,12 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
             UIManager::Get()->RepeatFrame();
         }
 
+        //Show keyboard again if it's visible to refresh title that may have been cut off before
+        if (m_WindowKeyboard.IsVisible())
+        {
+            m_WindowKeyboard.Show();
+        }
+
         UIManager::Get()->RepeatFrame();
     }
 }
@@ -223,9 +241,14 @@ const std::string& VRKeyboard::GetKeyLabelsString() const
     return m_KeyLabels;
 }
 
-bool VRKeyboard::IsTargetUI() const
+KeyboardInputTarget VRKeyboard::GetInputTarget() const
 {
-    return m_TargetIsUI;
+    return m_InputTarget;
+}
+
+unsigned int VRKeyboard::GetInputTargetOverlayID() const
+{
+    return m_InputTargetOverlayID;
 }
 
 bool VRKeyboard::GetKeyDown(unsigned char keycode) const
@@ -235,6 +258,10 @@ bool VRKeyboard::GetKeyDown(unsigned char keycode) const
 
 void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifiers)
 {
+    //Don't do anything if the key state didn't change
+    if (m_KeyDown[keycode] == down)
+        return;
+
     m_KeyDown[keycode] = down;
 
     //Update combined modifier key state if relevant
@@ -242,7 +269,7 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
     {
         m_KeyDown[VK_SHIFT] = (m_KeyDown[VK_LSHIFT] || m_KeyDown[VK_RSHIFT]);
 
-        if (m_TargetIsUI)
+        if (m_InputTarget == kbdtarget_ui)
         {
             ImGui::GetIO().KeysDown[VK_SHIFT] = m_KeyDown[VK_SHIFT];
         }
@@ -251,7 +278,7 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
     {
         m_KeyDown[VK_CONTROL] = (m_KeyDown[VK_LCONTROL] || m_KeyDown[VK_RCONTROL]);
 
-        if (m_TargetIsUI)
+        if (m_InputTarget == kbdtarget_ui)
         {
             ImGui::GetIO().KeysDown[VK_CONTROL] = m_KeyDown[VK_CONTROL];
         }
@@ -260,7 +287,7 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
     {
         m_KeyDown[VK_MENU] = (m_KeyDown[VK_LMENU] || m_KeyDown[VK_RMENU]);
 
-        if (m_TargetIsUI)
+        if (m_InputTarget == kbdtarget_ui)
         {
             ImGui::GetIO().KeysDown[VK_MENU] = m_KeyDown[VK_MENU];
         }
@@ -270,7 +297,14 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
         m_CapsLockToggled = !m_CapsLockToggled;
     }
 
-    if (m_TargetIsUI)
+    if (m_InputTarget == kbdtarget_overlay)
+    {
+        //Send keystate message (additional wchar message is sent below)
+        unsigned char flags = (down) ? GetModifierFlags() | kbd_keystate_flag_key_down : GetModifierFlags();
+        DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(GetTargetOverlayHandle(), (DPBrowserIPCKeyboardKeystateFlags)flags, keycode);
+    }
+
+    if (m_InputTarget != kbdtarget_desktop)
     {
         ImGui::GetIO().KeysDown[keycode] = down;
 
@@ -290,16 +324,23 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
 
             int wchars_written = ::ToUnicode(keycode, ::MapVirtualKey(keycode, MAPVK_VK_TO_VSC), keyboard_state, key_wchars, 15, 0);
 
-            //Documentation of ToUnicode() suggests there may be invalid characters in the buffer past the written ones if the return value is higher than 1
-            //One would like to believe the function NUL-terminates at that point, but there's no guarantee for that
-            if (wchars_written > 1)
-            {
-                key_wchars[std::min(wchars_written, 15)] = '\0';
-            }
-
             if (wchars_written > 0)
             {
-                AddTextToStringQueue(StringConvertFromUTF16(key_wchars));
+                //Documentation of ToUnicode() suggests there may be invalid characters in the buffer past the written ones if the return value is higher than 1
+                //One would like to believe the function NUL-terminates at that point, but there's no guarantee for that
+                if (wchars_written > 1)
+                {
+                    key_wchars[std::min(wchars_written, 15)] = '\0';
+                }
+
+                if (m_InputTarget == kbdtarget_ui)
+                {
+                    AddTextToStringQueue(StringConvertFromUTF16(key_wchars));
+                }
+                else if (m_InputTarget == kbdtarget_overlay)
+                {
+                    DPBrowserAPIClient::Get().DPBrowser_KeyboardTypeString(GetTargetOverlayHandle(), StringConvertFromUTF16(key_wchars));
+                }
             }
         }
     }
@@ -315,25 +356,25 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
             unsigned char flags = (down) ? GetModifierFlags() | kbd_keystate_flag_key_down : GetModifierFlags();
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_keyboard_vkey, MAKELPARAM(flags, keycode));
         }
-
-        
     }
 }
 
 void VRKeyboard::SetStringDown(const std::string text, bool down)
 {
-    std::wstring wstr = WStringConvertFromUTF8(text.c_str());
-
-    if (m_TargetIsUI)
+    if (m_InputTarget == kbdtarget_ui)
     {
         if (down)
         {
             AddTextToStringQueue(text);
         }
+        return;
     }
-    else
+    
+    std::wstring wstr = WStringConvertFromUTF8(text.c_str());
+    
+    if (m_InputTarget == kbdtarget_desktop)
     {
-        //If it's a single character, check if it can be pressed on the current windows keyboard layout
+        //If it's a single character, send as wchar so it checks if it can be pressed on the current windows keyboard layout
         if (wstr.length() == 1)
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_keyboard_wchar, MAKELPARAM(wstr[0], down));
@@ -343,9 +384,21 @@ void VRKeyboard::SetStringDown(const std::string text, bool down)
                 RestoreDesktopModifierState();
             }
         }
-        else if (!down) //Isn't a single character or wasn't a valid key for the current layout, send as string input
+        else if (!down) //Otherwise, send as string input
         {
             IPCManager::Get().SendStringToDashboardApp(configid_str_state_keyboard_string, text, UIManager::Get()->GetWindowHandle());
+        }
+    }
+    else if (m_InputTarget == kbdtarget_overlay)
+    {
+        //If it's a single character, send as wchar so it checks if it can be pressed on the current windows keyboard layout
+        if (wstr.length() == 1)
+        {
+            DPBrowserAPIClient::Get().DPBrowser_KeyboardTypeWChar(GetTargetOverlayHandle(), wstr[0], down);
+        }
+        else if (!down) //Otherwise, send as string input
+        {
+            DPBrowserAPIClient::Get().DPBrowser_KeyboardTypeString(GetTargetOverlayHandle(), StringConvertFromUTF16(wstr.c_str()));
         }
     }
 }
@@ -460,9 +513,9 @@ void VRKeyboard::OnImGuiNewFrame()
     //Show keyboard for UI if needed
     if (io.WantTextInput)
     {
-        if ( (!m_KeyboardHiddenLastFrame) && ( (!m_TargetIsUI) || (!m_WindowKeyboard.IsVisible()) ) )
+        if ( (!m_KeyboardHiddenLastFrame) && ( (m_InputTarget != kbdtarget_ui) || (!m_WindowKeyboard.IsVisible()) ) )
         {
-            m_TargetIsUI = true;
+            m_InputTarget = kbdtarget_ui;
             m_WindowKeyboard.Show();
 
             bool do_assign_to_ui = false;
@@ -487,24 +540,52 @@ void VRKeyboard::OnImGuiNewFrame()
     }
     else if (m_WindowKeyboard.IsVisible())
     {
+        int assigned_id = m_WindowKeyboard.GetAssignedOverlayID();
+
         //Disable UI target if it's active
-        if (m_TargetIsUI)
+        if (m_InputTarget == kbdtarget_ui)
         {
             ResetState();
-            m_TargetIsUI = false;
+            m_InputTarget = kbdtarget_desktop;
+            m_InputTargetOverlayID = k_ulOverlayID_None;
             m_WindowKeyboard.Show(); //Show() updates window title
         }
 
         //If keyboard is visible for the UI, assign to global
-        if (m_WindowKeyboard.GetAssignedOverlayID() == -2)
+        if (assigned_id == -2)
         {
             m_WindowKeyboard.SetAssignedOverlayID(-1);
+        }
+
+        //Check if overlay target should be used
+        int focused_overlay_id = ConfigManager::Get().GetValue(configid_int_state_overlay_focused_id);
+        OverlayCaptureSource capsource = ovrl_capsource_desktop_duplication;
+
+        if (focused_overlay_id >= 0)
+        {
+            capsource = (OverlayCaptureSource)OverlayManager::Get().GetConfigData((unsigned int)focused_overlay_id).ConfigInt[configid_int_overlay_capture_source];
+        }
+
+        if ( (m_InputTarget == kbdtarget_overlay) && (capsource != ovrl_capsource_browser) )
+        {
+            ResetState();
+            m_InputTarget = kbdtarget_desktop;
+            m_InputTargetOverlayID = k_ulOverlayID_None;
+
+            m_WindowKeyboard.Show(); //Show() updates window title
+        }
+        else if ( (m_InputTargetOverlayID != (unsigned int)focused_overlay_id) && (capsource == ovrl_capsource_browser) )  //Also resets state when overlay ID changes
+        {
+            ResetState();
+            m_InputTarget = kbdtarget_overlay;
+            m_InputTargetOverlayID = (unsigned int)focused_overlay_id;
+            m_WindowKeyboard.Show(); //Show() updates window title
         }
     }
 
     m_KeyboardHiddenLastFrame = false;
 
-    if (m_TargetIsUI)
+    if (m_InputTarget == kbdtarget_ui)
     {
         UpdateImGuiModifierState();
     }

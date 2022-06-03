@@ -413,6 +413,10 @@ void OverlayManager::SwapOverlays(unsigned int id, unsigned int id2)
         else if (data.ConfigInt[configid_int_overlay_duplication_id] == (int)id2)
             data.ConfigInt[configid_int_overlay_duplication_id] = (int)id;
     }
+
+    //Fixup focused overlay if needed
+    int& focused_overlay_id = ConfigManager::Get().GetRef(configid_int_state_overlay_focused_id);
+    focused_overlay_id = (focused_overlay_id == id) ? id2 : (focused_overlay_id == id2) ? id : focused_overlay_id;
 }
 
 void OverlayManager::RemoveOverlay(unsigned int id)
@@ -476,23 +480,23 @@ void OverlayManager::RemoveOverlay(unsigned int id)
             int assigned_id = -1;
 
             assigned_id = window_keyboard.GetAssignedOverlayID(floating_window_ovrl_state_dashboard_tab);
-            if (assigned_id == id)
+            if (assigned_id == (int)id)
             {
                 window_keyboard.SetAssignedOverlayID(-1, floating_window_ovrl_state_dashboard_tab);
                 window_keyboard.GetOverlayState(floating_window_ovrl_state_dashboard_tab).IsVisible = false;
             }
-            else if (assigned_id > id)
+            else if (assigned_id > (int)id)
             {
                 window_keyboard.SetAssignedOverlayID(assigned_id - 1, floating_window_ovrl_state_dashboard_tab);
             }
 
             assigned_id = window_keyboard.GetAssignedOverlayID(floating_window_ovrl_state_room);
-            if (assigned_id == id)
+            if (assigned_id == (int)id)
             {
                 window_keyboard.SetAssignedOverlayID(-1, floating_window_ovrl_state_room);
                 window_keyboard.GetOverlayState(floating_window_ovrl_state_room).IsVisible = false;
             }
-            else if (assigned_id > id)
+            else if (assigned_id > (int)id)
             {
                 window_keyboard.SetAssignedOverlayID(assigned_id - 1, floating_window_ovrl_state_room);
             }
@@ -502,6 +506,18 @@ void OverlayManager::RemoveOverlay(unsigned int id)
         if (m_CurrentOverlayID >= m_OverlayConfigData.size())
         {
             m_CurrentOverlayID--;
+        }
+
+        //Fixup focused overlay if needed
+        int& focused_overlay_id = ConfigManager::Get().GetRef(configid_int_state_overlay_focused_id);
+
+        if (focused_overlay_id == (int)id)
+        {
+            focused_overlay_id = -1;
+        }
+        else if (focused_overlay_id > (int)id)
+        {
+            focused_overlay_id--;
         }
     }
 }

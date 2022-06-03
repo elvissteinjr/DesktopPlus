@@ -136,7 +136,27 @@ void WindowKeyboard::UpdateVisibility()
 
 void WindowKeyboard::Show(bool skip_fade)
 {
-    m_WindowTitleStrID = (UIManager::Get()->GetVRKeyboard().IsTargetUI()) ? tstr_KeyboardWindowTitleSettings : tstr_KeyboardWindowTitle;
+    switch (UIManager::Get()->GetVRKeyboard().GetInputTarget())
+    {
+        case kbdtarget_desktop: m_WindowTitleStrID = tstr_KeyboardWindowTitle;         break;
+        case kbdtarget_ui:      m_WindowTitleStrID = tstr_KeyboardWindowTitleSettings; break;
+        case kbdtarget_overlay:
+        {
+            m_WindowTitleStrID = tstr_NONE;
+            m_WindowTitle = TranslationManager::Get().GetString(tstr_KeyboardWindowTitleOverlay);
+
+            unsigned int target_id = UIManager::Get()->GetVRKeyboard().GetInputTargetOverlayID();
+
+            if (target_id < OverlayManager::Get().GetOverlayCount())
+            {
+                StringReplaceAll(m_WindowTitle, "%OVERLAYNAME%", OverlayManager::Get().GetConfigData(target_id).ConfigNameStr);
+            }
+            else
+            {
+                StringReplaceAll(m_WindowTitle, "%OVERLAYNAME%", TranslationManager::Get().GetString(tstr_KeyboardWindowTitleOverlayUnknown));
+            }
+        }
+    }
 
     //Update UI origin transform when newly visible, used when there's no overlay assignment to base the position off of
     if ( (m_Alpha == 0.0f) && (UIManager::Get()->IsOpenVRLoaded()) )
@@ -417,7 +437,7 @@ void WindowKeyboard::WindowUpdate()
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
                 //We don't want key repeat on backspace for ImGui since it does that itself
-                bool repeat_on_backspace = ((!vr_keyboard.IsTargetUI()) || (key.KeyCode != VK_BACK));
+                bool repeat_on_backspace = ((vr_keyboard.GetInputTarget() != kbdtarget_ui) || (key.KeyCode != VK_BACK));
 
                 if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state)) && (use_key_repeat) && (repeat_on_backspace) )
                 {

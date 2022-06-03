@@ -2315,6 +2315,13 @@ void OutputManager::DoAction(ActionID action_id, unsigned int overlay_source_id)
                 {
                     //Tell UI to show keyboard assigned to overlay
                     IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, (overlay_source_id != k_ulOverlayID_None) ? (int)overlay_source_id : -2);
+
+                    //Set focused ID to source overlay ID if there is one
+                    if (overlay_source_id != k_ulOverlayID_None)
+                    {
+                        ConfigManager::Get().SetValue(configid_int_state_overlay_focused_id, (int)overlay_source_id);
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_focused_id, (int)overlay_source_id);
+                    }
                 }
                 break;
             }
@@ -4188,7 +4195,12 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 }
                 break;
             }
-            else if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
+
+            //Set focused ID when clicking on an overlay
+            ConfigManager::Get().SetValue(configid_int_state_overlay_focused_id, (int)overlay_current.GetID());
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_focused_id, (int)overlay_current.GetID());
+            
+            if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
             {
                 DPBrowserAPIClient::Get().DPBrowser_MouseDown(overlay_current.GetHandle(), (vr::EVRMouseButton)vr_event.data.mouse.button);
                 break;

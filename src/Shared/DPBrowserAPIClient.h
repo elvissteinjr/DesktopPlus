@@ -50,6 +50,10 @@ class DPBrowserAPIClient : public DPBrowserAPI
         virtual void DPBrowser_MouseUp(vr::VROverlayHandle_t overlay_handle, vr::EVRMouseButton button) override;
         virtual void DPBrowser_Scroll(vr::VROverlayHandle_t overlay_handle, float x_delta, float y_delta) override;
 
+        virtual void DPBrowser_KeyboardSetKeyState(vr::VROverlayHandle_t overlay_handle, DPBrowserIPCKeyboardKeystateFlags flags, unsigned char keycode) override;
+        virtual void DPBrowser_KeyboardTypeWChar(vr::VROverlayHandle_t overlay_handle, wchar_t wchar, bool down) override;
+        virtual void DPBrowser_KeyboardTypeString(vr::VROverlayHandle_t overlay_handle, const std::string& str) override;
+
         virtual void DPBrowser_GoBack(vr::VROverlayHandle_t overlay_handle) override;
         virtual void DPBrowser_GoForward(vr::VROverlayHandle_t overlay_handle) override;
         virtual void DPBrowser_Refresh(vr::VROverlayHandle_t overlay_handle) override;

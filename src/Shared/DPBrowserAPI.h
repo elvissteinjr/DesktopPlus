@@ -32,6 +32,9 @@ enum DPBrowserICPCommandID
     dpbrowser_ipccmd_mouse_down,                //lParam = EVRMouseButton, uses set_overlay_target arg
     dpbrowser_ipccmd_mouse_up,                  //lParam = EVRMouseButton, uses set_overlay_target arg
     dpbrowser_ipccmd_scroll,                    //lParam = X-Delta & Y-Delta (in low/high word order, floats packed as DWORDs), uses set_overlay_target arg
+    dpbrowser_ipccmd_keyboard_vkey,             //lParam = DPBrowserIPCKeyboardKeystateFlags + Win32 key code (low/high word order), uses set_overlay_target arg
+    dpbrowser_ipccmd_keyboard_wchar,            //lParam = 1 wchar + key down bool (low/high word order), uses set_overlay_target arg
+    dpbrowser_ipccmd_keyboard_string,           //lParam = overlay_handle, uses dpbrowser_ipcstr_keyboard_string
     dpbrowser_ipccmd_go_back,                   //lParam = overlay_handle
     dpbrowser_ipccmd_go_forward,                //lParam = overlay_handle
     dpbrowser_ipccmd_refresh,                   //lParam = overlay_handle, will stop if the page is currently loading
@@ -48,6 +51,7 @@ enum DPBrowserICPStringID
     dpbrowser_ipcstr_MIN = 1000,                //Start IDs at a higher value to avoid conflicts with config string messages on a client
     dpbrowser_ipcstr_url = 1000,                //URL string for upcoming command/notification
     dpbrowser_ipcstr_title,                     //Title string for upcoming notification
+    dpbrowser_ipcstr_keyboard_string,           //Keyboard string for upcoming command
     dpbrowser_ipcstr_MAX
 };
 
@@ -57,6 +61,19 @@ enum DPBrowserIPCNavStateFlags : unsigned char
     dpbrowser_ipcnavstate_flag_can_go_forward = 1 << 1,
     dpbrowser_ipcnavstate_flag_is_loading     = 1 << 2,
     dpbrowser_ipcnavstate_flag_MAX            = 1 << 7
+};
+
+enum DPBrowserIPCKeyboardKeystateFlags : unsigned char
+{
+    dpbrowser_ipckbd_keystate_flag_key_down         = 1 << 0,
+    dpbrowser_ipckbd_keystate_flag_lshift_down      = 1 << 1,
+    dpbrowser_ipckbd_keystate_flag_rshift_down      = 1 << 2,
+    dpbrowser_ipckbd_keystate_flag_lctrl_down       = 1 << 3,
+    dpbrowser_ipckbd_keystate_flag_rctrl_down       = 1 << 4,
+    dpbrowser_ipckbd_keystate_flag_lalt_down        = 1 << 5,
+    dpbrowser_ipckbd_keystate_flag_ralt_down        = 1 << 6,
+    dpbrowser_ipckbd_keystate_flag_capslock_toggled = 1 << 7,
+    dpbrowser_ipckbd_keystate_flag_MAX              = 1 << 7
 };
 
 //Common interface for implemented by DPBrowserAPIServer and DPBrowserAPIClient
@@ -79,6 +96,10 @@ class DPBrowserAPI
         virtual void DPBrowser_MouseDown(vr::VROverlayHandle_t overlay_handle, vr::EVRMouseButton button) = 0;
         virtual void DPBrowser_MouseUp(vr::VROverlayHandle_t overlay_handle, vr::EVRMouseButton button) = 0;
         virtual void DPBrowser_Scroll(vr::VROverlayHandle_t overlay_handle, float x_delta, float y_delta) = 0;
+
+        virtual void DPBrowser_KeyboardSetKeyState(vr::VROverlayHandle_t overlay_handle, DPBrowserIPCKeyboardKeystateFlags flags, unsigned char keycode) = 0;
+        virtual void DPBrowser_KeyboardTypeWChar(vr::VROverlayHandle_t overlay_handle, wchar_t wchar, bool down) = 0;
+        virtual void DPBrowser_KeyboardTypeString(vr::VROverlayHandle_t overlay_handle, const std::string& str) = 0;
 
         virtual void DPBrowser_GoBack(vr::VROverlayHandle_t overlay_handle) = 0;
         virtual void DPBrowser_GoForward(vr::VROverlayHandle_t overlay_handle) = 0;

@@ -163,6 +163,8 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsTroubleshootingSettingsResetConfirmButton",
     "tstr_KeyboardWindowTitle",
     "tstr_KeyboardWindowTitleSettings",
+    "tstr_KeyboardWindowTitleOverlay",
+    "tstr_KeyboardWindowTitleOverlayUnknown",
     "tstr_OvrlPropsCatPosition",
     "tstr_OvrlPropsCatAppearance",
     "tstr_OvrlPropsCatCapture",

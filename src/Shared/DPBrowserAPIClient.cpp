@@ -281,8 +281,11 @@ void DPBrowserAPIClient::HandleIPCMessage(const MSG& msg)
                         }
                     }
 
+
                     if (UIManager* uimgr = UIManager::Get())
                     {
+                        uimgr->OnOverlayNameChanged();
+
                         if (ImGui::StringContainsUnmappedCharacter(data.ConfigStr[configid_str_overlay_browser_title].c_str()))
                         {
                             TextureManager::Get().ReloadAllTexturesLater();
@@ -439,6 +442,30 @@ void DPBrowserAPIClient::DPBrowser_Scroll(vr::VROverlayHandle_t overlay_handle, 
 
     ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_set_overlay_target, overlay_handle);
     ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_scroll, MAKEQWORD(x_delta_uint, y_delta_uint));
+}
+
+void DPBrowserAPIClient::DPBrowser_KeyboardSetKeyState(vr::VROverlayHandle_t overlay_handle, DPBrowserIPCKeyboardKeystateFlags flags, unsigned char keycode)
+{
+    if (!LaunchServerIfNotRunning())
+        return;
+
+    ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_set_overlay_target, overlay_handle);
+    ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_keyboard_vkey, MAKELPARAM(flags, keycode));
+}
+
+void DPBrowserAPIClient::DPBrowser_KeyboardTypeWChar(vr::VROverlayHandle_t overlay_handle, wchar_t wchar, bool down)
+{
+    if (!LaunchServerIfNotRunning())
+        return;
+
+    ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_set_overlay_target, overlay_handle);
+    ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_keyboard_wchar, MAKELPARAM(wchar, down));
+}
+
+void DPBrowserAPIClient::DPBrowser_KeyboardTypeString(vr::VROverlayHandle_t overlay_handle, const std::string& str)
+{
+    SendStringMessage(dpbrowser_ipcstr_keyboard_string, str);
+    ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_keyboard_string, overlay_handle);
 }
 
 void DPBrowserAPIClient::DPBrowser_GoBack(vr::VROverlayHandle_t overlay_handle)

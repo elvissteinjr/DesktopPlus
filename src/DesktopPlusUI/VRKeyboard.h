@@ -58,6 +58,13 @@ struct KeyboardLayoutKey
     ActionID KeyActionID = action_none;
 };
 
+enum KeyboardInputTarget
+{
+    kbdtarget_desktop,
+    kbdtarget_ui,
+    kbdtarget_overlay
+};
+
 class VRKeyboard
 {
     private:
@@ -67,7 +74,8 @@ class VRKeyboard
         std::vector<KeyboardLayoutKey> m_KeyboardKeys[kbdlayout_sub_MAX];
         std::string m_KeyLabels;                                          //String containing all labels, so their characters are always loaded from the font
 
-        bool m_TargetIsUI;
+        KeyboardInputTarget m_InputTarget;
+        unsigned int m_InputTargetOverlayID;
         bool m_KeyDown[256];
         bool m_CapsLockToggled;
         std::queue<std::string> m_StringQueue;
@@ -79,6 +87,7 @@ class VRKeyboard
         bool m_KeyboardHiddenLastFrame;
 
         unsigned char GetModifierFlags() const;
+        vr::VROverlayHandle_t GetTargetOverlayHandle() const;
 
     public:
         VRKeyboard();
@@ -91,7 +100,8 @@ class VRKeyboard
         std::vector<KeyboardLayoutKey>& GetLayout(KeyboardLayoutSubLayout sublayout);
         const std::string& GetKeyLabelsString() const;
 
-        bool IsTargetUI() const;
+        KeyboardInputTarget GetInputTarget() const;
+        unsigned int GetInputTargetOverlayID() const;
 
         bool GetKeyDown(unsigned char keycode) const;
         void SetKeyDown(unsigned char keycode, bool down, bool block_modifiers = false);

@@ -527,12 +527,7 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
 
         //Update overlay name
         OverlayManager::Get().SetOverlayNameAuto(overlay_id);
-
-        //Update overlay properties title if this is the current overlay
-        if (UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID() == overlay_id)
-        {
-            UIManager::Get()->GetOverlayPropertiesWindow().SetActiveOverlayID(overlay_id, true);
-        }
+        UIManager::Get()->OnOverlayNameChanged();
 
         //Store last switch time for the anti-flicker code (only needed for dashboard origin)
         if (overlay_config.ConfigInt[configid_int_overlay_origin] == ovrl_origin_dashboard)
