@@ -453,6 +453,15 @@ void DPBrowserAPIClient::DPBrowser_KeyboardSetKeyState(vr::VROverlayHandle_t ove
     ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_keyboard_vkey, MAKELPARAM(flags, keycode));
 }
 
+void DPBrowserAPIClient::DPBrowser_KeyboardToggleKey(vr::VROverlayHandle_t overlay_handle, unsigned char keycode)
+{
+    if (!LaunchServerIfNotRunning())
+        return;
+
+    ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_set_overlay_target, overlay_handle);
+    ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_keyboard_vkey_toggle, keycode);
+}
+
 void DPBrowserAPIClient::DPBrowser_KeyboardTypeWChar(vr::VROverlayHandle_t overlay_handle, wchar_t wchar, bool down)
 {
     if (!LaunchServerIfNotRunning())

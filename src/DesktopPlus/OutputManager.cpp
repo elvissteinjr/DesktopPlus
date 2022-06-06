@@ -2263,23 +2263,34 @@ void OutputManager::DoAction(ActionID action_id, unsigned int overlay_source_id)
                 {
                     if (OverlayManager::Get().GetConfigData(overlay_source_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
                     {
-                        //No toggle support
-
-                        //Press
-                        for (unsigned char keycode : action.KeyCodes)
+                        if (action.IntID == 1 /*ToggleKeys*/)
                         {
-                            if (keycode != 0)
+                            for (unsigned char keycode : action.KeyCodes)
                             {
-                                DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), dpbrowser_ipckbd_keystate_flag_key_down, keycode);
+                                if (keycode != 0)
+                                {
+                                    DPBrowserAPIClient::Get().DPBrowser_KeyboardToggleKey(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), keycode);
+                                }
                             }
                         }
-
-                        //Release
-                        for (unsigned char keycode : action.KeyCodes)
+                        else
                         {
-                            if (keycode != 0)
+                            //Press
+                            for (unsigned char keycode : action.KeyCodes)
                             {
-                                DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), (DPBrowserIPCKeyboardKeystateFlags)0, keycode);
+                                if (keycode != 0)
+                                {
+                                    DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), dpbrowser_ipckbd_keystate_flag_key_down, keycode);
+                                }
+                            }
+
+                            //Release
+                            for (unsigned char keycode : action.KeyCodes)
+                            {
+                                if (keycode != 0)
+                                {
+                                    DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), (DPBrowserIPCKeyboardKeystateFlags)0, keycode);
+                                }
                             }
                         }
                     }
@@ -2442,12 +2453,24 @@ void OutputManager::DoStartAction(ActionID action_id, unsigned int overlay_sourc
             {
                 if (OverlayManager::Get().GetConfigData(overlay_source_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
                 {
-                    for (unsigned char keycode : action.KeyCodes)
+                    if (action.IntID == 1 /*ToggleKeys*/)
                     {
-                        if (keycode != 0)
+                        for (unsigned char keycode : action.KeyCodes)
                         {
-                            //No toggle support
-                            DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), dpbrowser_ipckbd_keystate_flag_key_down, keycode);
+                            if (keycode != 0)
+                            {
+                                DPBrowserAPIClient::Get().DPBrowser_KeyboardToggleKey(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), keycode);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (unsigned char keycode : action.KeyCodes)
+                        {
+                            if (keycode != 0)
+                            {
+                                DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), dpbrowser_ipckbd_keystate_flag_key_down, keycode);
+                            }
                         }
                     }
                 }

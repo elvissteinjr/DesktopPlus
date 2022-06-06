@@ -33,6 +33,7 @@ enum DPBrowserICPCommandID
     dpbrowser_ipccmd_mouse_up,                  //lParam = EVRMouseButton, uses set_overlay_target arg
     dpbrowser_ipccmd_scroll,                    //lParam = X-Delta & Y-Delta (in low/high word order, floats packed as DWORDs), uses set_overlay_target arg
     dpbrowser_ipccmd_keyboard_vkey,             //lParam = DPBrowserIPCKeyboardKeystateFlags + Win32 key code (low/high word order), uses set_overlay_target arg
+    dpbrowser_ipccmd_keyboard_vkey_toggle,      //lParam = Win32 key code, uses set_overlay_target arg
     dpbrowser_ipccmd_keyboard_wchar,            //lParam = 1 wchar + key down bool (low/high word order), uses set_overlay_target arg
     dpbrowser_ipccmd_keyboard_string,           //lParam = overlay_handle, uses dpbrowser_ipcstr_keyboard_string
     dpbrowser_ipccmd_go_back,                   //lParam = overlay_handle
@@ -98,6 +99,7 @@ class DPBrowserAPI
         virtual void DPBrowser_Scroll(vr::VROverlayHandle_t overlay_handle, float x_delta, float y_delta) = 0;
 
         virtual void DPBrowser_KeyboardSetKeyState(vr::VROverlayHandle_t overlay_handle, DPBrowserIPCKeyboardKeystateFlags flags, unsigned char keycode) = 0;
+        virtual void DPBrowser_KeyboardToggleKey(vr::VROverlayHandle_t overlay_handle, unsigned char keycode) = 0;
         virtual void DPBrowser_KeyboardTypeWChar(vr::VROverlayHandle_t overlay_handle, wchar_t wchar, bool down) = 0;
         virtual void DPBrowser_KeyboardTypeString(vr::VROverlayHandle_t overlay_handle, const std::string& str) = 0;
 
