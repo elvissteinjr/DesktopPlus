@@ -2249,28 +2249,66 @@ void OutputManager::DoAction(ActionID action_id, unsigned int overlay_source_id)
 
         if (actions.size() + action_custom > action_id)
         {
+            //Use focused ID if there is no source ID
+            if ( (overlay_source_id == k_ulOverlayID_None) && (ConfigManager::GetValue(configid_int_state_overlay_focused_id) != -1) )
+            {
+                overlay_source_id = (unsigned int)ConfigManager::GetValue(configid_int_state_overlay_focused_id);
+            }
+
             CustomAction& action = actions[action_id - action_custom];
 
             switch (action.FunctionType)
             {
                 case caction_press_keys:
                 {
-                    if (action.IntID == 1 /*ToggleKeys*/)
+                    if (OverlayManager::Get().GetConfigData(overlay_source_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
                     {
-                        m_InputSim.KeyboardToggleState(action.KeyCodes);
+                        //No toggle support
+
+                        //Press
+                        for (unsigned char keycode : action.KeyCodes)
+                        {
+                            if (keycode != 0)
+                            {
+                                DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), dpbrowser_ipckbd_keystate_flag_key_down, keycode);
+                            }
+                        }
+
+                        //Release
+                        for (unsigned char keycode : action.KeyCodes)
+                        {
+                            if (keycode != 0)
+                            {
+                                DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), (DPBrowserIPCKeyboardKeystateFlags)0, keycode);
+                            }
+                        }
                     }
                     else
                     {
-                        m_InputSim.KeyboardSetDown(action.KeyCodes);
-                        m_InputSim.KeyboardSetUp(action.KeyCodes);
+                        if (action.IntID == 1 /*ToggleKeys*/)
+                        {
+                            m_InputSim.KeyboardToggleState(action.KeyCodes);
+                        }
+                        else
+                        {
+                            m_InputSim.KeyboardSetDown(action.KeyCodes);
+                            m_InputSim.KeyboardSetUp(action.KeyCodes);
+                        }
                     }
-                    
+
                     break;
                 }
                 case caction_type_string:
                 {
-                    m_InputSim.KeyboardText(action.StrMain.c_str(), true);
-                    m_InputSim.KeyboardTextFinish();
+                    if (OverlayManager::Get().GetConfigData(overlay_source_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+                    {
+                        DPBrowserAPIClient::Get().DPBrowser_KeyboardTypeString(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), action.StrMain);
+                    }
+                    else
+                    {
+                        m_InputSim.KeyboardText(action.StrMain.c_str(), true);
+                        m_InputSim.KeyboardTextFinish();
+                    }
                     break;
                 }
                 case caction_launch_application:
@@ -2392,11 +2430,31 @@ void OutputManager::DoStartAction(ActionID action_id, unsigned int overlay_sourc
 
         if (actions.size() + action_custom > action_id)
         {
+            //Use focused ID if there is no source ID
+            if ( (overlay_source_id == k_ulOverlayID_None) && (ConfigManager::GetValue(configid_int_state_overlay_focused_id) != -1) )
+            {
+                overlay_source_id = (unsigned int)ConfigManager::GetValue(configid_int_state_overlay_focused_id);
+            }
+
             CustomAction& action = actions[action_id - action_custom];
 
             if (action.FunctionType == caction_press_keys)
             {
-                (action.IntID == 1 /*ToggleKeys*/) ? m_InputSim.KeyboardToggleState(action.KeyCodes) : m_InputSim.KeyboardSetDown(action.KeyCodes);
+                if (OverlayManager::Get().GetConfigData(overlay_source_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+                {
+                    for (unsigned char keycode : action.KeyCodes)
+                    {
+                        if (keycode != 0)
+                        {
+                            //No toggle support
+                            DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), dpbrowser_ipckbd_keystate_flag_key_down, keycode);
+                        }
+                    }
+                }
+                else
+                {
+                    (action.IntID == 1 /*ToggleKeys*/) ? m_InputSim.KeyboardToggleState(action.KeyCodes) : m_InputSim.KeyboardSetDown(action.KeyCodes);
+                }
             }
             else
             {
@@ -2410,7 +2468,7 @@ void OutputManager::DoStartAction(ActionID action_id, unsigned int overlay_sourc
     }
 }
 
-void OutputManager::DoStopAction(ActionID action_id, unsigned int /*overlay_source_id*/)
+void OutputManager::DoStopAction(ActionID action_id, unsigned int overlay_source_id)
 {
     if (action_id >= action_custom)
     {
@@ -2418,13 +2476,32 @@ void OutputManager::DoStopAction(ActionID action_id, unsigned int /*overlay_sour
 
         if (actions.size() + action_custom > action_id)
         {
+            //Use focused ID if there is no source ID
+            if ( (overlay_source_id == k_ulOverlayID_None) && (ConfigManager::GetValue(configid_int_state_overlay_focused_id) != -1) )
+            {
+                overlay_source_id = (unsigned int)ConfigManager::GetValue(configid_int_state_overlay_focused_id);
+            }
+
             CustomAction& action = actions[action_id - action_custom];
 
             if (action.FunctionType == caction_press_keys)
             {
                 if (action.IntID != 1 /*ToggleKeys*/)
                 {
-                    m_InputSim.KeyboardSetUp(action.KeyCodes);
+                    if (OverlayManager::Get().GetConfigData(overlay_source_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+                    {
+                        for (unsigned char keycode : action.KeyCodes)
+                        {
+                            if (keycode != 0)
+                            {
+                                DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), (DPBrowserIPCKeyboardKeystateFlags)0, keycode);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        m_InputSim.KeyboardSetUp(action.KeyCodes);
+                    }
                 }
             }
         }
@@ -4199,10 +4276,21 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             //Set focused ID when clicking on an overlay
             ConfigManager::Get().SetValue(configid_int_state_overlay_focused_id, (int)overlay_current.GetID());
             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_focused_id, (int)overlay_current.GetID());
-            
+
             if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
             {
-                DPBrowserAPIClient::Get().DPBrowser_MouseDown(overlay_current.GetHandle(), (vr::EVRMouseButton)vr_event.data.mouse.button);
+                if (vr_event.data.mouse.button <= vr::VRMouseButton_Middle)
+                {
+                    DPBrowserAPIClient::Get().DPBrowser_MouseDown(overlay_current.GetHandle(), (vr::EVRMouseButton)vr_event.data.mouse.button);
+                }
+                else
+                {
+                    switch (vr_event.data.mouse.button)
+                    {
+                        case VRMouseButton_DP_Aux01: DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id), overlay_current.GetID()); break;
+                        case VRMouseButton_DP_Aux02: DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id), overlay_current.GetID()); break;
+                    }
+                }
                 break;
             }
             else if ((overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui))
@@ -4251,8 +4339,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(true);   break;
                 case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(true);  break;
                 case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but our own laser pointer supports this
-                case VRMouseButton_DP_Aux01:    DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id)); break;
-                case VRMouseButton_DP_Aux02:    DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id)); break;
+                case VRMouseButton_DP_Aux01:    DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id), overlay_current.GetID()); break;
+                case VRMouseButton_DP_Aux02:    DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id), overlay_current.GetID()); break;
             }
 
             break;
@@ -4299,7 +4387,18 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             }
             else if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
             {
-                DPBrowserAPIClient::Get().DPBrowser_MouseUp(overlay_current.GetHandle(), (vr::EVRMouseButton)vr_event.data.mouse.button);
+                if (vr_event.data.mouse.button <= vr::VRMouseButton_Middle)
+                {
+                    DPBrowserAPIClient::Get().DPBrowser_MouseUp(overlay_current.GetHandle(), (vr::EVRMouseButton)vr_event.data.mouse.button);
+                }
+                else
+                {
+                    switch (vr_event.data.mouse.button)
+                    {
+                        case VRMouseButton_DP_Aux01: DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id), overlay_current.GetID()); break;
+                        case VRMouseButton_DP_Aux02: DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id), overlay_current.GetID()); break;
+                    }
+                }
                 break;
             }
             else if ((overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui))
@@ -4312,8 +4411,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(false);   break;
                 case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(false);  break;
                 case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(false); break;
-                case VRMouseButton_DP_Aux01:    DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id)); break;
-                case VRMouseButton_DP_Aux02:    DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id)); break;
+                case VRMouseButton_DP_Aux01:    DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id), overlay_current.GetID()); break;
+                case VRMouseButton_DP_Aux02:    DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id), overlay_current.GetID()); break;
             }
 
             //If there was a possible WindowManager drag event prepared for, reset the target window
