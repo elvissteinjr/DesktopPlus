@@ -14,6 +14,7 @@
 
 WindowKeyboard::WindowKeyboard() : 
     m_WindowWidth(-1.0f),
+    m_IsAutoVisible(false),
     m_IsHovered(false),
     m_IsAnyButtonHovered(false),
     m_AssignedOverlayIDRoom(-1),
@@ -50,6 +51,13 @@ void WindowKeyboard::UpdateVisibility()
 
         if (is_using_dashboard_state != vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard()))
         {
+            //Auto-visible keyboards don't persist between overlay state switches
+            if (m_IsAutoVisible)
+            {
+                SetAssignedOverlayID(-1);
+                Hide();
+            }
+
             OverlayStateSwitchCurrent(!is_using_dashboard_state);
         }
     }
@@ -178,6 +186,8 @@ void WindowKeyboard::Show(bool skip_fade)
 
 void WindowKeyboard::Hide(bool skip_fade)
 {
+    m_IsAutoVisible = false;
+
     //Refuse to hide if window is currently being dragged or hovered and remove assignment
     if ( (UIManager::Get()->GetOverlayDragger().IsDragActive()) && (UIManager::Get()->GetOverlayDragger().GetDragOverlayHandle() == GetOverlayHandle()) )
     {
@@ -189,6 +199,32 @@ void WindowKeyboard::Hide(bool skip_fade)
     FloatingWindow::Hide(skip_fade);
 
     UIManager::Get()->GetVRKeyboard().OnWindowHidden();
+}
+
+bool WindowKeyboard::SetAutoVisibility(unsigned int overlay_id, bool show)
+{
+    if (show)
+    {
+        if (!IsVisible())
+        {
+            SetAssignedOverlayID(overlay_id);
+            m_IsAutoVisible = true;
+
+            //This will not have a smooth transition if there was another auto-visible keyboard right before this, but let's skip the effort for that for now
+            Show();
+
+            return true;
+        }
+    }
+    else if ( (m_IsAutoVisible) && (GetAssignedOverlayID() == overlay_id) )
+    {
+        SetAssignedOverlayID(-1);
+        Hide();
+
+        return true;
+    }
+
+    return false;
 }
 
 void WindowKeyboard::WindowUpdate()

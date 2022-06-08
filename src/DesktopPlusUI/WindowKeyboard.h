@@ -27,6 +27,7 @@ class WindowKeyboard : public FloatingWindow
 {
     private:
         float m_WindowWidth;
+        bool m_IsAutoVisible;
         bool m_IsHovered;
         bool m_IsAnyButtonHovered;
         Matrix4 m_TransformUIOrigin;
@@ -69,6 +70,7 @@ class WindowKeyboard : public FloatingWindow
 
         virtual void Show(bool skip_fade = false);
         virtual void Hide(bool skip_fade = false);
+        bool SetAutoVisibility(unsigned int overlay_id, bool show);                         //Returns true on success
         virtual vr::VROverlayHandle_t GetOverlayHandle() const;
         virtual void RebaseTransform();
         virtual void ResetTransform(FloatingWindowOverlayStateID state_id);

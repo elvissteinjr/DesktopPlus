@@ -45,6 +45,7 @@ enum DPBrowserICPCommandID
     dpbrowser_ipccmd_notify_title_changed,      //lParam = overlay_handle, uses dpbrowser_ipcstr_title arg | Sent by browser process to UI process
     dpbrowser_ipccmd_notify_fps,                //lParam = fps, uses set_overlay_target arg | Sent by browser process to UI process
     dpbrowser_ipccmd_notify_lpointer_haptics,   //No value in lParam, triggers short UI interaction burst on primary device | Sent by browser process to dashboard process
+    dpbrowser_ipccmd_notify_keyboard_show,      //lParam = show bool, uses set_overlay_target arg | Sent by browser process to UI process
 };
 
 enum DPBrowserICPStringID

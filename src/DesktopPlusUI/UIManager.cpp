@@ -600,6 +600,8 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
             else if (msg.wParam < configid_bool_MAX + configid_int_MAX)
             {
                 ConfigID_Int int_id = (ConfigID_Int)(msg.wParam - configid_bool_MAX);
+
+                int previous_value = ConfigManager::GetValue(int_id);
                 ConfigManager::SetValue(int_id, (int)msg.lParam);
 
                 switch (int_id)
@@ -641,6 +643,15 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                             m_AuxUI.GetDragHintWindow().Show();
                         }
 
+                        break;
+                    }
+                    case configid_int_state_overlay_focused_id:
+                    {
+                        //Hide auto-visible keyboard if there was one for the previously focused overlay
+                        if ( (previous_value != -1) && (previous_value != msg.lParam) )
+                        {
+                            m_VRKeyboard.GetWindow().SetAutoVisibility((unsigned int)previous_value, false);
+                        }
                         break;
                     }
                     default: break;

@@ -312,6 +312,21 @@ void DPBrowserAPIClient::HandleIPCMessage(const MSG& msg)
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_lpointer_trigger_haptics, (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
             break;
         }
+        case dpbrowser_ipccmd_notify_keyboard_show:
+        {
+            unsigned int overlay_id = OverlayManager::Get().FindOverlayID(m_IPCOverlayTarget);
+
+            if (overlay_id != k_ulOverlayID_None)
+            {
+                #ifdef DPLUS_UI
+                    if (UIManager* uimgr = UIManager::Get())
+                    {
+                        uimgr->GetVRKeyboard().GetWindow().SetAutoVisibility(overlay_id, msg.lParam);
+                    }
+                #endif
+            }
+            break;
+        }
     }
 }
 
