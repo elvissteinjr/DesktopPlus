@@ -128,7 +128,7 @@ class WindowManager
         //- Only called by WindowManager thread
         void HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, LONG id_child, DWORD event_thread, DWORD event_time);
         static void CALLBACK WinEventProc(HWINEVENTHOOK event_hook_handle, DWORD win_event, HWND hwnd, LONG id_object, LONG id_child, DWORD event_thread, DWORD event_time);
-        void ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINEVENTHOOK& hook_handle_location_change, HWINEVENTHOOK& hook_handle_focus_change, HWINEVENTHOOK& hook_handle_destroy_show);
+        void ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINEVENTHOOK& hook_handle_location_change, HWINEVENTHOOK& hook_handle_foreground, HWINEVENTHOOK& hook_handle_destroy_show);
 
         static DWORD WindowManagerThreadEntry(void* param);
 };

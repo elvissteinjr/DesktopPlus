@@ -750,7 +750,7 @@ void WindowManager::HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, L
 
         #ifndef DPLUS_UI
 
-        case EVENT_OBJECT_FOCUS:
+        case EVENT_SYSTEM_FOREGROUND:
         {
             //Check if focus is from a different process than last time
             DWORD process_id;
@@ -881,7 +881,7 @@ void WindowManager::WindowManager::WinEventProc(HWINEVENTHOOK /*event_hook_handl
     Get().HandleWinEvent(win_event, hwnd, id_object, id_child, event_thread, event_time);
 }
 
-void WindowManager::ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINEVENTHOOK& hook_handle_location_change, HWINEVENTHOOK& hook_handle_focus_change, HWINEVENTHOOK& hook_handle_destroy_show)
+void WindowManager::ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINEVENTHOOK& hook_handle_location_change, HWINEVENTHOOK& hook_handle_foreground, HWINEVENTHOOK& hook_handle_destroy_show)
 {
     #ifndef DPLUS_UI
 
@@ -901,7 +901,7 @@ void WindowManager::ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINE
         hook_handle_location_change = nullptr;
     }
 
-    if (hook_handle_focus_change == nullptr)
+    if (hook_handle_foreground == nullptr)
     {
         //Set initial elevated process focus state beforehand
         DWORD process_id;
@@ -911,7 +911,7 @@ void WindowManager::ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINE
         //Send process elevation state to UI
         IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_window_focused_process_elevated, IsProcessElevated(process_id));
 
-        hook_handle_focus_change = ::SetWinEventHook(EVENT_OBJECT_FOCUS, EVENT_OBJECT_FOCUS, nullptr, WindowManager::WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+        hook_handle_foreground = ::SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, nullptr, WindowManager::WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
     }
 
     #endif
@@ -948,10 +948,10 @@ DWORD WindowManager::WindowManagerThreadEntry(void* /*param*/)
     //Create event hooks
     HWINEVENTHOOK hook_handle_move_size       = nullptr;
     HWINEVENTHOOK hook_handle_location_change = nullptr;
-    HWINEVENTHOOK hook_handle_focus_change    = nullptr;
+    HWINEVENTHOOK hook_handle_foreground      = nullptr;
     HWINEVENTHOOK hook_handle_destroy_show    = nullptr;
     
-    Get().ManageEventHooks(hook_handle_move_size, hook_handle_location_change, hook_handle_focus_change, hook_handle_destroy_show);
+    Get().ManageEventHooks(hook_handle_move_size, hook_handle_location_change, hook_handle_foreground, hook_handle_destroy_show);
 
     //Wait for callbacks, update or quit message
     MSG msg;
@@ -977,7 +977,7 @@ DWORD WindowManager::WindowManagerThreadEntry(void* /*param*/)
                 wman.m_ThreadLocalData = wman.m_ThreadData;
             }
 
-            wman.ManageEventHooks(hook_handle_move_size, hook_handle_location_change, hook_handle_focus_change, hook_handle_destroy_show);
+            wman.ManageEventHooks(hook_handle_move_size, hook_handle_location_change, hook_handle_foreground, hook_handle_destroy_show);
 
             //Notify main thread we're done
             {
@@ -990,7 +990,7 @@ DWORD WindowManager::WindowManagerThreadEntry(void* /*param*/)
 
     ::UnhookWinEvent(hook_handle_move_size);
     ::UnhookWinEvent(hook_handle_location_change);
-    ::UnhookWinEvent(hook_handle_focus_change);
+    ::UnhookWinEvent(hook_handle_foreground);
     ::UnhookWinEvent(hook_handle_destroy_show);
 
     return 0;
