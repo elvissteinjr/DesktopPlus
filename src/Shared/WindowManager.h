@@ -81,6 +81,10 @@ class WindowManager
         const std::vector<WindowInfo>& WindowListGet() const;
         WindowInfo const* WindowListFindWindow(HWND window) const;
 
+        bool IsTextInputFocused();
+        void UpdateTextInputFocusedState(bool new_state);                                        //Update main thread accessible state in response to message sent by WindowManager thread
+        void OnTextInputLeftMouseClick();                                                        //Call for text input focus tracking purposes when left mouse was clicked
+
         bool WouldDragMaximizedTitleBar(HWND window, int prev_cursor_x, int prev_cursor_y, int new_cursor_x, int new_cursor_y);
         bool IsHoveringCapturableTitleBar(HWND window, int cursor_x, int cursor_y);
         void RaiseAndFocusWindow(HWND window, InputSimulator* input_sim_ptr = nullptr);          //input_sim_ptr is optional but passing it increases chance of success
@@ -91,19 +95,23 @@ class WindowManager
 
     private:
         //- Only accessed in main thread
-        HANDLE m_ThreadHandle = nullptr;
-        DWORD m_ThreadID = 0;
-        HWND m_TargetWindow = nullptr;
+        HANDLE m_ThreadHandle          = nullptr;
+        DWORD m_ThreadID               = 0;
+        HWND m_TargetWindow            = nullptr;
         unsigned int m_TargetOverlayID = UINT_MAX;
 
-        bool m_IsActive = false;
+        bool m_IsActive        = false;
         bool m_IsOverlayActive = false;
 
-        HWND m_LastFocusFailedWindow = nullptr;
+        HWND m_LastFocusFailedWindow    = nullptr;
         ULONGLONG m_LastFocusFailedTick = 0;
-        HWND m_TempTopMostWindow = nullptr;
+        HWND m_TempTopMostWindow        = nullptr;
 
         std::vector<WindowInfo> m_WindowList;
+
+        bool m_IsTextInputFocused                = false;
+        bool m_IsTextInputFocusedPending         = false;
+        ULONGLONG m_IsTextInputFocusedUpdateTick = 0;
 
         //- Protected by m_ThreadMutex
         std::mutex m_ThreadMutex;
@@ -116,19 +124,27 @@ class WindowManager
 
         //- Only accessed in WindowManager thread
         WindowManagerThreadData m_ThreadLocalData;
-        POINT m_DragStartMousePos {0, 0};
-        RECT m_DragStartWindowRect {0, 0, 0, 0};
-        HWND m_DragWindow = nullptr;
+        POINT m_DragStartMousePos   {0, 0};
+        RECT m_DragStartWindowRect  {0, 0, 0, 0};
+        HWND m_DragWindow         = nullptr;
         bool m_DragOverlayMsgSent = false;
-        DWORD m_FocusLastProcess = 0;
+        DWORD m_FocusLastProcess  = 0;
+
+        //    Local state for text input focus tracking
+        HWND m_ThreadTextInputFocusCaretWindow    = nullptr;
+        ULONGLONG m_ThreadTextInputFocusClickTick = 0;
 
         //- Only called by main thread
         void WindowListInit();
 
         //- Only called by WindowManager thread
         void HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, LONG id_child, DWORD event_thread, DWORD event_time);
+        void HandleCaretWinEvent(DWORD win_event, HWND hwnd);
+        void HandleTextInputMouseClick();
+
         static void CALLBACK WinEventProc(HWINEVENTHOOK event_hook_handle, DWORD win_event, HWND hwnd, LONG id_object, LONG id_child, DWORD event_thread, DWORD event_time);
-        void ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINEVENTHOOK& hook_handle_location_change, HWINEVENTHOOK& hook_handle_foreground, HWINEVENTHOOK& hook_handle_destroy_show);
+        void ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINEVENTHOOK& hook_handle_location_change, HWINEVENTHOOK& hook_handle_foreground, HWINEVENTHOOK& hook_handle_destroy_show,
+                              HWINEVENTHOOK& hook_handle_caret);
 
         static DWORD WindowManagerThreadEntry(void* param);
 };

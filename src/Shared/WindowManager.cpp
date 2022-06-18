@@ -292,7 +292,8 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string& title_str, const s
 }
 
 
-#define WM_WINDOWMANAGER_UPDATE_DATA WM_APP //Sent to WindowManager thread to update the local thread data
+#define WM_WINDOWMANAGER_UPDATE_DATA            WM_APP   //Sent to WindowManager thread to update the local thread data
+#define WM_WINDOWMANAGER_TEXT_INPUT_MOUSE_CLICK WM_APP+1 //Sent to WindowManager thread to indicate a left mouse click happening
 
 WindowManager& WindowManager::Get()
 {
@@ -304,7 +305,7 @@ void WindowManager::UpdateConfigState()
     WindowManagerThreadData thread_data_new;
     thread_data_new.BlockDrag       = ((m_IsOverlayActive) && (ConfigManager::GetValue(configid_int_windows_winrt_dragging_mode) != window_dragging_none));
     thread_data_new.DoOverlayDrag   = ((m_IsOverlayActive) && (ConfigManager::GetValue(configid_int_windows_winrt_dragging_mode) == window_dragging_overlay));
-    thread_data_new.KeepOnScreen    = ((m_IsOverlayActive) &&  ConfigManager::GetValue(configid_bool_windows_winrt_keep_on_screen));
+    thread_data_new.KeepOnScreen    = ((m_IsOverlayActive) && (ConfigManager::GetValue(configid_bool_windows_winrt_keep_on_screen)));
     thread_data_new.TargetWindow    = m_TargetWindow;
     thread_data_new.TargetOverlayID = m_TargetOverlayID;
 
@@ -460,6 +461,30 @@ WindowInfo const* WindowManager::WindowListFindWindow(HWND window) const
     }
 
     return nullptr;
+}
+
+bool WindowManager::IsTextInputFocused()
+{
+    //Wait for the text input focused state to be stable for before reporting any changes
+    //We are more eager to show than hide to keep responsiveness while accommodating for applications that flicker the state back and forth in certain cases
+    if (m_IsTextInputFocusedUpdateTick + ((m_IsTextInputFocusedPending) ? 100 : 200) < ::GetTickCount64())
+    {
+        m_IsTextInputFocused = m_IsTextInputFocusedPending;
+    }
+
+    return m_IsTextInputFocused;
+}
+
+void WindowManager::UpdateTextInputFocusedState(bool new_state)
+{
+    m_IsTextInputFocusedPending    = new_state;
+    m_IsTextInputFocusedUpdateTick = ::GetTickCount64();
+}
+
+void WindowManager::OnTextInputLeftMouseClick()
+{
+    if (m_ThreadID != 0)
+        ::PostThreadMessage(m_ThreadID, WM_WINDOWMANAGER_TEXT_INPUT_MOUSE_CLICK, 0, 0);
 }
 
 bool WindowManager::WouldDragMaximizedTitleBar(HWND window, int prev_cursor_x, int prev_cursor_y, int new_cursor_x, int new_cursor_y)
@@ -700,6 +725,14 @@ void WindowManager::WindowListInit()
 
 void WindowManager::HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, LONG id_child, DWORD event_thread, DWORD event_time)
 {
+    #ifndef DPLUS_UI
+        if (id_object == OBJID_CARET)
+        {
+            HandleCaretWinEvent(win_event, hwnd);
+            return;
+        }
+    #endif
+
     switch (win_event)
     {
         case EVENT_OBJECT_DESTROY:
@@ -765,6 +798,9 @@ void WindowManager::HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, L
 
             //Send focus update to UI
             IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_winmanager_focus_changed);
+
+            //Not a caret event, but trigger handling on focus change for text input focus tracking too
+            HandleCaretWinEvent(EVENT_SYSTEM_FOREGROUND, nullptr);
 
             return;
         }
@@ -876,12 +912,101 @@ void WindowManager::HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, L
     }
 }
 
+void WindowManager::HandleCaretWinEvent(DWORD win_event, HWND hwnd)
+{
+    //Text input focus tracking is limited to tracking applications sending caret win events.
+    //This is only an approximation in lack of accessible on-screen-keyboard request events (which still wouldn't cover every custom control)
+    //and makes assumptions about typical application behavior to avoid false positives.
+    //It generally works reasonably well for applications that use native controls or send assistive events for their custom ones, however.
+
+    //Get the root window if possible so different controls don't count as separate windows
+    hwnd = ::GetAncestor(hwnd, GA_ROOT);
+
+    switch (win_event)
+    {
+        case EVENT_SYSTEM_FOREGROUND:
+        {
+            if (m_ThreadTextInputFocusCaretWindow != nullptr)
+            {
+                m_ThreadTextInputFocusCaretWindow = nullptr;
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_winmanager_text_input_focus, false);
+            }
+
+            break;
+        }
+        case EVENT_OBJECT_CREATE:
+        case EVENT_OBJECT_SHOW:
+        case EVENT_OBJECT_LOCATIONCHANGE:   //Some applications don't send any caret events except for location change, so we accept those too in order to support them at least partially
+        {
+            if (m_ThreadTextInputFocusCaretWindow == nullptr)
+            {
+                CURSORINFO cinfo = {0};
+                cinfo.cbSize = sizeof(CURSORINFO);
+
+                if (::GetCursorInfo(&cinfo))
+                {
+                    if (hwnd == ::GetForegroundWindow())
+                    {
+                        //Only trigger when the mouse cursor is visible to get rid of false positives from games and such
+                        if (cinfo.flags & CURSOR_SHOWING)
+                        {
+                            //If the event is EVENT_OBJECT_LOCATIONCHANGE, ignore the event if the cursor isn't caret/ibeam or it's been longer than 200 ms since the last click
+                            //Some applications send spurious location change events for the caret even multiple seconds after anything changed, so we need to filter those out
+                            if ( (win_event == EVENT_OBJECT_LOCATIONCHANGE) && ((cinfo.hCursor != ::LoadCursor(nullptr, IDC_IBEAM)) || (m_ThreadTextInputFocusClickTick + 200 < ::GetTickCount64())) )
+                            {
+                                break;
+                            }
+
+                            m_ThreadTextInputFocusCaretWindow = hwnd;
+
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_winmanager_text_input_focus, true);
+                        }
+                    }
+                }
+            }
+            break;
+        }
+        case EVENT_OBJECT_DESTROY:
+        case EVENT_OBJECT_HIDE:
+        {
+            //Either be the last caret-changing window or be focused
+            if ( (m_ThreadTextInputFocusCaretWindow == hwnd) || (::GetForegroundWindow() == hwnd) )
+            {
+                m_ThreadTextInputFocusCaretWindow = nullptr;
+
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_winmanager_text_input_focus, false);
+            }
+            break;
+        }
+    }
+}
+
+void WindowManager::HandleTextInputMouseClick()
+{
+    if (m_ThreadTextInputFocusCaretWindow != nullptr)
+    {
+        //If a mouse click happened while the cursor isn't the caret/ibeam cursor, we assume it unfocused any active text input even if there's no win event sent for it
+        CURSORINFO cinfo = {0};
+        cinfo.cbSize = sizeof(CURSORINFO);
+        if ( (!::GetCursorInfo(&cinfo)) || (cinfo.hCursor != ::LoadCursor(nullptr, IDC_IBEAM)) )	//If cursor access fails or cursor isn't ibeam
+        {
+            m_ThreadTextInputFocusCaretWindow = nullptr;
+
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_winmanager_text_input_focus, false);
+        }
+    }
+
+    //Track the last click time
+    m_ThreadTextInputFocusClickTick = ::GetTickCount64();
+}
+
 void WindowManager::WindowManager::WinEventProc(HWINEVENTHOOK /*event_hook_handle*/, DWORD win_event, HWND hwnd, LONG id_object, LONG id_child, DWORD event_thread, DWORD event_time)
 {
     Get().HandleWinEvent(win_event, hwnd, id_object, id_child, event_thread, event_time);
 }
 
-void WindowManager::ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINEVENTHOOK& hook_handle_location_change, HWINEVENTHOOK& hook_handle_foreground, HWINEVENTHOOK& hook_handle_destroy_show)
+void WindowManager::ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINEVENTHOOK& hook_handle_location_change, HWINEVENTHOOK& hook_handle_foreground, HWINEVENTHOOK& hook_handle_destroy_show,
+                                     HWINEVENTHOOK& hook_handle_caret)
 {
     #ifndef DPLUS_UI
 
@@ -912,6 +1037,11 @@ void WindowManager::ManageEventHooks(HWINEVENTHOOK& hook_handle_move_size, HWINE
         IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_window_focused_process_elevated, IsProcessElevated(process_id));
 
         hook_handle_foreground = ::SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, nullptr, WindowManager::WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+    }
+
+    if (hook_handle_caret == nullptr)
+    {
+        hook_handle_caret = ::SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_LOCATIONCHANGE, nullptr, WindowManager::WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
     }
 
     #endif
@@ -950,8 +1080,9 @@ DWORD WindowManager::WindowManagerThreadEntry(void* /*param*/)
     HWINEVENTHOOK hook_handle_location_change = nullptr;
     HWINEVENTHOOK hook_handle_foreground      = nullptr;
     HWINEVENTHOOK hook_handle_destroy_show    = nullptr;
-    
-    Get().ManageEventHooks(hook_handle_move_size, hook_handle_location_change, hook_handle_foreground, hook_handle_destroy_show);
+    HWINEVENTHOOK hook_handle_caret           = nullptr;
+
+    Get().ManageEventHooks(hook_handle_move_size, hook_handle_location_change, hook_handle_foreground, hook_handle_destroy_show, hook_handle_caret);
 
     //Wait for callbacks, update or quit message
     MSG msg;
@@ -977,7 +1108,7 @@ DWORD WindowManager::WindowManagerThreadEntry(void* /*param*/)
                 wman.m_ThreadLocalData = wman.m_ThreadData;
             }
 
-            wman.ManageEventHooks(hook_handle_move_size, hook_handle_location_change, hook_handle_foreground, hook_handle_destroy_show);
+            wman.ManageEventHooks(hook_handle_move_size, hook_handle_location_change, hook_handle_foreground, hook_handle_destroy_show, hook_handle_caret);
 
             //Notify main thread we're done
             {
@@ -986,12 +1117,17 @@ DWORD WindowManager::WindowManagerThreadEntry(void* /*param*/)
             }
             wman.m_UpdateDoneCV.notify_one();
         }
+        else if (msg.message == WM_WINDOWMANAGER_TEXT_INPUT_MOUSE_CLICK)
+        {
+            Get().HandleTextInputMouseClick();
+        }
     }
 
     ::UnhookWinEvent(hook_handle_move_size);
     ::UnhookWinEvent(hook_handle_location_change);
     ::UnhookWinEvent(hook_handle_foreground);
     ::UnhookWinEvent(hook_handle_destroy_show);
+    ::UnhookWinEvent(hook_handle_caret);
 
     return 0;
 }

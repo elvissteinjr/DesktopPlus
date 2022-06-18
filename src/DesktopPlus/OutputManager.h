@@ -151,6 +151,8 @@ class OutputManager
         void RegisterHotkeys();
         void HandleHotkeys();
 
+        void HandleKeyboardAutoVisibility();
+
     // ClassVars
         InputSimulator m_InputSim;
         VRInput m_VRInput;

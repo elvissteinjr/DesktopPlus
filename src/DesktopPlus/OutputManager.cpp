@@ -1232,6 +1232,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                     break;
                 }
+                case ipcact_winmanager_text_input_focus:
+                {
+                    WindowManager::Get().UpdateTextInputFocusedState(msg.lParam);
+                    break;
+                }
                 case ipcact_sync_config_state:
                 {
                     //Overlay state
@@ -3830,6 +3835,8 @@ bool OutputManager::HandleOpenVREvents()
     }
 
     //Now handle events for the actual overlays
+    int overlay_focus_count = (m_OvrlInputActive) ? 1 : 0;  //Keep track of multiple overlay focus enter/leave happening within the same frame to set m_OvrlInputActive correctly afterwards
+
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
@@ -3880,7 +3887,7 @@ bool OutputManager::HandleOpenVREvents()
                 }
                 case vr::VREvent_FocusEnter:
                 {
-                    m_OvrlInputActive = true;
+                    overlay_focus_count++;
 
                     bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
 
@@ -3910,7 +3917,7 @@ bool OutputManager::HandleOpenVREvents()
                 }
                 case vr::VREvent_FocusLeave:
                 {
-                    m_OvrlInputActive = false;
+                    overlay_focus_count--;
 
                     bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
 
@@ -3974,6 +3981,8 @@ bool OutputManager::HandleOpenVREvents()
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
+    m_OvrlInputActive = (overlay_focus_count > 0);
+
     //Handle stuff coming from SteamVR Input
     m_VRInput.Update();
 
@@ -4007,6 +4016,7 @@ bool OutputManager::HandleOpenVREvents()
     m_InputSim.KeyboardTextFinish();
 
     HandleHotkeys();
+    HandleKeyboardAutoVisibility();
 
     //Update position if necessary
     bool dashboard_origin_was_updated = false;
@@ -4354,6 +4364,11 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
                 {
                     m_MouseLeftDownOverlayID = overlay_current.GetID();
+
+                    if (true /*Setting for input field tracking*/)
+                    {
+                        WindowManager::Get().OnTextInputLeftMouseClick();
+                    }
                 }
             }
 
@@ -6593,5 +6608,28 @@ void OutputManager::HandleHotkeys()
                 m_IsHotkeyDown[i] = false;
             }
         }
+    }
+}
+
+void OutputManager::HandleKeyboardAutoVisibility()
+{
+    //This only handles auto-visibility for desktop/window overlays
+
+    //Check if state changed
+    static bool is_text_input_focused_prev = false;
+    bool is_text_input_focused = (m_MouseIgnoreMoveEvent) ? false : WindowManager::Get().IsTextInputFocused();
+
+    //Overlay input has to be active during a state change for it to count as focused
+    if ((is_text_input_focused != is_text_input_focused_prev) && (!m_OvrlInputActive))
+    {
+        is_text_input_focused = false;
+    }
+
+    if (is_text_input_focused != is_text_input_focused_prev)
+    {
+        //Send update to UI process
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show_auto, (is_text_input_focused) ? ConfigManager::GetValue(configid_int_state_overlay_focused_id) : -1);
+
+        is_text_input_focused_prev = is_text_input_focused;
     }
 }

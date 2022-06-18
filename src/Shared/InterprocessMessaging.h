@@ -30,42 +30,44 @@ enum IPCMsgID
 enum IPCActionID
 {
     ipcact_nop,
-    ipcact_mirror_reset,              //Sent by dashboard application to itself when WndProc needs to trigger a mirror reset
-    ipcact_overlays_reset,            //Sent by dashboard application when all overlays were reset. No data in lParam
-    ipcact_overlay_position_reset,    //Sent by UI application to reset the detached overlay position. No data in lParam
-    ipcact_overlay_position_adjust,   //Sent by UI application to adjust detached overlay position. lParam = IPCActionOverlayPosAdjustValue
-    ipcact_action_delete,             //Sent by UI application to delete an Action. lParam is Custom(!) Action ID
-    ipcact_action_do,                 //Sent by UI application to do an Action. lParam is Action ID
-    ipcact_action_start,              //Sent by UI application to start an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
-    ipcact_action_stop,               //Sent by UI application to stop an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
-    ipcact_overlay_profile_load,      //Sent by UI application when loading a profile. lParam is IPCActionOverlayProfileLoadArg + profile overlay ID (low/high word order). -2 ID is default.
-                                      //Profile name is stored in configid_str_state_profile_name_load beforehand. ipcactv_ovrl_profile_multi_add queues profile IDs until called with -1
-    ipcact_crop_to_active_window,     //Sent by UI application to adjust crop values to the active window. No data in lParam
-    ipcact_overlay_duplicate,         //Sent by UI application to duplicate an overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
-    ipcact_overlay_new_ui,            //Sent by UI application to add a new UI overlay, also making it the active one. No data in lParam
-    ipcact_overlay_new_drag,          //Sent by UI application to add a new overlay. lParam is desktop ID or -2 for HWND, -3 for UI overlay, + pointer distance * 100 (low/high word order, signed)
-                                      //HWND is stored in configid_handle_state_arg_hwnd beforehand
-    ipcact_overlay_remove,            //Sent by UI or dashboard application to remove a overlay. lParam is ID of overlay to remove (typically the active ID)
-    ipcact_overlay_creation_error,    //Sent by dashboard application when an error occured during overlay creation. lParam is EVROverlayError
-    ipcact_overlay_transform_sync,    //Sent by the UI application to request a sync of overlay transforms. lParam is ID of overlay to sync transform of (or -1 for full sync)
-    ipcact_overlay_swap,              //Sent by the UI application to swap two overlays. lParam is the ID of overlay to swap with the current overlay
-    ipcact_overlay_gaze_fade_auto,    //Sent by the UI application to automatically configure gaze fade values. No data in lParam
-    ipcact_overlay_make_standalone,   //Sent by the UI application to converted overlays with duplication ID to standalone ones. lParam is ID of overlay to convert (typically the active ID)
-    ipcact_winrt_thread_error,        //Sent by dashboard application when an error occured in a Graphics Capture thread. lParam is HRESULT
-    ipcact_browser_navigate_to_url,   //Sent by UI application to have the overlay's browser navigate to configid_str_overlay_browser_url. lParam is ID of overlay
-    ipcact_browser_recreate_context,  //Sent by UI application to have the overlay's browser context be recreated. lParam is ID of overlay
-    ipcact_winmanager_drag_start,     //Sent by dashboard application's WindowManager thread to main thread to start an overlay drag. lParam is ID of overlay to drag
-    ipcact_winmanager_winlist_add,    //Sent by either application's WindowManager thread to main thread to add a window to the window list. lParam is HWND
-    ipcact_winmanager_winlist_update, //Sent by WindowManager thread to main thread to update a window from the window list. lParam is HWND
-    ipcact_winmanager_winlist_remove, //Sent by WindowManager thread to main thread to remove a window from the window list. lParam is HWND
-    ipcact_winmanager_focus_changed,  //Sent by dashboard application's WindowManager thread to UI app when the foreground window changed. No data in lParam
-    ipcact_sync_config_state,         //Sent by the UI application to request overlay and config state variables after a restart
-    ipcact_focus_window,              //Sent by the UI application to focus a window. lParam is HWND
-    ipcact_keyboard_show,             //Sent by dashboard application to show the VR keyboard. lParam is assigned overlay ID (-1 to hide, -2 for UI/global)
-    ipcact_keyboard_vkey,             //Sent by UI application in response of a VR keyboard press. lParam is IPCKeyboardKeystateFlags + Win32 key code (low/high word order)
-    ipcact_keyboard_wchar,            //Sent by UI application in response of a VR keyboard press. lParam is 1 wchar + key down bool (low/high word order)
-    ipcact_lpointer_trigger_haptics,  //Sent by UI application to trigger laser pointer haptics (short UI interaction burst). lParam is tracked device index
-    ipcact_lpointer_ui_mask_rect,     //Sent by UI application to update the UI intersection mask for the dplus laser pointer. lParam is DPRect packed with DPRect::Pack16() or -1 to finish the mask
+    ipcact_mirror_reset,                //Sent by dashboard application to itself when WndProc needs to trigger a mirror reset
+    ipcact_overlays_reset,              //Sent by dashboard application when all overlays were reset. No data in lParam
+    ipcact_overlay_position_reset,      //Sent by UI application to reset the detached overlay position. No data in lParam
+    ipcact_overlay_position_adjust,     //Sent by UI application to adjust detached overlay position. lParam = IPCActionOverlayPosAdjustValue
+    ipcact_action_delete,               //Sent by UI application to delete an Action. lParam is Custom(!) Action ID
+    ipcact_action_do,                   //Sent by UI application to do an Action. lParam is Action ID
+    ipcact_action_start,                //Sent by UI application to start an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
+    ipcact_action_stop,                 //Sent by UI application to stop an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
+    ipcact_overlay_profile_load,        //Sent by UI application when loading a profile. lParam is IPCActionOverlayProfileLoadArg + profile overlay ID (low/high word order). -2 ID is default.
+                                        //Profile name is stored in configid_str_state_profile_name_load beforehand. ipcactv_ovrl_profile_multi_add queues profile IDs until called with -1
+    ipcact_crop_to_active_window,       //Sent by UI application to adjust crop values to the active window. No data in lParam
+    ipcact_overlay_duplicate,           //Sent by UI application to duplicate an overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
+    ipcact_overlay_new_ui,              //Sent by UI application to add a new UI overlay, also making it the active one. No data in lParam
+    ipcact_overlay_new_drag,            //Sent by UI application to add a new overlay. lParam is desktop ID or -2 for HWND, -3 for UI overlay, + pointer distance * 100 (low/high word order, signed)
+                                        //HWND is stored in configid_handle_state_arg_hwnd beforehand
+    ipcact_overlay_remove,              //Sent by UI or dashboard application to remove a overlay. lParam is ID of overlay to remove (typically the active ID)
+    ipcact_overlay_creation_error,      //Sent by dashboard application when an error occured during overlay creation. lParam is EVROverlayError
+    ipcact_overlay_transform_sync,      //Sent by the UI application to request a sync of overlay transforms. lParam is ID of overlay to sync transform of (or -1 for full sync)
+    ipcact_overlay_swap,                //Sent by the UI application to swap two overlays. lParam is the ID of overlay to swap with the current overlay
+    ipcact_overlay_gaze_fade_auto,      //Sent by the UI application to automatically configure gaze fade values. No data in lParam
+    ipcact_overlay_make_standalone,     //Sent by the UI application to converted overlays with duplication ID to standalone ones. lParam is ID of overlay to convert (typically the active ID)
+    ipcact_winrt_thread_error,          //Sent by dashboard application when an error occured in a Graphics Capture thread. lParam is HRESULT
+    ipcact_browser_navigate_to_url,     //Sent by UI application to have the overlay's browser navigate to configid_str_overlay_browser_url. lParam is ID of overlay
+    ipcact_browser_recreate_context,    //Sent by UI application to have the overlay's browser context be recreated. lParam is ID of overlay
+    ipcact_winmanager_drag_start,       //Sent by dashboard application's WindowManager thread to main thread to start an overlay drag. lParam is ID of overlay to drag
+    ipcact_winmanager_winlist_add,      //Sent by either application's WindowManager thread to main thread to add a window to the window list. lParam is HWND
+    ipcact_winmanager_winlist_update,   //Sent by WindowManager thread to main thread to update a window from the window list. lParam is HWND
+    ipcact_winmanager_winlist_remove,   //Sent by WindowManager thread to main thread to remove a window from the window list. lParam is HWND
+    ipcact_winmanager_focus_changed,    //Sent by dashboard application's WindowManager thread to UI app when the foreground window changed. No data in lParam
+    ipcact_winmanager_text_input_focus, //Sent by dashboard application's WindowManager thread to main thread to update text input focus state. lParam is focus bool
+    ipcact_sync_config_state,           //Sent by the UI application to request overlay and config state variables after a restart
+    ipcact_focus_window,                //Sent by the UI application to focus a window. lParam is HWND
+    ipcact_keyboard_show,               //Sent by dashboard application to show the VR keyboard. lParam is assigned overlay ID (-1 to hide, -2 for UI/global)
+    ipcact_keyboard_show_auto,          //Sent by dashboard application to show the VR keyboard with auto-visibility. lParam is assigned overlay ID (-1 to hide)
+    ipcact_keyboard_vkey,               //Sent by UI application in response of a VR keyboard press. lParam is IPCKeyboardKeystateFlags + Win32 key code (low/high word order)
+    ipcact_keyboard_wchar,              //Sent by UI application in response of a VR keyboard press. lParam is 1 wchar + key down bool (low/high word order)
+    ipcact_lpointer_trigger_haptics,    //Sent by UI application to trigger laser pointer haptics (short UI interaction burst). lParam is tracked device index
+    ipcact_lpointer_ui_mask_rect,       //Sent by UI application to update the UI intersection mask for the dplus laser pointer. lParam is DPRect packed with DPRect::Pack16() or -1 to finish the mask
     ipcact_MAX
 };
 
