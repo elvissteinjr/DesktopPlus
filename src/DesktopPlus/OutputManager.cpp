@@ -4365,7 +4365,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 {
                     m_MouseLeftDownOverlayID = overlay_current.GetID();
 
-                    if (true /*Setting for input field tracking*/)
+                    if (ConfigManager::GetValue(configid_bool_input_keyboard_auto_show_desktop))
                     {
                         WindowManager::Get().OnTextInputLeftMouseClick();
                     }
@@ -6617,7 +6617,7 @@ void OutputManager::HandleKeyboardAutoVisibility()
 
     //Check if state changed
     static bool is_text_input_focused_prev = false;
-    bool is_text_input_focused = (m_MouseIgnoreMoveEvent) ? false : WindowManager::Get().IsTextInputFocused();
+    bool is_text_input_focused = ( (!ConfigManager::GetValue(configid_bool_input_keyboard_auto_show_desktop)) || (m_MouseIgnoreMoveEvent) ) ? false : WindowManager::Get().IsTextInputFocused();
 
     //Overlay input has to be active during a state change for it to count as focused
     if ((is_text_input_focused != is_text_input_focused_prev) && (!m_OvrlInputActive))

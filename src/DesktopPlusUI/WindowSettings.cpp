@@ -900,6 +900,52 @@ void WindowSettings::UpdatePageMainCatInput()
 
         ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsKeyboardKeyRepeat), &ConfigManager::GetRef(configid_bool_input_keyboard_key_repeat));
 
+        bool& auto_show_desktop = ConfigManager::Get().GetRef(configid_bool_input_keyboard_auto_show_desktop);
+        bool& auto_show_browser = ConfigManager::Get().GetRef(configid_bool_input_keyboard_auto_show_browser);
+
+        //Arrange the checkboxes in their own group if browser is available, otherwise just add a single one for desktop/window under the behavior group
+        if (DPBrowserAPIClient::Get().IsBrowserAvailable())
+        {
+            ImGui::Spacing();
+            ImGui::NextColumn();
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsKeyboardAutoShow));
+            ImGui::NextColumn();
+
+            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsKeyboardAutoShowDesktop), &auto_show_desktop))
+            {
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_keyboard_auto_show_desktop, auto_show_desktop);
+            }
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsKeyboardAutoShowDesktopTip));
+
+            ImGui::NextColumn();
+            ImGui::NextColumn();
+
+            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsKeyboardAutoShowBrowser), &auto_show_browser))
+            {
+                if (!auto_show_browser)
+                {
+                    //Hide currently auto-visible keyboard if it's shown for a browser overlay
+                    int overlay_id = vr_keyboard.GetWindow().GetAssignedOverlayID();
+
+                    if (OverlayManager::Get().GetConfigData((unsigned int)overlay_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+                    {
+                        vr_keyboard.GetWindow().SetAutoVisibility(overlay_id, false);
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsKeyboardAutoShowDesktopOnly), &auto_show_desktop))
+            {
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_keyboard_auto_show_desktop, auto_show_desktop);
+            }
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsKeyboardAutoShowDesktopTip));
+        }
+
         ImGui::Columns(1);
     }
 

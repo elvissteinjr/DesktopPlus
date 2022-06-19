@@ -316,7 +316,7 @@ void DPBrowserAPIClient::HandleIPCMessage(const MSG& msg)
         {
             unsigned int overlay_id = OverlayManager::Get().FindOverlayID(m_IPCOverlayTarget);
 
-            if (overlay_id != k_ulOverlayID_None)
+            if ( (overlay_id != k_ulOverlayID_None) && (ConfigManager::GetValue(configid_bool_input_keyboard_auto_show_browser)) )
             {
                 #ifdef DPLUS_UI
                     if (UIManager* uimgr = UIManager::Get())

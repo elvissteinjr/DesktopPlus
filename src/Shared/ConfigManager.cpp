@@ -426,6 +426,8 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_input_keyboard_cluster_extra_enabled]        = config.ReadBool("Keyboard", "LayoutClusterExtra",      false);
     m_ConfigBool[configid_bool_input_keyboard_sticky_modifiers]             = config.ReadBool("Keyboard", "StickyModifiers",         true);
     m_ConfigBool[configid_bool_input_keyboard_key_repeat]                   = config.ReadBool("Keyboard", "KeyRepeat",               true);
+    m_ConfigBool[configid_bool_input_keyboard_auto_show_desktop]            = config.ReadBool("Keyboard", "AutoShowDesktop",         true);
+    m_ConfigBool[configid_bool_input_keyboard_auto_show_browser]            = config.ReadBool("Keyboard", "AutoShowBrowser",         true);
 
     m_ConfigBool[configid_bool_windows_auto_focus_scene_app_dashboard]      = config.ReadBool("Windows", "AutoFocusSceneAppDashboard", false);
     m_ConfigBool[configid_bool_windows_winrt_auto_focus]                    = config.ReadBool("Windows", "WinRTAutoFocus", true);
@@ -957,6 +959,8 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Keyboard", "LayoutClusterExtra",          m_ConfigBool[configid_bool_input_keyboard_cluster_extra_enabled]);
     config.WriteBool("Keyboard", "StickyModifiers",             m_ConfigBool[configid_bool_input_keyboard_sticky_modifiers]);
     config.WriteBool("Keyboard", "KeyRepeat",                   m_ConfigBool[configid_bool_input_keyboard_key_repeat]);
+    config.WriteBool("Keyboard", "AutoShowDesktop",             m_ConfigBool[configid_bool_input_keyboard_auto_show_desktop]);
+    config.WriteBool("Keyboard", "AutoShowBrowser",             m_ConfigBool[configid_bool_input_keyboard_auto_show_browser]);
 
     config.WriteBool("Windows", "AutoFocusSceneAppDashboard",   m_ConfigBool[configid_bool_windows_auto_focus_scene_app_dashboard]);
     config.WriteBool("Windows", "WinRTAutoFocus",               m_ConfigBool[configid_bool_windows_winrt_auto_focus]);

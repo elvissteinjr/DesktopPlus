@@ -81,6 +81,8 @@ enum ConfigID_Bool
     configid_bool_input_keyboard_cluster_extra_enabled,
     configid_bool_input_keyboard_sticky_modifiers,
     configid_bool_input_keyboard_key_repeat,
+    configid_bool_input_keyboard_auto_show_desktop,
+    configid_bool_input_keyboard_auto_show_browser,
     configid_bool_input_laser_pointer_block_input,
     configid_bool_input_drag_force_upright,
     configid_bool_windows_auto_focus_scene_app_dashboard,
