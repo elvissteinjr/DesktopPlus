@@ -4097,11 +4097,6 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             {
                 break;
             }
-            else if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
-            {
-                DPBrowserAPIClient::Get().DPBrowser_MouseMove(overlay_current.GetHandle(), vr_event.data.mouse.x, vr_event.data.mouse.y);
-                break;
-            }
 
             //Get hotspot value to use
             int hotspot_x = 0;
@@ -4130,14 +4125,12 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             }
 
             //Offset depending on capture source
-            int content_height = 0;
+            int content_height = data.ConfigInt[configid_int_overlay_state_content_height];
             int offset_x = 0;
             int offset_y = 0;
 
             if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
             {
-                content_height = data.ConfigInt[configid_int_overlay_state_content_height];
-
                 int desktop_id = data.ConfigInt[configid_int_overlay_winrt_desktop_id];
 
                 if (desktop_id != -2) //Desktop capture through WinRT
@@ -4169,7 +4162,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 offset_y = m_DesktopY;
             }
 
-            //GL space (0,0 is bottom left), so we need to flip that around
+            //GL space (0,0 is bottom left), so we need to flip that around (not correct for browser overlays, but also not relevant for how the values are used with them right now)
             int pointer_x = (round(vr_event.data.mouse.x) - hotspot_x) + offset_x;
             int pointer_y = ((-round(vr_event.data.mouse.y) + content_height) - hotspot_y) + offset_y;
 
@@ -4186,6 +4179,16 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                     m_MouseLastLaserPointerMoveBlocked = true;
                     break;
                 }
+            }
+
+            //If browser overlay, pass event along and skip the rest
+            if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
+            {
+                DPBrowserAPIClient::Get().DPBrowser_MouseMove(overlay_current.GetHandle(), vr_event.data.mouse.x, vr_event.data.mouse.y);
+                m_MouseLastLaserPointerX = pointer_x;
+                m_MouseLastLaserPointerY = pointer_y;
+
+                break;
             }
 
             //Check if this mouse move would start a drag of a maximized window's title bar
@@ -4314,6 +4317,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             {
                 if (vr_event.data.mouse.button <= vr::VRMouseButton_Middle)
                 {
+                    m_MouseLastClickTick = ::GetTickCount64();
+
                     DPBrowserAPIClient::Get().DPBrowser_MouseDown(overlay_current.GetHandle(), (vr::EVRMouseButton)vr_event.data.mouse.button);
                 }
                 else
