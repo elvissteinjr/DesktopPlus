@@ -40,12 +40,14 @@ enum DPBrowserICPCommandID
     dpbrowser_ipccmd_go_forward,                //lParam = overlay_handle
     dpbrowser_ipccmd_refresh,                   //lParam = overlay_handle, will stop if the page is currently loading
     dpbrowser_ipccmd_global_set_fps,            //lParam = fps, global setting
+    dpbrowser_ipccmd_cblock_set_enabled,        //lParam = enabled bool
     dpbrowser_ipccmd_notify_nav_state,          //lParam = DPBrowserIPCNavStateFlags, uses set_overlay_target arg | Sent by browser process to UI process
     dpbrowser_ipccmd_notify_url_changed,        //lParam = overlay_handle, uses dpbrowser_ipcstr_url arg | Sent by browser process to UI process
     dpbrowser_ipccmd_notify_title_changed,      //lParam = overlay_handle, uses dpbrowser_ipcstr_title arg | Sent by browser process to UI process
     dpbrowser_ipccmd_notify_fps,                //lParam = fps, uses set_overlay_target arg | Sent by browser process to UI process
     dpbrowser_ipccmd_notify_lpointer_haptics,   //No value in lParam, triggers short UI interaction burst on primary device | Sent by browser process to dashboard process
     dpbrowser_ipccmd_notify_keyboard_show,      //lParam = show bool, uses set_overlay_target arg | Sent by browser process to UI process
+    dpbrowser_ipccmd_notify_cblock_list_count,  //lParam = list count | Sent by browser process to UI process
 };
 
 enum DPBrowserICPStringID
@@ -109,4 +111,5 @@ class DPBrowserAPI
         virtual void DPBrowser_Refresh(vr::VROverlayHandle_t overlay_handle) = 0;
 
         virtual void DPBrowser_GlobalSetFPS(int fps) = 0;
+        virtual void DPBrowser_ContentBlockSetEnabled(bool enable) = 0;
 };

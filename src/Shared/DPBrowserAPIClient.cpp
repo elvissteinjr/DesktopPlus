@@ -110,6 +110,12 @@ bool DPBrowserAPIClient::LaunchServerIfNotRunning()
         m_PendingSettingGlobalFPS = -1;
     }
 
+    if (m_PendingSettingContentBlockEnabled != -1)
+    {
+        DPBrowser_ContentBlockSetEnabled( (m_PendingSettingContentBlockEnabled != 0) );
+        m_PendingSettingContentBlockEnabled = -1;
+    }
+
     return true;
 }
 
@@ -327,6 +333,11 @@ void DPBrowserAPIClient::HandleIPCMessage(const MSG& msg)
             }
             break;
         }
+        case dpbrowser_ipccmd_notify_cblock_list_count:
+        {
+            ConfigManager::SetValue(configid_int_state_browser_content_blocker_list_count, msg.lParam);
+            break;
+        }
     }
 }
 
@@ -525,4 +536,15 @@ void DPBrowserAPIClient::DPBrowser_GlobalSetFPS(int fps)
     }
 
     ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_global_set_fps, fps);
+}
+
+void DPBrowserAPIClient::DPBrowser_ContentBlockSetEnabled(bool enable)
+{
+    if (m_ServerWindowHandle == nullptr)
+    {
+        m_PendingSettingContentBlockEnabled = enable;    //Will be applied after launching the server instead
+        return;
+    }
+
+    ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_cblock_set_enabled, enable);
 }

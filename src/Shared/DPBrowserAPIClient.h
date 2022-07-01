@@ -15,6 +15,7 @@ class DPBrowserAPIClient : public DPBrowserAPI
 
         //Pending settings stored here when server isn't running yet and applied later on launch
         int m_PendingSettingGlobalFPS = -1;
+        int m_PendingSettingContentBlockEnabled = -1;
 
         bool LaunchServerIfNotRunning();                        //Should be called and checked for in most API implementations, also makes sure m_ServerWindowHandle is updated
         void SendStringMessage(DPBrowserICPStringID str_id, const std::string& str) const;
@@ -60,4 +61,5 @@ class DPBrowserAPIClient : public DPBrowserAPI
         virtual void DPBrowser_Refresh(vr::VROverlayHandle_t overlay_handle) override;
 
         virtual void DPBrowser_GlobalSetFPS(int fps) override;
+        virtual void DPBrowser_ContentBlockSetEnabled(bool enable) override;
 };

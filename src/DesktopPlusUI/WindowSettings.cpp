@@ -71,6 +71,7 @@ void WindowSettings::ClearCachedTranslationStrings()
 {
     m_WarningTextOverlayError = "";
     m_WarningTextWinRTError = "";
+    m_BrowserBlockListCountText = "";
 }
 
 void WindowSettings::WindowUpdate()
@@ -1190,6 +1191,34 @@ void WindowSettings::UpdatePageMainCatBrowser()
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_browser_max_fps, max_fps);
         }
         vr_keyboard.VRKeyboardInputEnd();
+
+        ImGui::NextColumn();
+
+        bool& content_blocker = ConfigManager::GetRef(configid_bool_browser_content_blocker);
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsBrowserContentBlocker), &content_blocker))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_browser_content_blocker, content_blocker);
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_SettingsBrowserContentBlockerTip));
+
+        ImGui::NextColumn();
+
+        static int block_list_count_last = -1;
+
+        if ( (m_BrowserBlockListCountText.empty()) || (ConfigManager::GetValue(configid_int_state_browser_content_blocker_list_count) != block_list_count_last) )
+        {
+            block_list_count_last = ConfigManager::GetValue(configid_int_state_browser_content_blocker_list_count);
+
+            m_BrowserBlockListCountText = TranslationManager::GetString((block_list_count_last != 1) ? tstr_SettingsBrowserContentBlockerListCount : tstr_SettingsBrowserContentBlockerListCountSingular);
+            StringReplaceAll(m_BrowserBlockListCountText, "%LISTCOUNT%", std::to_string(block_list_count_last) );
+        }
+
+        if ( (content_blocker) && (block_list_count_last != -1) )
+        {
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(m_BrowserBlockListCountText.c_str());
+        }
 
         ImGui::Columns(1);
     }

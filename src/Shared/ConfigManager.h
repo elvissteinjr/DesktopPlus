@@ -91,6 +91,7 @@ enum ConfigID_Bool
     configid_bool_windows_winrt_auto_size_overlay,
     configid_bool_windows_winrt_auto_focus_scene_app,
     configid_bool_windows_winrt_window_matching_strict,
+    configid_bool_browser_content_blocker,
     configid_bool_misc_no_steam,                              //Restarts without Steam when it detects to have been launched by Steam
     configid_bool_misc_uiaccess_was_enabled,                  //Tracks if UIAccess was enabled to show a warning after it isn't anymore due to updates or modified executable
     configid_bool_state_overlay_dragmode,
@@ -169,6 +170,7 @@ enum ConfigID_Int
     configid_int_state_auto_docking_state,                  //0 = Off, 1 = Left Hand, 2 = Right Hand (matches ETrackedControllerRole). +2 for detaching
     configid_int_state_laser_pointer_device_hint,           //Used by dragging functions when laser pointer device can't be determined via other means (value is tracked device index)
     configid_int_state_dplus_laser_pointer_device,          //Tracked device index for active Desktop+ laser pointer
+    configid_int_state_browser_content_blocker_list_count,
     configid_int_MAX
 };
 

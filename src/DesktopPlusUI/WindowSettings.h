@@ -60,6 +60,7 @@ class WindowSettings : public FloatingWindow
 
         std::string m_WarningTextOverlayError;
         std::string m_WarningTextWinRTError;
+        std::string m_BrowserBlockListCountText;
 
         std::string m_ProfileSelectionName;
         bool m_ProfileOverlaySelectIsSaving;

@@ -1393,6 +1393,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         WindowManager::Get().UpdateConfigState();
                         break;
                     }
+                    case configid_bool_browser_content_blocker:
+                    {
+                        DPBrowserAPIClient::Get().DPBrowser_ContentBlockSetEnabled(msg.lParam);
+                        break;
+                    }
                     case configid_bool_state_overlay_dragmode:
                     case configid_bool_state_overlay_selectmode:
                     {

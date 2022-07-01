@@ -136,6 +136,10 @@ enum TRMGRStrID
     tstr_SettingsWindowOverlaysOnCaptureLossRemove,
     tstr_SettingsBrowserMaxFrameRate,
     tstr_SettingsBrowserMaxFrameRateOverrideOff,
+    tstr_SettingsBrowserContentBlocker,
+    tstr_SettingsBrowserContentBlockerTip,
+    tstr_SettingsBrowserContentBlockerListCount,          //%LISTCOUNT% == List count
+    tstr_SettingsBrowserContentBlockerListCountSingular,  //^
     tstr_SettingsPerformanceUpdateLimiter,
     tstr_SettingsPerformanceUpdateLimiterMode,
     tstr_SettingsPerformanceUpdateLimiterModeOff,
