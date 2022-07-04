@@ -1293,7 +1293,7 @@ void WindowSettings::UpdatePageMainCatMisc()
         ImGui::Columns(2, "ColumnVersion", false);
         ImGui::SetColumnWidth(0, m_Column0Width);
 
-        ImGui::TextUnformatted("Desktop+ NewUI Preview 6");
+        ImGui::TextUnformatted("Desktop+ NewUI Preview 7");
 
         ImGui::Columns(1);
     }
