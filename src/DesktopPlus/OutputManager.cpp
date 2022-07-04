@@ -4983,8 +4983,9 @@ void OutputManager::ApplySettingCaptureSource()
                 {
                     OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
-                    //Load placeholder texture since browser startup can take a few seconds
+                    //Load placeholder texture and apply input mode now since browser startup can take a few seconds
                     vr::VROverlay()->SetOverlayFromFile(overlay.GetHandle(), (ConfigManager::Get().GetApplicationPath() + "images/browser_load.png").c_str());
+                    ApplySettingInputMode();
 
                     if (data.ConfigInt[configid_int_overlay_duplication_id] == -1)
                     {
