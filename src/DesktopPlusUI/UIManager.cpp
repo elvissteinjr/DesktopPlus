@@ -94,6 +94,12 @@ const DPRect& UITextureSpaces::GetRect(UITexspaceID texspace_id) const
     return m_TexspaceRects[texspace_id];
 }
 
+ImVec4 UITextureSpaces::GetRectAsVec4(UITexspaceID texspace_id) const
+{
+    const DPRect& rect = UITextureSpaces::Get().GetRect(texspace_id);
+    return ImVec4((float)rect.Min.x, (float)rect.Min.y, (float)rect.Max.x, (float)rect.Max.y);
+}
+
 //While this is a singleton like many other classes, we want to be careful about initializing it at global scope, so we leave that until a bit later in main()
 UIManager* g_UIManagerPtr = nullptr;
 
@@ -1585,8 +1591,6 @@ void UIManager::PositionOverlay()
 
         m_OvrlVisible = false;
     }
-
-    UpdateOverlayDrag();
 }
 
 void UIManager::UpdateOverlayDrag()
@@ -1639,9 +1643,8 @@ void UIManager::UpdateOverlayDrag()
             }
         }
 
-        //Invalidate mouse pos so it can't trigger any hover effects on fast movements
-        io.MousePos.x = -FLT_MAX;
-        io.MousePos.y = -FLT_MAX;
+        //Prevent widget input during active drag
+        ImGui::BlockWidgetInput();
     }
     else if (m_OverlayDragger.IsDragGestureActive())
     {
@@ -1672,11 +1675,8 @@ void UIManager::UpdateOverlayDrag()
         }
         else
         {
-            ImGuiIO& io = ImGui::GetIO();
-
-            //Invalidate mouse pos so it can't trigger any hover effects on fast movements
-            io.MousePos.x = -FLT_MAX;
-            io.MousePos.y = -FLT_MAX;
+            //Prevent widget input during active drag
+            ImGui::BlockWidgetInput();
         }
     }
 }

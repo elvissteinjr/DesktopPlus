@@ -7,6 +7,7 @@
 #include "DPBrowserAPIClient.h"
 
 #include "imgui_internal.h"
+#include "imgui_impl_win32_openvr.h"
 
 VRKeyboard::VRKeyboard() : 
     m_InputTarget(kbdtarget_desktop),
@@ -271,7 +272,7 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
 
         if (m_InputTarget == kbdtarget_ui)
         {
-            ImGui::GetIO().KeysDown[VK_SHIFT] = m_KeyDown[VK_SHIFT];
+            ImGui::GetIO().AddKeyEvent(ImGuiKey_ModShift, m_KeyDown[VK_SHIFT]);
         }
     }
     else if ((keycode == VK_LCONTROL) || (keycode == VK_RCONTROL))
@@ -280,7 +281,7 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
 
         if (m_InputTarget == kbdtarget_ui)
         {
-            ImGui::GetIO().KeysDown[VK_CONTROL] = m_KeyDown[VK_CONTROL];
+            ImGui::GetIO().AddKeyEvent(ImGuiKey_ModCtrl, m_KeyDown[VK_CONTROL]);
         }
     }
     else if ((keycode == VK_LMENU) || (keycode == VK_RMENU))
@@ -289,7 +290,7 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
 
         if (m_InputTarget == kbdtarget_ui)
         {
-            ImGui::GetIO().KeysDown[VK_MENU] = m_KeyDown[VK_MENU];
+            ImGui::GetIO().AddKeyEvent(ImGuiKey_ModAlt, m_KeyDown[VK_MENU]);
         }
     }
     else if ( (down) && (keycode == VK_CAPITAL) ) //For caps lock, update toggled state
@@ -306,7 +307,7 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
 
     if (m_InputTarget != kbdtarget_desktop)
     {
-        ImGui::GetIO().KeysDown[keycode] = down;
+        ImGui::GetIO().AddKeyEvent(ImGui_ImplWin32_VirtualKeyToImGuiKey(keycode), down);
 
         //Get text output for current state and key
         if ((down) && (keycode != VK_BACK) && (keycode != VK_TAB))
@@ -485,7 +486,7 @@ void VRKeyboard::VRKeyboardInputEnd()
     }
 
     if ( (m_ActiveInputText == widget_id) && 
-         ( (ImGui::IsKeyPressedMap(ImGuiKey_Tab)) || (ImGui::IsKeyPressedMap(ImGuiKey_Escape)) || (ImGui::IsKeyPressedMap(ImGuiKey_Enter)) ) )
+         ( (ImGui::IsKeyPressed(ImGuiKey_Tab)) || (ImGui::IsKeyPressed(ImGuiKey_Escape)) || (ImGui::IsKeyPressed(ImGuiKey_Enter)) ) )
     {
         ImGui::ClearActiveID();
         m_ActiveInputText = 0;

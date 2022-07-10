@@ -305,9 +305,11 @@ void WindowKeyboard::WindowUpdate()
         }
     }
 
-    //Increased key repeat delay for the VR keyboard buttons
-    float key_repeat_delay_old = io.KeyRepeatDelay;
+    //Increased key repeat delay and rate for the VR keyboard buttons
+    const float key_repeat_delay_old  = io.KeyRepeatDelay;
+    const float key_repeat_delay_rate = io.KeyRepeatRate;
     io.KeyRepeatDelay = 0.5f;
+    io.KeyRepeatRate  = 0.025f;
 
     m_IsHovered = ((ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | ImGuiHoveredFlags_AllowWhenBlockedByPopup)) && 
                    (io.MousePos.y >= ImGui::GetCursorScreenPos().y - ImGui::GetStyle().WindowPadding.y));
@@ -794,6 +796,7 @@ void WindowKeyboard::WindowUpdate()
     widget_state_back.ApplyState();
 
     io.KeyRepeatDelay = key_repeat_delay_old;
+    io.KeyRepeatRate  = key_repeat_delay_rate;
 }
 
 void WindowKeyboard::OnWindowCloseButtonPressed()
@@ -1087,69 +1090,72 @@ bool WindowKeyboard::ButtonLaser(const char* label, const ImVec2& size_arg, Butt
 
     button_state.IsRightClicked = false;
 
-    for (auto& state : m_LaserInputStates)
+    if ( (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) ) //Skip if an overlay drag is active
     {
-        bool hovered_spacing = bb_with_spacing.Contains(state.MouseState.MousePos);
-        bool hovered = (hovered_spacing) ? bb.Contains(state.MouseState.MousePos) : false;
-
-        if (hovered)
+        for (auto& state : m_LaserInputStates)
         {
-            if (!button_state.IsHeld)
+            bool hovered_spacing = bb_with_spacing.Contains(state.MouseState.MousePos);
+            bool hovered = (hovered_spacing) ? bb.Contains(state.MouseState.MousePos) : false;
+
+            if (hovered)
             {
-                if (state.MouseState.MouseClicked[mouse_button])
+                if (!button_state.IsHeld)
                 {
-                    is_held = true;
-                    is_pressed = !do_repeat;    //Only set pressed when not repeating (IsActivated/IsDeactivated is used instead then)
-                    button_state.DeviceIndexHeld = state.DeviceIndex;
+                    if (state.MouseState.MouseClicked[mouse_button])
+                    {
+                        is_held = true;
+                        is_pressed = !do_repeat;    //Only set pressed when not repeating (IsActivated/IsDeactivated is used instead then)
+                        button_state.DeviceIndexHeld = state.DeviceIndex;
+                    }
+                    else if (state.MouseState.MouseClicked[mouse_button_right]) //Right-click is only a simple click state
+                    {
+                        button_state.IsRightClicked = true;
+                    }
                 }
-                else if (state.MouseState.MouseClicked[mouse_button_right]) //Right-click is only a simple click state
+
+                //Newly hovered, trigger haptics
+                if (!button_state.IsHovered)
                 {
-                    button_state.IsRightClicked = true;
+                    if (state.DeviceIndex == vr::k_unTrackedDeviceIndexOther) //other == mouse == current primary pointer device, don't use index
+                    {
+                        UIManager::Get()->TriggerLaserPointerHaptics(GetOverlayHandle());
+                    }
+                    else
+                    {
+                        UIManager::Get()->TriggerLaserPointerHaptics(GetOverlayHandle(), state.DeviceIndex);
+                    }
                 }
             }
 
-            //Newly hovered, trigger haptics
-            if (!button_state.IsHovered)
+            if ( (button_state.IsHeld) && (button_state.DeviceIndexHeld == state.DeviceIndex) )
             {
-                if (state.DeviceIndex == vr::k_unTrackedDeviceIndexOther) //other == mouse == current primary pointer device, don't use index
+                if (state.MouseState.MouseReleased[mouse_button])
                 {
-                    UIManager::Get()->TriggerLaserPointerHaptics(GetOverlayHandle());
+                    button_state.DeviceIndexHeld = vr::k_unTrackedDeviceIndexInvalid;
+                    is_released = true;
                 }
-                else
+                else if ((do_repeat) && (state.MouseState.MouseDownDuration[mouse_button] > 0.0f))
                 {
-                    UIManager::Get()->TriggerLaserPointerHaptics(GetOverlayHandle(), state.DeviceIndex);
+                    //In order to access the button repeat behavior, we have to apply this mouse state to the global input state
+                    //As it is avoidable in all other cases we only do it here, which is a rarely hit code path
+                    state.MouseState.ApplyToGlobalState();
+                    is_global_mouse_state_modified = true;
+
+                    if (ImGui::IsMouseClicked(mouse_button, true))
+                    {
+                        is_pressed = true;
+                    }
                 }
             }
+
+            if ( (state.DeviceIndex == vr::k_unTrackedDeviceIndexOther) && ( (hovered_spacing) || (button_state.IsHeld) ) )
+            {
+                m_IsAnyButtonHovered = true;    //This state is only used for blank space dragging. We include the spacing area in order to not activate drags from clicking in-between key spacing
+            }
+
+            if (hovered)
+                is_any_hovering = hovered;
         }
-
-        if ( (button_state.IsHeld) && (button_state.DeviceIndexHeld == state.DeviceIndex) )
-        {
-            if (state.MouseState.MouseReleased[mouse_button])
-            {
-                button_state.DeviceIndexHeld = vr::k_unTrackedDeviceIndexInvalid;
-                is_released = true;
-            }
-            else if ((do_repeat) && (state.MouseState.MouseDownDuration[mouse_button] > 0.0f))
-            {
-                //In order to access the button repeat behavior, we have to apply this mouse state to the global input state
-                //As it is avoidable in all other cases we only do it here, which is a rarely hit code path
-                state.MouseState.ApplyToGlobalState();
-                is_global_mouse_state_modified = true;
-
-                if (ImGui::IsMouseClicked(mouse_button, true))
-                {
-                    is_pressed = true;
-                }
-            }
-        }
-
-        if ( (state.DeviceIndex == vr::k_unTrackedDeviceIndexOther) && ( (hovered_spacing) || (button_state.IsHeld) ) )
-        {
-            m_IsAnyButtonHovered = true;    //This state is only used for blank space dragging. We include the spacing area in order to not activate drags from clicking in-between key spacing
-        }
-
-        if (hovered)
-            is_any_hovering = hovered;
     }
 
     //Adjust button state

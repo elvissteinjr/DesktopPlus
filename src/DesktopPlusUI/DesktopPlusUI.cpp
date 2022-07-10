@@ -188,20 +188,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             bool do_quit = false;
 
             //Handle OpenVR events for the dashboard UI
+            ImVec4 rect_v4 = UITextureSpaces::Get().GetRectAsVec4(ui_texspace_overlay_bar);
+
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleOverlayBar(), &vr_event, sizeof(vr_event)))
             {
-                ImGui_ImplOpenVR_InputEventHandler(vr_event);
+                ImGui_ImplOpenVR_InputEventHandler(vr_event, &rect_v4);
 
                 switch (vr_event.eventType)
                 {
-                    case vr::VREvent_MouseMove:
-                    {
-                        //Clamp coordinates to overlay texture space to avoid leaking into others while click dragging
-                        const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_overlay_bar);
-                        io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
-                        io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
-                        break;
-                    }
                     case vr::VREvent_FocusEnter:
                     {
                         //Adjust sort order so mainbar tooltips are displayed right
@@ -245,20 +239,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             }
 
             //Handle OpenVR events for the floating UI
+            rect_v4 = UITextureSpaces::Get().GetRectAsVec4(ui_texspace_floating_ui);
+
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleFloatingUI(), &vr_event, sizeof(vr_event)))
             {
-                ImGui_ImplOpenVR_InputEventHandler(vr_event);
+                ImGui_ImplOpenVR_InputEventHandler(vr_event, &rect_v4);
 
                 switch (vr_event.eventType)
                 {
-                    case vr::VREvent_MouseMove:
-                    {
-                        //Clamp coordinates to overlay texture space
-                        const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_floating_ui);
-                        io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
-                        io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
-                        break;
-                    }
                     case vr::VREvent_FocusEnter:
                     {
                         //Adjust sort order so tooltips are displayed right
@@ -272,71 +260,46 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                         break;
                     }
                 }
-                    
+
             }
 
             //Handle OpenVR events for the floating settings
+            rect_v4 = UITextureSpaces::Get().GetRectAsVec4(ui_texspace_settings);
+
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleSettings(), &vr_event, sizeof(vr_event)))
             {
-                ImGui_ImplOpenVR_InputEventHandler(vr_event);
-
-                if (vr_event.eventType == vr::VREvent_MouseMove)
-                {
-                    //Clamp coordinates to overlay texture space
-                    const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_settings);
-                    io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
-                    io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
-                }
+                ImGui_ImplOpenVR_InputEventHandler(vr_event, &rect_v4);
             }
 
             //Handle OpenVR events for the overlay properties
+            rect_v4 = UITextureSpaces::Get().GetRectAsVec4(ui_texspace_overlay_properties);
+
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleOverlayProperties(), &vr_event, sizeof(vr_event)))
             {
                 ImGui_ImplOpenVR_InputEventHandler(vr_event);
-
-                if (vr_event.eventType == vr::VREvent_MouseMove)
-                {
-                    //Clamp coordinates to overlay texture space
-                    const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_overlay_properties);
-                    io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
-                    io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
-                }
             }
 
             //Handle OpenVR events for the VR keyboard
+            rect_v4 = UITextureSpaces::Get().GetRectAsVec4(ui_texspace_keyboard);
+
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleKeyboard(), &vr_event, sizeof(vr_event)))
             {
                 //Let the keyboard window handle events first for multi-laser support
                 if (!ui_manager.GetVRKeyboard().GetWindow().HandleOverlayEvent(vr_event))
                 {
-                    ImGui_ImplOpenVR_InputEventHandler(vr_event);
-
-                    if (vr_event.eventType == vr::VREvent_MouseMove)
-                    {
-                        //Clamp coordinates to overlay texture space
-                        const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_keyboard);
-                        io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
-                        io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
-                    }
+                    ImGui_ImplOpenVR_InputEventHandler(vr_event, &rect_v4);
                 }
             }
 
             //Handle OpenVR events for the Aux UI
+            rect_v4 = UITextureSpaces::Get().GetRectAsVec4(ui_texspace_aux_ui);
+
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleAuxUI(), &vr_event, sizeof(vr_event)))
             {
-                ImGui_ImplOpenVR_InputEventHandler(vr_event);
+                ImGui_ImplOpenVR_InputEventHandler(vr_event, &rect_v4);
 
                 switch (vr_event.eventType)
                 {
-                    case vr::VREvent_MouseMove:
-                    {
-                        //Clamp coordinates to overlay texture space
-                        const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_aux_ui);
-                        io.MousePos.x = (float)clamp((int)io.MousePos.x, rect.Min.x, rect.Max.x);
-                        io.MousePos.y = (float)clamp((int)io.MousePos.y, rect.Min.y, rect.Max.y);
-
-                        break;
-                    }
                     case vr::VREvent_DashboardActivated:
                     case vr::VREvent_DashboardDeactivated:
                     {
@@ -403,6 +366,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
         if (!desktop_mode)
         {
+            //Overlay dragging needs to happen within an ImGui frame for a valid scroll input state (ImGui::EndFrame() clears it by the time we'd loop again)
+            ui_manager.UpdateOverlayDrag();
+
             //Make ImGui think the surface is smaller than it is (a poor man's multi-viewport hack)
 
             //Overlay Bar (this and floating UI need no X adjustments)
@@ -822,7 +788,8 @@ void InitImGui(HWND hwnd)
     ImGuiIO& io = ImGui::GetIO(); //(void)io;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    io.IniFilename = nullptr; //We don't need any imgui.ini support
+    io.IniFilename = nullptr;                   //We don't need any imgui.ini support
+    io.ConfigInputTrickleEventQueue = false;    //Opt out of input trickling since it doesn't play well with VR scrolling (and lowers responsiveness on certain inputs)
 
     //Setup Dear ImGui style
     ImGui::StyleColorsDark();

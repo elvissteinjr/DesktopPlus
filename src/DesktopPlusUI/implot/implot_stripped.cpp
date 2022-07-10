@@ -83,17 +83,17 @@ ImPlotContext* GImPlot = NULL;
 
 ImPlotInputMap::ImPlotInputMap() {
     PanButton             = ImGuiMouseButton_Left;
-    PanMod                = ImGuiKeyModFlags_None;
+    PanMod                = ImGuiModFlags_None;
     FitButton             = ImGuiMouseButton_Left;
     ContextMenuButton     = ImGuiMouseButton_Right;
     BoxSelectButton       = ImGuiMouseButton_Right;
-    BoxSelectMod          = ImGuiKeyModFlags_None;
+    BoxSelectMod          = ImGuiModFlags_None;
     BoxSelectCancelButton = ImGuiMouseButton_Left;
     QueryButton           = ImGuiMouseButton_Middle;
-    QueryMod              = ImGuiKeyModFlags_None;
-    QueryToggleMod        = ImGuiKeyModFlags_Ctrl;
-    HorizontalMod         = ImGuiKeyModFlags_Alt;
-    VerticalMod           = ImGuiKeyModFlags_Shift;
+    QueryMod              = ImGuiModFlags_None;
+    QueryToggleMod        = ImGuiModFlags_Ctrl;
+    HorizontalMod         = ImGuiModFlags_Alt;
+    VerticalMod           = ImGuiModFlags_Shift;
 }
 
 ImPlotStyle::ImPlotStyle() {
@@ -135,7 +135,7 @@ ImPlotStyle::ImPlotStyle() {
 }
 
 ImPlotItem* ImPlotPlot::GetLegendItem(int i) {
-    IM_ASSERT(Items.GetSize() > 0);
+    IM_ASSERT(Items.GetMapSize() > 0);
     return Items.GetByIndex(LegendData.Indices[i]);
 }
 
@@ -1637,7 +1637,7 @@ void EndPlot() {
 
     // render border
     if (gp.Style.PlotBorderSize > 0)
-        DrawList.AddRect(gp.BB_Plot.Min, gp.BB_Plot.Max, GetStyleColorU32(ImPlotCol_PlotBorder), 0, ImDrawCornerFlags_All, gp.Style.PlotBorderSize);
+        DrawList.AddRect(gp.BB_Plot.Min, gp.BB_Plot.Max, GetStyleColorU32(ImPlotCol_PlotBorder), 0, ImDrawFlags_RoundCornersAll, gp.Style.PlotBorderSize);
 
     // FIT DATA --------------------------------------------------------------
 
@@ -1671,7 +1671,7 @@ void EndPlot() {
     // CLEANUP ----------------------------------------------------------------
 
     // reset the plot items for the next frame
-    for (int i = 0; i < gp.CurrentPlot->Items.GetSize(); ++i) {
+    for (int i = 0; i < gp.CurrentPlot->Items.GetMapSize(); ++i) {
         gp.CurrentPlot->Items.GetByIndex(i)->SeenThisFrame = false;
     }
 
@@ -2519,13 +2519,13 @@ void ShowMetricsWindow(bool* p_popen) {
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
     ImGui::Text("%d vertices, %d indices (%d triangles)", io.MetricsRenderVertices, io.MetricsRenderIndices, io.MetricsRenderIndices / 3);
     ImGui::Separator();
-    int n_plots = gp.Plots.GetSize();
+    int n_plots = gp.Plots.GetMapSize();
     if (ImGui::TreeNode("Plots","Plots (%d)", n_plots)) {
         for (int p = 0; p < n_plots; ++p) {
             ImPlotPlot* plot = gp.Plots.GetByIndex(p);
             ImGui::PushID(p);
             if (ImGui::TreeNode("Plot", "Plot [ID=%u]", plot->ID)) {
-                int n_items = plot->Items.GetSize();
+                int n_items = plot->Items.GetMapSize();
                 if (ImGui::TreeNode("Items", "Items (%d)", n_items)) {
                     for (int i = 0; i < n_items; ++i) {
                         ImPlotItem* item = plot->Items.GetByIndex(i);

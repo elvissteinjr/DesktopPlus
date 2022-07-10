@@ -574,9 +574,9 @@ bool WindowSettingsActionEdit::ButtonKeybind(unsigned char* key_code, bool no_mo
             }
         }
 
-        for (int i = 0; i < IM_ARRAYSIZE(io.KeysDown); ++i)
+        for (int i = 0; i < 255; ++i)
         {
-            if ( (io.KeysDown[i]) && (io.KeysDownDuration[i] == 0.0f) )
+            if (ImGui::IsKeyPressed(i))
             {
                 *key_code = i;
                 ImGui::CloseCurrentPopup();
@@ -1348,7 +1348,7 @@ void WindowSettingsActionEdit::PopupActionEdit(CustomAction& action, int id)
                 int_id = clamp(int_id, 0, (int)vr::k_unMaxOverlayCount - 1); //Though it's impossible to max out the overlay limit with desktop overlays either way
             }
 
-            if ( (ImGui::IsItemDeactivated()) && (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter))) ) //Enter deactivates the item before we can catch it
+            if ( (ImGui::IsItemDeactivated()) && (ImGui::IsKeyPressed(ImGuiKey_Enter)) ) //Enter deactivates the item before we can catch it
             {
                 do_save = true;
             }

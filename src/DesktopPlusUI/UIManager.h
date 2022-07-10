@@ -56,6 +56,7 @@ class UITextureSpaces
 
         void Init(bool desktop_mode);
         const DPRect& GetRect(UITexspaceID texspace_id) const;
+        ImVec4 GetRectAsVec4(UITexspaceID texspace_id) const;
 };
 
 static const char* const k_pch_bold_exclamation_mark = "\xE2\x9D\x97";

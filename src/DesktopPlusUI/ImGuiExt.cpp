@@ -30,7 +30,7 @@ namespace ImGui
         {
             io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
-            io.KeyMods |= ImGuiKeyModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
+            io.KeyMods |= ImGuiModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
         }
 
         //Use small step value when shift is down
@@ -117,7 +117,7 @@ namespace ImGui
         io.KeyCtrl = key_ctrl_old;
         if (!io.KeyCtrl)
         {
-            io.KeyMods &= ~ImGuiKeyModFlags_Ctrl;
+            io.KeyMods &= ~ImGuiModFlags_Ctrl;
         }
 
         return (value != value_old);
@@ -134,7 +134,7 @@ namespace ImGui
         {
             io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
-            io.KeyMods |= ImGuiKeyModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
+            io.KeyMods |= ImGuiModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
         }
 
         //Use small step value when shift is down
@@ -207,7 +207,7 @@ namespace ImGui
         io.KeyCtrl = key_ctrl_old;
         if (!io.KeyCtrl)
         {
-            io.KeyMods &= ~ImGuiKeyModFlags_Ctrl;
+            io.KeyMods &= ~ImGuiModFlags_Ctrl;
         }
 
         return (value != value_old);
@@ -656,12 +656,13 @@ namespace ImGui
             return;
 
         ImGuiContext& g = *GImGui;
-        const char* text_end = g.TempBuffer + ImFormatStringV(g.TempBuffer, IM_ARRAYSIZE(g.TempBuffer), fmt, args);
+        const char* text, *text_end;
+        ImFormatStringToTempBufferV(&text, &text_end, fmt, args);
 
-        ImVec2 size = ImGui::CalcTextSize(g.TempBuffer, text_end);
+        ImVec2 size = ImGui::CalcTextSize(text, text_end);
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x - size.x - offset_x));
 
-        TextEx(g.TempBuffer, text_end, ImGuiTextFlags_NoWidthForLargeClippedText);
+        TextEx(text, text_end, ImGuiTextFlags_NoWidthForLargeClippedText);
     }
 
     void TextRightUnformatted(float offset_x, const char* text, const char* text_end)
@@ -699,7 +700,7 @@ namespace ImGui
         {
             io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
-            io.KeyMods |= ImGuiKeyModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
+            io.KeyMods |= ImGuiModFlags_Ctrl; //Mods needs to stay consistent with KeyCtrl
         }
 
         ImGuiContext& g = *GImGui;
@@ -734,7 +735,7 @@ namespace ImGui
         io.KeyCtrl = key_ctrl_old;
         if (!io.KeyCtrl)
         {
-            io.KeyMods &= ~ImGuiKeyModFlags_Ctrl;
+            io.KeyMods &= ~ImGuiModFlags_Ctrl;
         }
 
         //Picker style switching without popup
@@ -895,6 +896,16 @@ namespace ImGui
         return false;
     }
 
+    void BlockWidgetInput()
+    {
+        ImGuiContext& g = *GImGui;
+
+        ImGui::SetActiveID(ImGui::GetID("ImGuiExtInputBlock"), nullptr);
+        g.ActiveIdUsingMouseWheel = true;
+        g.WheelingWindow = nullptr;
+        g.WheelingWindowTimer = 0.0f;
+    }
+
     void HScrollWindowFromMouseWheelV()
     {
         ImGuiContext& g = *GImGui;
@@ -1035,13 +1046,13 @@ namespace ImGui
         std::copy(std::begin(io.MouseClickedTime),               std::end(io.MouseClickedTime),               MouseClickedTime);
         std::copy(std::begin(io.MouseClicked),                   std::end(io.MouseClicked),                   MouseClicked);
         std::copy(std::begin(io.MouseDoubleClicked),             std::end(io.MouseDoubleClicked),             MouseDoubleClicked);
+        std::copy(std::begin(io.MouseClickedCount),              std::end(io.MouseClickedCount),              MouseClickedCount);
+        std::copy(std::begin(io.MouseClickedLastCount),          std::end(io.MouseClickedLastCount),          MouseClickedLastCount);
         std::copy(std::begin(io.MouseReleased),                  std::end(io.MouseReleased),                  MouseReleased);
         std::copy(std::begin(io.MouseDownOwned),                 std::end(io.MouseDownOwned),                 MouseDownOwned);
         std::copy(std::begin(io.MouseDownOwnedUnlessPopupClose), std::end(io.MouseDownOwnedUnlessPopupClose), MouseDownOwnedUnlessPopupClose);
-        std::copy(std::begin(io.MouseDownWasDoubleClick),        std::end(io.MouseDownWasDoubleClick),        MouseDownWasDoubleClick);
         std::copy(std::begin(io.MouseDownDuration),              std::end(io.MouseDownDuration),              MouseDownDuration);
         std::copy(std::begin(io.MouseDownDurationPrev),          std::end(io.MouseDownDurationPrev),          MouseDownDurationPrev);
-        std::copy(std::begin(io.MouseDragMaxDistanceAbs),        std::end(io.MouseDragMaxDistanceAbs),        MouseDragMaxDistanceAbs);
         std::copy(std::begin(io.MouseDragMaxDistanceSqr),        std::end(io.MouseDragMaxDistanceSqr),        MouseDragMaxDistanceSqr);
     }
 
@@ -1059,13 +1070,13 @@ namespace ImGui
         std::copy(std::begin(MouseClickedTime),               std::end(MouseClickedTime),               io.MouseClickedTime);
         std::copy(std::begin(MouseClicked),                   std::end(MouseClicked),                   io.MouseClicked);
         std::copy(std::begin(MouseDoubleClicked),             std::end(MouseDoubleClicked),             io.MouseDoubleClicked);
+        std::copy(std::begin(MouseClickedCount),              std::end(MouseClickedCount),              io.MouseClickedCount);
+        std::copy(std::begin(MouseClickedLastCount),          std::end(MouseClickedLastCount),          io.MouseClickedLastCount);
         std::copy(std::begin(MouseReleased),                  std::end(MouseReleased),                  io.MouseReleased);
         std::copy(std::begin(MouseDownOwned),                 std::end(MouseDownOwned),                 io.MouseDownOwned);
         std::copy(std::begin(MouseDownOwnedUnlessPopupClose), std::end(MouseDownOwnedUnlessPopupClose), io.MouseDownOwnedUnlessPopupClose);
-        std::copy(std::begin(MouseDownWasDoubleClick),        std::end(MouseDownWasDoubleClick),        io.MouseDownWasDoubleClick);
         std::copy(std::begin(MouseDownDuration),              std::end(MouseDownDuration),              io.MouseDownDuration);
         std::copy(std::begin(MouseDownDurationPrev),          std::end(MouseDownDurationPrev),          io.MouseDownDurationPrev);
-        std::copy(std::begin(MouseDragMaxDistanceAbs),        std::end(MouseDragMaxDistanceAbs),        io.MouseDragMaxDistanceAbs);
         std::copy(std::begin(MouseDragMaxDistanceSqr),        std::end(MouseDragMaxDistanceSqr),        io.MouseDragMaxDistanceSqr);
     }
 
@@ -1076,7 +1087,7 @@ namespace ImGui
 
         // Round mouse position to avoid spreading non-rounded position (e.g. UpdateManualResize doesn't support them well)
         if (IsMousePosValid(&MousePos))
-            MousePos = ImFloor(MousePos);
+            MousePos = ImFloorSigned(MousePos);
 
         // If mouse just appeared or disappeared (usually denoted by -FLT_MAX components) we cancel out movement in MouseDelta
         if (IsMousePosValid(&MousePos) && IsMousePosValid(&MousePosPrev))
@@ -1088,38 +1099,39 @@ namespace ImGui
         for (int i = 0; i < IM_ARRAYSIZE(MouseDown); i++)
         {
             MouseClicked[i] = MouseDown[i] && MouseDownDuration[i] < 0.0f;
+            MouseClickedCount[i] = 0; // Will be filled below
             MouseReleased[i] = !MouseDown[i] && MouseDownDuration[i] >= 0.0f;
             MouseDownDurationPrev[i] = MouseDownDuration[i];
             MouseDownDuration[i] = MouseDown[i] ? (MouseDownDuration[i] < 0.0f ? 0.0f : MouseDownDuration[i] + g.IO.DeltaTime) : -1.0f;
-            MouseDoubleClicked[i] = false;
             if (MouseClicked[i])
             {
+                bool is_repeated_click = false;
                 if ((float)(g.Time - MouseClickedTime[i]) < g.IO.MouseDoubleClickTime)
                 {
                     ImVec2 delta_from_click_pos = IsMousePosValid(&MousePos) ? (MousePos - MouseClickedPos[i]) : ImVec2(0.0f, 0.0f);
                     if (ImLengthSqr(delta_from_click_pos) < g.IO.MouseDoubleClickMaxDist * g.IO.MouseDoubleClickMaxDist)
-                        MouseDoubleClicked[i] = true;
-                    MouseClickedTime[i] = -g.IO.MouseDoubleClickTime * 2.0f; // Mark as "old enough" so the third click isn't turned into a double-click
+                        is_repeated_click = true;
                 }
+                if (is_repeated_click)
+                    MouseClickedLastCount[i]++;
                 else
-                {
-                    MouseClickedTime[i] = g.Time;
-                }
+                    MouseClickedLastCount[i] = 1;
+
+                MouseClickedTime[i] = g.Time;
+
                 MouseClickedPos[i] = MousePos;
-                MouseDownWasDoubleClick[i] = MouseDoubleClicked[i];
-                MouseDragMaxDistanceAbs[i] = ImVec2(0.0f, 0.0f);
+                MouseClickedCount[i] = MouseClickedLastCount[i];
                 MouseDragMaxDistanceSqr[i] = 0.0f;
             }
             else if (MouseDown[i])
             {
                 // Maintain the maximum distance we reaching from the initial click position, which is used with dragging threshold
-                ImVec2 delta_from_click_pos = IsMousePosValid(&MousePos) ? (MousePos - MouseClickedPos[i]) : ImVec2(0.0f, 0.0f);
-                MouseDragMaxDistanceSqr[i] = ImMax(MouseDragMaxDistanceSqr[i], ImLengthSqr(delta_from_click_pos));
-                MouseDragMaxDistanceAbs[i].x = ImMax(MouseDragMaxDistanceAbs[i].x, delta_from_click_pos.x < 0.0f ? -delta_from_click_pos.x : delta_from_click_pos.x);
-                MouseDragMaxDistanceAbs[i].y = ImMax(MouseDragMaxDistanceAbs[i].y, delta_from_click_pos.y < 0.0f ? -delta_from_click_pos.y : delta_from_click_pos.y);
+                float delta_sqr_click_pos = IsMousePosValid(&MousePos) ? ImLengthSqr(MousePos - MouseClickedPos[i]) : 0.0f;
+                MouseDragMaxDistanceSqr[i] = ImMax(MouseDragMaxDistanceSqr[i], delta_sqr_click_pos);
             }
-            if (!MouseDown[i] && !MouseReleased[i])
-                MouseDownWasDoubleClick[i] = false;
+
+            // We provide io.MouseDoubleClicked[] as a legacy service
+            MouseDoubleClicked[i] = (MouseClickedCount[i] == 2);
         }
     }
 
@@ -1147,7 +1159,7 @@ namespace ImGui
         ActiveIdUsingMouseWheel                  = false;
         ActiveIdUsingNavDirMask                  = 0x00;
         ActiveIdUsingNavInputMask                = 0x00;
-        ActiveIdUsingKeyInputMask                = 0x00;
+        std::fill(std::begin(ActiveIdUsingKeyInputMask), std::end(ActiveIdUsingKeyInputMask), 0x00);
         ActiveIdClickOffset                      = ImVec2(-1, -1);
         ActiveIdWindow                           = nullptr;
         ActiveIdSource                           = ImGuiInputSource_None;
@@ -1165,6 +1177,8 @@ namespace ImGui
         IsInitialized = true;
 
         ImGuiContext& g = *ImGui::GetCurrentContext();
+
+        IM_ASSERT(sizeof(ActiveIdUsingKeyInputMask) == sizeof(g.ActiveIdUsingKeyInputMask.Storage));
 
         HoveredId                                = g.HoveredId;
         HoveredIdPreviousFrame                   = g.HoveredIdPreviousFrame;
@@ -1186,7 +1200,7 @@ namespace ImGui
         ActiveIdUsingMouseWheel                  = g.ActiveIdUsingMouseWheel;
         ActiveIdUsingNavDirMask                  = g.ActiveIdUsingNavDirMask;
         ActiveIdUsingNavInputMask                = g.ActiveIdUsingNavInputMask;
-        ActiveIdUsingKeyInputMask                = g.ActiveIdUsingKeyInputMask;
+        std::copy(std::begin(g.ActiveIdUsingKeyInputMask.Storage), std::end(g.ActiveIdUsingKeyInputMask.Storage), ActiveIdUsingKeyInputMask);
         ActiveIdClickOffset                      = g.ActiveIdClickOffset;
         ActiveIdWindow                           = g.ActiveIdWindow;
         ActiveIdSource                           = g.ActiveIdSource;
@@ -1206,6 +1220,8 @@ namespace ImGui
             return;
 
         ImGuiContext& g = *ImGui::GetCurrentContext();
+
+        IM_ASSERT(sizeof(ActiveIdUsingKeyInputMask) == sizeof(g.ActiveIdUsingKeyInputMask.Storage));
 
         g.HoveredId                                = HoveredId;
         g.HoveredIdPreviousFrame                   = HoveredIdPreviousFrame;
@@ -1227,7 +1243,7 @@ namespace ImGui
         g.ActiveIdUsingMouseWheel                  = ActiveIdUsingMouseWheel;
         g.ActiveIdUsingNavDirMask                  = ActiveIdUsingNavDirMask;
         g.ActiveIdUsingNavInputMask                = ActiveIdUsingNavInputMask;
-        g.ActiveIdUsingKeyInputMask                = ActiveIdUsingKeyInputMask;
+        std::copy(std::begin(ActiveIdUsingKeyInputMask), std::end(ActiveIdUsingKeyInputMask), g.ActiveIdUsingKeyInputMask.Storage);
         g.ActiveIdClickOffset                      = ActiveIdClickOffset;
         g.ActiveIdWindow                           = (ImGuiWindow*)ActiveIdWindow;
         g.ActiveIdSource                           = (ImGuiInputSource)ActiveIdSource;
@@ -1262,6 +1278,24 @@ namespace ImGui
         HoveredIdAllowOverlap = false;
         HoveredIdUsingMouseWheel = false;
         HoveredIdDisabled = false;
+
+        // Clear ActiveID if the item is not alive anymore.
+        // In 1.87, the common most call to KeepAliveID() was moved from GetID() to ItemAdd().
+        // As a result, custom widget using ButtonBehavior() _without_ ItemAdd() need to call KeepAliveID() themselves.
+        if (ActiveId != 0 && ActiveIdIsAlive != ActiveId && ActiveIdPreviousFrame == ActiveId)
+        {
+            //ClearActiveID
+            ActiveIdIsJustActivated        = true;
+            ActiveIdTimer                  = 0.0f;
+            ActiveIdHasBeenPressedBefore   = false;
+            ActiveIdHasBeenEditedBefore    = false;
+            ActiveIdMouseButton            = -1;
+            ActiveId                       = 0;
+            ActiveIdAllowOverlap           = false;
+            ActiveIdNoClearOnFocusLoss     = false;
+            ActiveIdWindow                 = nullptr;
+            ActiveIdHasBeenEditedThisFrame = false;
+        }
 
         // Update ActiveId data (clear reference to active widget if the widget isn't alive anymore)
         if (ActiveIdIsAlive != ActiveId && ActiveIdPreviousFrame == ActiveId && ActiveId != 0)
@@ -1299,7 +1333,7 @@ namespace ImGui
         {
             ActiveIdUsingNavDirMask   = 0x00;
             ActiveIdUsingNavInputMask = 0x00;
-            ActiveIdUsingKeyInputMask = 0x00;
+            std::fill(std::begin(ActiveIdUsingKeyInputMask), std::end(ActiveIdUsingKeyInputMask), 0x00);
         }
     }
 }

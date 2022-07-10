@@ -90,6 +90,9 @@ namespace ImGui
     //Returns true if any mouse button is clicked
     bool IsAnyMouseClicked();
 
+    //Takes active input focus and prevents scrolling on any ImGui widget while leaving input state untouched otherwise
+    void BlockWidgetInput();
+
     //Scroll window horizontally from vertical mouse wheel input
     void HScrollWindowFromMouseWheelV();
 
@@ -121,13 +124,13 @@ namespace ImGui
             double MouseClickedTime[5];
             bool   MouseClicked[5];
             bool   MouseDoubleClicked[5];
+            ImU16  MouseClickedCount[5];
+            ImU16  MouseClickedLastCount[5];
             bool   MouseReleased[5];
             bool   MouseDownOwned[5];
             bool   MouseDownOwnedUnlessPopupClose[5];
-            bool   MouseDownWasDoubleClick[5];
             float  MouseDownDuration[5];
             float  MouseDownDurationPrev[5];
-            ImVec2 MouseDragMaxDistanceAbs[5];
             float  MouseDragMaxDistanceSqr[5];
 
             ImGuiMouseState();
@@ -163,7 +166,7 @@ namespace ImGui
             bool    ActiveIdUsingMouseWheel;
             ImU32   ActiveIdUsingNavDirMask;
             ImU32   ActiveIdUsingNavInputMask;
-            ImU64   ActiveIdUsingKeyInputMask;
+            ImU32   ActiveIdUsingKeyInputMask[5];
             ImVec2  ActiveIdClickOffset;
             void*   ActiveIdWindow;
             int     ActiveIdSource;

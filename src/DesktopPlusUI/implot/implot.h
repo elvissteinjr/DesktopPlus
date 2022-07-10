@@ -289,17 +289,17 @@ struct ImPlotStyle {
 // Input mapping structure, default values listed in the comments.
 struct ImPlotInputMap {
     ImGuiMouseButton PanButton;             // LMB      enables panning when held
-    ImGuiKeyModFlags PanMod;                // none     optional modifier that must be held for panning
+    ImGuiModFlags PanMod;                   // none     optional modifier that must be held for panning
     ImGuiMouseButton FitButton;             // LMB      fits visible data when double clicked
     ImGuiMouseButton ContextMenuButton;     // RMB      opens plot context menu (if enabled) when double clicked
     ImGuiMouseButton BoxSelectButton;       // RMB      begins box selection when pressed and confirms selection when released
-    ImGuiKeyModFlags BoxSelectMod;          // none     optional modifier that must be held for box selection
+    ImGuiModFlags BoxSelectMod;             // none     optional modifier that must be held for box selection
     ImGuiMouseButton BoxSelectCancelButton; // LMB      cancels active box selection when pressed
     ImGuiMouseButton QueryButton;           // MMB      begins query selection when pressed and end query selection when released
-    ImGuiKeyModFlags QueryMod;              // none     optional modifier that must be held for query selection
-    ImGuiKeyModFlags QueryToggleMod;        // Ctrl     when held, active box selections turn into queries
-    ImGuiKeyModFlags HorizontalMod;         // Alt      expands active box selection/query horizontally to plot edge when held
-    ImGuiKeyModFlags VerticalMod;           // Shift    expands active box selection/query vertically to plot edge when held
+    ImGuiModFlags QueryMod;                 // none     optional modifier that must be held for query selection
+    ImGuiModFlags QueryToggleMod;           // Ctrl     when held, active box selections turn into queries
+    ImGuiModFlags HorizontalMod;            // Alt      expands active box selection/query horizontally to plot edge when held
+    ImGuiModFlags VerticalMod;              // Shift    expands active box selection/query vertically to plot edge when held
     IMPLOT_API ImPlotInputMap();
 };
 
