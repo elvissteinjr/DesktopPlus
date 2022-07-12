@@ -1495,6 +1495,7 @@ void UIManager::PositionOverlay()
 
         //Block transform updates on abrupt movements, repeated frames, mouse down and shortly after switching desktops
         m_IsDummyOverlayTransformUnstable = ( (!anti_flicker_can_move) || (GetRepeatFrame()) || (ImGui::IsMouseDown(ImGuiMouseButton_Left)) || 
+                                              (ImGui::GetIO().MouseClickedTime[ImGuiMouseButton_Left] + 0.3 >= ImGui::GetTime()) ||
                                               (m_FloatingUI.GetActionBarWindow().GetLastDesktopSwitchTime() + 0.3 >= ImGui::GetTime()) ); 
 
         if (!m_IsDummyOverlayTransformUnstable)
