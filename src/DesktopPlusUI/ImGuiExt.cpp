@@ -53,7 +53,7 @@ namespace ImGui
         ImGui::SetNextItemWidth((ImGui::GetContentRegionAvail().x - (ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x) * 2) - 1.0f);
         ImGui::SliderFloat("##Slider", &value, min, max, format, flags);
 
-        if (text_alt != nullptr)
+        if ( (text_alt != nullptr) && (ImGui::GetCurrentContext()->TempInputId != ImGui::GetID("##Slider")) )
         {
             ImGui::RenderTextClipped(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), text_alt, nullptr, nullptr, ImVec2(0.5f, 0.5f));
         }
@@ -157,7 +157,7 @@ namespace ImGui
         ImGui::SetNextItemWidth((ImGui::GetContentRegionAvail().x - (ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x) * 2) - 1.0f);
         ImGui::SliderInt("##Slider", &value, min, max, format, flags);
 
-        if (text_alt != nullptr)
+        if ( (text_alt != nullptr) && (ImGui::GetCurrentContext()->TempInputId != ImGui::GetID("##Slider")) )
         {
             ImGui::RenderTextClipped(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), text_alt, nullptr, nullptr, ImVec2(0.5f, 0.5f));
         }
