@@ -69,6 +69,7 @@ class VRKeyboard
 {
     private:
         WindowKeyboard m_WindowKeyboard;
+        WindowKeyboardShortcuts m_WindowKeyboardShortcuts;
 
         KeyboardLayoutMetadata m_LayoutMetadata;
         std::vector<KeyboardLayoutKey> m_KeyboardKeys[kbdlayout_sub_MAX];

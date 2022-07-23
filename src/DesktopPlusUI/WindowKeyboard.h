@@ -87,3 +87,30 @@ class WindowKeyboard : public FloatingWindow
         void LaserSetMousePos(vr::TrackedDeviceIndex_t device_index, ImVec2 pos);
         void LaserSetMouseButton(vr::TrackedDeviceIndex_t device_index, ImGuiMouseButton button_index, bool is_down);
 };
+
+class WindowKeyboardShortcuts
+{
+    private:
+        enum ButtonAction {btn_act_none = -1, btn_act_cut, btn_act_copy, btn_act_paste};
+
+        bool m_IsHovered   = false;
+        bool m_IsFadingOut = false;
+        float m_Alpha      = 0.0f;
+
+        ImGuiID m_ActiveWidget        = 0;
+        ImGuiID m_ActiveWidgetPending = 0;
+
+        ImGui::ActiveWidgetStateStorage m_WindowWidgetState;
+
+        float m_WindowHeight              = FLT_MIN;
+        ImGuiDir m_PosDir                 = ImGuiDir_Down;
+        float m_PosAnimationProgress      = 0.0f;
+
+        ButtonAction m_ActiveButtonAction = btn_act_none;
+
+    public:
+        void SetActiveWidget(ImGuiID widget_id);
+        void Update(ImGuiID window_id);
+
+        bool IsHovered() const;
+};

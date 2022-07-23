@@ -12,6 +12,7 @@
 
 #include "imgui_internal.h"
 
+//-WindowKeyboard
 WindowKeyboard::WindowKeyboard() : 
     m_WindowWidth(-1.0f),
     m_IsAutoVisible(false),
@@ -1405,4 +1406,207 @@ void WindowKeyboard::LaserSetMouseButton(vr::TrackedDeviceIndex_t device_index, 
 {
     LaserInputState& state = GetLaserInputState(device_index);
     state.MouseState.MouseDown[button_index] = is_down;
+}
+
+
+//-WindowKeyboardShortcuts
+void WindowKeyboardShortcuts::SetActiveWidget(ImGuiID widget_id)
+{
+    //Set active widget ID if none is set, otherwise fade the previous one out first
+    if (m_ActiveWidget == 0)
+    {
+        m_ActiveWidget = widget_id;
+        m_ActiveWidgetPending = 0;
+    }
+    else if (m_ActiveWidget != widget_id)
+    {
+        m_ActiveWidgetPending = widget_id;
+        m_IsFadingOut = true;
+    }
+}
+
+void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
+{
+    if (widget_id != m_ActiveWidget)
+        return;
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    //Release previously held keys by button actions
+    switch (m_ActiveButtonAction)
+    {
+        case btn_act_cut:
+        {
+            io.AddKeyEvent(ImGuiKey_ModCtrl, false);
+            io.AddKeyEvent(ImGuiKey_X, false);
+
+            m_ActiveButtonAction = btn_act_none;
+            break;
+        }
+        case btn_act_copy:
+        {
+            io.AddKeyEvent(ImGuiKey_ModCtrl, false);
+            io.AddKeyEvent(ImGuiKey_C, false);
+
+            m_ActiveButtonAction = btn_act_none;
+            break;
+        }
+        case btn_act_paste:
+        {
+            io.AddKeyEvent(ImGuiKey_ModCtrl, false);
+            io.AddKeyEvent(ImGuiKey_V, false);
+
+            m_ActiveButtonAction = btn_act_none;
+            break;
+        }
+        default: break;
+    }
+
+    const float pos_y_down = ImGui::GetItemRectMax().y + ImGui::GetStyle().ItemInnerSpacing.y;
+    const float pos_y_up   = ImGui::GetItemRectMin().y - m_WindowHeight - ImGui::GetStyle().ItemSpacing.y;
+
+    //Wait for window height to be known before setting pos or animating fade/pos
+    if (m_WindowHeight != FLT_MIN)
+    {
+        ImGui::SetNextWindowPos(ImVec2(ImGui::GetItemRectMin().x, smoothstep(m_PosAnimationProgress, pos_y_down, pos_y_up) ));
+
+        m_Alpha += (!m_IsFadingOut) ? 0.1f : -0.1f;
+
+        if (m_Alpha > 1.0f)
+            m_Alpha = 1.0f;
+        else if (m_Alpha < 0.0f)
+            m_Alpha = 0.0f;
+
+        m_PosAnimationProgress += (m_PosDir == ImGuiDir_Up) ? 0.1f : -0.1f;
+
+        if (m_PosAnimationProgress > 1.0f)
+            m_PosAnimationProgress = 1.0f;
+        else if (m_PosAnimationProgress < 0.0f)
+            m_PosAnimationProgress = 0.0f;
+    }
+
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_Alpha);
+
+    //Get clipping rect of parent window
+    ImGuiWindow* window_parent = ImGui::GetCurrentWindow();
+    ImRect clip_rect = window_parent->ClipRect;
+
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | 
+                                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                                   ImGuiWindowFlags_NoBackground;
+
+    ImGui::Begin("##VRKeyboardShortcuts", nullptr, flags);
+
+    //Force this window to be in front. For this to be not a flicker-fest, the parent should have ImGuiWindowFlags_NoBringToFrontOnFocus set (default for FloatingWindow)
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (!ImGui::IsWindowAbove(window, window_parent))
+    {
+        ImGui::BringWindowToDisplayFront(window);
+    }
+
+    //Use clipping rect of parent window
+    ImGui::PushClipRect(clip_rect.Min, clip_rect.Max, false);
+
+    //Draw background + border manually so it can be clipped properly
+    ImRect window_rect = window->Rect();
+    window->DrawList->AddRectFilled(window_rect.Min, window_rect.Max, ImGui::GetColorU32(ImGuiCol_PopupBg), window->WindowRounding);
+    window->DrawList->AddRect(window_rect.Min, window_rect.Max, ImGui::GetColorU32(ImGuiCol_Border), window->WindowRounding, 0, window->WindowBorderSize);
+
+    //Disable inputs when fading out
+    if (m_IsFadingOut)
+        ImGui::PushItemDisabledNoVisual();
+
+    //Since we don't want to lose input focus, we use a separate widget state for this window
+    ImGui::ActiveWidgetStateStorage prev_widget_state;
+    prev_widget_state.StoreCurrentState();
+
+    m_WindowWidgetState.AdvanceState();
+    m_WindowWidgetState.ApplyState();
+
+
+    //-Window buttons
+    if (ImGui::Button(TranslationManager::GetString(tstr_KeyboardShortcutsCut)))
+    {
+        io.AddKeyEvent(ImGuiKey_ModCtrl, true);
+        io.AddKeyEvent(ImGuiKey_X, true);
+
+        m_ActiveButtonAction = btn_act_cut;
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_KeyboardShortcutsCopy)))
+    {
+        io.AddKeyEvent(ImGuiKey_ModCtrl, true);
+        io.AddKeyEvent(ImGuiKey_C, true);
+
+        m_ActiveButtonAction = btn_act_copy;
+    }
+
+    ImGui::SameLine();
+
+    //Check if we have clipboard text to disable pasting if we don't
+    const char* clipboard_text = ImGui::GetClipboardText();
+    const bool has_clipboard_text = ((clipboard_text != nullptr) && (clipboard_text[0] != '\0'));
+
+    if (!has_clipboard_text)
+        ImGui::PushItemDisabled();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_KeyboardShortcutsPaste)))
+    {
+        io.AddKeyEvent(ImGuiKey_ModCtrl, true);
+        io.AddKeyEvent(ImGuiKey_V, true);
+
+        m_ActiveButtonAction = btn_act_paste;
+    }
+
+    if (!has_clipboard_text)
+        ImGui::PopItemDisabled();
+
+    m_IsHovered = ImGui::IsWindowHovered();
+
+    //Restore global widget state
+    m_WindowWidgetState.StoreCurrentState();
+    prev_widget_state.ApplyState();
+
+    if (m_IsFadingOut)
+        ImGui::PopItemDisabledNoVisual();
+
+    //Switch directions if there's no space on the bottom
+    if ( (pos_y_down + ImGui::GetWindowSize().y > clip_rect.Max.y) )
+    {
+        m_PosDir = ImGuiDir_Up;
+
+        if (m_Alpha == 0.0f)
+        {
+            m_PosAnimationProgress = 1.0f;
+        }
+    }
+    else
+    {
+        m_PosDir = ImGuiDir_Down;
+    }
+
+    m_WindowHeight = ImGui::GetWindowSize().y;
+
+    ImGui::End();
+
+    ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
+
+    //Reset when fade-out is done
+    if ( (m_IsFadingOut) && (m_Alpha == 0.0f) )
+    {
+        m_ActiveWidget = m_ActiveWidgetPending;
+        m_ActiveWidgetPending = 0;
+
+        m_IsFadingOut = false;
+        m_WindowHeight = FLT_MIN;
+        m_PosDir = ImGuiDir_Down;
+        m_PosAnimationProgress = 0.0f;
+    }
+}
+
+bool WindowKeyboardShortcuts::IsHovered() const
+{
+    return m_IsHovered;
 }

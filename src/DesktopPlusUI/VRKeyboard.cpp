@@ -458,7 +458,7 @@ void VRKeyboard::VRKeyboardInputBegin(ImGuiID widget_id)
     m_MouseLeftDownPrevCached    = io.MouseDown[ImGuiMouseButton_Left];
     m_MouseLeftClickedPrevCached = io.MouseClicked[ImGuiMouseButton_Left];
 
-    if (m_WindowKeyboard.IsHovered())
+    if ( (m_WindowKeyboard.IsHovered()) || (m_WindowKeyboardShortcuts.IsHovered()) )
     {
         io.MouseDown[ImGuiMouseButton_Left] = false;
         io.MouseClicked[ImGuiMouseButton_Left] = false;
@@ -471,10 +471,6 @@ void VRKeyboard::VRKeyboardInputEnd()
 {
     ImGuiIO& io = ImGui::GetIO();
     ImGuiID widget_id = m_InputBeginWidgetID;
-
-    //Restore mouse down in case modified in VRKeyboardInputBegin()
-    io.MouseDown[ImGuiMouseButton_Left]    = m_MouseLeftDownPrevCached;
-    io.MouseClicked[ImGuiMouseButton_Left] = m_MouseLeftClickedPrevCached;
 
     if (ImGui::IsItemActivated())
     {
@@ -493,12 +489,32 @@ void VRKeyboard::VRKeyboardInputEnd()
         UIManager::Get()->RepeatFrame();
     }
 
-    if ( (m_ActiveInputText == widget_id) && (!ImGui::IsItemHovered()) && (ImGui::IsItemActive()) && (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) && (!m_WindowKeyboard.IsHovered()) )
+    if ( (m_ActiveInputText == widget_id) && (!ImGui::IsItemHovered()) && (ImGui::IsItemActive()) && (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) && 
+         (!m_WindowKeyboard.IsHovered()) && (!m_WindowKeyboardShortcuts.IsHovered()) )
     {
         ImGui::ClearActiveID();
         m_ActiveInputText = 0;
         io.MouseDownDuration[ImGuiMouseButton_Left] = -1.0f;        //Reset mouse down duration so the click counts as newly pressed again in the next frame
         UIManager::Get()->RepeatFrame();
+    }
+
+    //Restore mouse down in case modified in VRKeyboardInputBegin()
+    io.MouseDown[ImGuiMouseButton_Left]    = m_MouseLeftDownPrevCached;
+    io.MouseClicked[ImGuiMouseButton_Left] = m_MouseLeftClickedPrevCached;
+
+    if (!UIManager::Get()->IsInDesktopMode())
+    {
+        //Set active widget for keyboard shortcuts window if there's actually active text input (m_ActiveInputText may be a slider for example)
+        if ((m_ActiveInputText != 0) && (io.WantTextInput))
+        {
+            m_WindowKeyboardShortcuts.SetActiveWidget(m_ActiveInputText);
+        }
+        else
+        {
+            m_WindowKeyboardShortcuts.SetActiveWidget(0);
+        }
+
+        m_WindowKeyboardShortcuts.Update(widget_id);    //This is called regardless of the widget being active in case a fade-out is still happening
     }
 
     m_InputBeginWidgetID = 0;

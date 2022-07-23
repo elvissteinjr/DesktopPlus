@@ -24,7 +24,7 @@ FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
                                    m_IsWindowAppearing(false)
 {
     m_Pos.x = FLT_MIN;
-    m_WindowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
+    m_WindowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
     m_WindowID = "###" + std::to_string((unsigned long long)this);
 
     m_OverlayStateDashboardTab.TransformAbs.zero();
