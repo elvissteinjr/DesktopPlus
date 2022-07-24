@@ -71,6 +71,7 @@ void WindowSettings::ClearCachedTranslationStrings()
 {
     m_WarningTextOverlayError = "";
     m_WarningTextWinRTError = "";
+    m_BrowserMaxFPSValueText = "";
     m_BrowserBlockListCountText = "";
 }
 
@@ -1182,13 +1183,21 @@ void WindowSettings::UpdatePageMainCatBrowser()
 
         int& max_fps = ConfigManager::Get().GetRef(configid_int_browser_max_fps);
 
+        if (m_BrowserMaxFPSValueText.empty())
+        {
+            m_BrowserMaxFPSValueText =  TranslationManager::GetString(tstr_SettingsPerformanceUpdateLimiterFPSValue);
+            StringReplaceAll(m_BrowserMaxFPSValueText, "%FPS%", std::to_string(max_fps));
+        }
+
         vr_keyboard.VRKeyboardInputBegin(ImGui::SliderWithButtonsGetSliderID("MaxFPS"));
-        if (ImGui::SliderWithButtonsInt("MaxFPS", max_fps, 5, 1, 1, 144, "%d"))
+        if (ImGui::SliderWithButtonsInt("MaxFPS", max_fps, 5, 1, 1, 144, "##%d", 0, nullptr, m_BrowserMaxFPSValueText.c_str()))
         {
             if (max_fps < 1)
                 max_fps = 1;
 
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_browser_max_fps, max_fps);
+
+            m_BrowserMaxFPSValueText = "";
         }
         vr_keyboard.VRKeyboardInputEnd();
 
@@ -1203,7 +1212,7 @@ void WindowSettings::UpdatePageMainCatBrowser()
         HelpMarker(TranslationManager::GetString(tstr_SettingsBrowserContentBlockerTip));
 
         ImGui::NextColumn();
-
+        
         static int block_list_count_last = -1;
 
         if ( (m_BrowserBlockListCountText.empty()) || (ConfigManager::GetValue(configid_int_state_browser_content_blocker_list_count) != block_list_count_last) )
