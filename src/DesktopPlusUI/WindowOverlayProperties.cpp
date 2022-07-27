@@ -590,12 +590,6 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
     int& winrt_selected_desktop = ConfigManager::GetRef(configid_int_overlay_winrt_desktop_id);
     HWND winrt_selected_window  = (HWND)ConfigManager::GetValue(configid_handle_overlay_state_winrt_hwnd);
 
-    if (m_WinRTSourceButtonLabel.empty())
-    {
-        m_WinRTSourceButtonLabel = GetStringForWinRTSource(winrt_selected_window, winrt_selected_desktop);
-        winrt_source_label_width = ImGui::CalcTextSize(m_WinRTSourceButtonLabel.c_str()).x;
-    }
-
     ImGui::Spacing();
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatCapture));
 
@@ -698,6 +692,12 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
     }
     else if (capture_method == ovrl_capsource_winrt_capture)
     {
+        if (m_WinRTSourceButtonLabel.empty())
+        {
+            m_WinRTSourceButtonLabel = GetStringForWinRTSource(winrt_selected_window, winrt_selected_desktop);
+            winrt_source_label_width = ImGui::CalcTextSize(m_WinRTSourceButtonLabel.c_str()).x;
+        }
+
         ImVec2 button_size(0.0f, 0.0f);
 
         if (winrt_source_label_width > ImGui::GetContentRegionAvail().x - style.FramePadding.x * 2.0f)
