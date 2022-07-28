@@ -444,8 +444,11 @@ void FloatingWindow::UpdateLimiterSetting(bool is_override) const
 
     if (update_limit_mode == update_limit_mode_ms)
     {
+        VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
         float& update_limit_ms = ConfigManager::Get().GetRef(configid_ms);
 
+        vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("UpdateLimitMS") );
         if (ImGui::SliderWithButtonsFloat("UpdateLimitMS", update_limit_ms, 0.5f, 0.05f, 0.0f, 100.0f, "%.2f ms", ImGuiSliderFlags_Logarithmic))
         {
             if (update_limit_ms < 0.0f)
@@ -453,6 +456,7 @@ void FloatingWindow::UpdateLimiterSetting(bool is_override) const
 
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_ms, update_limit_ms);
         }
+        vr_keyboard.VRKeyboardInputEnd();
     }
     else
     {

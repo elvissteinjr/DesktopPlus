@@ -1015,6 +1015,7 @@ void WindowSettings::UpdatePageMainCatInput()
             text_alt_assist = TranslationManager::GetString((assist_duration == -1) ? tstr_SettingsMouseDoubleClickAssistTipValueAuto : tstr_SettingsMouseDoubleClickAssistTipValueOff);
         }
 
+        vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("DBLClickAssist") );
         if (ImGui::SliderWithButtonsInt("DBLClickAssist", assist_duration_ui, 25, 5, 0, assist_duration_max + 1, (text_alt_assist != nullptr) ? "" : "%d ms", 0, nullptr, text_alt_assist))
         {
             assist_duration = clamp(assist_duration_ui, 0, assist_duration_max + 1);
@@ -1024,6 +1025,7 @@ void WindowSettings::UpdatePageMainCatInput()
 
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_mouse_dbl_click_assist_duration_ms), assist_duration);
         }
+        vr_keyboard.VRKeyboardInputEnd();
 
         ImGui::Columns(1);
     }
