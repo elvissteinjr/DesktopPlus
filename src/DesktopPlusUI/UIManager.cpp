@@ -352,6 +352,9 @@ vr::EVRInitError UIManager::InitOverlay()
             bounds.uMax = rect_keyboard.GetBR().x / tex_width;
             bounds.vMax = rect_keyboard.GetBR().y / tex_height;
             vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleKeyboard, &bounds);
+
+            //Set curve pitch for overlay bar. This adjusts the pitch to match the SteamVR dashboard
+            vr::VROverlay()->SetOverlayPreCurvePitch(m_OvrlHandleOverlayBar, 0.25f);
         }
     }
 
@@ -373,10 +376,6 @@ vr::EVRInitError UIManager::InitOverlay()
 
     //Check if it's a WMR system and set up for that if needed
     SetConfigForWMR(ConfigManager::GetRef(configid_int_interface_wmr_ignore_vscreens));
-
-    //Check if we're running on a SteamVR 1.23 version. 1.23.2 changed overlay curvature behavior to not distort on rotation on the x-axis anymore
-    //We've been promised to get a function to enable the old behavior, but only in the next beta cycle. Until then we check for this.
-    m_DoNotRotateOverlayBar = (strstr(vr::VRSystem()->GetRuntimeVersion(), "1.23") != nullptr);
 
     if ((ovrl_error == vr::VROverlayError_None))
         return vr::VRInitError_None;
@@ -1463,12 +1462,7 @@ void UIManager::PositionOverlay()
 
         //Rotate slightly forward (local rotation)
         Matrix4 mat_m4;                 //is identity
-
-        if (!m_DoNotRotateOverlayBar)
-        {
-            mat_m4.rotateX(-14.0f);
-        }
-
+        mat_m4.rotateX(-14.0f);
         mat_m4 = Matrix4(matrix_ovr) * mat_m4;
         matrix_ovr = mat_m4.toOpenVR34();
 

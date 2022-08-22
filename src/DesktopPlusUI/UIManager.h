@@ -110,7 +110,6 @@ class UIManager
         ULONGLONG m_SystemUIActiveTick;
         bool m_IsSystemUIHoveredFromSwitch;     //Set when the dashboard was hovered when dashboard tab was switched to prevent the UI overlay fading out right away
         bool m_IsDummyOverlayTransformUnstable;
-        bool m_DoNotRotateOverlayBar;           //Set when running SteamVR 1.23 Beta branch, which changed curving behavior
 
         //Dimensions of the mirror texture, updated from OpenVR when opening up settings or receiving a resolution update message from the overlay application
         int m_OvrlPixelWidth;
