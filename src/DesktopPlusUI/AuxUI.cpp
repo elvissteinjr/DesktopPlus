@@ -39,7 +39,7 @@ bool AuxUIWindow::WindowUpdateBase()
         {
             m_AutoSizeFrames = -1;
 
-            m_Alpha += 0.125f;
+            m_Alpha += ImGui::GetIO().DeltaTime * 7.5f;
 
             if (m_Alpha > 1.0f)
                 m_Alpha = 1.0f;
@@ -56,7 +56,7 @@ bool AuxUIWindow::WindowUpdateBase()
         float alpha_prev = m_Alpha;
 
         //Alpha fade animation
-        m_Alpha -= 0.125f;
+        m_Alpha -= ImGui::GetIO().DeltaTime * 7.5f;
 
         if (m_Alpha < 0.0f)
             m_Alpha = 0.0f;

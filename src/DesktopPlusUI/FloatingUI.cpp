@@ -97,7 +97,7 @@ void FloatingUI::Update()
 
             if (m_AutoFitFrames == 0)
             {
-                m_Alpha += 0.1f;
+                m_Alpha += ImGui::GetIO().DeltaTime * 6.0f;
             }
         }
     }

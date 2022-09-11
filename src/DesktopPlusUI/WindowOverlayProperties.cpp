@@ -206,7 +206,7 @@ void WindowOverlayProperties::WindowUpdate()
 
     if (m_PageFadeDir == -1)
     {
-        m_PageFadeAlpha -= 0.1f;
+        m_PageFadeAlpha -= ImGui::GetIO().DeltaTime * 6.0f;
 
         if (m_PageFadeAlpha <= 0.0f) //Completed fade-out
         {
@@ -219,7 +219,7 @@ void WindowOverlayProperties::WindowUpdate()
     }
     else if (m_PageFadeDir == 1)
     {
-        m_PageFadeAlpha += 0.1f;
+        m_PageFadeAlpha += ImGui::GetIO().DeltaTime * 6.0f;
 
         if (m_PageFadeAlpha >= 1.0f) //Completed fading back in
         {

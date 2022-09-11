@@ -1532,7 +1532,7 @@ void UIManager::PositionOverlay()
                         {
                             if (m_OvrlOverlayBarAlpha != 0.0f)
                             {
-                                m_OvrlOverlayBarAlpha -= 0.2f;
+                                m_OvrlOverlayBarAlpha -= ImGui::GetIO().DeltaTime * 12.0f;
 
                                 if (m_OvrlOverlayBarAlpha < 0.0f)
                                     m_OvrlOverlayBarAlpha = 0.0f;
@@ -1553,7 +1553,7 @@ void UIManager::PositionOverlay()
 
                     if (m_OvrlOverlayBarAlpha != 1.0f)
                     {
-                        m_OvrlOverlayBarAlpha += 0.2f;
+                        m_OvrlOverlayBarAlpha += ImGui::GetIO().DeltaTime * 12.0f;
 
                         if (m_OvrlOverlayBarAlpha > 1.0f)
                             m_OvrlOverlayBarAlpha = 1.0f;

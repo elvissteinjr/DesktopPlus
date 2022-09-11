@@ -35,10 +35,11 @@ void FloatingWindow::WindowUpdateBase()
 {
     if ( ((!UIManager::Get()->GetRepeatFrame()) || (m_Alpha == 0.0f)) && ((m_Alpha != 0.0f) || (m_OverlayStateCurrent->IsVisible) || (m_IsTransitionFading)) )
     {
-        float alpha_prev = m_Alpha;
+        const float alpha_prev = m_Alpha;
+        const float alpha_step = ImGui::GetIO().DeltaTime * 6.0f;
 
         //Alpha fade animation
-        m_Alpha += ((m_OverlayStateCurrent->IsVisible) && (!m_IsTransitionFading)) ? 0.1f : -0.1f;
+        m_Alpha += ((m_OverlayStateCurrent->IsVisible) && (!m_IsTransitionFading)) ? alpha_step : -alpha_step;
 
         if (m_Alpha > 1.0f)
             m_Alpha = 1.0f;
@@ -173,11 +174,6 @@ void FloatingWindow::WindowUpdateBase()
             m_WindowTitle = ImGui::StringEllipsis(m_WindowTitle.c_str(), m_TitleBarTitleMaxWidth);
 
             //Repeat frame to not make title shortening visible
-            if (m_Alpha != 1.0f)
-            {
-                m_Alpha -= 0.1f; //Also adjust alpha to keep fade smooth
-            }
-
             UIManager::Get()->RepeatFrame();
         }
     }
@@ -205,7 +201,6 @@ void FloatingWindow::WindowUpdateBase()
     {
         if (ImGui::IsWindowAppearing())
         {
-            m_Alpha -= 0.1f;
             UIManager::Get()->RepeatFrame();
         }
         else
@@ -504,15 +499,19 @@ void FloatingWindow::UpdateVisibility()
         vr::VROverlayHandle_t overlay_handle = GetOverlayHandle();
 
         if ( (m_OverlayStateCurrent->IsVisible) && (!m_OverlayStateCurrent->IsPinned) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) &&
-             (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) && (!UIManager::Get()->IsDummyOverlayTransformUnstable()) )
+             (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {
-            vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
-            Matrix4 matrix_m4 = UIManager::Get()->GetOverlayDragger().GetBaseOffsetMatrix(ovrl_origin_dplus_tab) * m_OverlayStateCurrent->Transform;
-            vr::HmdMatrix34_t matrix_ovr = matrix_m4.toOpenVR34();
+            //We don't update position when the dummy transform is unstable to avoid flicker, but we absolutely need to update it when the overlay is about to appear
+            if ( (!m_OvrlVisible) || (!UIManager::Get()->IsDummyOverlayTransformUnstable()) )
+            { 
+                vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
+                Matrix4 matrix_m4 = UIManager::Get()->GetOverlayDragger().GetBaseOffsetMatrix(ovrl_origin_dplus_tab) * m_OverlayStateCurrent->Transform;
+                vr::HmdMatrix34_t matrix_ovr = matrix_m4.toOpenVR34();
 
-            vr::VROverlay()->SetOverlayTransformAbsolute(overlay_handle, origin, &matrix_ovr);
+                vr::VROverlay()->SetOverlayTransformAbsolute(overlay_handle, origin, &matrix_ovr);
 
-            m_OverlayStateCurrent->TransformAbs = matrix_m4;
+                m_OverlayStateCurrent->TransformAbs = matrix_m4;
+            }
         }
 
         if ((!m_OvrlVisible) && (m_OverlayStateCurrent->IsVisible))

@@ -497,11 +497,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(overlay_handles.data(), overlay_handles.size(), &mask_primitives);
                 ui_manager.SendUIIntersectionMaskToDashboardApp(mask_primitives);
 
-                //Since we don't get vsync on our message-only window from a swapchain, we don't use any in non-desktop mode.
-                //While this is still synced to the desktop instead of the HMD, it's not using inaccurate timers at least and works well enough for this kind of content
-                //Valve should should think about providing VSync for overlays maybe for those that need it
+                //Wait for VR frame sync (34 ms timeout so we don't go much below 30 fps worst case)
                 g_pd3dDeviceContext->Flush();
-                ::DwmFlush();                    //Use DwmFlush as vsync equivalent 
+                vr::VROverlay()->WaitFrameSync(34);
             }
         }
     }
