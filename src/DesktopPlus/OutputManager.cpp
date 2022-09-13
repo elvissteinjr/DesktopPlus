@@ -6275,7 +6275,7 @@ void OutputManager::DetachedOverlayGlobalHMDPointerAll()
 
 void OutputManager::DetachedOverlayAutoDockingAll()
 {
-    if (!m_OverlayDragger.IsDragActive())
+    if ( (!m_OverlayDragger.IsDragActive()) || (!ConfigManager::Get().GetValue(configid_bool_input_drag_auto_docking)) )
     {
         //Set config value to 0 if the drag ended while it wasn't yet
         if (ConfigManager::GetValue(configid_int_state_auto_docking_state) != 0)
