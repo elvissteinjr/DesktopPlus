@@ -1367,7 +1367,6 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
         ImGui::NextColumn();
         ImGui::NextColumn();
 
-
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedInputFloatingUI), &floating_ui_enabled_visual))
         {
             floating_ui_enabled = floating_ui_enabled_visual;
@@ -1376,6 +1375,29 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
         if (!input_enabled)
             ImGui::PopItemDisabled();
+
+        ImGui::Spacing();
+        ImGui::NextColumn();
+    }
+
+    //Overlay Group (until this finally gets replaced)
+    {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAdvancedOverlayGroup));
+
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_OvrlPropsAdvancedOverlayGroupTip));
+
+        ImGui::NextColumn();
+
+        int group_id = clamp(ConfigManager::Get().GetRef(configid_int_overlay_group_id), 0, 3);
+
+        ImGui::SetNextItemWidth(-1);
+        if (TranslatedComboAnimated("##ComboGroupID", group_id, tstr_OvrlPropsAdvancedOverlayGroupIDNone, tstr_OvrlPropsAdvancedOverlayGroupID3))
+        {
+            ConfigManager::Get().SetValue(configid_int_overlay_group_id, group_id);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_group_id), group_id);
+        }
     }
 
     ImGui::Columns(1);
