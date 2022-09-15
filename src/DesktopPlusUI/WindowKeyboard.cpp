@@ -154,7 +154,7 @@ void WindowKeyboard::Show(bool skip_fade)
             m_WindowTitleStrID = tstr_NONE;
             m_WindowTitle = TranslationManager::Get().GetString(tstr_KeyboardWindowTitleOverlay);
 
-            unsigned int target_id = UIManager::Get()->GetVRKeyboard().GetInputTargetOverlayID();
+            const unsigned int target_id = UIManager::Get()->GetVRKeyboard().GetInputTargetOverlayID();
 
             if (target_id < OverlayManager::Get().GetOverlayCount())
             {
@@ -366,7 +366,7 @@ void WindowKeyboard::WindowUpdate()
         std::vector<ButtonLaserState> button_states_prev = m_ButtonStates;
         std::fill(m_ButtonStates.begin(), m_ButtonStates.end(), ButtonLaserState());
 
-        bool sticky_modifiers_enabled = ConfigManager::GetValue(configid_bool_input_keyboard_sticky_modifiers);
+        const bool sticky_modifiers_enabled = ConfigManager::GetValue(configid_bool_input_keyboard_sticky_modifiers);
 
         int key_index = 0;
         for (const auto& key : vr_keyboard.GetLayout(m_LastSubLayout))
@@ -457,8 +457,8 @@ void WindowKeyboard::WindowUpdate()
         ImGui::PushID(key_index);
 
         //This accounts for the spacing that is missing with wider keys so rows still line up and also forces integer values
-        float key_width  = (float)int( base_width * key.Width  + (ImGui::GetStyle().ItemInnerSpacing.x * (key.Width  - 1.0f)) );
-        float key_height = (float)int( base_width * key.Height + (ImGui::GetStyle().ItemInnerSpacing.y * (key.Height - 1.0f)) );
+        const float key_width  = (float)int( base_width * key.Width  + (ImGui::GetStyle().ItemInnerSpacing.x * (key.Width  - 1.0f)) );
+        const float key_height = (float)int( base_width * key.Height + (ImGui::GetStyle().ItemInnerSpacing.y * (key.Height - 1.0f)) );
 
         switch (key.KeyType)
         {
@@ -469,14 +469,14 @@ void WindowKeyboard::WindowUpdate()
             }
             case kbdlayout_key_virtual_key:
             {
-                bool is_down = vr_keyboard.GetKeyDown(key.KeyCode);
-                bool push_color = ((is_down) && (button_state.IsDown));  //Prevent flickering when repeat is active and there are multiple keys with the same key code
+                const bool is_down = vr_keyboard.GetKeyDown(key.KeyCode);
+                const bool push_color = ((is_down) && (button_state.IsDown));  //Prevent flickering when repeat is active and there are multiple keys with the same key code
 
                 if (push_color)
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
                 //We don't want key repeat on backspace for ImGui since it does that itself
-                bool repeat_on_backspace = ((vr_keyboard.GetInputTarget() != kbdtarget_ui) || (key.KeyCode != VK_BACK));
+                const bool repeat_on_backspace = ((vr_keyboard.GetInputTarget() != kbdtarget_ui) || (key.KeyCode != VK_BACK));
 
                 if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state)) && (use_key_repeat) && (repeat_on_backspace) )
                 {
@@ -514,8 +514,8 @@ void WindowKeyboard::WindowUpdate()
                 if (use_key_repeat)
                     ImGui::PushButtonRepeat(false);
 
-                bool is_down = vr_keyboard.GetKeyDown(key.KeyCode);
-                bool push_color = ((is_down) && (button_state.IsDown));
+                const bool is_down = vr_keyboard.GetKeyDown(key.KeyCode);
+                const bool push_color = ((is_down) && (button_state.IsDown));
 
                 if (push_color)
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
@@ -674,7 +674,7 @@ void WindowKeyboard::WindowUpdate()
             }
             case kbdlayout_key_string:
             {
-                bool is_down = button_state.IsDown;
+                const bool is_down = button_state.IsDown;
 
                 if (is_down)
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
@@ -713,7 +713,7 @@ void WindowKeyboard::WindowUpdate()
                 if (use_key_repeat)
                     ImGui::PushButtonRepeat(false);
 
-                bool is_down = (m_SubLayoutOverride == key.KeySubLayoutToggle);
+                const bool is_down = (m_SubLayoutOverride == key.KeySubLayoutToggle);
 
                 if (is_down)
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
@@ -734,7 +734,7 @@ void WindowKeyboard::WindowUpdate()
             }
             case kbdlayout_key_action:
             {
-                bool is_down = button_state.IsDown;
+                const bool is_down = button_state.IsDown;
 
                 if (is_down)
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
@@ -848,8 +848,6 @@ void WindowKeyboard::OnStringKeyUp(const std::string& keystring)
 
 void WindowKeyboard::HandleUnstickyModifiers(unsigned char source_keycode)
 {
-    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
-
     //Skip if modifiers are set to be sticky
     if (ConfigManager::GetValue(configid_bool_input_keyboard_sticky_modifiers))
         return;
@@ -881,7 +879,7 @@ void WindowKeyboard::HandleUnstickyModifiers(unsigned char source_keycode)
 
 void WindowKeyboard::SetManualStickyModifierState(unsigned char keycode, bool is_down)
 {
-    int modifier_id = GetModifierID(keycode);
+    const int modifier_id = GetModifierID(keycode);
     if (modifier_id != -1)
     {
         m_ManuallyStickingModifiers[modifier_id] = is_down;
@@ -1249,8 +1247,8 @@ void WindowKeyboard::ResetTransform(FloatingWindowOverlayStateID state_id)
     FloatingWindowOverlayState& overlay_state = GetOverlayState(state_id);
 
     //Offset keyboard position depending on the scaled size
-    float overlay_height_m = (m_Size.y / m_Size.x) * OVERLAY_WIDTH_METERS_KEYBOARD;
-    float offset_up        = -0.55f - ((overlay_height_m * overlay_state.Size) / 2.0f);
+    const float overlay_height_m = (m_Size.y / m_Size.x) * OVERLAY_WIDTH_METERS_KEYBOARD;
+    const float offset_up        = -0.55f - ((overlay_height_m * overlay_state.Size) / 2.0f);
 
     overlay_state.Transform.rotateX(-45);
     overlay_state.Transform.translate_relative(0.0f, offset_up, 0.00f);
@@ -1317,7 +1315,7 @@ bool WindowKeyboard::HandleOverlayEvent(const vr::VREvent_t& vr_event)
     if (ImGui::GetCurrentContext() == nullptr)
         return false;
 
-    vr::TrackedDeviceIndex_t device_index = vr_event.trackedDeviceIndex;
+    const vr::TrackedDeviceIndex_t device_index = vr_event.trackedDeviceIndex;
 
     //Patch up mouse and button state when device is primary device and there's still a separate input state
     if (device_index == ConfigManager::Get().GetPrimaryLaserPointerDevice())
