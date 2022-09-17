@@ -79,9 +79,11 @@ Ini::Ini(const std::wstring& wfilename) : m_WFileName(wfilename), m_IniPtr(nullp
         fseek(fp, 0, SEEK_END);
         contents.resize(ftell(fp));
         rewind(fp);
-        fread(&contents[0], 1, contents.size(), fp);
+        size_t bytes_read = fread(&contents[0], 1, contents.size(), fp);
         fclose(fp);
-    
+
+        contents.resize(bytes_read);
+
         m_IniPtr = ini_load(contents.data(), nullptr);
     }
     else
@@ -225,7 +227,7 @@ bool Ini::KeyExists(const char* section, const char* key) const
 void Ini::RemoveSection(const char* section)
 {
     //There is a bug in ini_section_remove() which causes sections to not be removed properly under certain conditions
-    //I've not been able to find the real cause, but removing the section until it's not found anymore works. Sounds like there's multiple section entires, but that's not it I think
+    //I've not been able to find the real cause, but removing the section until it's not found anymore works. Sounds like there's multiple section entries, but that's not it I think
     int section_id;
     while (section_id = ini_find_section(m_IniPtr, section, 0), section_id != INI_NOT_FOUND)
     {
@@ -695,6 +697,7 @@ ini_t* ini_load( char const* data, void* memctx )
     char const* start;
     char const* start2;
     int l;
+    int l2;
 
     ini = ini_create( memctx );
 
@@ -750,7 +753,13 @@ ini_t* ini_load( char const* data, void* memctx )
                     while( (unsigned char)*(--ptr) <= ' ' )                     //same as above
                         (void)ptr;
                     ptr++;
-                    ini_property_add( ini, s, start, l, start2, (int)( ptr - start2) );
+                    //Treat whitespace-only value as empty
+                    l2 = (int)( ptr - start2);
+                    if (l2 < 0)
+                        {
+                            l2 = 0;
+                        }
+                    ini_property_add( ini, s, start, l, start2, l2 );
                     }
                 }
             }
@@ -1185,14 +1194,15 @@ void ini_property_value_set( ini_t* ini, int section, int property, char const* 
 /*
 
 contributors:
-    elvissteinjr (empty properties reading fix, ascii+ whitespace fix, wrong index deleting long property names/values fix)
+    elvissteinjr (empty properties reading fix, ascii+ whitespace fix, wrong index deleting long property names/values fix, whitespace-only fix)
     Andrej Redeky (section and properties find function fix)
     Randy Gaul (copy-paste bug in ini_property_value_set)
     Branimir Karadzic (INI_STRNICMP bugfix)
 
 revision history:
     Desktop+    apply WSSDude's return of wrong sections and properties by find functions fix, fix reading empty properties,
-                fix characters past ASCII range to be detected as whitespace, fix wrong index deleting long property names/values
+                fix characters past ASCII range to be detected as whitespace, fix wrong index deleting long property names/values,
+                fix whitespace-only property values causing the rest of the file to be used instead
     1.2         using strnicmp for correct length compares, fixed copy-paste bug in ini_property_value_set
     1.1         customization, added documentation, cleanup
     1.0         first publicly released version
