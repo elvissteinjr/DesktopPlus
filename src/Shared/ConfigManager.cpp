@@ -162,7 +162,6 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigFloat[configid_float_overlay_update_limit_override_ms]  = config.ReadInt(section.c_str(),  "UpdateLimitMS", 0) / 100.0f;
     data.ConfigInt[configid_int_overlay_update_limit_override_fps]     = config.ReadInt(section.c_str(),  "UpdateLimitFPS", update_limit_fps_30);
     data.ConfigInt[configid_int_overlay_browser_max_fps_override]      = config.ReadInt(section.c_str(),  "BrowserMaxFPSOverride", -1);
-    data.ConfigBool[configid_bool_browser_content_blocker]             = config.ReadBool(section.c_str(), "BrowserContentBlocker", false);
     data.ConfigBool[configid_bool_overlay_input_enabled]               = config.ReadBool(section.c_str(), "InputEnabled", true);
     data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]      = config.ReadBool(section.c_str(), "InputDPlusLPEnabled", true);
     data.ConfigInt[configid_int_overlay_group_id]                      = config.ReadInt(section.c_str(),  "GroupID", 0);
@@ -440,8 +439,9 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_windows_winrt_window_matching_strict]        = config.ReadBool("Windows", "WinRTWindowMatchingStrict", false);
     m_ConfigInt[configid_int_windows_winrt_capture_lost_behavior]           = config.ReadInt( "Windows", "WinRTOnCaptureLost", window_caplost_hide_overlay);
 
-    m_ConfigString[configid_str_browser_extra_arguments]                    = config.ReadString("Browser",     "CommandLineArguments");
-    m_ConfigInt[configid_int_browser_max_fps]                               = config.ReadInt(   "Performance", "BrowserMaxFPS", 60);
+    m_ConfigString[configid_str_browser_extra_arguments]                    = config.ReadString("Browser", "CommandLineArguments");
+    m_ConfigInt[configid_int_browser_max_fps]                               = config.ReadInt(   "Browser", "BrowserMaxFPS", 60);
+    m_ConfigBool[configid_bool_browser_content_blocker]                     = config.ReadBool(  "Browser", "BrowserContentBlocker", false);
 
     m_ConfigInt[configid_int_performance_update_limit_mode]                 = config.ReadInt( "Performance", "UpdateLimitMode", update_limit_mode_off);
     m_ConfigFloat[configid_float_performance_update_limit_ms]               = config.ReadInt( "Performance", "UpdateLimitMS", 0) / 100.0f;
@@ -973,7 +973,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Windows", "WinRTAutoSizeOverlay",         m_ConfigBool[configid_bool_windows_winrt_auto_size_overlay]);
     config.WriteBool("Windows", "WinRTAutoFocusSceneApp",       m_ConfigBool[configid_bool_windows_winrt_auto_focus_scene_app]);
     config.WriteBool("Windows", "WinRTWindowMatchingStrict",    m_ConfigBool[configid_bool_windows_winrt_window_matching_strict]);
-    config.WriteInt("Windows",  "WinRTOnCaptureLost",           m_ConfigInt[configid_int_windows_winrt_capture_lost_behavior]);
+    config.WriteInt( "Windows",  "WinRTOnCaptureLost",           m_ConfigInt[configid_int_windows_winrt_capture_lost_behavior]);
 
     config.WriteInt( "Browser", "BrowserMaxFPS",                m_ConfigInt[configid_int_browser_max_fps]);
     config.WriteBool("Browser", "BrowserContentBlocker",        m_ConfigBool[configid_bool_browser_content_blocker]);
