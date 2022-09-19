@@ -574,13 +574,33 @@ bool WindowSettingsActionEdit::ButtonKeybind(unsigned char* key_code, bool no_mo
             }
         }
 
-        for (int i = 0; i < 255; ++i)
+        //We can no longer use ImGui's keyboard state to query all possible keyboard keys, so we do it manually via GetAsyncKeyState()
+        //To avoid issues with keys that are already down to begin with, we store the state in the moment of the popup appearing and only act on changes to that
+        static bool keyboard_state_initial[255] = {0};
+
+        if (ImGui::IsWindowAppearing())
         {
-            if (ImGui::IsKeyPressed(i))
+            for (int i = 0; i < IM_ARRAYSIZE(keyboard_state_initial); ++i)
             {
-                *key_code = i;
-                ImGui::CloseCurrentPopup();
-                break;
+                keyboard_state_initial[i] = (::GetAsyncKeyState(i) < 0);
+            }
+        }
+
+        for (int i = 0; i < IM_ARRAYSIZE(keyboard_state_initial); ++i)
+        {
+            if ((::GetAsyncKeyState(i) < 0) != keyboard_state_initial[i])
+            {
+                //Key was up before, so it's a key press
+                if (!keyboard_state_initial[i])
+                {
+                    *key_code = i;
+                    ImGui::CloseCurrentPopup();
+                    break;
+                }
+                else   //Key was down before, so it's a key release. Update the initial state so it can be pressed again and registered as such
+                {
+                    keyboard_state_initial[i] = false;
+                }
             }
         }
 
@@ -612,7 +632,7 @@ bool WindowSettingsActionEdit::ButtonKeybind(unsigned char* key_code, bool no_mo
 
         ImGui::SetNextItemWidth(-1.0f);
 
-        if (ImGui::InputTextWithHint("", "Filter List", filter.InputBuf, IM_ARRAYSIZE(filter.InputBuf)))
+        if (ImGui::InputTextWithHint("##FilterList", "Filter List", filter.InputBuf, IM_ARRAYSIZE(filter.InputBuf)))
         {
             filter.Build();
         }
