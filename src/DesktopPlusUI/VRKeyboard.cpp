@@ -172,9 +172,11 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
                 }
 
                 //General
-                key.Width  = layout_file.ReadInt(key_section.str().c_str(), "Width",  100) / 100.0f;
-                key.Height = layout_file.ReadInt(key_section.str().c_str(), "Height", 100) / 100.0f;
-                key.Label  = layout_file.ReadString(key_section.str().c_str(), "Label");
+                key.Width    = layout_file.ReadInt(key_section.str().c_str(), "Width",  100) / 100.0f;
+                key.Height   = layout_file.ReadInt(key_section.str().c_str(), "Height", 100) / 100.0f;
+                key.Label    = layout_file.ReadString(key_section.str().c_str(), "Label");
+                key.NoRepeat = layout_file.ReadBool(key_section.str().c_str(), "NoRepeat", false);
+
                 StringReplaceAll(key.Label, "\\n", "\n");
                 m_KeyLabels += key.Label;
 

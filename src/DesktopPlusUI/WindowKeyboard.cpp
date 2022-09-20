@@ -323,8 +323,8 @@ void WindowKeyboard::WindowUpdate()
     m_KeyboardWidgetState.ApplyState();
 
     //Enable button repeat if setting is enabled
-    bool use_key_repeat = ConfigManager::GetValue(configid_bool_input_keyboard_key_repeat);
-    if (use_key_repeat)
+    const bool use_key_repeat_global = ConfigManager::GetValue(configid_bool_input_keyboard_key_repeat);
+    if (use_key_repeat_global)
         ImGui::PushButtonRepeat(true);
 
     const float base_width = (float)int(ImGui::GetTextLineHeightWithSpacing() * 2.225f);
@@ -459,6 +459,12 @@ void WindowKeyboard::WindowUpdate()
         //This accounts for the spacing that is missing with wider keys so rows still line up and also forces integer values
         const float key_width  = (float)int( base_width * key.Width  + (ImGui::GetStyle().ItemInnerSpacing.x * (key.Width  - 1.0f)) );
         const float key_height = (float)int( base_width * key.Height + (ImGui::GetStyle().ItemInnerSpacing.y * (key.Height - 1.0f)) );
+
+        //Disable button repeat if the individual key has its key repeat disabled (avoid doing it when it's already off though)
+        const bool use_key_repeat = ((use_key_repeat_global) && (!key.NoRepeat));
+
+        if ((use_key_repeat_global) && (!use_key_repeat))
+            ImGui::PushButtonRepeat(false);
 
         switch (key.KeyType)
         {
@@ -783,6 +789,10 @@ void WindowKeyboard::WindowUpdate()
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
         }
 
+        //Undo disabled button repeat if necessary
+        if ((use_key_repeat_global) && (!use_key_repeat))
+            ImGui::PopButtonRepeat();
+
         ImGui::PopID();
 
         key_index++;
@@ -790,7 +800,7 @@ void WindowKeyboard::WindowUpdate()
 
     m_LastSubLayout = current_sublayout;
 
-    if (use_key_repeat)
+    if (use_key_repeat_global)
         ImGui::PopButtonRepeat();
 
     m_KeyboardWidgetState.StoreCurrentState();

@@ -52,6 +52,7 @@ struct KeyboardLayoutKey
     float Height  = 1.0f;
     std::string Label;
     bool BlockModifiers   = false;
+    bool NoRepeat         = false;
     unsigned char KeyCode = 0;
     std::string KeyString;
     KeyboardLayoutSubLayout KeySubLayoutToggle = kbdlayout_sub_base;
