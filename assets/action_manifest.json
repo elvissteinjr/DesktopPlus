@@ -130,6 +130,10 @@
       "binding_url": "input/action_bindings_vive_controller.json"
     },
     {
+      "controller_type": "gamepad",
+      "binding_url": "input/action_bindings_gamepad.json"
+    },
+    {
       "controller_type": "generic",
       "binding_url": "input/action_bindings_generic.json"
     }

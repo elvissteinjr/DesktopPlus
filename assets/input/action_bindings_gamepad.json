@@ -1,0 +1,82 @@
+{
+   "action_manifest_version" : 2,
+   "alias_info" : {},
+   "app_key" : "steam.overlay.1494460",
+   "bindings" : {
+      "/actions/laserpointer" : {
+         "sources" : [
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/LeftClick"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/gamepad/input/trigger_right"
+            },
+            {
+               "inputs" : {
+                  "east" : {
+                     "output" : "/actions/laserpointer/in/RightClick"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/gamepad/input/trigger_left"
+            },
+			{
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/Aux01Click"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/gamepad/input/b"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/Aux02Click"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/gamepad/input/x"
+            }
+         ]
+      },
+	  "/actions/scroll_discrete" : {
+         "sources" : [
+            {
+               "inputs" : {
+                  "scroll" : {
+                     "output" : "/actions/scroll_discrete/in/ScrollDiscrete"
+                  }
+               },
+               "mode" : "scroll",
+               "path" : "/user/gamepad/input/joystick_right"
+            }
+         ]
+      },
+	  "/actions/scroll_smooth" : {
+         "sources" : [
+            {
+               "inputs" : {
+                  "scroll" : {
+                     "output" : "/actions/scroll_smooth/in/ScrollSmooth"
+                  }
+               },
+               "mode" : "scroll",
+               "parameters" : {
+                  "scroll_mode" : "smooth"
+               },
+               "path" : "/user/gamepad/input/joystick_right"
+            }
+         ]
+      }
+   },
+   "category" : "steamvr_input",
+   "controller_type" : "gamepad",
+   "description" : "",
+   "name" : "Default Desktop+ bindings for Gamepads",
+   "options" : {},
+   "simulated_actions" : []
+}
