@@ -60,6 +60,10 @@ void LaserPointer::UpdateDeviceOverlay(vr::TrackedDeviceIndex_t device_index)
 
     LaserPointerDevice& lp_device = m_Devices[device_index];
 
+    //Don't show any overlay when using HMD as origin
+    if (lp_device.UseHMDAsOrigin)
+        return;
+
     //Create overlay if it doesn't exist yet
     if (lp_device.OvrlHandle == vr::k_ulOverlayHandleInvalid)
     {
@@ -102,7 +106,7 @@ void LaserPointer::UpdateDeviceOverlay(vr::TrackedDeviceIndex_t device_index)
     //A smart person could probably figure out how to also have the overlay spin towards the HMD so it doesn't appear flat
 
     vr::HmdMatrix34_t transform_openvr = transform_tip.toOpenVR34();
-    vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(lp_device.OvrlHandle, device_index, &transform_openvr);
+    vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(lp_device.OvrlHandle, (lp_device.UseHMDAsOrigin) ? vr::k_unTrackedDeviceIndex_Hmd : device_index, &transform_openvr);
 
     //Adjust pointer alpha/brightness
     bool is_primary_device = (device_index == (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
@@ -152,7 +156,7 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
     vr::VROverlayIntersectionParams_t  params  = {0};
     vr::VROverlayIntersectionResults_t results = {0};
 
-    if (!GetOverlayIntersectionParamsForDevice(params, device_index, vr::TrackingUniverseStanding))
+    if (!GetOverlayIntersectionParamsForDevice(params, (lp_device.UseHMDAsOrigin) ? vr::k_unTrackedDeviceIndex_Hmd : device_index, vr::TrackingUniverseStanding))
     {
         skip_intersection_test = true; //Skip if pose isn't valid
     }
@@ -567,7 +571,7 @@ void LaserPointer::Update()
     {
         for (vr::TrackedDeviceIndex_t i = 0; i <= m_DeviceMaxActiveID; ++i)
         {
-            if (m_Devices[i].OvrlHandle != vr::k_ulOverlayHandleInvalid)
+            if ( (m_Devices[i].OvrlHandle != vr::k_ulOverlayHandleInvalid) || (m_Devices[i].UseHMDAsOrigin) )
             {
                 UpdateIntersection(i);
             }
@@ -611,8 +615,11 @@ void LaserPointer::SetActiveDevice(vr::TrackedDeviceIndex_t device_index, LaserP
 
     LaserPointerDevice& lp_device = m_Devices[device_index];
 
-    //Create overlay if it doesn't exist yet
-    if (lp_device.OvrlHandle == vr::k_ulOverlayHandleInvalid)
+    //Set UseHMDAsOrigin, which forces using the HMD as an origin and not actually display any laser
+    lp_device.UseHMDAsOrigin = ((device_index == vr::k_unTrackedDeviceIndex_Hmd) || (vr::VRSystem()->GetBoolTrackedDeviceProperty(device_index, vr::Prop_NeverTracked_Bool)));
+
+    //Create overlay if it doesn't exist yet (and HMD isn't used as origin)
+    if ( (!lp_device.UseHMDAsOrigin) && (lp_device.OvrlHandle == vr::k_ulOverlayHandleInvalid) )
     {
         CreateDeviceOverlay(device_index);
     }

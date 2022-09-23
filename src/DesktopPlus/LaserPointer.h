@@ -9,6 +9,7 @@ struct LaserPointerDevice
 {
     vr::VROverlayHandle_t OvrlHandle = vr::k_ulOverlayHandleInvalid;
     vr::VRInputValueHandle_t InputValueHandle = vr::k_ulInvalidInputValueHandle;
+    bool UseHMDAsOrigin = false;
     bool IsVisible = false;
     float LaserLength = 0.0f;
 
