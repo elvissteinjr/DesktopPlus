@@ -59,7 +59,7 @@ DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output)
     HRESULT hr = m_Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DxgiDevice));
     if (FAILED(hr))
     {
-        return ProcessFailure(nullptr, L"Failed to QI for DXGI device", L"Error", hr);
+        return ProcessFailure(nullptr, L"Failed to QI for DXGI device", L"Desktop+ Error", hr);
     }
 
     // Get DXGI adapter
@@ -69,7 +69,7 @@ DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output)
     DxgiDevice = nullptr;
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to get parent DXGI adapter", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to get parent DXGI adapter", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // Get output
@@ -79,7 +79,7 @@ DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output)
     DxgiAdapter = nullptr;
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to get specified DXGI output", L"Error", hr, EnumOutputsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to get specified DXGI output", L"Desktop+ Error", hr, EnumOutputsExpectedErrors);
     }
 
     DxgiOutput->GetDesc(&m_OutputDesc);
@@ -91,7 +91,7 @@ DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output)
     DxgiOutput = nullptr;
     if (FAILED(hr))
     {
-        return ProcessFailure(nullptr, L"Failed to QI for DxgiOutput1", L"Error", hr);
+        return ProcessFailure(nullptr, L"Failed to QI for DxgiOutput1", L"Desktop+ Error", hr);
     }
 
     // Create desktop duplication
@@ -102,10 +102,10 @@ DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output)
     {
         if (hr == DXGI_ERROR_NOT_CURRENTLY_AVAILABLE)
         {
-            ProcessFailure(m_Device, L"There is already the maximum number of applications using the Desktop Duplication API running, please close one of those applications and then try again", L"Error", hr);
+            ProcessFailure(m_Device, L"There is already the maximum number of applications using the Desktop Duplication API running, please close one of those applications and then try again", L"Desktop+ Error", hr);
             return DUPL_RETURN_ERROR_UNEXPECTED;
         }
-        return ProcessFailure(m_Device, L"Failed to get duplicate output", L"Error", hr, CreateDuplicationExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to get duplicate output", L"Desktop+ Error", hr, CreateDuplicationExpectedErrors);
     }
 
     return DUPL_RETURN_SUCCESS;
@@ -176,7 +176,7 @@ DUPL_RETURN DUPLICATIONMANAGER::GetMouse(_Inout_ PTR_INFO* PtrInfo, _In_ DXGI_OU
         if (!PtrInfo->PtrShapeBuffer)
         {
             PtrInfo->BufferSize = 0;
-            return ProcessFailure(nullptr, L"Failed to allocate memory for pointer shape", L"Error", E_OUTOFMEMORY);
+            return ProcessFailure(nullptr, L"Failed to allocate memory for pointer shape", L"Desktop+ Error", E_OUTOFMEMORY);
         }
 
         // Update buffer size
@@ -191,7 +191,7 @@ DUPL_RETURN DUPLICATIONMANAGER::GetMouse(_Inout_ PTR_INFO* PtrInfo, _In_ DXGI_OU
         delete [] PtrInfo->PtrShapeBuffer;
         PtrInfo->PtrShapeBuffer = nullptr;
         PtrInfo->BufferSize = 0;
-        return ProcessFailure(m_Device, L"Failed to get frame pointer shape", L"Error", hr, FrameInfoExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to get frame pointer shape", L"Desktop+ Error", hr, FrameInfoExpectedErrors);
     }
 
     return DUPL_RETURN_SUCCESS;
@@ -218,7 +218,7 @@ DUPL_RETURN DUPLICATIONMANAGER::GetFrame(_Out_ FRAME_DATA* Data, _Out_ bool* Tim
 
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to acquire next frame", L"Error", hr, FrameInfoExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to acquire next frame", L"Desktop+ Error", hr, FrameInfoExpectedErrors);
     }
 
     // If still holding old frame, destroy it
@@ -234,7 +234,7 @@ DUPL_RETURN DUPLICATIONMANAGER::GetFrame(_Out_ FRAME_DATA* Data, _Out_ bool* Tim
     DesktopResource = nullptr;
     if (FAILED(hr))
     {
-        return ProcessFailure(nullptr, L"Failed to QI for ID3D11Texture2D from acquired IDXGIResource", L"Error", hr);
+        return ProcessFailure(nullptr, L"Failed to QI for ID3D11Texture2D from acquired IDXGIResource", L"Desktop+ Error", hr);
     }
 
     // Get metadata
@@ -254,7 +254,7 @@ DUPL_RETURN DUPLICATIONMANAGER::GetFrame(_Out_ FRAME_DATA* Data, _Out_ bool* Tim
                 m_MetaDataSize = 0;
                 Data->MoveCount = 0;
                 Data->DirtyCount = 0;
-                return ProcessFailure(nullptr, L"Failed to allocate memory for metadata", L"Error", E_OUTOFMEMORY);
+                return ProcessFailure(nullptr, L"Failed to allocate memory for metadata", L"Desktop+ Error", E_OUTOFMEMORY);
             }
             m_MetaDataSize = FrameInfo.TotalMetadataBufferSize;
         }
@@ -267,7 +267,7 @@ DUPL_RETURN DUPLICATIONMANAGER::GetFrame(_Out_ FRAME_DATA* Data, _Out_ bool* Tim
         {
             Data->MoveCount = 0;
             Data->DirtyCount = 0;
-            return ProcessFailure(nullptr, L"Failed to get frame move rects", L"Error", hr, FrameInfoExpectedErrors);
+            return ProcessFailure(nullptr, L"Failed to get frame move rects", L"Desktop+ Error", hr, FrameInfoExpectedErrors);
         }
         Data->MoveCount = BufSize / sizeof(DXGI_OUTDUPL_MOVE_RECT);
 
@@ -280,7 +280,7 @@ DUPL_RETURN DUPLICATIONMANAGER::GetFrame(_Out_ FRAME_DATA* Data, _Out_ bool* Tim
         {
             Data->MoveCount = 0;
             Data->DirtyCount = 0;
-            return ProcessFailure(nullptr, L"Failed to get frame dirty rects", L"Error", hr, FrameInfoExpectedErrors);
+            return ProcessFailure(nullptr, L"Failed to get frame dirty rects", L"Desktop+ Error", hr, FrameInfoExpectedErrors);
         }
         Data->DirtyCount = BufSize / sizeof(RECT);
 
@@ -301,7 +301,7 @@ DUPL_RETURN DUPLICATIONMANAGER::DoneWithFrame()
     HRESULT hr = m_DeskDupl->ReleaseFrame();
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to release frame", L"Error", hr, FrameInfoExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to release frame", L"Desktop+ Error", hr, FrameInfoExpectedErrors);
     }
 
     if (m_AcquiredDesktopImage)

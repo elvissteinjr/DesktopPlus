@@ -373,7 +373,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Device creation failed", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Device creation failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Create multi-gpu target device if needed
@@ -384,7 +384,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
         if (FAILED(hr))
         {
-            return ProcessFailure(m_Device, L"Secondary device creation failed", L"Error", hr, SystemTransitionsExpectedErrors);
+            return ProcessFailure(m_Device, L"Secondary device creation failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
 
         adapter_ptr_vr = nullptr;
@@ -427,7 +427,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     hr = m_Device->CreateSamplerState(&SampDesc, &m_Sampler);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create sampler state", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create sampler state", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // Create the blend state
@@ -445,7 +445,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     hr = m_Device->CreateBlendState(&BlendStateDesc, &m_BlendState);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create blend state", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create blend state", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Create the rasterizer state
@@ -458,7 +458,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     hr = m_Device->CreateRasterizerState(&RasterizerDesc, &m_RasterizerState);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create rasterizer state", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create rasterizer state", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
     m_DeviceContext->RSSetState(m_RasterizerState);
 
@@ -487,7 +487,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     hr = m_Device->CreateBuffer(&BufferDesc, &InitData, &m_VertexBuffer);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create vertex buffer", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create vertex buffer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Set scissor rect to full
@@ -557,22 +557,23 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     return Return;
 }
 
-vr::EVRInitError OutputManager::InitOverlay()
+std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverlay()
 {
-    vr::EVRInitError init_error;
-    vr::IVRSystem* vr_ptr = vr::VR_Init(&init_error, vr::VRApplication_Overlay);
+    vr::EVRInitError init_error   = vr::VRInitError_None;
+    vr::VROverlayError ovrl_error = vr::VROverlayError_None;
+
+    vr::VR_Init(&init_error, vr::VRApplication_Overlay);
 
     if (init_error != vr::VRInitError_None)
-        return init_error;
+        return {init_error, ovrl_error, false};
 
     if (!vr::VROverlay())
-        return vr::VRInitError_Init_InvalidInterface;
+        return {vr::VRInitError_Init_InvalidInterface, ovrl_error, false};
 
     m_OvrlHandleDashboardDummy = vr::k_ulOverlayHandleInvalid;
     m_OvrlHandleMain = vr::k_ulOverlayHandleInvalid;
     m_OvrlHandleIcon = vr::k_ulOverlayHandleInvalid;
     m_OvrlHandleDesktopTexture = vr::k_ulOverlayHandleInvalid;
-    vr::VROverlayError ovrl_error = vr::VROverlayError_None;
 
     //We already got rid of another instance of this app if there was any, but this loop takes care of it too if the detection failed or something uses our overlay key
     while (true)
@@ -733,7 +734,7 @@ vr::EVRInitError OutputManager::InitOverlay()
         }
     }
 
-    bool input_res = m_VRInput.Init();
+    const bool vrinput_init_success = m_VRInput.Init();
 
     //Check if it's a WMR system and set up for that if needed
     SetConfigForWMR(ConfigManager::Get().GetConfigIntRef(configid_int_interface_wmr_ignore_vscreens));
@@ -744,10 +745,8 @@ vr::EVRInitError OutputManager::InitOverlay()
     //Hotkeys can trigger actions requiring OpenVR, so only register after OpenVR init
     RegisterHotkeys();
 
-    if ((ovrl_error == vr::VROverlayError_None) && (input_res))
-        return vr::VRInitError_None;
-    else
-        return vr::VRInitError_Compositor_OverlayInitFailed;
+    //Return error state to allow for accurate display if needed
+    return {vr::VRInitError_None, ovrl_error, vrinput_init_success};
 }
 
 //
@@ -799,7 +798,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     }
     else if (FAILED(hr))
     {
-        return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to acquire keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
+        return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to acquire keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     DUPL_RETURN_UPD ret = DUPL_RETURN_UPD_SUCCESS;
@@ -935,7 +934,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     hr = m_KeyMutex->ReleaseSync(0);
     if (FAILED(hr))
     {
-        return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
+        return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Count frames if performance stats are active
@@ -2373,7 +2372,7 @@ void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter
     }
     else
     {
-        ProcessFailure(m_Device, L"Failed to convert OU texture to SBS", L"Error", hr, SystemTransitionsExpectedErrors);
+        ProcessFailure(m_Device, L"Failed to convert OU texture to SBS", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 }
 
@@ -2455,7 +2454,7 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInf
     HRESULT hr = m_Device->CreateTexture2D(&CopyBufferDesc, nullptr, &CopyBuffer);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed creating staging texture for pointer", L"Error", S_OK, SystemTransitionsExpectedErrors); //Shouldn't be critical
+        return ProcessFailure(m_Device, L"Failed creating staging texture for pointer", L"Desktop+ Error", S_OK, SystemTransitionsExpectedErrors); //Shouldn't be critical
     }
 
     // Copy needed part of desktop image
@@ -2472,7 +2471,7 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInf
     CopyBuffer = nullptr;
     if (FAILED(hr))
     {
-        return ProcessFailure(nullptr, L"Failed to QI staging texture into IDXGISurface for pointer", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(nullptr, L"Failed to QI staging texture into IDXGISurface for pointer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // Map pixels
@@ -2482,14 +2481,14 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInf
     {
         CopySurface->Release();
         CopySurface = nullptr;
-        return ProcessFailure(m_Device, L"Failed to map surface for pointer", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to map surface for pointer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // New mouseshape buffer
     *InitBuffer = new (std::nothrow) BYTE[*PtrWidth * *PtrHeight * BPP];
     if (!(*InitBuffer))
     {
-        return ProcessFailure(nullptr, L"Failed to allocate memory for new mouse shape buffer.", L"Error", E_OUTOFMEMORY);
+        return ProcessFailure(nullptr, L"Failed to allocate memory for new mouse shape buffer.", L"Desktop+ Error", E_OUTOFMEMORY);
     }
 
     UINT* InitBuffer32 = reinterpret_cast<UINT*>(*InitBuffer);
@@ -2561,7 +2560,7 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInf
     CopySurface = nullptr;
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to unmap surface for pointer", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to unmap surface for pointer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     return DUPL_RETURN_SUCCESS;
@@ -2604,7 +2603,7 @@ DUPL_RETURN OutputManager::InitShaders()
     hr = m_Device->CreateVertexShader(g_VS, Size, nullptr, &m_VertexShader);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create vertex shader", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create vertex shader", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     D3D11_INPUT_ELEMENT_DESC Layout[] =
@@ -2616,7 +2615,7 @@ DUPL_RETURN OutputManager::InitShaders()
     hr = m_Device->CreateInputLayout(Layout, NumElements, g_VS, Size, &m_InputLayout);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create input layout", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create input layout", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
     m_DeviceContext->IASetInputLayout(m_InputLayout);
 
@@ -2624,13 +2623,13 @@ DUPL_RETURN OutputManager::InitShaders()
     hr = m_Device->CreatePixelShader(g_PS, Size, nullptr, &m_PixelShader);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create pixel shader", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create pixel shader", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
     Size = ARRAYSIZE(g_PSCURSOR);
     hr = m_Device->CreatePixelShader(g_PSCURSOR, Size, nullptr, &m_PixelShaderCursor);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create cursor pixel shader", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create cursor pixel shader", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     return DUPL_RETURN_SUCCESS;
@@ -2649,7 +2648,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
     hr = m_Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DxgiDevice));
     if (FAILED(hr))
     {
-        return ProcessFailure(nullptr, L"Failed to QI for DXGI device", L"Error", hr);
+        return ProcessFailure(nullptr, L"Failed to QI for DXGI device", L"Desktop+ Error", hr);
     }
 
     IDXGIAdapter* DxgiAdapter = nullptr;
@@ -2658,7 +2657,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
     DxgiDevice = nullptr;
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to get parent DXGI adapter", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to get parent DXGI adapter", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // Set initial values so that we always catch the right coordinates
@@ -2788,11 +2787,11 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
             // complete desktop image and blit updates from the per output DDA interface.  The GPU can
             // always support a texture size of the maximum resolution of any single output but there is no
             // guarantee that it can support a texture size of the desktop.
-            return ProcessFailure(m_Device, L"Failed to create shared texture. Combined desktop texture size may be larger than the maximum supported supported size of the GPU", L"Error", hr, SystemTransitionsExpectedErrors);
+            return ProcessFailure(m_Device, L"Failed to create shared texture. Combined desktop texture size may be larger than the maximum supported supported size of the GPU", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
         else
         {
-            return ProcessFailure(m_Device, L"Failed to create shared texture", L"Error", hr, SystemTransitionsExpectedErrors);
+            return ProcessFailure(m_Device, L"Failed to create shared texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
     }
 
@@ -2801,7 +2800,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
 
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to query for keyed mutex", L"Error", hr);
+        return ProcessFailure(m_Device, L"Failed to query for keyed mutex", L"Desktop+ Error", hr);
     }
 
     //Create shader resource for shared texture
@@ -2818,7 +2817,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
     hr = m_Device->CreateShaderResourceView(m_SharedSurf, &ShaderDesc, &m_ShaderResource);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create shader resource", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create shader resource", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Create textures for multi GPU handling if needed
@@ -2834,7 +2833,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
 
         if (FAILED(hr))
         {
-            return ProcessFailure(m_Device, L"Failed to create staging texture", L"Error", hr);
+            return ProcessFailure(m_Device, L"Failed to create staging texture", L"Desktop+ Error", hr);
         }
 
         //Copy-target texture
@@ -2847,7 +2846,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
 
         if (FAILED(hr))
         {
-            return ProcessFailure(m_MultiGPUTargetDevice, L"Failed to create copy-target texture", L"Error", hr);
+            return ProcessFailure(m_MultiGPUTargetDevice, L"Failed to create copy-target texture", L"Desktop+ Error", hr);
         }
     }
 
@@ -3005,7 +3004,7 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
             m_MouseTex = nullptr;
         }
 
-        return ProcessFailure(m_Device, L"Failed to create mouse pointer vertex buffer in OutputManager", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create mouse pointer vertex buffer in OutputManager", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //It can occasionally happen that no cursor shape update is detected after resetting duplication, so the m_MouseTex check is more of a workaround, but unproblematic
@@ -3052,7 +3051,7 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
         hr = m_Device->CreateTexture2D(&Desc, &InitData, &m_MouseTex);
         if (FAILED(hr))
         {
-            return ProcessFailure(m_Device, L"Failed to create mouse pointer texture", L"Error", hr, SystemTransitionsExpectedErrors);
+            return ProcessFailure(m_Device, L"Failed to create mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
 
         // Create shader resource from texture
@@ -3061,7 +3060,7 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
         {
             m_MouseTex->Release();
             m_MouseTex = nullptr;
-            return ProcessFailure(m_Device, L"Failed to create shader resource from mouse pointer texture", L"Error", hr, SystemTransitionsExpectedErrors);
+            return ProcessFailure(m_Device, L"Failed to create shader resource from mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
     }
 
@@ -3122,7 +3121,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
             }
             else if (FAILED(hr))
             {
-                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to acquire keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
+                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to acquire keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
 
             DrawFrameToOverlayTex(true);
@@ -3131,7 +3130,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
             hr = m_KeyMutex->ReleaseSync(0);
             if (FAILED(hr))
             {
-                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
+                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
 
             //We don't draw the cursor here as this can lead to tons of issues for little gain. We might not even know what the cursor looks like if it was cropped out previously, etc.
@@ -3156,7 +3155,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
 
             if (FAILED(hr))
             {
-                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to map staging texture", L"Error", hr, SystemTransitionsExpectedErrors);
+                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to map staging texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
 
             D3D11_MAPPED_SUBRESOURCE mapped_resource_target;
@@ -3165,7 +3164,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
 
             if (FAILED(hr))
             {
-                return (DUPL_RETURN_UPD)ProcessFailure(m_MultiGPUTargetDevice, L"Failed to map copy-target texture", L"Error", hr, SystemTransitionsExpectedErrors);
+                return (DUPL_RETURN_UPD)ProcessFailure(m_MultiGPUTargetDevice, L"Failed to map copy-target texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
 
             memcpy(mapped_resource_target.pData, mapped_resource_staging.pData, m_DesktopHeight * mapped_resource_staging.RowPitch);

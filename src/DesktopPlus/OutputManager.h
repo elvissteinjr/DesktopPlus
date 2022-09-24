@@ -2,6 +2,7 @@
 #define _OUTPUTMANAGER_H_
 
 #include <stdio.h>
+#include <tuple>
 
 #include "CommonTypes.h"
 #include "warning.h"
@@ -31,7 +32,7 @@ class OutputManager
         ~OutputManager();
         void CleanRefs();
         DUPL_RETURN InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
-        vr::EVRInitError InitOverlay();
+        std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> InitOverlay();  //Returns error state <InitError, OverlayError, VRInputInitSuccess>
         DUPL_RETURN_UPD Update(_In_ PTR_INFO* PointerInfo, _In_ DPRect& DirtyRegionTotal, bool NewFrame, bool SkipFrame);
         bool HandleIPCMessage(const MSG& msg);    //Returns true if message caused a duplication reset (i.e. desktop switch)
         void HandleWinRTMessage(const MSG& msg);  //Messages sent by the Desktop+ WinRT library
