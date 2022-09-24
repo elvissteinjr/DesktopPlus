@@ -5044,6 +5044,12 @@ void OutputManager::DragStart(bool is_gesture_drag)
         }
     }
 
+    //Use HMD as device when the tracked device will never have a valid pose (e.g. gamepads)
+    if ((device_index != vr::k_unTrackedDeviceIndexInvalid) && (vr::VRSystem()->GetBoolTrackedDeviceProperty(device_index, vr::Prop_NeverTracked_Bool)) )
+    {
+        device_index = vr::k_unTrackedDeviceIndex_Hmd;
+    }
+
     if ( (device_index < vr::k_unMaxTrackedDeviceCount) && (poses[device_index].bPoseIsValid) )
     {
         if (!is_gesture_drag)
