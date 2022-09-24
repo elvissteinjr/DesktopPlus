@@ -180,7 +180,7 @@ DUPL_RETURN DISPLAYMANAGER::CopyMove(_Inout_ ID3D11Texture2D* SharedSurf, _In_re
         HRESULT hr = m_Device->CreateTexture2D(&MoveDesc, nullptr, &m_MoveSurf);
         if (FAILED(hr))
         {
-            return ProcessFailure(m_Device, L"Failed to create staging texture for move rects", L"Error", hr, SystemTransitionsExpectedErrors);
+            return ProcessFailure(m_Device, L"Failed to create staging texture for move rects", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
     }
 
@@ -343,7 +343,7 @@ DUPL_RETURN DISPLAYMANAGER::CopyDirty(_In_ ID3D11Texture2D* SrcSurface, _Inout_ 
         hr = m_Device->CreateRenderTargetView(SharedSurf, nullptr, &m_RTV);
         if (FAILED(hr))
         {
-            return ProcessFailure(m_Device, L"Failed to create render target view for dirty rects", L"Error", hr, SystemTransitionsExpectedErrors);
+            return ProcessFailure(m_Device, L"Failed to create render target view for dirty rects", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
     }
 
@@ -358,7 +358,7 @@ DUPL_RETURN DISPLAYMANAGER::CopyDirty(_In_ ID3D11Texture2D* SrcSurface, _Inout_ 
     hr = m_Device->CreateShaderResourceView(SrcSurface, &ShaderDesc, &ShaderResource);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create shader resource view for dirty rects", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create shader resource view for dirty rects", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     FLOAT BlendFactor[4] = {0.f, 0.f, 0.f, 0.f};
@@ -383,7 +383,7 @@ DUPL_RETURN DISPLAYMANAGER::CopyDirty(_In_ ID3D11Texture2D* SrcSurface, _Inout_ 
         if (!m_DirtyVertexBufferAlloc)
         {
             m_DirtyVertexBufferAllocSize = 0;
-            return ProcessFailure(nullptr, L"Failed to allocate memory for dirty vertex buffer", L"Error", E_OUTOFMEMORY);
+            return ProcessFailure(nullptr, L"Failed to allocate memory for dirty vertex buffer", L"Desktop+ Error", E_OUTOFMEMORY);
         }
 
         m_DirtyVertexBufferAllocSize = BytesNeeded;
@@ -411,7 +411,7 @@ DUPL_RETURN DISPLAYMANAGER::CopyDirty(_In_ ID3D11Texture2D* SrcSurface, _Inout_ 
     hr = m_Device->CreateBuffer(&BufferDesc, &InitData, &VertBuf);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create vertex buffer in dirty rect processing", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to create vertex buffer in dirty rect processing", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
     UINT Stride = sizeof(VERTEX);
     UINT Offset = 0;

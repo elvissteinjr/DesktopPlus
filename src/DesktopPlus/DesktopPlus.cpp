@@ -65,6 +65,8 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 bool SpawnProcessWithDefaultEnv(LPCWSTR application_name, LPWSTR commandline = nullptr);
 void ProcessCmdline(bool& use_elevated_mode);
+bool DisplayInitError(vr::EVRInitError vr_init_error, vr::EVROverlayError vr_overlay_error, bool vr_input_success);
+void WriteMessageToLog(_In_ LPCWSTR str);
 
 //
 // Class for progressive waits
@@ -185,7 +187,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     UnexpectedErrorEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
     if (!UnexpectedErrorEvent)
     {
-        ProcessFailure(nullptr, L"UnexpectedErrorEvent creation failed", L"Error", E_UNEXPECTED);
+        ProcessFailure(nullptr, L"UnexpectedErrorEvent creation failed", L"Desktop+ Error", E_UNEXPECTED);
         return 0;
     }
 
@@ -193,7 +195,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     ExpectedErrorEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
     if (!ExpectedErrorEvent)
     {
-        ProcessFailure(nullptr, L"ExpectedErrorEvent creation failed", L"Error", E_UNEXPECTED);
+        ProcessFailure(nullptr, L"ExpectedErrorEvent creation failed", L"Desktop+ Error", E_UNEXPECTED);
         return 0;
     }
 
@@ -201,7 +203,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     NewFrameProcessedEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
     if (!NewFrameProcessedEvent)
     {
-        ProcessFailure(nullptr, L"NewFrameProcessedEvent creation failed", L"Error", E_UNEXPECTED);
+        ProcessFailure(nullptr, L"NewFrameProcessedEvent creation failed", L"Desktop+ Error", E_UNEXPECTED);
         return 0;
     }
 
@@ -209,7 +211,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     PauseDuplicationEvent = ::CreateEvent(nullptr, TRUE, TRUE, nullptr);
     if (!PauseDuplicationEvent)
     {
-        ProcessFailure(nullptr, L"PauseDuplicationEvent creation failed", L"Error", E_UNEXPECTED);
+        ProcessFailure(nullptr, L"PauseDuplicationEvent creation failed", L"Desktop+ Error", E_UNEXPECTED);
         return 0;
     }
 
@@ -217,7 +219,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     ResumeDuplicationEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
     if (!ResumeDuplicationEvent)
     {
-        ProcessFailure(nullptr, L"ResumeDuplicationEvent creation failed", L"Error", E_UNEXPECTED);
+        ProcessFailure(nullptr, L"ResumeDuplicationEvent creation failed", L"Desktop+ Error", E_UNEXPECTED);
         return 0;
     }
 
@@ -225,7 +227,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     TerminateThreadsEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
     if (!TerminateThreadsEvent)
     {
-        ProcessFailure(nullptr, L"TerminateThreadsEvent creation failed", L"Error", E_UNEXPECTED);
+        ProcessFailure(nullptr, L"TerminateThreadsEvent creation failed", L"Desktop+ Error", E_UNEXPECTED);
         return 0;
     }
 
@@ -245,7 +247,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     Wc.hIconSm          = nullptr;
     if (!RegisterClassExW(&Wc))
     {
-        ProcessFailure(nullptr, L"Window class registration failed", L"Error", E_UNEXPECTED);
+        ProcessFailure(nullptr, L"Window class registration failed", L"Desktop+ Error", E_UNEXPECTED);
         return 0;
     }
 
@@ -257,7 +259,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                                    HWND_DESKTOP, nullptr, hInstance, nullptr);
     if (!WindowHandle)
     {
-        ProcessFailure(nullptr, L"Window creation failed", L"Error", E_FAIL);
+        ProcessFailure(nullptr, L"Window creation failed", L"Desktop+ Error", E_FAIL);
         return 0;
     }
 
@@ -301,7 +303,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     while (WM_QUIT != msg.message)
     {
-        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+        if ((!FirstTime) && (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)))  //Wait for init before processing messages
         {
             // Process window messages
             if (msg.message >= 0xC000)  //Custom message from UI process, handle in output manager (WM_COPYDATA is handled in WndProc())
@@ -330,7 +332,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             // Unexpected error occurred so exit the application
             break;
         }
-        else if (FirstTime || WaitForSingleObjectEx(ExpectedErrorEvent, 0, FALSE) == WAIT_OBJECT_0)
+        else if ((FirstTime) || (WaitForSingleObjectEx(ExpectedErrorEvent, 0, FALSE) == WAIT_OBJECT_0))
         {
             if (!FirstTime)
             {
@@ -357,21 +359,17 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             vr::EVRInitError vr_init_error = vr::VRInitError_None;
             if (FirstTime) //InitOutput() needs OpenVR to be initialized already
             {
-                vr_init_error = OutMgr.InitOverlay();
-                if (vr_init_error != vr::VRInitError_None)
+                auto init_error = OutMgr.InitOverlay();
+
+                //Display error message if init error states indicates one
+                if (DisplayInitError(std::get<vr::EVRInitError>(init_error), std::get<vr::EVROverlayError>(init_error), std::get<bool>(init_error)))
                 {
-                    if ( (vr_init_error == vr::VRInitError_Init_HmdNotFound) || (vr_init_error == vr::VRInitError_Init_HmdNotFoundPresenceFailed) )
-                    {
-                        DisplayMsg(L"Failed to init OpenVR: HMD not found.\nRe-launch application with a HMD connected.", L"Error", S_OK);
-                    }
-                    else if (vr_init_error != vr::VRInitError_Init_InitCanceledByUser) //Supposed to be always silent exit
-                    {
-                        DisplayMsg(L"Failed to init OpenVR", L"Error", S_OK);
-                    }
+                    //An error message was displayed, abort
                     Ret = DUPL_RETURN_ERROR_UNEXPECTED;
                     break;
                 }
-                else if ( (ConfigManager::GetValue(configid_bool_misc_no_steam)) && (ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam)) )
+
+                if ( (ConfigManager::GetValue(configid_bool_misc_no_steam)) && (ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam)) )
                 {
                     //Was started by Steam but running through it was turned off, so restart without
                     std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";
@@ -392,7 +390,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 }
                 else
                 {
-                    DisplayMsg(L"Failed to get handle of shared surface", L"Error", E_FAIL);
+                    DisplayMsg(L"Failed to get handle of shared surface", L"Desktop+ Error", E_FAIL);
 
                     Ret = DUPL_RETURN_ERROR_UNEXPECTED;
                 }
@@ -484,7 +482,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
     }
 
-    //Remove all overlays since they may access things on destruction after we're shut them down otherwise
+    //Remove all overlays since they may access things on destruction after we're shut down otherwise
     OverlayManager::Get().RemoveAllOverlays();
 
     //Quit Browser processes if they're running (we do this early since the browser doesn't poll for VREvent_Quit itself)
@@ -636,6 +634,50 @@ void ProcessCmdline(bool& use_elevated_mode)
     }
 }
 
+bool DisplayInitError(vr::EVRInitError vr_init_error, vr::EVROverlayError vr_overlay_error, bool vr_input_success)
+{
+    if (vr_init_error != vr::VRInitError_None)
+    {
+        if ( (vr_init_error == vr::VRInitError_Init_HmdNotFound) || (vr_init_error == vr::VRInitError_Init_HmdNotFoundPresenceFailed) )
+        {
+            DisplayMsg(L"Failed to init OpenVR: HMD not found.\nRe-launch application with a HMD connected.", L"Desktop+ Error", S_OK);
+        }
+        else if (vr_init_error == vr::VRInitError_Init_InvalidInterface)
+        {
+            DisplayMsg(L"Failed to init OpenVR: Invalid Interface.\nMake sure to have the latest version of SteamVR installed.", L"Desktop+ Error", S_OK);
+        }
+        else if (vr_init_error != vr::VRInitError_Init_InitCanceledByUser) //Exclude canceled, supposed to be always silent exit
+        {
+            std::wstring error_str = L"Failed to init OpenVR: ";
+            error_str += WStringConvertFromUTF8(vr::VR_GetVRInitErrorAsEnglishDescription(vr_init_error));
+            error_str += L".";
+
+            DisplayMsg(error_str.c_str(), L"Desktop+ Error", S_OK);
+        }
+
+        return true;
+    }
+
+    if (vr_overlay_error != vr::VROverlayError_None)
+    {
+        std::wstring error_str = L"Failed to init overlay: ";
+        error_str += WStringConvertFromUTF8(vr::VROverlay()->GetOverlayErrorNameFromEnum(vr_overlay_error));
+        error_str += L".";
+
+        DisplayMsg(error_str.c_str(), L"Desktop+ Error", S_OK);
+
+        return true;
+    }
+
+    if (!vr_input_success)
+    {
+        //VRInput not working is bad, but doesn't stop us from running, so just log it
+        WriteMessageToLog(L"Failed to load VRInput action manifest. Some input-related functionality will not be available.");
+    }
+
+    return false;
+}
+
 //
 // Entry point for new duplication threads
 //
@@ -682,14 +724,14 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
     HRESULT hr = TData->DxRes.Device->OpenSharedResource(TData->TexSharedHandle, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&SharedSurf));
     if (FAILED (hr))
     {
-        Ret = ProcessFailure(TData->DxRes.Device, L"Opening shared texture failed", L"Error", hr, SystemTransitionsExpectedErrors);
+        Ret = ProcessFailure(TData->DxRes.Device, L"Opening shared texture failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         goto Exit;
     }
 
     hr = SharedSurf->QueryInterface(__uuidof(IDXGIKeyedMutex), reinterpret_cast<void**>(&KeyMutex));
     if (FAILED(hr))
     {
-        Ret = ProcessFailure(nullptr, L"Failed to get keyed mutex interface in spawned thread", L"Error", hr);
+        Ret = ProcessFailure(nullptr, L"Failed to get keyed mutex interface in spawned thread", L"Desktop+ Error", hr);
         goto Exit;
     }
 
@@ -749,7 +791,7 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
         else if (FAILED(hr))
         {
             // Generic unknown failure
-            Ret = ProcessFailure(TData->DxRes.Device, L"Unexpected error acquiring keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
+            Ret = ProcessFailure(TData->DxRes.Device, L"Unexpected error acquiring keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             DuplMgr.DoneWithFrame();
             break;
         }
@@ -780,7 +822,7 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
         hr = KeyMutex->ReleaseSync(1);
         if (FAILED(hr))
         {
-            Ret = ProcessFailure(TData->DxRes.Device, L"Unexpected error releasing the keyed mutex", L"Error", hr, SystemTransitionsExpectedErrors);
+            Ret = ProcessFailure(TData->DxRes.Device, L"Unexpected error releasing the keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             DuplMgr.DoneWithFrame();
             break;
         }
@@ -887,8 +929,6 @@ DUPL_RETURN ProcessFailure(_In_opt_ ID3D11Device* device, _In_ LPCWSTR str, _In_
 //
 // Displays a message
 //
-void WriteMessageToLog(_In_ LPCWSTR str);
-
 void DisplayMsg(_In_ LPCWSTR str, _In_ LPCWSTR title, HRESULT hr)
 {
     if (SUCCEEDED(hr))

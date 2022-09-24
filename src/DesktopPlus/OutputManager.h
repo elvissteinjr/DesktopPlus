@@ -34,7 +34,7 @@ class OutputManager
         ~OutputManager();
         void CleanRefs();
         DUPL_RETURN InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
-        vr::EVRInitError InitOverlay();
+        std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> InitOverlay();  //Returns error state <InitError, OverlayError, VRInputInitSuccess>
         DUPL_RETURN_UPD Update(_In_ PTR_INFO* PointerInfo, _In_ DPRect& DirtyRegionTotal, bool NewFrame, bool SkipFrame);
         void BusyUpdate();                        //Updates minimal state (i.e. OverlayDragger) during busy waits (i.e. waiting for browser startup) to appear more responsive
         bool HandleIPCMessage(const MSG& msg);    //Returns true if message caused a duplication reset (i.e. desktop switch)

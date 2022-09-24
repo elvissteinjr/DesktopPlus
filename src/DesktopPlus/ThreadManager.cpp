@@ -106,7 +106,7 @@ DUPL_RETURN THREADMANAGER::Initialize(INT SingleOutput, UINT OutputCount, HANDLE
     m_ThreadData = new (std::nothrow) THREAD_DATA[m_ThreadCount];
     if (!m_ThreadHandles || !m_ThreadData)
     {
-        return ProcessFailure(nullptr, L"Failed to allocate array for threads", L"Error", E_OUTOFMEMORY);
+        return ProcessFailure(nullptr, L"Failed to allocate array for threads", L"Desktop+ Error", E_OUTOFMEMORY);
     }
 
     // Create appropriate # of threads for duplication
@@ -143,7 +143,7 @@ DUPL_RETURN THREADMANAGER::Initialize(INT SingleOutput, UINT OutputCount, HANDLE
             if (DXGIAdapter != nullptr)
                 DXGIAdapter->Release();
 
-            return ProcessFailure(nullptr, L"Failed to create thread", L"Error", E_FAIL);
+            return ProcessFailure(nullptr, L"Failed to create thread", L"Desktop+ Error", E_FAIL);
         }
     }
 
@@ -187,7 +187,7 @@ DUPL_RETURN THREADMANAGER::InitializeDx(_Out_ DX_RESOURCES* Data, IDXGIAdapter* 
 
     if (FAILED(hr))
     {
-        return ProcessFailure(nullptr, L"Failed to create device for thread", L"Error", hr);
+        return ProcessFailure(nullptr, L"Failed to create device for thread", L"Desktop+ Error", hr);
     }
 
     // VERTEX shader
@@ -195,7 +195,7 @@ DUPL_RETURN THREADMANAGER::InitializeDx(_Out_ DX_RESOURCES* Data, IDXGIAdapter* 
     hr = Data->Device->CreateVertexShader(g_VS, Size, nullptr, &Data->VertexShader);
     if (FAILED(hr))
     {
-        return ProcessFailure(Data->Device, L"Failed to create vertex shader for thread", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(Data->Device, L"Failed to create vertex shader for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // Input layout
@@ -208,7 +208,7 @@ DUPL_RETURN THREADMANAGER::InitializeDx(_Out_ DX_RESOURCES* Data, IDXGIAdapter* 
     hr = Data->Device->CreateInputLayout(Layout, NumElements, g_VS, Size, &Data->InputLayout);
     if (FAILED(hr))
     {
-        return ProcessFailure(Data->Device, L"Failed to create input layout for thread", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(Data->Device, L"Failed to create input layout for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
     Data->Context->IASetInputLayout(Data->InputLayout);
 
@@ -217,7 +217,7 @@ DUPL_RETURN THREADMANAGER::InitializeDx(_Out_ DX_RESOURCES* Data, IDXGIAdapter* 
     hr = Data->Device->CreatePixelShader(g_PS, Size, nullptr, &Data->PixelShader);
     if (FAILED(hr))
     {
-        return ProcessFailure(Data->Device, L"Failed to create pixel shader for thread", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(Data->Device, L"Failed to create pixel shader for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // Set up sampler
@@ -233,7 +233,7 @@ DUPL_RETURN THREADMANAGER::InitializeDx(_Out_ DX_RESOURCES* Data, IDXGIAdapter* 
     hr = Data->Device->CreateSamplerState(&SampDesc, &Data->Sampler);
     if (FAILED(hr))
     {
-        return ProcessFailure(Data->Device, L"Failed to create sampler state for thread", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(Data->Device, L"Failed to create sampler state for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     return DUPL_RETURN_SUCCESS;
