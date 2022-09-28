@@ -1478,14 +1478,16 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
     {
         ImGui::SetNextWindowPos(ImVec2(ImGui::GetItemRectMin().x, smoothstep(m_PosAnimationProgress, pos_y_down, pos_y_up) ));
 
-        m_Alpha += (!m_IsFadingOut) ? 0.1f : -0.1f;
+        const float time_step = ImGui::GetIO().DeltaTime * 6.0f;
+
+        m_Alpha += (!m_IsFadingOut) ? time_step : -time_step;
 
         if (m_Alpha > 1.0f)
             m_Alpha = 1.0f;
         else if (m_Alpha < 0.0f)
             m_Alpha = 0.0f;
 
-        m_PosAnimationProgress += (m_PosDir == ImGuiDir_Up) ? 0.1f : -0.1f;
+        m_PosAnimationProgress += (m_PosDir == ImGuiDir_Up) ? time_step : -time_step;
 
         if (m_PosAnimationProgress > 1.0f)
             m_PosAnimationProgress = 1.0f;

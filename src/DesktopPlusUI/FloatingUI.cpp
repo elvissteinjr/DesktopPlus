@@ -46,7 +46,11 @@ void FloatingUI::Update()
 
         //Alpha fade animation
         if ( (!UIManager::Get()->GetRepeatFrame()) && (m_AutoFitFrames == 0) )
-            m_Alpha += (m_Visible) ? 0.1f : -0.1f;
+        {
+            const float alpha_step = ImGui::GetIO().DeltaTime * 6.0f;
+
+            m_Alpha += (m_Visible) ? alpha_step : -alpha_step;
+        }
 
         if (m_Alpha > 1.0f)
             m_Alpha = 1.0f;

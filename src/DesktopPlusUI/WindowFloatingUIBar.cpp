@@ -614,8 +614,10 @@ void WindowFloatingUIActionBar::Update(unsigned int overlay_id)
 {
     if ( (m_Alpha != 0.0f) || (m_Visible) )
     {
+        const float alpha_step = ImGui::GetIO().DeltaTime * 6.0f;
+
         //Alpha fade animation
-        m_Alpha += (m_Visible) ? 0.1f : -0.1f;
+        m_Alpha += (m_Visible) ? alpha_step : -alpha_step;
 
         if (m_Alpha > 1.0f)
             m_Alpha = 1.0f;
