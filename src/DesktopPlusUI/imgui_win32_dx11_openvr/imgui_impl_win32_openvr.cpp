@@ -38,6 +38,10 @@ typedef DWORD (WINAPI *PFN_XInputGetState)(DWORD, XINPUT_STATE*);
 #include <queue>
 #include <vector>
 
+//Additional VRMouseButton values only sent by Desktop+ laser pointer inputs, map to mouse button X1/X2
+#define VRMouseButton_DP_Aux01 0x0008
+#define VRMouseButton_DP_Aux02 0x0010
+
 // CHANGELOG (imgui_impl_win32)
 // (minor and older changes stripped away, please see git history for details)
 //  2022-01-26: Inputs: replaced short-lived io.AddKeyModsEvent() (added two weeks ago)with io.AddKeyEvent() using ImGuiKey_ModXXX flags. Sorry for the confusion.
@@ -883,9 +887,11 @@ IMGUI_IMPL_API bool ImGui_ImplOpenVR_InputEventHandler(const vr::VREvent_t& vr_e
 
             switch (vr_event.data.mouse.button)
             {
-                case vr::VRMouseButton_Left:    button = ImGuiMouseButton_Left;   break;
-                case vr::VRMouseButton_Right:   button = ImGuiMouseButton_Right;  break;
-                case vr::VRMouseButton_Middle:  button = ImGuiMouseButton_Middle; break;
+                case vr::VRMouseButton_Left:    button = ImGuiMouseButton_Left;       break;
+                case vr::VRMouseButton_Right:   button = ImGuiMouseButton_Right;      break;
+                case vr::VRMouseButton_Middle:  button = ImGuiMouseButton_Middle;     break;
+                case VRMouseButton_DP_Aux01:    button = ImGuiMouseButton_Middle + 1; break;
+                case VRMouseButton_DP_Aux02:    button = ImGuiMouseButton_Middle + 2; break;
             }
 
             io.AddMouseButtonEvent(button, (vr_event.eventType == vr::VREvent_MouseButtonDown));
