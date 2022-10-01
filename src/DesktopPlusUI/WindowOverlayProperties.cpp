@@ -992,13 +992,14 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
 
         ImGui::PushItemWidth(-1.0f);
         vr_keyboard.VRKeyboardInputBegin("##InputURL");
+        vr_keyboard.SetShortcutWindowDirectionHint(ImGuiDir_Up);
         if (ImGui::InputTextWithHint("##InputURL", TranslationManager::GetString(tstr_OvrlPropsBrowserURLHint), buffer_url, IM_ARRAYSIZE(buffer_url), 
                                      ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
         {
             has_pressed_enter_on_url = true;
         }
         vr_keyboard.VRKeyboardInputEnd();
-        
+
         if (ImGui::IsItemEdited())
         {
             //Add unmapped characters if they appear while typing

@@ -84,6 +84,7 @@ class VRKeyboard
 
         ImGuiID m_ActiveInputText;
         ImGuiID m_InputBeginWidgetID;
+        ImGuiDir m_ShortcutWindowDirHint;
         bool m_MouseLeftDownPrevCached;
         bool m_MouseLeftClickedPrevCached;
         bool m_KeyboardHiddenLastFrame;
@@ -123,6 +124,9 @@ class VRKeyboard
 
         void UpdateImGuiModifierState() const;
         void RestoreDesktopModifierState() const;
+
+        //Positioning hint used by the shortcut window. Set when the default down direction would cover related widgets. Resets automatically
+        void SetShortcutWindowDirectionHint(ImGuiDir dir_hint);
 
         static KeyboardLayoutMetadata LoadLayoutMetadataFromFile(const std::string& filename);
 };

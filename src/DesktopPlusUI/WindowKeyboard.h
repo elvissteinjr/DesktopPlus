@@ -103,14 +103,19 @@ class WindowKeyboardShortcuts
         ImGui::ActiveWidgetStateStorage m_WindowWidgetState;
 
         float m_WindowHeight              = FLT_MIN;
+        float m_WindowHeightPrev          = FLT_MIN;
         ImGuiDir m_PosDir                 = ImGuiDir_Down;
+        ImGuiDir m_PosDirDefault          = ImGuiDir_Down;
         float m_PosAnimationProgress      = 0.0f;
 
         ButtonAction m_ActiveButtonAction = btn_act_none;
+        bool m_IsAnyButtonDown            = false;
 
     public:
         void SetActiveWidget(ImGuiID widget_id);
+        void SetDefaultPositionDirection(ImGuiDir pos_dir);
         void Update(ImGuiID window_id);
 
         bool IsHovered() const;
+        bool IsAnyButtonDown() const;
 };

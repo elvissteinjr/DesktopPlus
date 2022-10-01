@@ -96,6 +96,9 @@ namespace ImGui
     //Scroll window horizontally from vertical mouse wheel input
     void HScrollWindowFromMouseWheelV();
 
+    //Scroll the parent window in begin stack from current mouse wheel input (real child windows can scroll their parents by default already)
+    void ScrollBeginStackParentWindow();
+
     //Returns true if either scroll bar is visible
     bool IsAnyScrollBarVisible();
 

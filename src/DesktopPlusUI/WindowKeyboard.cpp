@@ -1433,6 +1433,14 @@ void WindowKeyboardShortcuts::SetActiveWidget(ImGuiID widget_id)
     }
 }
 
+void WindowKeyboardShortcuts::SetDefaultPositionDirection(ImGuiDir pos_dir)
+{
+    if (!m_IsFadingOut)
+    {
+        m_PosDirDefault = pos_dir;
+    }
+}
+
 void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
 {
     if (widget_id != m_ActiveWidget)
@@ -1470,11 +1478,12 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
         default: break;
     }
 
+    const float pos_y      = ImGui::GetItemRectMin().y - ImGui::GetStyle().ItemSpacing.y;
     const float pos_y_down = ImGui::GetItemRectMax().y + ImGui::GetStyle().ItemInnerSpacing.y;
-    const float pos_y_up   = ImGui::GetItemRectMin().y - m_WindowHeight - ImGui::GetStyle().ItemSpacing.y;
+    const float pos_y_up   = ImGui::GetItemRectMin().y - ImGui::GetStyle().ItemSpacing.y - m_WindowHeight;
 
-    //Wait for window height to be known before setting pos or animating fade/pos
-    if (m_WindowHeight != FLT_MIN)
+    //Wait for window height to be known and stable before setting pos or animating fade/pos
+    if ((m_WindowHeight != FLT_MIN) && (m_WindowHeight == m_WindowHeightPrev))
     {
         ImGui::SetNextWindowPos(ImVec2(ImGui::GetItemRectMin().x, smoothstep(m_PosAnimationProgress, pos_y_down, pos_y_up) ));
 
@@ -1514,6 +1523,9 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
         ImGui::BringWindowToDisplayFront(window);
     }
 
+    //Transfer scroll input to parent window (which isn't a real parent window but just the one in the stack), so this window doesn't block scrolling
+    ImGui::ScrollBeginStackParentWindow();
+
     //Use clipping rect of parent window
     ImGui::PushClipRect(clip_rect.Min, clip_rect.Max, false);
 
@@ -1535,12 +1547,19 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
 
 
     //-Window buttons
+    m_IsAnyButtonDown = false;
+
     if (ImGui::Button(TranslationManager::GetString(tstr_KeyboardShortcutsCut)))
     {
         io.AddKeyEvent(ImGuiKey_ModCtrl, true);
         io.AddKeyEvent(ImGuiKey_X, true);
 
         m_ActiveButtonAction = btn_act_cut;
+    }
+
+    if (ImGui::IsItemActive())
+    {
+        m_IsAnyButtonDown = true;
     }
 
     ImGui::SameLine();
@@ -1551,6 +1570,11 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
         io.AddKeyEvent(ImGuiKey_C, true);
 
         m_ActiveButtonAction = btn_act_copy;
+    }
+
+    if (ImGui::IsItemActive())
+    {
+        m_IsAnyButtonDown = true;
     }
 
     ImGui::SameLine();
@@ -1570,6 +1594,11 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
         m_ActiveButtonAction = btn_act_paste;
     }
 
+    if (ImGui::IsItemActive())
+    {
+        m_IsAnyButtonDown = true;
+    }
+
     if (!has_clipboard_text)
         ImGui::PopItemDisabled();
 
@@ -1582,21 +1611,24 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
     if (m_IsFadingOut)
         ImGui::PopItemDisabledNoVisual();
 
-    //Switch directions if there's no space on the bottom
-    if ( (pos_y_down + ImGui::GetWindowSize().y > clip_rect.Max.y) )
+    //Switch directions if there's no space in the default direction
+    if (m_PosDirDefault == ImGuiDir_Down)
     {
-        m_PosDir = ImGuiDir_Up;
-
-        if (m_Alpha == 0.0f)
-        {
-            m_PosAnimationProgress = 1.0f;
-        }
+        m_PosDir = (pos_y_down + ImGui::GetWindowSize().y > clip_rect.Max.y) ? ImGuiDir_Up : ImGuiDir_Down;
     }
     else
     {
-        m_PosDir = ImGuiDir_Down;
+        //Not using pos_y_up here as it's not valid yet (m_WindowHeight not set) 
+        m_PosDir = (pos_y - ImGui::GetWindowSize().y < clip_rect.Min.y) ? ImGuiDir_Down : ImGuiDir_Up;
     }
 
+    if (m_Alpha == 0.0f)
+    {
+        m_PosAnimationProgress = (m_PosDir == ImGuiDir_Down) ? 0.0f : 1.0f;
+    }
+
+    //Cache window height so it's available on the next frame before beginning the window
+    m_WindowHeightPrev = m_WindowHeight;
     m_WindowHeight = ImGui::GetWindowSize().y;
 
     ImGui::End();
@@ -1611,12 +1643,17 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
 
         m_IsFadingOut = false;
         m_WindowHeight = FLT_MIN;
-        m_PosDir = ImGuiDir_Down;
-        m_PosAnimationProgress = 0.0f;
+        m_PosDir = m_PosDirDefault;
+        m_PosAnimationProgress = (m_PosDirDefault == ImGuiDir_Down) ? 0.0f : 1.0f;
     }
 }
 
 bool WindowKeyboardShortcuts::IsHovered() const
 {
     return m_IsHovered;
+}
+
+bool WindowKeyboardShortcuts::IsAnyButtonDown() const
+{
+    return m_IsAnyButtonDown;
 }

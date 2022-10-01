@@ -916,14 +916,44 @@ namespace ImGui
 
         ImGuiWindow* window = ImGui::GetCurrentWindow();
 
-        if (GImGui->WheelingWindow != window)
+        if (g.WheelingWindow != window)
             return;
 
-        const float wheel_x = GImGui->IO.MouseWheel;
+        const float wheel_x = g.IO.MouseWheel;
         float max_step = window->InnerRect.GetWidth() * 0.67f;
-        float scroll_step = ImFloor(ImMin(2 * window->CalcFontSize(), max_step));
+        float scroll_step = ImFloor(ImMin(2.0f * window->CalcFontSize(), max_step));
 
         ImGui::SetScrollX(window, window->Scroll.x - wheel_x * scroll_step);
+    }
+
+    void ScrollBeginStackParentWindow()
+    {
+        ImGuiContext& g = *GImGui;
+
+        ImGuiWindow* window = ImGui::GetCurrentWindowRead();
+
+        if (g.WheelingWindow != window)
+            return;
+
+        ImGuiWindow* window_target = window->ParentWindowInBeginStack;
+
+        if (window_target == nullptr)
+            return;
+
+        const float wheel_x = g.IO.MouseWheelH;
+        const float wheel_y = g.IO.MouseWheel;
+
+        //HScroll
+        float max_step = window_target->InnerRect.GetWidth() * 0.67f;
+        float scroll_step = ImFloor(ImMin(2.0f * window_target->CalcFontSize(), max_step));
+
+        ImGui::SetScrollX(window_target, window_target->Scroll.x - wheel_x * scroll_step);
+
+        //VScroll
+        max_step = window_target->InnerRect.GetHeight() * 0.67f;
+        scroll_step = ImFloor(ImMin(5.0f * window_target->CalcFontSize(), max_step));
+
+        ImGui::SetScrollY(window_target, window_target->Scroll.y - wheel_y * scroll_step);
     }
 
     bool IsAnyScrollBarVisible()

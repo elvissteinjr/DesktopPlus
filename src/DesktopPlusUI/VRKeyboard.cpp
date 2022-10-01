@@ -15,6 +15,7 @@ VRKeyboard::VRKeyboard() :
     m_CapsLockToggled(false),
     m_ActiveInputText(0),
     m_InputBeginWidgetID(0),
+    m_ShortcutWindowDirHint(ImGuiDir_Down),
     m_MouseLeftDownPrevCached(false),
     m_MouseLeftClickedPrevCached(false),
     m_KeyboardHiddenLastFrame(false)
@@ -466,6 +467,13 @@ void VRKeyboard::VRKeyboardInputBegin(ImGuiID widget_id)
         io.MouseClicked[ImGuiMouseButton_Left] = false;
     }
 
+    //Set mouse delta to 0 when keyboard shortcut window buttons are down in order to prevent the InputText's selection to change from cursor movement
+    if (m_WindowKeyboardShortcuts.IsAnyButtonDown())
+    {
+        io.MouseDelta.x = 0.0f;
+        io.MouseDelta.y = 0.0f;
+    }
+
     m_InputBeginWidgetID = widget_id;
 }
 
@@ -507,11 +515,12 @@ void VRKeyboard::VRKeyboardInputEnd()
     if (!UIManager::Get()->IsInDesktopMode())
     {
         //Set active widget for keyboard shortcuts window if there's actually active text input (m_ActiveInputText may be a slider for example)
-        if ((m_ActiveInputText != 0) && (io.WantTextInput))
+        if ((m_ActiveInputText == widget_id) && (io.WantTextInput))
         {
             m_WindowKeyboardShortcuts.SetActiveWidget(m_ActiveInputText);
+            m_WindowKeyboardShortcuts.SetDefaultPositionDirection(m_ShortcutWindowDirHint);
         }
-        else
+        else if (m_ActiveInputText == 0)
         {
             m_WindowKeyboardShortcuts.SetActiveWidget(0);
         }
@@ -520,6 +529,7 @@ void VRKeyboard::VRKeyboardInputEnd()
     }
 
     m_InputBeginWidgetID = 0;
+    m_ShortcutWindowDirHint = ImGuiDir_Down;
 }
 
 void VRKeyboard::OnImGuiNewFrame()
@@ -645,6 +655,11 @@ void VRKeyboard::UpdateImGuiModifierState() const
 void VRKeyboard::RestoreDesktopModifierState() const
 {
     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_keyboard_vkey, MAKELPARAM(GetModifierFlags(), 0));
+}
+
+void VRKeyboard::SetShortcutWindowDirectionHint(ImGuiDir dir_hint)
+{
+    m_ShortcutWindowDirHint = dir_hint;
 }
 
 KeyboardLayoutMetadata VRKeyboard::LoadLayoutMetadataFromFile(const std::string& filename)
