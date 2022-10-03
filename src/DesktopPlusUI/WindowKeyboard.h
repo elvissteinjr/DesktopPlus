@@ -70,7 +70,7 @@ class WindowKeyboard : public FloatingWindow
 
         virtual void Show(bool skip_fade = false);
         virtual void Hide(bool skip_fade = false);
-        bool SetAutoVisibility(unsigned int overlay_id, bool show);                         //Returns true on success
+        bool SetAutoVisibility(int assigned_overlay_id, bool show);                         //Returns true on success
         virtual vr::VROverlayHandle_t GetOverlayHandle() const;
         virtual void RebaseTransform();
         virtual void ResetTransform(FloatingWindowOverlayStateID state_id);

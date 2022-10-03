@@ -202,13 +202,13 @@ void WindowKeyboard::Hide(bool skip_fade)
     UIManager::Get()->GetVRKeyboard().OnWindowHidden();
 }
 
-bool WindowKeyboard::SetAutoVisibility(unsigned int overlay_id, bool show)
+bool WindowKeyboard::SetAutoVisibility(int assigned_overlay_id, bool show)
 {
     if (show)
     {
         if (!IsVisible())
         {
-            SetAssignedOverlayID(overlay_id);
+            SetAssignedOverlayID(assigned_overlay_id);
             m_IsAutoVisible = true;
 
             //This will not have a smooth transition if there was another auto-visible keyboard right before this, but let's skip the effort for that for now
@@ -217,7 +217,7 @@ bool WindowKeyboard::SetAutoVisibility(unsigned int overlay_id, bool show)
             return true;
         }
     }
-    else if ( (m_IsAutoVisible) && (GetAssignedOverlayID() == overlay_id) )
+    else if ( (m_IsAutoVisible) && (GetAssignedOverlayID() == assigned_overlay_id) )
     {
         SetAssignedOverlayID(-1);
         Hide();

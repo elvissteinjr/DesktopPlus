@@ -582,7 +582,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     int overlay_id = (msg.lParam != -1) ? (int)msg.lParam : m_VRKeyboard.GetWindow().GetAssignedOverlayID();
 
                     //Only set auto-visibility if source overlay is desktop/window capture (avoid overriding browser auto-visible keyboards)
-                    if (OverlayManager::Get().GetConfigData((unsigned int)overlay_id).ConfigInt[configid_int_overlay_capture_source] <= ovrl_capsource_winrt_capture)
+                    if ( (overlay_id >= 0) && (OverlayManager::Get().GetConfigData((unsigned int)overlay_id).ConfigInt[configid_int_overlay_capture_source] <= ovrl_capsource_winrt_capture) )
                     {
                         m_VRKeyboard.GetWindow().SetAutoVisibility(overlay_id, (msg.lParam != -1));
                     }

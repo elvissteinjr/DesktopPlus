@@ -545,7 +545,6 @@ void VRKeyboard::OnImGuiNewFrame()
         if ( (!m_KeyboardHiddenLastFrame) && ( (m_InputTarget != kbdtarget_ui) || (!m_WindowKeyboard.IsVisible()) ) )
         {
             m_InputTarget = kbdtarget_ui;
-            m_WindowKeyboard.Show();
 
             bool do_assign_to_ui = false;
             int assigned_id = m_WindowKeyboard.GetAssignedOverlayID();
@@ -563,8 +562,10 @@ void VRKeyboard::OnImGuiNewFrame()
 
             if (do_assign_to_ui)
             {
-                m_WindowKeyboard.SetAssignedOverlayID(-2);
+                m_WindowKeyboard.SetAutoVisibility(-2, true);
             }
+
+            m_WindowKeyboard.Show();
         }
     }
     else if (m_WindowKeyboard.IsVisible())
@@ -580,10 +581,10 @@ void VRKeyboard::OnImGuiNewFrame()
             m_WindowKeyboard.Show(); //Show() updates window title
         }
 
-        //If keyboard is visible for the UI, assign to global
+        //If keyboard is visible for the UI, turn off auto-visibility
         if (assigned_id == -2)
         {
-            m_WindowKeyboard.SetAssignedOverlayID(-1);
+            m_WindowKeyboard.SetAutoVisibility(-2, false);
         }
 
         //Check if overlay target should be used
@@ -627,6 +628,7 @@ void VRKeyboard::OnWindowHidden()
     if (io.WantTextInput)
     {
         ImGui::ClearActiveID();
+        m_ActiveInputText = 0;
         io.WantTextInput = false;
     }
 

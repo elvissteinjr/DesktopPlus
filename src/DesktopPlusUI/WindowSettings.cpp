@@ -931,7 +931,7 @@ void WindowSettings::UpdatePageMainCatInput()
                     //Hide currently auto-visible keyboard if it's shown for a browser overlay
                     int overlay_id = vr_keyboard.GetWindow().GetAssignedOverlayID();
 
-                    if (OverlayManager::Get().GetConfigData((unsigned int)overlay_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+                    if ( (overlay_id >= 0) && (OverlayManager::Get().GetConfigData((unsigned int)overlay_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser) )
                     {
                         vr_keyboard.GetWindow().SetAutoVisibility(overlay_id, false);
                     }
