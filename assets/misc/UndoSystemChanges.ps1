@@ -27,8 +27,13 @@ if ($result -eq 1)
     exit
 }
 
-#Delete scheduled task
-schtasks /Delete /TN "DesktopPlus Elevated" /F
+#Delete scheduled task if it exists
+
+schtasks /Query /TN "DesktopPlus Elevated" *>$null
+if ($LastExitCode -eq 0)
+{
+    schtasks /Delete /TN "DesktopPlus Elevated" /F
+}
 
 #Remove certificates
 Get-ChildItem Cert:\LocalMachine\Root |
@@ -39,8 +44,11 @@ Get-ChildItem Cert:\LocalMachine\CA |
 Where-Object { $_.Subject -match $CertificateSubject } |
 Remove-Item
 
-#Restore previously backed-up side-by-side manifest
-Move-Item "EnableUIAccessDesktopPlusBackup.manifest" -Destination "..\DesktopPlus.exe.manifest" -Force
+#Restore previously backed-up side-by-side manifest if it exists
+if (Test-Path -Path "EnableUIAccessDesktopPlusBackup.manifest")
+{
+    Move-Item "EnableUIAccessDesktopPlusBackup.manifest" -Destination "..\DesktopPlus.exe.manifest" -Force
+}
 
 Write-Host "Done."
 Write-Output "`n"
