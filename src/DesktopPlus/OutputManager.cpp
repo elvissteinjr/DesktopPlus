@@ -3676,6 +3676,10 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
     bool device_is_hmd = ((vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndex_Hmd) || (vr_event.trackedDeviceIndex == vr::k_unTrackedDeviceIndex_Hmd));
 
+    //Never tracked devices use HMD as pointer origin so detect and treat them accordingly
+    bool device_is_never_tracked = ( (vr::VRSystem()->GetBoolTrackedDeviceProperty(vr::VROverlay()->GetPrimaryDashboardDevice(), vr::Prop_NeverTracked_Bool)) || 
+                                     (vr::VRSystem()->GetBoolTrackedDeviceProperty(vr_event.trackedDeviceIndex, vr::Prop_NeverTracked_Bool)) );
+
     switch (vr_event.eventType)
     {
         case vr::VREvent_MouseMove:
@@ -3795,7 +3799,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             }
 
             //Check coordinates if HMDPointerOverride is enabled
-            if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) && (device_is_hmd))
+            if ((ConfigManager::Get().GetConfigBool(configid_bool_input_mouse_hmd_pointer_override)) && ( (device_is_hmd) || (device_is_never_tracked) ) )
             {
                 POINT pt;
                 ::GetCursorPos(&pt);
