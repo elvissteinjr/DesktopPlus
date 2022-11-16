@@ -26,7 +26,6 @@ void FloatingUI::Update()
         if ( (m_Alpha == 0.0f) && (m_AutoFitFrames == 0) ) //Overlay was hidden before
         {
             vr::VROverlay()->ShowOverlay(ovrl_handle_floating_ui);
-            vr::VROverlay()->SetOverlayInputMethod(ovrl_handle_floating_ui, vr::VROverlayInputMethod_Mouse);
 
             OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
 
@@ -73,6 +72,10 @@ void FloatingUI::Update()
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_transform_sync, -1);
             }
+        }
+        else if (m_Visible) //Make sure the input method is always set when visible, even after partial fade-out
+        {
+            vr::VROverlay()->SetOverlayInputMethod(ovrl_handle_floating_ui, vr::VROverlayInputMethod_Mouse);
         }
     }
 
@@ -160,13 +163,12 @@ void FloatingUI::UpdateUITargetState()
                     else if ( (ovrl_id_primary_dashboard == k_ulOverlayID_None) && (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_dashboard) && 
                               (data.ConfigInt[configid_int_overlay_display_mode] != ovrl_dispmode_scene) )
                     {
-                        ovrl_id_primary_dashboard = i;
-
                         //First dashboard origin with non-scene display mode is considered to be the primary dashboard overlay, but only really use it if enabled with FloatingUI on and in dashboard
                         if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (data.ConfigBool[configid_bool_overlay_floatingui_enabled]) && (UIManager::Get()->IsOverlayBarOverlayVisible()) && 
                              (vr::VROverlay()->IsOverlayVisible(ovrl_handle)) )
                         {
                             ovrl_handle_primary_dashboard = ovrl_handle;
+                            ovrl_id_primary_dashboard = i;
                         }
                     }
                 }
