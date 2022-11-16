@@ -23,7 +23,9 @@ void WindowSettingsActionEdit::UpdateWarnings()
             }
             ImGui::PopStyleVar();
             ImGui::SameLine(0.0f, 0.0f);
+            ImGui::PushTextWrapPos();
             ImGui::TextColored(Style_ImGuiCol_TextWarning, "This is just a stop-gap solution to allow editing actions until the new interface includes these options in a later build");
+            ImGui::PopTextWrapPos();
 
             if (ImGui::BeginPopup("Dismiss"))
             {
@@ -489,6 +491,13 @@ void WindowSettingsActionEdit::UpdateCatActions()
         }
 
         ImGui::Unindent();
+    }
+
+    ImGui::Spacing();
+
+    if (ImGui::Button("Return to Desktop Mode"))
+    {
+        UIManager::Get()->Restart(true);
     }
 
     ImGui::EndChild();

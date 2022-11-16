@@ -30,6 +30,7 @@ enum TMNGRTexID
 	tmtex_icon_switch_task,
     tmtex_icon_add,
     tmtex_icon_window_overlay,
+    tmtex_icon_small_app_icon,
     tmtex_icon_small_close,
     tmtex_icon_small_move,
     tmtex_icon_small_add_window,
@@ -62,6 +63,7 @@ enum TMNGRTexID
     tmtex_icon_xxsmall_close,
     tmtex_icon_xxsmall_pin,
     tmtex_icon_xxsmall_unpin,
+    tmtex_icon_xxsmall_browser_back,
     tmtex_icon_temp,         //This is an odd one to hack-ishly load one icon without associating it with anything. The file for this can be set freely by TextureManager
     tmtex_MAX
 };

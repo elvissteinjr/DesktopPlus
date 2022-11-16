@@ -42,6 +42,7 @@ const wchar_t* TextureManager::s_TextureFilenames[tmtex_MAX] =
     L"images/icons/task_switch.png",
     L"images/icons/add.png",
     L"images/icons/window_overlay.png",
+    L"images/icons_small/small_app_icon.png",
     L"images/icons_small/small_close.png",
     L"images/icons_small/small_move.png",
     L"images/icons_small/small_add_window.png",
@@ -74,6 +75,7 @@ const wchar_t* TextureManager::s_TextureFilenames[tmtex_MAX] =
     L"images/icons_small/xxsmall_close.png",
     L"images/icons_small/xxsmall_pin.png",
     L"images/icons_small/xxsmall_unpin.png",
+    L"images/icons_small/xxsmall_browser_back.png",
     L"",                                            //tmtex_icon_temp, blank
 };
 

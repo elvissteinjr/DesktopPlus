@@ -31,6 +31,7 @@ WindowKeyboard::WindowKeyboard() :
     //Leave 2 pixel padding around so interpolation doesn't cut off the pixel border
     const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_keyboard);
     m_Size = {float(rect.GetWidth() - 4), float(rect.GetHeight() - 4)};
+    m_SizeUnscaled = m_Size;
 
     m_Pos = {(float)rect.GetCenter().x, (float)rect.GetCenter().y};
     m_PosPivot = {0.5f, 0.5f};

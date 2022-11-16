@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FloatingWindow.h"
+#include "WindowDesktopMode.h"
 
 enum WindowSettingsPage
 {
@@ -33,7 +34,7 @@ enum WindowSettingsMainCategory
     wndsettings_cat_MAX
 };
 
-class WindowSettings : public FloatingWindow
+class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeInterop
 {
     private:
         std::vector<WindowSettingsPage> m_PageStack;
@@ -67,6 +68,13 @@ class WindowSettings : public FloatingWindow
         bool m_ProfileOverlaySelectIsSaving;
         std::vector<std::string> m_ProfileList;
 
+        //Struct of cached sizes which may change at any time on translation or DPI switching (only the ones that aren't updated unconditionally)
+        struct
+        {
+            ImVec2 Profiles_ButtonDeleteSize;
+        } 
+        m_CachedSizes;
+
         virtual void WindowUpdate();
 
         void UpdateWarnings();
@@ -99,6 +107,15 @@ class WindowSettings : public FloatingWindow
         virtual void Hide(bool skip_fade = false);
         virtual void ResetTransform(FloatingWindowOverlayStateID state_id);
         virtual vr::VROverlayHandle_t GetOverlayHandle() const;
+
+        virtual void ApplyUIScale();
+
+        void UpdateDesktopMode();
+        void UpdateDesktopModeWarnings();
+        void DesktopModeSetRootPage(WindowSettingsPage root_page);
+        virtual const char* DesktopModeGetTitle();
+        virtual bool DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max);
+        virtual bool DesktopModeGoBack();
 
         void ClearCachedTranslationStrings();
 };

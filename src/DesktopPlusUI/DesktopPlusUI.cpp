@@ -26,13 +26,15 @@
 #include "DesktopPlusWinRT.h"
 #include "DPBrowserAPIClient.h"
 
+#include "WindowDesktopMode.h"
+
 // Data
-static ID3D11Device*            g_pd3dDevice = nullptr;
-static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
-static IDXGISwapChain*          g_pSwapChain = nullptr;
-static ID3D11RenderTargetView*  g_desktopRenderTargetView = nullptr;
-static ID3D11Texture2D*         g_vrTex = nullptr;
-static ID3D11RenderTargetView*  g_vrRenderTargetView = nullptr;
+static Microsoft::WRL::ComPtr<ID3D11Device>           g_pd3dDevice;
+static Microsoft::WRL::ComPtr<ID3D11DeviceContext>    g_pd3dDeviceContext;
+static Microsoft::WRL::ComPtr<IDXGISwapChain>         g_pSwapChain;
+static Microsoft::WRL::ComPtr<ID3D11RenderTargetView> g_desktopRenderTargetView;
+static Microsoft::WRL::ComPtr<ID3D11Texture2D>        g_vrTex;
+static Microsoft::WRL::ComPtr<ID3D11RenderTargetView> g_vrRenderTargetView;
 
 
 // Forward declarations of helper functions
@@ -51,7 +53,6 @@ static bool g_ActionEditMode = false;
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ INT nCmdShow)
 {
     bool force_desktop_mode = false;
-
     ProcessCmdline(force_desktop_mode);
 
     //Automatically use desktop mode if dashboard app isn't running
@@ -60,8 +61,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     //Make sure only one instance is running
     StopProcessByWindowClass(g_WindowClassNameUIApp);
 
-    //Enable basic DPI support for desktop mode
-    ::SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+    //Enable DPI support for desktop mode
+    ImGui_ImplWin32_EnableDpiAwareness();
 
     //Register application class
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, hInstance, nullptr, nullptr, nullptr, nullptr, g_WindowClassNameUIApp, nullptr };
@@ -118,6 +119,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         CleanupDeviceD3D();
         ::UnregisterClass(wc.lpszClassName, wc.hInstance);
         return 1;
+    }
+
+    //Center window to the right monitor before setting real size for DPI detection to be correct
+    if (desktop_mode)
+    {
+        CenterWindowToMonitor(hwnd, true);
     }
 
     InitImGui(hwnd);
@@ -431,11 +438,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             }
             else
             {
-                ui_manager.GetOverlayBarWindow().Update();
-                ui_manager.GetSettingsWindow().Update();
-                ui_manager.GetOverlayPropertiesWindow().Update();
-                ui_manager.GetVRKeyboard().GetWindow().Update();
-                ui_manager.GetAuxUI().Update();
+                ui_manager.GetDesktopModeWindow().Update();
             }
         }
 
@@ -463,8 +466,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
             if (desktop_mode)
             {
-                g_pd3dDeviceContext->OMSetRenderTargets(1, &g_desktopRenderTargetView, nullptr);
-                g_pd3dDeviceContext->ClearRenderTargetView(g_desktopRenderTargetView, clear_color);
+                g_pd3dDeviceContext->OMSetRenderTargets(1, g_desktopRenderTargetView.GetAddressOf(), nullptr);
+                g_pd3dDeviceContext->ClearRenderTargetView(g_desktopRenderTargetView.Get(), clear_color);
                 ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
                 HRESULT res = g_pSwapChain->Present(1, 0); // Present with vsync
@@ -476,15 +479,15 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             }
             else
             {
-                g_pd3dDeviceContext->OMSetRenderTargets(1, &g_vrRenderTargetView, nullptr);
-                g_pd3dDeviceContext->ClearRenderTargetView(g_vrRenderTargetView, clear_color);
+                g_pd3dDeviceContext->OMSetRenderTargets(1, g_vrRenderTargetView.GetAddressOf(), nullptr);
+                g_pd3dDeviceContext->ClearRenderTargetView(g_vrRenderTargetView.Get(), clear_color);
                 ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
                 //Set Overlay texture
                 if ((ui_manager.GetOverlayHandleOverlayBar() != vr::k_ulOverlayHandleInvalid) && (g_vrTex))
                 {
                     vr::Texture_t vrtex;
-                    vrtex.handle = g_vrTex;
+                    vrtex.handle = g_vrTex.Get();
                     vrtex.eType = vr::TextureType_DirectX;
                     vrtex.eColorSpace = vr::ColorSpace_Gamma;
 
@@ -565,7 +568,7 @@ bool CreateDeviceD3D(HWND hWnd, bool desktop_mode)
 
     if (desktop_mode)
     {
-        // Setup swap chain
+        //Setup swap chain
         DXGI_SWAP_CHAIN_DESC sd;
         ZeroMemory(&sd, sizeof(sd));
         sd.BufferCount = 2;
@@ -580,7 +583,7 @@ bool CreateDeviceD3D(HWND hWnd, bool desktop_mode)
         sd.SampleDesc.Count = 1;
         sd.SampleDesc.Quality = 0;
         sd.Windowed = TRUE;
-        sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+        sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;   //DXGI_SWAP_EFFECT_FLIP_DISCARD also would work, but we still support Windows 8
 
         if (D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
             return false;
@@ -613,23 +616,9 @@ void CleanupDeviceD3D()
 {
     CleanupRenderTarget();
 
-    if (g_pSwapChain) 
-    { 
-        g_pSwapChain->Release(); 
-        g_pSwapChain = nullptr;
-    }
-
-    if (g_pd3dDeviceContext) 
-    { 
-        g_pd3dDeviceContext->Release(); 
-        g_pd3dDeviceContext = nullptr; 
-    }
-
-    if (g_pd3dDevice) 
-    { 
-        g_pd3dDevice->Release(); 
-        g_pd3dDevice = nullptr; 
-    }
+    g_pSwapChain.Reset();
+    g_pd3dDeviceContext.Reset();
+    g_pd3dDevice.Reset();
 }
 
 void CreateRenderTarget(bool desktop_mode)
@@ -659,59 +648,44 @@ void CreateRenderTarget(bool desktop_mode)
         return;
     }
 
-    UIManager::Get()->SetSharedTextureRef(g_vrTex);
+    UIManager::Get()->SetSharedTextureRef(g_vrTex.Get());
 
     // Create render target view for overlay texture
-    D3D11_RENDER_TARGET_VIEW_DESC tex_rtv_desc;
+    D3D11_RENDER_TARGET_VIEW_DESC tex_rtv_desc = {};
 
     tex_rtv_desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     tex_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
     tex_rtv_desc.Texture2D.MipSlice = 0;
 
-    g_pd3dDevice->CreateRenderTargetView(g_vrTex, &tex_rtv_desc, &g_vrRenderTargetView);
+    g_pd3dDevice->CreateRenderTargetView(g_vrTex.Get(), &tex_rtv_desc, &g_vrRenderTargetView);
 
     if (desktop_mode)
     {
-        ID3D11Texture2D* pBackBuffer;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> pBackBuffer;
         g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
 
         if (pBackBuffer != nullptr)
         {
-            g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &g_desktopRenderTargetView);
-            pBackBuffer->Release();
+            g_pd3dDevice->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &g_desktopRenderTargetView);
         }
     }
 }
 
 void CleanupRenderTarget()
 {
-    if (g_desktopRenderTargetView)
-    { 
-        g_desktopRenderTargetView->Release();
-        g_desktopRenderTargetView = nullptr; 
-    }
-
-    if (g_vrRenderTargetView)
-    {
-        g_vrRenderTargetView->Release();
-        g_vrRenderTargetView = nullptr;
-    }
-
-    if (g_vrTex)
-    {
-        g_vrTex->Release();
-        g_vrTex = nullptr;
-    }
+    g_desktopRenderTargetView.Reset();
+    g_vrRenderTargetView.Reset();
+    g_vrTex.Reset();
 }
 
 void RefreshOverlayTextureSharing()
 {
     //Set up advanced texture sharing between the overlays
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleFloatingUI(),        g_vrTex);
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleSettings(),          g_vrTex);
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleOverlayProperties(), g_vrTex);
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleKeyboard(),          g_vrTex);
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleAuxUI(),             g_vrTex);
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleFloatingUI(),        g_vrTex.Get());
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleSettings(),          g_vrTex.Get());
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleOverlayProperties(), g_vrTex.Get());
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleKeyboard(),          g_vrTex.Get());
+    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleAuxUI(),             g_vrTex.Get());
     //Also schedule for performance overlays, in case there are any
     UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
 }
@@ -737,6 +711,11 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
                 CreateRenderTarget(UIManager::Get()->IsInDesktopMode());
             }
+            return 0;
+        }
+        case WM_DPICHANGED:
+        {
+            UIManager::Get()->OnDPIChanged(HIWORD(wParam), *(RECT*)lParam);
             return 0;
         }
         case WM_COPYDATA:
@@ -789,124 +768,11 @@ void InitImGui(HWND hwnd)
     io.IniFilename = nullptr;                   //We don't need any imgui.ini support
     io.ConfigInputTrickleEventQueue = false;    //Opt out of input trickling since it doesn't play well with VR scrolling (and lowers responsiveness on certain inputs)
 
-    //Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    //Do a bit of custom styling
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.DisabledAlpha  = 0.5f;
-    style.WindowRounding = 7.0f;
-    style.FrameRounding  = 4.0f;
-    style.GrabRounding   = 3.0f;
-    style.IndentSpacing  = style.ItemSpacing.x;
-
-    ImVec4* colors = style.Colors;
-    colors[ImGuiCol_Text]                  = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-    colors[ImGuiCol_TextDisabled]          = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
-    colors[ImGuiCol_TextDisabled]          = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
-    colors[ImGuiCol_WindowBg]              = ImVec4(0.085f, 0.135f, 0.155f, 0.96f);
-    colors[ImGuiCol_ChildBg]               = ImVec4(0.00f, 0.00f, 0.00f, 0.10f);
-    colors[ImGuiCol_PopupBg]               = ImVec4(0.088f, 0.138f, 0.158f, 0.96f);
-    colors[ImGuiCol_Border]                = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-    colors[ImGuiCol_BorderShadow]          = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_FrameBg]               = ImVec4(0.185f, 0.245f, 0.285f, 1.00f);
-    colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.12f, 0.20f, 0.28f, 1.00f);
-    colors[ImGuiCol_FrameBgActive]         = ImVec4(0.109f, 0.175f, 0.224f, 1.000f);
-    colors[ImGuiCol_TitleBg]               = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
-    colors[ImGuiCol_TitleBgActive]         = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
-    colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
-    colors[ImGuiCol_MenuBarBg]             = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
-    colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.02f, 0.02f, 0.02f, 0.08f);
-    colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-    colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.18f, 0.22f, 0.25f, 1.00f);
-    colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.09f, 0.21f, 0.31f, 1.00f);
-    colors[ImGuiCol_CheckMark]             = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-    colors[ImGuiCol_SliderGrab]            = ImVec4(0.298f, 0.596f, 0.859f, 1.000f);
-    colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.333f, 0.616f, 1.000f, 1.000f);
-    colors[ImGuiCol_Button]                = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-    colors[ImGuiCol_ButtonHovered]         = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
-    colors[ImGuiCol_ButtonActive]          = ImVec4(0.063f, 0.548f, 1.000f, 1.000f);
-    colors[ImGuiCol_Header]                = ImVec4(0.20f, 0.25f, 0.29f, 0.55f);
-    colors[ImGuiCol_HeaderHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
-    colors[ImGuiCol_HeaderActive]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-    colors[ImGuiCol_Separator]             = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-    colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.10f, 0.40f, 0.75f, 0.78f);
-    colors[ImGuiCol_SeparatorActive]       = ImVec4(0.10f, 0.40f, 0.75f, 1.00f);
-    colors[ImGuiCol_ResizeGrip]            = ImVec4(0.26f, 0.59f, 0.98f, 0.25f);
-    colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
-    colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
-    colors[ImGuiCol_Tab]                   = ImVec4(0.28f, 0.305f, 0.3f, 0.25f);
-    colors[ImGuiCol_TabHovered]            = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
-    colors[ImGuiCol_TabActive]             = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-    colors[ImGuiCol_TabUnfocused]          = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
-    colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
-    colors[ImGuiCol_PlotLines]             = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
-    colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
-    colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
-    colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-    colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
-    colors[ImGuiCol_DragDropTarget]        = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-    colors[ImGuiCol_NavHighlight]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-    colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
-    colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
-    //colors[ImGuiCol_ModalWindowDimBg]    = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
-    colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    Style_ImGuiCol_TextNotification        = ImVec4(0.64f, 0.97f, 0.26f, 1.00f);
-    Style_ImGuiCol_TextWarning             = ImVec4(0.98f, 0.81f, 0.26f, 1.00f);
-    Style_ImGuiCol_TextError               = ImVec4(0.97f, 0.33f, 0.33f, 1.00f);
-    Style_ImGuiCol_ButtonPassiveToggled    = ImVec4(0.180f, 0.349f, 0.580f, 0.404f);
-    Style_ImGuiCol_SteamVRCursor           = ImVec4(0.463f, 0.765f, 0.882f, 1.000f);
-    Style_ImGuiCol_SteamVRCursorBorder     = ImVec4(0.161f, 0.176f, 0.196f, 0.929f);
-
-    //Setup ImPlot style
-    ImPlotStyle& plot_style = ImPlot::GetStyle();
-    plot_style.PlotPadding      = {0.0f, 0.0f};
-    plot_style.AntiAliasedLines = true;
-    plot_style.FillAlpha        = 0.25f;
-    plot_style.Colors[ImPlotCol_FrameBg] = ImVec4(0.03f, 0.05f, 0.06f, 0.10f);
-    plot_style.Colors[ImPlotCol_PlotBg]  = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-
     //Setup Platform/Renderer bindings
     ImGui_ImplWin32_Init(hwnd);
-    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+    ImGui_ImplDX11_Init(g_pd3dDevice.Get(), g_pd3dDeviceContext.Get());
 
-    //Adapt to DPI
-    float dpi_scale = 1.0f;
-    if (UIManager::Get()->IsInDesktopMode())
-    {
-        HMONITOR mon = ::MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
-        UINT dpix, dpiy;
-        ::GetDpiForMonitor(mon, MDT_EFFECTIVE_DPI, &dpix, &dpiy);   //X and Y will always be identical... interesting API
-        dpi_scale = (dpix / 96.0f) /** 0.625f*/;  //Scaling based on 100% being the VR font at 32pt and desktop 100% DPI font being at 20pt
-
-        //Only apply proper scaling in action edit mode since the new UI doesn't scale properly yet
-        if (g_ActionEditMode)
-            dpi_scale *= 0.625f;
-    }
-
-    UIManager::Get()->SetUIScale(dpi_scale);
-    
-    TextureManager::Get().LoadAllTexturesAndBuildFonts();
-
-    //Set DPI-dependent style
-    style.LogSliderDeadzone = (float)int(58.0f * dpi_scale); //Force whole pixel size
-
-    if (UIManager::Get()->IsInDesktopMode())
-    {
-        io.DisplaySize.x = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetWidth()  * dpi_scale;
-        io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetHeight() * dpi_scale;
-
-        style.ScrollbarSize = (float)int(23.0f * dpi_scale); 
-    }
-    else
-    {
-        io.DisplaySize.x = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetWidth();
-        io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetHeight();
-
-        style.ScrollbarSize = (float)int(32.0f * dpi_scale);
-
-        //UpdateOverlayDimming() relies on loaded ImGui/style, so do the initial call to that here
-        UIManager::Get()->UpdateOverlayDimming();
-    }
+    UIManager::Get()->UpdateStyle();
 }
 
 void ProcessCmdline(bool& force_desktop_mode)

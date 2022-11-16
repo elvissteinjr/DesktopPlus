@@ -562,6 +562,12 @@ float FloatingWindow::GetAlpha() const
     return m_Alpha;
 }
 
+void FloatingWindow::ApplyUIScale()
+{
+    m_Size.x = m_SizeUnscaled.x * UIManager::Get()->GetUIScale();
+    m_Size.y = m_SizeUnscaled.y * UIManager::Get()->GetUIScale();
+}
+
 bool FloatingWindow::CanUnpinRoom() const
 {
     return m_AllowRoomUnpinning;

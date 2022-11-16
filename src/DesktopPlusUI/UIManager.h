@@ -7,6 +7,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include <d3d11.h>
+#include <wrl/client.h>
 
 #include <array>
 
@@ -71,12 +72,13 @@ class UIManager
         WindowSettings m_WindowSettings;
         WindowOverlayProperties m_WindowOverlayProperties;
         WindowPerformance m_WindowPerformance;
+        WindowDesktopMode m_WindowDesktopMode;
         WindowSettingsActionEdit m_WindowSettingsActionEdit;
 
         HWND m_WindowHandle;
         NotificationIcon m_NotificationIcon;
         OverlayDragger m_OverlayDragger;
-        ID3D11Resource* m_SharedTextureRef; //Pointer to render target texture, should only be used for calls to SetSharedOverlayTexture()
+        Microsoft::WRL::ComPtr<ID3D11Resource> m_SharedTextureRef; //Pointer to render target texture, should only be used for calls to SetSharedOverlayTexture()
         int m_RepeatFrame;
 
         bool m_DesktopMode;
@@ -142,6 +144,7 @@ class UIManager
         WindowSettings& GetSettingsWindow();
         WindowOverlayProperties& GetOverlayPropertiesWindow();
         WindowPerformance& GetPerformanceWindow();
+        WindowDesktopMode& GetDesktopModeWindow();
         WindowSettingsActionEdit& GetSettingsActionEditWindow();
 
         void SetWindowHandle(HWND handle);
@@ -179,11 +182,13 @@ class UIManager
         void ElevatedModeEnter();
         void ElevatedModeLeave();
 
+        void UpdateStyle();
         void SetUIScale(float scale);
         float GetUIScale() const;
         void SetFonts(ImFont* font_compact, ImFont* font_large);
         ImFont* GetFontCompact() const;
         ImFont* GetFontLarge() const;               //May return nullptr
+        void OnDPIChanged(int new_dpi, const RECT& new_window_rect);
         void OnTranslationChanged();                //Calls functions in several classes to reset translation-dependent cached strings. Called when translation is changed
         void OnOverlayNameChanged();                //Calls functions in several classes to reset overlay-name-dependent cached strings. Called when overlay names changed
         void UpdateOverlayDimming();

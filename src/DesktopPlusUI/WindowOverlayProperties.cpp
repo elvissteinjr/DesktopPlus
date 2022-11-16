@@ -34,7 +34,9 @@ WindowOverlayProperties::WindowOverlayProperties() :
     //Leave 2 pixel padding around so interpolation doesn't cut off the pixel border
     const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_overlay_properties);
     m_Size = {float(rect.GetWidth() - 4), float(rect.GetHeight() - 4)};
-    m_Pos =  {float(rect.GetTL().x + 2),  float(rect.GetTL().y + 2)};
+    m_SizeUnscaled = m_Size;
+
+    m_Pos = {float(rect.GetTL().x + 2), float(rect.GetTL().y + 2)};
 
     m_PageStack.push_back(wndovrlprop_page_main);
 
@@ -74,6 +76,13 @@ vr::VROverlayHandle_t WindowOverlayProperties::GetOverlayHandle() const
     return UIManager::Get()->GetOverlayHandleOverlayProperties();
 }
 
+void WindowOverlayProperties::ApplyUIScale()
+{
+    FloatingWindow::ApplyUIScale();
+
+    m_CachedSizes = {};
+}
+
 unsigned int WindowOverlayProperties::GetActiveOverlayID() const
 {
     return m_ActiveOverlayID;
@@ -98,6 +107,7 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
     m_CropButtonLabel = "";
     m_WinRTSourceButtonLabel = "";
     MarkBrowserURLChanged();
+    m_CachedSizes = {};
 
     m_ActiveOverlayID = overlay_id;
 
@@ -138,6 +148,39 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_interface_overlay_current_id, (int)overlay_id);
 }
 
+void WindowOverlayProperties::UpdateDesktopMode()
+{
+    WindowUpdate();
+}
+
+const char* WindowOverlayProperties::DesktopModeGetTitle()
+{
+    return m_WindowTitle.c_str();
+}
+
+bool WindowOverlayProperties::DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max)
+{
+    if (m_WindowIconWin32IconCacheID == -1)
+    {
+        return TextureManager::Get().GetTextureInfo(m_WindowIcon, size, uv_min, uv_max);
+    }
+    else
+    {
+        return TextureManager::Get().GetWindowIconTextureInfo(m_WindowIconWin32IconCacheID, size, uv_min, uv_max);
+    }
+}
+
+bool WindowOverlayProperties::DesktopModeGoBack()
+{
+    if (m_PageStackPos != 0)
+    {
+        PageGoBack();
+        return true;
+    }
+
+    return false;
+}
+
 void WindowOverlayProperties::MarkBrowserURLChanged()
 {
     m_IsBrowserURLChanged = true;
@@ -153,20 +196,20 @@ void WindowOverlayProperties::WindowUpdate()
 
     ImGuiStyle& style = ImGui::GetStyle();
 
-    if (m_Column0Width == 0.0f)
-    {
-        m_Column0Width = ImGui::GetFontSize() * 12.75f;
-    }
+    m_Column0Width = ImGui::GetFontSize() * 12.75f;
 
-    const float page_width = m_Size.x - style.WindowBorderSize - style.WindowPadding.x - style.WindowPadding.x;
+    float page_width = m_Size.x - style.WindowBorderSize - style.WindowPadding.x - style.WindowPadding.x;
+
+    //Compensate for the padding added in constructor and ignore border in desktop mode
+    if (UIManager::Get()->IsInDesktopMode())
+    {
+        page_width += 2 + style.WindowBorderSize;
+    }
 
     //Page animation
     if (m_PageAnimationDir != 0)
     {
-        float target_x = (page_width + style.ItemSpacing.x) * -m_PageStackPosAnimation;
         m_PageAnimationProgress += ImGui::GetIO().DeltaTime * 3.0f;
-
-        m_PageAnimationOffset = smoothstep(m_PageAnimationProgress, m_PageAnimationStartPos, target_x);
 
         if (m_PageAnimationProgress >= 1.0f)
         {
@@ -179,8 +222,8 @@ void WindowOverlayProperties::WindowUpdate()
                 }
             }
 
-            m_PageAnimationOffset = target_x;
-            m_PageAnimationDir = 0;
+            m_PageAnimationProgress = 1.0f;
+            m_PageAnimationDir      = 0;
         }
     }
     else if (m_PageStackPosAnimation != m_PageStackPos) //Only start new animation if none is running
@@ -201,8 +244,11 @@ void WindowOverlayProperties::WindowUpdate()
         m_PageAppearing = m_PageStack.back();
     }
 
+    const float target_x = (page_width + style.ItemSpacing.x) * -m_PageStackPosAnimation;
+    m_PageAnimationOffset = smoothstep(m_PageAnimationProgress, m_PageAnimationStartPos, target_x);
+
     //Page Fade
-    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_Alpha * m_PageFadeAlpha);
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, (UIManager::Get()->IsInDesktopMode()) ? m_PageFadeAlpha : m_Alpha * m_PageFadeAlpha);
 
     if (m_PageFadeDir == -1)
     {
@@ -249,7 +295,7 @@ void WindowOverlayProperties::WindowUpdate()
             ImGui::PushItemDisabledNoVisual();
         }
 
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f)); //This prevents child bg color being visible if there's a widget before this
 
         if ((ImGui::BeginChild(child_str_id[child_id], {page_width, ImGui::GetContentRegionAvail().y})) || (m_PageAppearing == page_id)) //Process page if currently appearing
         {
@@ -579,8 +625,6 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
     ImGuiStyle& style = ImGui::GetStyle();
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
-    static float winrt_source_label_width = 0.0f;
-
     int& capture_method = ConfigManager::GetRef(configid_int_overlay_capture_source);
 
     //Don't show capture settings for UI or Browser source overlays
@@ -692,15 +736,15 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
     }
     else if (capture_method == ovrl_capsource_winrt_capture)
     {
-        if (m_WinRTSourceButtonLabel.empty())
+        if ( (m_WinRTSourceButtonLabel.empty()) || (m_CachedSizes.MainCatCapture_WinRTSourceLabelWidth == 0.0f) )
         {
             m_WinRTSourceButtonLabel = GetStringForWinRTSource(winrt_selected_window, winrt_selected_desktop);
-            winrt_source_label_width = ImGui::CalcTextSize(m_WinRTSourceButtonLabel.c_str()).x;
+            m_CachedSizes.MainCatCapture_WinRTSourceLabelWidth = ImGui::CalcTextSize(m_WinRTSourceButtonLabel.c_str()).x;
         }
 
         ImVec2 button_size(0.0f, 0.0f);
 
-        if (winrt_source_label_width > ImGui::GetContentRegionAvail().x - style.FramePadding.x * 2.0f)
+        if (m_CachedSizes.MainCatCapture_WinRTSourceLabelWidth > ImGui::GetContentRegionAvail().x - style.FramePadding.x * 2.0f)
         {
             button_size.x = ImGui::GetContentRegionAvail().x;
         }
@@ -1525,19 +1569,18 @@ void WindowOverlayProperties::UpdatePagePositionChange()
 {
     ImGuiStyle& style = ImGui::GetStyle();
 
-    static float column_width_0 = 0.0f;
-    static float button_width = 0.0f;
+    float& column_width_0 = m_CachedSizes.PositionChange_Column0Width;
 
     static int active_capture_type = 0; //0 = off, 1 = Move, 2 = Rotate
     static ImVec2 active_capture_pos;
 
-    if (m_PageAppearing == wndovrlprop_page_position_change)
+    if ((m_PageAppearing == wndovrlprop_page_position_change) || (m_CachedSizes.PositionChange_Column0Width == 0.0f))
     {
         //Find longer label and use that as minimum column width
-        float column_label_width = std::max(ImGui::CalcTextSize(TranslationManager::GetString(tstr_OvrlPropsPositionChangeMove)).x, 
+        float column_label_width = std::max(ImGui::CalcTextSize(TranslationManager::GetString(tstr_OvrlPropsPositionChangeMove)).x,
                                             ImGui::CalcTextSize(TranslationManager::GetString(tstr_OvrlPropsPositionChangeRotate)).x);
 
-        column_width_0 = std::max(ImGui::GetFontSize() * 3.75f, column_label_width + style.ItemInnerSpacing.x);
+        column_width_0 = std::max(ImGui::GetFontSize() * 3.75f, column_label_width + style.ItemSpacing.x + style.ItemSpacing.x);
 
         //Find longest button label
         float button_label_width = 0.0f;
@@ -1553,8 +1596,11 @@ void WindowOverlayProperties::UpdatePagePositionChange()
             }
         }
 
-        button_width = button_label_width + (style.FramePadding.x * 2.0f);
+        m_CachedSizes.PositionChange_ButtonWidth = button_label_width + (style.FramePadding.x * 2.0f);
+    }
 
+    if (m_PageAppearing == wndovrlprop_page_position_change)
+    {
         //Set dragmode state
         //Dragging the overlay when the UI is open on desktop is pretty inconvenient to get out of when not sitting in front of a real mouse, so let's prevent this
         if (!UIManager::Get()->IsInDesktopMode())
@@ -1573,7 +1619,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     }
 
     const float column_width_1 = ImGui::GetFrameHeightWithSpacing() * 3.0f + style.ItemInnerSpacing.x;
-    const float column_width_2 = button_width + (style.ItemInnerSpacing.x * 2.0f);
+    const float column_width_2 = m_CachedSizes.PositionChange_ButtonWidth + (style.ItemInnerSpacing.x * 2.0f);
     const float column_width_3 = style.ItemSpacing.x * 3.0f;
 
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsPositionChangeHeader)); 
@@ -1598,7 +1644,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     ImGui::Columns(7, "ColumnManualAdjust", false);
 
     const ImVec2 arrow_button_size(ImGui::GetFrameHeight(), ImGui::GetFrameHeight());
-    const ImVec2 button_size(button_width, 0.0f);
+    const ImVec2 button_size(m_CachedSizes.PositionChange_ButtonWidth, 0.0f);
 
     ImGui::SetColumnWidth(0, column_width_0);
     ImGui::SetColumnWidth(1, column_width_1);

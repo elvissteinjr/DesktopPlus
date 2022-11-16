@@ -93,7 +93,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
     const int overlay_count = (int)OverlayManager::Get().GetOverlayCount();
     unsigned int properties_active_overlay = (UIManager::Get()->GetOverlayPropertiesWindow().IsVisible()) ? (UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID()) : k_ulOverlayID_None;
 
-    //Reset unique IDs when popup was opened
+    //Reset unique IDs when appearing
     if (ImGui::IsWindowAppearing())
     {
         list_unique_ids.clear();

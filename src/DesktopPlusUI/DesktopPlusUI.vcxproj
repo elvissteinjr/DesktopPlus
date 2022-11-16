@@ -131,6 +131,7 @@
     <ClCompile Include="VRKeyboard.cpp" />
     <ClCompile Include="Win32PerformanceData.cpp" />
     <ClCompile Include="UIManager.cpp" />
+    <ClCompile Include="WindowDesktopMode.cpp" />
     <ClCompile Include="WindowKeyboard.cpp" />
     <ClCompile Include="WindowFloatingUIBar.cpp" />
     <ClCompile Include="TextureManager.cpp" />
@@ -167,6 +168,7 @@
     <ClInclude Include="Win32PerformanceData.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="UIManager.h" />
+    <ClInclude Include="WindowDesktopMode.h" />
     <ClInclude Include="WindowKeyboard.h" />
     <ClInclude Include="WindowFloatingUIBar.h" />
     <ClInclude Include="imgui\imconfig.h" />

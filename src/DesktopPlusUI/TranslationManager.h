@@ -370,6 +370,9 @@ enum TRMGRStrID
     tstr_AuxUIDragHintUndocking,
     tstr_AuxUIGazeFadeAutoHint,           //%SECONDS% == Countdown seconds
     tstr_AuxUIGazeFadeAutoHintSingular,   //^
+    tstr_DesktopModeCatTools,
+    tstr_DesktopModeCatOverlays,
+    tstr_DesktopModeToolSettings,
     tstr_DialogOk,
     tstr_DialogCancel,
     tstr_DialogDone,

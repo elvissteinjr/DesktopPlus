@@ -4,7 +4,9 @@
 
 #include "imgui.h"
 #include "imgui_impl_win32_openvr.h"
+#include "implot.h"
 
+#include "resource.h"
 #include "InterprocessMessaging.h"
 #include "ConfigManager.h"
 #include "OverlayManager.h"
@@ -64,28 +66,11 @@ void UITextureSpaces::Init(bool desktop_mode)
     }
     else
     {
-        //Desktop mode only initializes total texture space (as the unscaled window size), rest is testing for now as we have no proper desktop mode yet
-        m_TexspaceRects[ui_texspace_total] = {0, 0, 1920, 1080};
+        //Desktop mode only initializes total texture space (as the unscaled window size) and windows used in it
+        m_TexspaceRects[ui_texspace_total] = {0, 0, 1153, 1042};    //Results in 720x651px at 100% DPI scaling
 
-        m_TexspaceRects[ui_texspace_overlay_properties] =  {0,
-                                                            0,
-                                                            959,
-                                                            800};
-
-        m_TexspaceRects[ui_texspace_settings] =            {m_TexspaceRects[ui_texspace_total].GetWidth() - m_TexspaceRects[ui_texspace_overlay_properties].GetWidth(),
-                                                            0,
-                                                            m_TexspaceRects[ui_texspace_total].GetWidth(),
-                                                            800};
-
-        m_TexspaceRects[ui_texspace_keyboard] =            {0,
-                                                            250,
-                                                            m_TexspaceRects[ui_texspace_total].GetWidth(), 
-                                                            250 + 750};
-
-        m_TexspaceRects[ui_texspace_aux_ui] =              {0, 
-                                                            50,
-                                                            m_TexspaceRects[ui_texspace_total].GetWidth() - (850 + 2), 
-                                                            50 + 550};
+        m_TexspaceRects[ui_texspace_overlay_properties] = m_TexspaceRects[ui_texspace_total];
+        m_TexspaceRects[ui_texspace_settings] = m_TexspaceRects[ui_texspace_total];
     }
 }
 
@@ -800,6 +785,8 @@ void UIManager::OnExit()
         ::CoUninitialize();
     }
 
+    m_SharedTextureRef.Reset();
+
     WindowManager::Get().SetActive(false);
 }
 
@@ -838,6 +825,11 @@ WindowPerformance& UIManager::GetPerformanceWindow()
     return m_WindowPerformance;
 }
 
+WindowDesktopMode& UIManager::GetDesktopModeWindow()
+{
+    return m_WindowDesktopMode;
+}
+
 WindowSettingsActionEdit& UIManager::GetSettingsActionEditWindow()
 {
     return m_WindowSettingsActionEdit;
@@ -865,7 +857,7 @@ void UIManager::SetSharedTextureRef(ID3D11Resource* ref)
 
 ID3D11Resource* UIManager::GetSharedTextureRef() const
 {
-    return m_SharedTextureRef;
+    return m_SharedTextureRef.Get();
 }
 
 OverlayDragger& UIManager::GetOverlayDragger()
@@ -1105,6 +1097,132 @@ void UIManager::ElevatedModeLeave()
     }
 }
 
+void UIManager::UpdateStyle()
+{
+    if (ImGui::GetCurrentContext() == nullptr)
+        return;
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    //Setup Dear ImGui style
+    ImGuiStyle& style = ImGui::GetStyle();
+    style = ImGuiStyle();
+    ImGui::StyleColorsDark();
+    //Do a bit of custom styling
+    style.DisabledAlpha  = 0.5f;
+    style.WindowRounding = 7.0f;
+    style.FrameRounding  = 4.0f;
+    style.GrabRounding   = 3.0f;
+    style.IndentSpacing  = style.ItemSpacing.x;
+
+    if (m_DesktopMode)
+    {
+        style.WindowPadding.x /= 2.0f;
+        style.WindowPadding.y /= 2.0f;
+    }
+
+    ImVec4* colors = style.Colors;
+    colors[ImGuiCol_Text]                  = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    colors[ImGuiCol_TextDisabled]          = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
+    colors[ImGuiCol_TextDisabled]          = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+    colors[ImGuiCol_WindowBg]              = ImVec4(0.085f, 0.135f, 0.155f, 0.96f);
+    colors[ImGuiCol_ChildBg]               = ImVec4(0.00f, 0.00f, 0.00f, 0.10f);
+    colors[ImGuiCol_PopupBg]               = ImVec4(0.088f, 0.138f, 0.158f, 0.96f);
+    colors[ImGuiCol_Border]                = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    colors[ImGuiCol_BorderShadow]          = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_FrameBg]               = ImVec4(0.185f, 0.245f, 0.285f, 1.00f);
+    colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.12f, 0.20f, 0.28f, 1.00f);
+    colors[ImGuiCol_FrameBgActive]         = ImVec4(0.109f, 0.175f, 0.224f, 1.000f);
+    colors[ImGuiCol_TitleBg]               = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
+    colors[ImGuiCol_TitleBgActive]         = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
+    colors[ImGuiCol_MenuBarBg]             = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
+    colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.02f, 0.02f, 0.02f, 0.08f);
+    colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.18f, 0.22f, 0.25f, 1.00f);
+    colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.09f, 0.21f, 0.31f, 1.00f);
+    colors[ImGuiCol_CheckMark]             = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    colors[ImGuiCol_SliderGrab]            = ImVec4(0.298f, 0.596f, 0.859f, 1.000f);
+    colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.333f, 0.616f, 1.000f, 1.000f);
+    colors[ImGuiCol_Button]                = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    colors[ImGuiCol_ButtonHovered]         = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
+    colors[ImGuiCol_ButtonActive]          = ImVec4(0.063f, 0.548f, 1.000f, 1.000f);
+    colors[ImGuiCol_Header]                = ImVec4(0.20f, 0.25f, 0.29f, 0.55f);
+    colors[ImGuiCol_HeaderHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
+    colors[ImGuiCol_HeaderActive]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    colors[ImGuiCol_Separator]             = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.10f, 0.40f, 0.75f, 0.78f);
+    colors[ImGuiCol_SeparatorActive]       = ImVec4(0.10f, 0.40f, 0.75f, 1.00f);
+    colors[ImGuiCol_ResizeGrip]            = ImVec4(0.26f, 0.59f, 0.98f, 0.25f);
+    colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
+    colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
+    colors[ImGuiCol_Tab]                   = ImVec4(0.28f, 0.305f, 0.3f, 0.25f);
+    colors[ImGuiCol_TabHovered]            = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
+    colors[ImGuiCol_TabActive]             = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+    colors[ImGuiCol_TabUnfocused]          = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+    colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+    colors[ImGuiCol_PlotLines]             = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+    colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+    colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+    colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+    colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
+    colors[ImGuiCol_DragDropTarget]        = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+    colors[ImGuiCol_NavHighlight]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+    colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+    colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    Style_ImGuiCol_TextNotification        = ImVec4(0.64f, 0.97f, 0.26f, 1.00f);
+    Style_ImGuiCol_TextWarning             = ImVec4(0.98f, 0.81f, 0.26f, 1.00f);
+    Style_ImGuiCol_TextError               = ImVec4(0.97f, 0.33f, 0.33f, 1.00f);
+    Style_ImGuiCol_ButtonPassiveToggled    = ImVec4(0.180f, 0.349f, 0.580f, 0.404f);
+    Style_ImGuiCol_SteamVRCursor           = ImVec4(0.463f, 0.765f, 0.882f, 1.000f);
+    Style_ImGuiCol_SteamVRCursorBorder     = ImVec4(0.161f, 0.176f, 0.196f, 0.929f);
+
+    //Setup ImPlot style
+    ImPlotStyle& plot_style = ImPlot::GetStyle();
+    plot_style.PlotPadding      = {0.0f, 0.0f};
+    plot_style.AntiAliasedLines = true;
+    plot_style.FillAlpha        = 0.25f;
+    plot_style.Colors[ImPlotCol_FrameBg] = ImVec4(0.03f, 0.05f, 0.06f, 0.10f);
+    plot_style.Colors[ImPlotCol_PlotBg]  = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+
+    //Adapt to DPI
+    float ui_scale = 1.0f;
+    if (UIManager::Get()->IsInDesktopMode())
+    {
+        float dpi_scale = ImGui_ImplWin32_GetDpiScaleForHwnd(m_WindowHandle);
+        ui_scale = dpi_scale * 0.625f;      //Scaling based on 100% being the VR font at 32pt and desktop 100% DPI font being at 20pt
+
+        style.ScaleAllSizes(dpi_scale);     //Scale based on DPI scale, not UI scale (basically only go larger)
+    }
+
+    UIManager::Get()->SetUIScale(ui_scale);
+
+    //Set DPI-dependent style
+    style.LogSliderDeadzone = (float)int(58.0f * ui_scale); //Force whole pixel size
+
+    if (UIManager::Get()->IsInDesktopMode())
+    {
+        io.DisplaySize.x = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetWidth()  * ui_scale;
+        io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetHeight() * ui_scale;
+
+        style.ScrollbarSize = (float)int(23.0f * ui_scale); 
+    }
+    else
+    {
+        io.DisplaySize.x = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetWidth();
+        io.DisplaySize.y = (float)UITextureSpaces::Get().GetRect(ui_texspace_total).GetHeight();
+
+        style.ScrollbarSize = (float)int(32.0f * ui_scale);
+
+        //UpdateOverlayDimming() relies on loaded ImGui/style, so do the initial call to that here
+        UIManager::Get()->UpdateOverlayDimming();
+    }
+
+    TextureManager::Get().LoadAllTexturesAndBuildFonts();
+    RepeatFrame();
+}
+
 void UIManager::SetUIScale(float scale)
 {
     m_UIScale = scale;
@@ -1113,6 +1231,10 @@ void UIManager::SetUIScale(float scale)
     {
         ConfigManager::SetValue(configid_float_interface_last_vr_ui_scale, scale);
     }
+
+    m_WindowOverlayProperties.ApplyUIScale();
+    m_WindowSettings.ApplyUIScale();
+    m_VRKeyboard.GetWindow().ApplyUIScale();
 }
 
 float UIManager::GetUIScale() const
@@ -1134,6 +1256,35 @@ ImFont* UIManager::GetFontCompact() const
 ImFont* UIManager::GetFontLarge() const
 {
     return m_FontLarge;
+}
+
+void UIManager::OnDPIChanged(int new_dpi, const RECT& new_window_rect)
+{
+    if (!m_DesktopMode)
+        return;
+
+    UpdateStyle();
+
+    //Set new window position from the provided rect
+    ::SetWindowPos(m_WindowHandle, nullptr, 
+                   new_window_rect.left, 
+                   new_window_rect.top, 
+                   new_window_rect.right  - new_window_rect.left, 
+                   new_window_rect.bottom - new_window_rect.top, SWP_NOZORDER | SWP_NOACTIVATE);
+
+    //Reload window icon in DPI-appropriate size. We don't really want to reload the big icon, but it gets reset to the small one if that one's changed, so we do both
+    HINSTANCE instance = (HINSTANCE)::GetWindowLongPtr(m_WindowHandle, GWLP_HINSTANCE);
+    const float new_scale = (float)new_dpi / USER_DEFAULT_SCREEN_DPI;
+
+    HICON icon_small = (HICON)LoadImage(instance, MAKEINTRESOURCE(IDI_DPLUS), IMAGE_ICON, int(GetSystemMetrics(SM_CXSMICON) * new_scale), int(GetSystemMetrics(SM_CYSMICON) * new_scale), LR_DEFAULTCOLOR);
+    HICON icon       = (HICON)LoadImage(instance, MAKEINTRESOURCE(IDI_DPLUS), IMAGE_ICON,     GetSystemMetrics(SM_CXICON),                    GetSystemMetrics(SM_CYICON),                LR_DEFAULTCOLOR);
+
+    HICON icon_prev_small = (HICON)::SendMessage(m_WindowHandle, WM_SETICON, ICON_SMALL, (LPARAM)icon_small);
+    HICON icon_prev       = (HICON)::SendMessage(m_WindowHandle, WM_SETICON, ICON_BIG,   (LPARAM)icon);
+
+    //Destroy the previous icons
+    ::DestroyIcon(icon_prev_small);
+    ::DestroyIcon(icon_prev);
 }
 
 void UIManager::OnTranslationChanged()

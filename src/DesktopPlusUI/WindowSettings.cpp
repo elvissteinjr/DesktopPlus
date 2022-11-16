@@ -37,7 +37,9 @@ WindowSettings::WindowSettings() :
     //Leave 2 pixel padding around so interpolation doesn't cut off the pixel border
     const DPRect rect = UITextureSpaces::Get().GetRect(ui_texspace_settings);
     m_Size = {float(rect.GetWidth() - 4), float(rect.GetHeight() - 4)};
-    m_Pos =  {float(rect.GetTL().x + 2),  float(rect.GetTL().y + 2)};
+    m_SizeUnscaled = m_Size;
+
+    m_Pos = {float(rect.GetTL().x + 2), float(rect.GetTL().y + 2)};
 
     m_PageStack.push_back(wndsettings_page_main);
     std::fill(std::begin(m_ScrollMainCatPos), std::end(m_ScrollMainCatPos), -1.0f);
@@ -67,6 +69,53 @@ vr::VROverlayHandle_t WindowSettings::GetOverlayHandle() const
     return UIManager::Get()->GetOverlayHandleSettings();
 }
 
+void WindowSettings::ApplyUIScale()
+{
+    FloatingWindow::ApplyUIScale();
+
+    m_CachedSizes = {};
+}
+
+void WindowSettings::UpdateDesktopMode()
+{
+    WindowUpdate();
+}
+
+const char* WindowSettings::DesktopModeGetTitle()
+{
+    if (m_PageStack[0] == wndsettings_page_profiles)
+        return TranslationManager::GetString(tstr_SettingsProfilesOverlays);
+    else
+        return TranslationManager::GetString(m_WindowTitleStrID);
+}
+
+void WindowSettings::UpdateDesktopModeWarnings()
+{
+    UpdateWarnings();
+}
+
+void WindowSettings::DesktopModeSetRootPage(WindowSettingsPage root_page)
+{
+    m_PageStack[0] = root_page;
+    m_PageAppearing = root_page;
+}
+
+bool WindowSettings::DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max)
+{
+    return TextureManager::Get().GetTextureInfo(m_WindowIcon, size, uv_min, uv_max);
+}
+
+bool WindowSettings::DesktopModeGoBack()
+{
+    if (m_PageStackPos != 0)
+    {
+        PageGoBack();
+        return true;
+    }
+
+    return false;
+}
+
 void WindowSettings::ClearCachedTranslationStrings()
 {
     m_WarningTextOverlayError = "";
@@ -81,20 +130,20 @@ void WindowSettings::WindowUpdate()
 
     ImGuiStyle& style = ImGui::GetStyle();
 
-    if (m_Column0Width == 0.0f)
-    {
-        m_Column0Width = ImGui::GetFontSize() * 12.75f;
-    }
+    m_Column0Width = ImGui::GetFontSize() * 12.75f;
 
-    const float page_width = m_Size.x - style.WindowBorderSize - style.WindowPadding.x - style.WindowPadding.x;
+    float page_width = m_Size.x - style.WindowBorderSize - style.WindowPadding.x - style.WindowPadding.x;
+
+    //Compensate for the padding added in constructor and ignore border in desktop mode
+    if (UIManager::Get()->IsInDesktopMode())
+    {
+        page_width += 2 + style.WindowBorderSize;
+    }
 
     //Page animation
     if (m_PageAnimationDir != 0)
     {
-        float target_x = (page_width + style.ItemSpacing.x) * -m_PageStackPosAnimation;
         m_PageAnimationProgress += ImGui::GetIO().DeltaTime * 3.0f;
-
-        m_PageAnimationOffset = smoothstep(m_PageAnimationProgress, m_PageAnimationStartPos, target_x);
 
         if (m_PageAnimationProgress >= 1.0f)
         {
@@ -107,8 +156,8 @@ void WindowSettings::WindowUpdate()
                 }
             }
 
-            m_PageAnimationOffset = target_x;
-            m_PageAnimationDir    = 0;
+            m_PageAnimationProgress = 1.0f;
+            m_PageAnimationDir      = 0;
         }
     }
     else if (m_PageStackPosAnimation != m_PageStackPos) //Only start new animation if none is running
@@ -129,7 +178,13 @@ void WindowSettings::WindowUpdate()
         m_PageAppearing = m_PageStack.back();
     }
 
-    UpdateWarnings();
+    const float target_x = (page_width + style.ItemSpacing.x) * -m_PageStackPosAnimation;
+    m_PageAnimationOffset = smoothstep(m_PageAnimationProgress, m_PageAnimationStartPos, target_x);
+
+    if (!UIManager::Get()->IsInDesktopMode())
+    {
+        UpdateWarnings();
+    }
 
     //Set up page offset and clipping
     ImGui::SetCursorPosX( ImGui::GetCursorPosX() + m_PageAnimationOffset);
@@ -152,7 +207,7 @@ void WindowSettings::WindowUpdate()
             ImGui::PushItemDisabledNoVisual();
         }
 
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f)); //This prevents child bg color being visible if there's a widget before this (e.g. warnings)
 
         if ( (ImGui::BeginChild(child_str_id[child_id], {page_width, ImGui::GetContentRegionAvail().y})) || (m_PageAppearing == page_id) ) //Process page if currently appearing
         {
@@ -219,7 +274,7 @@ void WindowSettings::UpdateWarnings()
             SelectableWarning("##WarningCompRes", "DontShowAgain", TranslationManager::GetString(tstr_SettingsWarningCompositorResolution));
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
-            if (ImGui::BeginPopup("DontShowAgain"))
+            if (ImGui::BeginPopup("DontShowAgain", ImGuiWindowFlags_NoMove))
             {
                 if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
                 {
@@ -244,7 +299,7 @@ void WindowSettings::UpdateWarnings()
             SelectableWarning("##WarningCompQuality", "DontShowAgain2", TranslationManager::GetString(tstr_SettingsWarningCompositorQuality));
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
-            if (ImGui::BeginPopup("DontShowAgain2"))
+            if (ImGui::BeginPopup("DontShowAgain2", ImGuiWindowFlags_NoMove))
             {
                 if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
                 {
@@ -269,7 +324,7 @@ void WindowSettings::UpdateWarnings()
             SelectableWarning("##WarningElevation", "DontShowAgain3", TranslationManager::GetString(tstr_SettingsWarningProcessElevated));
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
-            if (ImGui::BeginPopup("DontShowAgain3"))
+            if (ImGui::BeginPopup("DontShowAgain3", ImGuiWindowFlags_NoMove))
             {
                 if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
                 {
@@ -294,7 +349,7 @@ void WindowSettings::UpdateWarnings()
             SelectableWarning("##WarningElevatedMode", "DontShowAgain4", TranslationManager::GetString(tstr_SettingsWarningElevatedMode));
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
-            if (ImGui::BeginPopup("DontShowAgain4"))
+            if (ImGui::BeginPopup("DontShowAgain4", ImGuiWindowFlags_NoMove))
             {
                 if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
                 {
@@ -323,7 +378,7 @@ void WindowSettings::UpdateWarnings()
             SelectableWarning("##WarningBrowserMissing", "DontShowAgain5", TranslationManager::GetString(tstr_SettingsWarningBrowserMissing));
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
-            if (ImGui::BeginPopup("DontShowAgain5"))
+            if (ImGui::BeginPopup("DontShowAgain5", ImGuiWindowFlags_NoMove))
             {
                 if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
                 {
@@ -348,7 +403,7 @@ void WindowSettings::UpdateWarnings()
             SelectableWarning("##WarningBrowserMismatch", "DontShowAgain6", TranslationManager::GetString(tstr_SettingsWarningBrowserMismatch));
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
-            if (ImGui::BeginPopup("DontShowAgain6"))
+            if (ImGui::BeginPopup("DontShowAgain6", ImGuiWindowFlags_NoMove))
             {
                 if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
                 {
@@ -372,7 +427,7 @@ void WindowSettings::UpdateWarnings()
             SelectableWarning("##WarningElevation2", "FocusedElevatedContext", TranslationManager::GetString(tstr_SettingsWarningElevatedProcessFocus));
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
-            if (ImGui::BeginPopup("FocusedElevatedContext"))
+            if (ImGui::BeginPopup("FocusedElevatedContext", ImGuiWindowFlags_NoMove))
             {
                 if (ImGui::Selectable(TranslationManager::GetString(tstr_ActionSwitchTask)))
                 {
@@ -401,7 +456,7 @@ void WindowSettings::UpdateWarnings()
             SelectableWarning("##WarningUIAccess", "DontShowAgain6", TranslationManager::GetString(tstr_SettingsWarningUIAccessLost));
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
-            if (ImGui::BeginPopup("DontShowAgain6"))
+            if (ImGui::BeginPopup("DontShowAgain6", ImGuiWindowFlags_NoMove))
             {
                 if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
                 {
@@ -444,7 +499,7 @@ void WindowSettings::UpdateWarnings()
             }
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
-            if (ImGui::BeginPopup("DismissWarning"))
+            if (ImGui::BeginPopup("DismissWarning", ImGuiWindowFlags_NoMove))
             {
                 if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDismiss)))
                 {
@@ -483,7 +538,7 @@ void WindowSettings::UpdateWarnings()
             SelectableWarning("##WarningWinRTError", "DismissWarning2", m_WarningTextWinRTError.c_str());
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
-            if (ImGui::BeginPopup("DismissWarning2"))
+            if (ImGui::BeginPopup("DismissWarning2", ImGuiWindowFlags_NoMove))
             {
                 if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDismiss)))
                 {
@@ -1959,6 +2014,7 @@ void WindowSettings::UpdatePageProfiles()
     static bool has_loading_failed         = false;
     static bool has_deletion_failed        = false;
     static float list_buttons_width        = 0.0f;
+    static float last_font_size            = 0.0f;
     static ImVec2 button_delete_size;
 
     if (m_PageAppearing == wndsettings_page_profiles)
@@ -1969,14 +2025,6 @@ void WindowSettings::UpdatePageProfiles()
         m_ProfileSelectionName = "";
         delete_confirm_state = false;
         has_deletion_failed = false;
-
-        //Figure out size for delete button. We need it to stay the same but also consider the case of the confirm text being longer in some languages
-        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete));
-        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm));
-        button_delete_size = (text_size_delete.x > text_size_confirm.x) ? text_size_delete : text_size_confirm;
-        
-        button_delete_size.x += style.FramePadding.x * 2.0f;
-        button_delete_size.y += style.FramePadding.y * 2.0f;
 
         UIManager::Get()->RepeatFrame();
     }
@@ -1993,9 +2041,22 @@ void WindowSettings::UpdatePageProfiles()
             list_id = (int)m_ProfileList.size() - 1;
             m_ProfileSelectionName = "";
         }
-        
+
         scroll_to_selection = true;
         used_profile_save_new_page = false;
+    }
+
+    if ((m_PageAppearing == wndsettings_page_profiles) || (m_CachedSizes.Profiles_ButtonDeleteSize.x == 0.0f))
+    {
+        //Figure out size for delete button. We need it to stay the same but also consider the case of the confirm text being longer in some languages
+        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete));
+        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm));
+        m_CachedSizes.Profiles_ButtonDeleteSize = (text_size_delete.x > text_size_confirm.x) ? text_size_delete : text_size_confirm;
+
+        m_CachedSizes.Profiles_ButtonDeleteSize.x += style.FramePadding.x * 2.0f;
+        m_CachedSizes.Profiles_ButtonDeleteSize.y += style.FramePadding.y * 2.0f;
+
+        UIManager::Get()->RepeatFrame();
     }
 
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsProfilesOverlaysHeader) ); 
@@ -2144,7 +2205,7 @@ void WindowSettings::UpdatePageProfiles()
 
     if (delete_confirm_state)
     {
-        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm), button_delete_size))
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm), m_CachedSizes.Profiles_ButtonDeleteSize))
         {
             has_deletion_failed = !ConfigManager::Get().DeleteOverlayProfile(m_ProfileSelectionName + ".ini");
 
@@ -2163,7 +2224,7 @@ void WindowSettings::UpdatePageProfiles()
     }
     else
     {
-        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete), button_delete_size))
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete), m_CachedSizes.Profiles_ButtonDeleteSize))
         {
             delete_confirm_state = true;
         }
@@ -2180,22 +2241,25 @@ void WindowSettings::UpdatePageProfiles()
 
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 
-    //Confirmation buttons
-    ImGui::Separator();
-
-    if (ImGui::Button(TranslationManager::GetString(tstr_DialogDone))) 
+    //Confirmation buttons (don't show when used as root page)
+    if (m_PageStack.size() != 1)
     {
-        PageGoBack();
-    }
+        ImGui::Separator();
 
-    if ( (has_loading_failed) || (has_deletion_failed) )
-    {
-        ImGui::SameLine();
+        if (ImGui::Button(TranslationManager::GetString(tstr_DialogDone))) 
+        {
+            PageGoBack();
+        }
 
-        ImGui::AlignTextToFramePadding();
-        ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextError);
-        ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString((has_loading_failed) ? tstr_SettingsProfilesOverlaysProfileFailedLoad : tstr_SettingsProfilesOverlaysProfileFailedDelete));
-        ImGui::PopStyleColor();
+        if ( (has_loading_failed) || (has_deletion_failed) )
+        {
+            ImGui::SameLine();
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextError);
+            ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString((has_loading_failed) ? tstr_SettingsProfilesOverlaysProfileFailedLoad : tstr_SettingsProfilesOverlaysProfileFailedDelete));
+            ImGui::PopStyleColor();
+        }
     }
 }
 
@@ -2400,7 +2464,7 @@ void WindowSettings::UpdatePageProfilesOverlaySelect()
         vr_keyboard.VRKeyboardInputEnd();
         ImGui::PopID();
 
-        if ( (pending_input_focus) && (ImGui::IsItemVisible()) )
+        if ( (pending_input_focus) && (ImGui::IsItemVisible()) && (m_PageAnimationDir == 0) )
         {
             ImGui::SetKeyboardFocusHere(-1);
             pending_input_focus = false;
@@ -2731,11 +2795,20 @@ void WindowSettings::PageGoHome()
 void WindowSettings::SelectableWarning(const char* selectable_id, const char* popup_id, const char* text, bool show_warning_prefix, const ImVec4* text_color)
 {
     float* selectable_height = ImGui::GetStateStorage()->GetFloatRef(ImGui::GetID(selectable_id), 1.0f);
+    const bool is_active = ImGui::IsPopupOpen(popup_id);
+
+    //Force active header color when a menu is active for consistency with other context menus in the app
+    if (is_active)
+    {
+        ImGui::PushStyleColor(ImGuiCol_Header,        ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+    }
 
     //Use selectable stretching over the text area to make it clickable
     if (ImGui::Selectable(selectable_id, ImGui::IsPopupOpen(popup_id), 0, {0.0f, *selectable_height}))
     {
         ImGui::OpenPopup(popup_id);
+        UIManager::Get()->RepeatFrame();    //Avoid flicker from IsPopupOpen() not being true right away
     }
     ImGui::SameLine(0.0f, 0.0f);
 
@@ -2753,6 +2826,12 @@ void WindowSettings::SelectableWarning(const char* selectable_id, const char* po
     ImGui::PopTextWrapPos();
 
     ImGui::PopStyleColor();
+
+    if (is_active)
+    {
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
+    }
 
     //Store height for the selectable for next time if window is being hovered (could get bogus value otherwise)
     if (ImGui::IsWindowHovered())

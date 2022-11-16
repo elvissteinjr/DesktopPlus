@@ -39,6 +39,15 @@ class WindowOverlayProperties : public FloatingWindow
         char m_BufferOverlayName[1024];
         bool m_IsBrowserURLChanged;
 
+        //Struct of cached sizes which may change at any time on translation or DPI switching (only the ones that aren't updated unconditionally)
+        struct
+        {
+            float MainCatCapture_WinRTSourceLabelWidth = 0.0f;
+            float PositionChange_Column0Width          = 0.0f;
+            float PositionChange_ButtonWidth           = 0.0f;
+        } 
+        m_CachedSizes;
+
         virtual void WindowUpdate();
         void OverlayPositionReset();
 
@@ -72,8 +81,15 @@ class WindowOverlayProperties : public FloatingWindow
         virtual void ResetTransform(FloatingWindowOverlayStateID state_id);
         virtual vr::VROverlayHandle_t GetOverlayHandle() const;
 
+        virtual void ApplyUIScale();
+
         unsigned int GetActiveOverlayID() const;
         void SetActiveOverlayID(unsigned int overlay_id, bool skip_fade = false);              //Call with same as active ID to refresh window title and icon
+
+        void UpdateDesktopMode();
+        virtual const char* DesktopModeGetTitle();
+        virtual bool DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max);
+        virtual bool DesktopModeGoBack();
 
         void MarkBrowserURLChanged();
 };

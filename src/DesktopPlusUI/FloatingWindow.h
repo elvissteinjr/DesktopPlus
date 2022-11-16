@@ -45,6 +45,7 @@ class FloatingWindow
         ImVec2 m_Pos;
         ImVec2 m_PosPivot;
         ImVec2 m_Size;                   //Set in derived constructor, 2 pixel-wide padding around actual texture space expected
+        ImVec2 m_SizeUnscaled;           //Set in derived constructor, size before applying UI scale factor, so equal to m_Size initally
         ImGuiWindowFlags m_WindowFlags;
         bool m_AllowRoomUnpinning;       //Set to enable pin button while room overlay state is active
         OverlayOrigin m_DragOrigin;      //Origin passed to OverlayDragger for window drags, doesn't affect overlay positioning (override relevant functions instead)
@@ -79,6 +80,8 @@ class FloatingWindow
         bool IsVisible() const;
         bool IsVisibleOrFading() const;  //Returns true if m_Visible is true *or* m_Alpha isn't 0 yet
         float GetAlpha() const;
+
+        virtual void ApplyUIScale();
 
         bool CanUnpinRoom() const;
         bool IsPinned() const;
