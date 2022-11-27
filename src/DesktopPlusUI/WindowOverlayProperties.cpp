@@ -2130,11 +2130,20 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
         //If overlay width and height are uninitialized, set them to the crop values at least
         if ((ovrl_width == -1) && (ovrl_height == -1))
         {
-            ovrl_width  = crop_width  + crop_x;
-            ovrl_height = crop_height + crop_y;
+            //Use user width and height if it's a browser overlay, however
+            if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_browser)
+            {
+                ovrl_width  = ConfigManager::GetValue(configid_int_overlay_user_width);
+                ovrl_height = ConfigManager::GetValue(configid_int_overlay_user_height);
+            }
+            else
+            {
+                ovrl_width  = crop_width  + crop_x;
+                ovrl_height = crop_height + crop_y;
 
-            ConfigManager::SetValue(configid_int_overlay_state_content_width,  ovrl_width);
-            ConfigManager::SetValue(configid_int_overlay_state_content_height, ovrl_height);
+                ConfigManager::SetValue(configid_int_overlay_state_content_width,  ovrl_width);
+                ConfigManager::SetValue(configid_int_overlay_state_content_height, ovrl_height);
+            }
         }
     }
 
