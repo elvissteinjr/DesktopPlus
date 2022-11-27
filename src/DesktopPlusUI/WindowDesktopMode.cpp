@@ -17,15 +17,15 @@ void WindowDesktopMode::UpdateTitleBar()
     ImVec2 img_size_line_height = {ImGui::GetTextLineHeight() * 1.6f, ImGui::GetTextLineHeight() * 1.6f};
     ImVec2 img_size, img_uv_min, img_uv_max;
 
-    ImVec4 title_rect = {0.0f, 0.0f, ImGui::GetWindowSize().x, img_size_line_height.y + (style.WindowPadding.y * 2.0f)};
-    ImGui::PushClipRect({title_rect.x, title_rect.y}, {title_rect.z, title_rect.w}, false);
+    m_TitleBarRect = {0.0f, 0.0f, ImGui::GetWindowSize().x, img_size_line_height.y + (style.WindowPadding.y * 2.0f)};
+    ImGui::PushClipRect({m_TitleBarRect.x, m_TitleBarRect.y}, {m_TitleBarRect.z, m_TitleBarRect.w}, false);
 
     //Background color
-    ImGui::GetWindowDrawList()->AddRectFilled({0.0f, 0.0f}, {title_rect.z, title_rect.w}, ImGui::GetColorU32(ImGuiCol_TitleBg));
+    ImGui::GetWindowDrawList()->AddRectFilled({0.0f, 0.0f}, {m_TitleBarRect.z, m_TitleBarRect.w}, ImGui::GetColorU32(ImGuiCol_TitleBg));
 
     //Icon and title text
     static ImVec2 back_button_size;
-    const float back_button_x = title_rect.z - back_button_size.x - style.FramePadding.x;
+    const float back_button_x = m_TitleBarRect.z - back_button_size.x - style.FramePadding.x;
 
     const char* title_str = nullptr;
 
@@ -44,7 +44,7 @@ void WindowDesktopMode::UpdateTitleBar()
     ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
     ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
-    ImGui::SetCursorPosY( (title_rect.w / 2.0f) - (ImGui::GetTextLineHeight() / 1.90f) );   //1.90f to adjust alignment a bit
+    ImGui::SetCursorPosY( (m_TitleBarRect.w / 2.0f) - (ImGui::GetTextLineHeight() / 1.90f) );   //1.90f to adjust alignment a bit
 
     ImVec2 clip_end = ImGui::GetCursorScreenPos();
     clip_end.x  = back_button_x - style.FramePadding.x;
@@ -67,7 +67,7 @@ void WindowDesktopMode::UpdateTitleBar()
     TextureManager::Get().GetTextureInfo(tmtex_icon_xxsmall_browser_back, img_size, img_uv_min, img_uv_max);
     ImVec2 img_size_line_height_back(img_size_line_height.x * 0.75f, img_size_line_height.y * 0.75f);
 
-    ImGui::SetCursorScreenPos({back_button_x, title_rect.y + (title_rect.w / 2.0f) - (back_button_size.y / 2.0f) });
+    ImGui::SetCursorScreenPos({back_button_x, m_TitleBarRect.y + (m_TitleBarRect.w / 2.0f) - (back_button_size.y / 2.0f) });
 
     ImGui::PushID("BackButton");
     if ( (ImGui::ImageButton(io.Fonts->TexID, img_size_line_height_back, img_uv_min, img_uv_max, 1)) || (ImGui::IsMouseClicked(3 /* MouseX1 / Back */)) )
@@ -97,7 +97,7 @@ void WindowDesktopMode::UpdateTitleBar()
     ImGui::PopStyleColor();
     ImGui::PopClipRect();
 
-    ImGui::SetCursorPosY(title_rect.w + style.WindowPadding.y);
+    ImGui::SetCursorPosY(m_TitleBarRect.w + style.WindowPadding.y);
 }
 
 void WindowDesktopMode::UpdatePageMain()
@@ -530,4 +530,9 @@ void WindowDesktopMode::Update()
     ImGui::PopClipRect();
 
     ImGui::End();
+}
+
+ImVec4 WindowDesktopMode::GetTitleBarRect() const
+{
+    return m_TitleBarRect;
 }

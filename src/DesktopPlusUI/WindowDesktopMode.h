@@ -31,6 +31,8 @@ class WindowDesktopMode
         WindowDesktopModePage m_PageAppearing = wnddesktopmode_page_none; //Similar to ImGui::IsWindowAppearing(), equals the current page ID for a single frame if it or the window is newly appearing
         WindowDesktopModePage m_PageReturned  = wnddesktopmode_page_none; //Equals the previous page ID after PageGoBack() was called, ideally cleared after making use of its value
 
+        ImVec4 m_TitleBarRect;
+
         int m_PageAnimationDir        = 0;
         float m_PageAnimationProgress = 0.0f;
         float m_PageAnimationStartPos = 0.0f;
@@ -54,4 +56,6 @@ class WindowDesktopMode
     public:
         WindowDesktopMode();
         void Update();
+
+        ImVec4 GetTitleBarRect() const;
 };

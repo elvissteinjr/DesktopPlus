@@ -285,6 +285,7 @@ bool FloatingWindow::IsVirtualWindowItemHovered() const
 void FloatingWindow::HelpMarker(const char* desc, const char* marker_str) const
 {
     ImGui::TextDisabled(marker_str);
+
     if (ImGui::IsItemHovered())
     {
         static float last_y_offset = FLT_MIN;       //Try to avoid getting having the tooltip cover the marker... the way it's done here is a bit messy to be fair
@@ -319,7 +320,14 @@ void FloatingWindow::HelpMarker(const char* desc, const char* marker_str) const
         {
             if (pos_y + ImGui::GetWindowSize().y > m_Pos.y + m_Size.y) //If it would cover the marker
             {
-                last_y_offset = -m_Size.y + ImGui::GetWindowSize().y + ImGui::GetFontSize() + style.FramePadding.y * 2.0f;
+                if (UIManager::Get()->IsInDesktopMode())
+                {
+                    last_y_offset = -m_Size.y + ImGui::GetWindowSize().y + UIManager::Get()->GetDesktopModeWindow().GetTitleBarRect().w;
+                }
+                else
+                {
+                    last_y_offset = -m_Size.y + ImGui::GetWindowSize().y + ImGui::GetFontSize() + style.FramePadding.y * 2.0f;
+                }
             }
             else //Use normal pos
             {
