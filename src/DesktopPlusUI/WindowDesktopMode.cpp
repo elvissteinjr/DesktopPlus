@@ -33,7 +33,8 @@ void WindowDesktopMode::UpdateTitleBar()
     {
         case wnddesktopmode_page_main:       title_str = "Desktop+";
                                              TextureManager::Get().GetTextureInfo(tmtex_icon_small_app_icon, img_size, img_uv_min, img_uv_max);              break;
-        case wnddesktopmode_page_settings:   title_str = UIManager::Get()->GetSettingsWindow().DesktopModeGetTitle();
+        case wnddesktopmode_page_settings:   /*fallthrough*/
+        case wnddesktopmode_page_profiles:   title_str = UIManager::Get()->GetSettingsWindow().DesktopModeGetTitle();
                                              UIManager::Get()->GetSettingsWindow().DesktopModeGetIconTextureInfo(img_size, img_uv_min, img_uv_max);          break;
         case wnddesktopmode_page_properties: title_str = UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGetTitle();
                                              UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGetIconTextureInfo(img_size, img_uv_min, img_uv_max); break;
@@ -70,13 +71,15 @@ void WindowDesktopMode::UpdateTitleBar()
     ImGui::SetCursorScreenPos({back_button_x, m_TitleBarRect.y + (m_TitleBarRect.w / 2.0f) - (back_button_size.y / 2.0f) });
 
     ImGui::PushID("BackButton");
-    if ( (ImGui::ImageButton(io.Fonts->TexID, img_size_line_height_back, img_uv_min, img_uv_max, 1)) || (ImGui::IsMouseClicked(3 /* MouseX1 / Back */)) )
+    if ( (ImGui::ImageButton(io.Fonts->TexID, img_size_line_height_back, img_uv_min, img_uv_max, 1)) || 
+         (ImGui::IsMouseClicked(3 /* MouseX1 / Back */)) || ( (ImGui::IsKeyPressed(ImGuiKey_Backspace)) && (!ImGui::IsAnyInputTextActive()) ) )
     {
         bool did_go_back = false;
 
         switch (m_PageStack[m_PageStackPos])
         {
-            case wnddesktopmode_page_settings:   did_go_back = UIManager::Get()->GetSettingsWindow().DesktopModeGoBack();          break;
+            case wnddesktopmode_page_settings:   /*fallthrough*/
+            case wnddesktopmode_page_profiles:   did_go_back = UIManager::Get()->GetSettingsWindow().DesktopModeGoBack();          break;
             case wnddesktopmode_page_properties: did_go_back = UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGoBack(); break;
             default: break;
         }
@@ -103,12 +106,20 @@ void WindowDesktopMode::UpdateTitleBar()
 void WindowDesktopMode::UpdatePageMain()
 {
     ImGuiStyle& style = ImGui::GetStyle();
+    ImGuiIO& io = ImGui::GetIO();
 
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DesktopModeCatTools)); 
     ImGui::Indent();
 
     const float item_height = ImGui::GetTextLineHeight() + style.ItemInnerSpacing.y;
     ImGui::BeginChild("SettingsList", ImVec2(0.0f, (item_height * 3.0f) + style.ItemInnerSpacing.y), true);
+
+    //Focus nav if we came back from settings
+    if ( (io.NavVisible) && (m_PageReturned == wnddesktopmode_page_settings) )
+    {
+        ImGui::SetKeyboardFocusHere();
+        m_PageReturned = wnddesktopmode_page_none;
+    }
 
     if (ImGui::Selectable(TranslationManager::GetString(tstr_DesktopModeToolSettings))) 
     {
@@ -121,10 +132,17 @@ void WindowDesktopMode::UpdatePageMain()
         UIManager::Get()->RestartIntoActionEditor();
     }
 
+    //Focus nav if we came back from profiles
+    if ( (io.NavVisible) && (m_PageReturned == wnddesktopmode_page_profiles) )
+    {
+        ImGui::SetKeyboardFocusHere();
+        m_PageReturned = wnddesktopmode_page_none;
+    }
+
     if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsProfilesOverlays))) 
     {
         UIManager::Get()->GetSettingsWindow().DesktopModeSetRootPage(wndsettings_page_profiles);
-        PageGoForward(wnddesktopmode_page_settings);
+        PageGoForward(wnddesktopmode_page_profiles);
     }
 
     ImGui::EndChild();
@@ -138,6 +156,7 @@ void WindowDesktopMode::UpdatePageMain()
 void WindowDesktopMode::UpdatePageMainOverlayList()
 {
     ImGuiStyle& style = ImGui::GetStyle();
+    ImGuiIO& io = ImGui::GetIO();
 
     ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
     ImVec2 img_size, img_uv_min, img_uv_max;
@@ -167,9 +186,11 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
 
     ImGui::BeginChild("OverlayList", ImVec2(0.0f, 0.0f), true);
 
-    static unsigned int hovered_overlay_id_last = k_ulOverlayID_None;
-    static unsigned int right_down_overlay_id   = k_ulOverlayID_None;
+    static unsigned int hovered_overlay_id_last     = k_ulOverlayID_None;
+    static unsigned int right_down_overlay_id       = k_ulOverlayID_None;
+    static unsigned int keyboard_swapped_overlay_id = k_ulOverlayID_None;
     unsigned int hovered_overlay_id = k_ulOverlayID_None;
+    bool has_swapped = false;
 
     ImVec4 color_text_hidden = ImGui::GetStyleColorVec4(ImGuiCol_Text);
     color_text_hidden.w = 0.5f;
@@ -185,6 +206,25 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
         {
             ImGui::PushStyleColor(ImGuiCol_Header,        ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
             ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+        }
+
+        //Set focus for nav if we just came back from the properties page and this is the active overlay
+        if ( (io.NavVisible) && (m_PageReturned == wnddesktopmode_page_properties) && (UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID() == i) )
+        {
+            ImGui::SetKeyboardFocusHere();
+            m_PageReturned = wnddesktopmode_page_none;
+        }
+
+        //Set focus for nav if we previously re-ordered overlays via keyboard
+        if (keyboard_swapped_overlay_id == i)
+        {
+            ImGui::SetKeyboardFocusHere();
+
+            //Nav works against us here, so keep setting focus until ctrl isn't down anymore
+            if ((!io.KeyCtrl) || (!io.NavVisible))
+            {
+                keyboard_swapped_overlay_id = k_ulOverlayID_None;
+            }
         }
 
         //Use empty label here. Icon and actual label are manually created further down
@@ -217,12 +257,12 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
             ImVec2 pos = ImGui::GetItemRectMin();
             float width = ImGui::GetItemRectSize().x;
 
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+            if ( (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) || ((io.NavVisible) && (ImGui::IsItemFocused())) )
             {
                 drag_last_hovered_selectable = i;
                 hovered_overlay_id = i;
 
-                if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+                if ( (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) || (ImGui::IsKeyReleased(ImGuiKey_Menu)) )
                 {
                     if ((m_OverlayListActiveMenuID != i) && (!m_IsDraggingOverlaySelectables))
                     {
@@ -233,7 +273,7 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
 
                     selectable_active = true;
                 }
-                else if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
+                else if ( (ImGui::IsMouseDown(ImGuiMouseButton_Right)) || (ImGui::IsKeyDown(ImGuiKey_Menu)) )
                 {
                     right_down_overlay_id = i;   //For correct right-click visual
                 }
@@ -256,6 +296,29 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
                     m_IsDraggingOverlaySelectables = true;
 
                     m_OverlayListActiveMenuID = k_ulOverlayID_None;
+                }
+            }
+
+            //Keyboard reordering
+            if ((io.NavVisible) && (io.KeyCtrl) && (hovered_overlay_id == i))
+            {
+                int index_swap = i + ((ImGui::IsNavInputPressed(ImGuiNavInput_DpadDown, true)) ? 1 : (ImGui::IsNavInputPressed(ImGuiNavInput_DpadUp, true)) ? -1 : 0);
+                if ((i != index_swap) && (index_swap >= 0) && (index_swap < overlay_count))
+                {
+                    OverlayManager::Get().SwapOverlays(i, index_swap);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, i);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_swap, index_swap);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+
+                    std::iter_swap(list_unique_ids.begin() + i, list_unique_ids.begin() + index_swap);
+
+                    m_OverlayListActiveMenuID = k_ulOverlayID_None;
+
+                    //Skip the rest of this frame to avoid double-swaps
+                    keyboard_swapped_overlay_id = index_swap;
+                    ImGui::PopID();
+                    UIManager::Get()->RepeatFrame();
+                    break;
                 }
             }
 
@@ -307,7 +370,7 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
         m_IsDraggingOverlaySelectables = false;
     }
 
-    if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+    if ( (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) || (ImGui::IsKeyReleased(ImGuiKey_Menu)) )
     {
         right_down_overlay_id = k_ulOverlayID_None;
     }
@@ -326,9 +389,8 @@ void WindowDesktopMode::MenuOverlayList(unsigned int overlay_id, bool is_item_ac
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_MenuAlpha);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 
-    ImGui::SetNextWindowPos(ImGui::GetMousePos(), ImGuiCond_Appearing);
-    if (ImGui::BeginPopupModal("OverlayListMenu", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | 
-                                                           ImGuiWindowFlags_AlwaysAutoResize))
+    if (ImGui::BeginPopup("OverlayListMenu", ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings |
+                                             ImGuiWindowFlags_AlwaysAutoResize))
     {
         if ( (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) && (ImGui::IsAnyMouseClicked()) && (!is_item_active) )
         {
@@ -367,28 +429,37 @@ void WindowDesktopMode::MenuOverlayList(unsigned int overlay_id, bool is_item_ac
 
                 HideMenus();
             }
+
+            if (ImGui::IsNavInputReleased(ImGuiNavInput_Activate))
+            {
+                ImGui::SetKeyboardFocusHere(-1);
+            }
         }
         else
         {
             if (ImGui::Selectable(TranslationManager::GetString(tstr_OverlayBarOvrlRemove), false, ImGuiSelectableFlags_DontClosePopups))
             {
                 m_IsMenuRemoveConfirmationVisible = true;
+                UIManager::Get()->RepeatFrame();
             }
         }
 
-        //Clamp window to display rect so it's always visible
-        ImVec2 window_size = ImGui::GetWindowSize();
-        ImVec2 window_pos  = ImGui::GetWindowPos();
-        window_pos.x = clamp(window_pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);
-        window_pos.y = clamp(window_pos.y, 0.0f, ImGui::GetIO().DisplaySize.y - window_size.y);
+        if (ImGui::IsNavInputPressed(ImGuiNavInput_Cancel))
+        {
+            HideMenus();
+        }
 
-        ImGui::SetWindowPos(window_pos);
+        ImGui::EndPopup();
     }
 
     ImGui::PopStyleVar();
     ImGui::PopStyleVar();
 
-    ImGui::End();
+    //Handle popup being closed from nav
+    if (!ImGui::IsPopupOpen("OverlayListMenu"))
+    {
+        HideMenus();
+    }
 }
 
 void WindowDesktopMode::HideMenus()
@@ -476,6 +547,7 @@ void WindowDesktopMode::Update()
     ImGui::PushClipRect({0.0f, 0.0f}, {FLT_MAX, FLT_MAX}, false);
 
     const char* const child_str_id[] {"DesktopModePageMain", "DesktopModePage1", "DesktopModePage2", "DesktopModePage3"}; //No point in generating these on the fly
+    const ImVec2 child_size = {page_width, ImGui::GetContentRegionAvail().y};
     int child_id = 0;
     int stack_size = (int)m_PageStack.size();
     for (WindowDesktopModePage page_id : m_PageStack)
@@ -493,14 +565,15 @@ void WindowDesktopMode::Update()
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f)); //This prevents child bg color being visible if there's a widget before this (e.g. warnings)
 
-        if ( (ImGui::BeginChild(child_str_id[child_id], {page_width, ImGui::GetContentRegionAvail().y})) || (m_PageAppearing == page_id) ) //Process page if currently appearing
+        if ( (ImGui::BeginChild(child_str_id[child_id], child_size, false, ImGuiWindowFlags_NavFlattened)) || (m_PageAppearing == page_id) ) //Process page if currently appearing
         {
             ImGui::PopStyleColor(); //ImGuiCol_ChildBg
 
             switch (page_id)
             {
                 case wnddesktopmode_page_main:       UpdatePageMain();                                                   break;
-                case wnddesktopmode_page_settings:   UIManager::Get()->GetSettingsWindow().UpdateDesktopMode();          break;
+                case wnddesktopmode_page_settings:   /*fallthrough*/
+                case wnddesktopmode_page_profiles:   UIManager::Get()->GetSettingsWindow().UpdateDesktopMode();          break;
                 case wnddesktopmode_page_properties: UIManager::Get()->GetOverlayPropertiesWindow().UpdateDesktopMode(); break;
                 default: break;
             }

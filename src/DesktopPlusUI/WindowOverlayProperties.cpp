@@ -280,6 +280,7 @@ void WindowOverlayProperties::WindowUpdate()
     ImGui::PushClipRect({m_Pos.x + style.WindowBorderSize, 0.0f}, {m_Pos.x + m_Size.x - style.WindowBorderSize, FLT_MAX}, false);
 
     const char* const child_str_id[]{"OvrlPropsPageMain", "OvrlPropsPage1", "OvrlPropsPage2", "OvrlPropsPage3"}; //No point in generating these on the fly
+    const ImVec2 child_size = {page_width, ImGui::GetContentRegionAvail().y};
     int child_id = 0;
     int stack_size = (int)m_PageStack.size();
     for (WindowOverlayPropertiesPage page_id : m_PageStack)
@@ -297,7 +298,7 @@ void WindowOverlayProperties::WindowUpdate()
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f)); //This prevents child bg color being visible if there's a widget before this
 
-        if ((ImGui::BeginChild(child_str_id[child_id], {page_width, ImGui::GetContentRegionAvail().y})) || (m_PageAppearing == page_id)) //Process page if currently appearing
+        if ((ImGui::BeginChild(child_str_id[child_id], child_size, false, ImGuiWindowFlags_NavFlattened)) || (m_PageAppearing == page_id)) //Process page if currently appearing
         {
             ImGui::PopStyleColor(); //ImGuiCol_ChildBg
 
@@ -354,7 +355,7 @@ void WindowOverlayProperties::OverlayPositionReset()
 void WindowOverlayProperties::UpdatePageMain()
 {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-    ImGui::BeginChild("OvrlPropsMainContent");
+    ImGui::BeginChild("OvrlPropsMainContent", ImVec2(0.00f, 0.00f), false, ImGuiWindowFlags_NavFlattened);
     ImGui::PopStyleColor();
 
     UpdatePageMainCatPosition();

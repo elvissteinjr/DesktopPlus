@@ -52,7 +52,7 @@ void WindowSettingsActionEdit::UpdateCatActions()
 {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, 0);
 
-    ImGui::BeginChild("ViewActionsSettings");
+    ImGui::BeginChild("ViewActionsSettings", ImVec2(0.00f, 0.00f), false, ImGuiWindowFlags_NavFlattened);
 
     ImGui::PopStyleColor();
 

@@ -192,6 +192,7 @@ void WindowSettings::WindowUpdate()
     ImGui::PushClipRect({m_Pos.x + style.WindowBorderSize, 0.0f}, {m_Pos.x + m_Size.x - style.WindowBorderSize, FLT_MAX}, false);
 
     const char* const child_str_id[] {"SettingsPageMain", "SettingsPage1", "SettingsPage2", "SettingsPage3"}; //No point in generating these on the fly
+    const ImVec2 child_size = {page_width, ImGui::GetContentRegionAvail().y};
     int child_id = 0;
     int stack_size = (int)m_PageStack.size();
     for (WindowSettingsPage page_id : m_PageStack)
@@ -209,7 +210,7 @@ void WindowSettings::WindowUpdate()
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f)); //This prevents child bg color being visible if there's a widget before this (e.g. warnings)
 
-        if ( (ImGui::BeginChild(child_str_id[child_id], {page_width, ImGui::GetContentRegionAvail().y})) || (m_PageAppearing == page_id) ) //Process page if currently appearing
+        if ( (ImGui::BeginChild(child_str_id[child_id], child_size, false, ImGuiWindowFlags_NavFlattened)) || (m_PageAppearing == page_id) ) //Process page if currently appearing
         {
             ImGui::PopStyleColor(); //ImGuiCol_ChildBg
 
@@ -635,7 +636,7 @@ void WindowSettings::UpdatePageMain()
     ImGui::Separator();
 
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-    ImGui::BeginChild("SettingsMainContent");
+    ImGui::BeginChild("SettingsMainContent", ImVec2(0.00f, 0.00f), false, ImGuiWindowFlags_NavFlattened);
     ImGui::PopStyleColor();
 
     //Page Content
@@ -2812,6 +2813,8 @@ void WindowSettings::SelectableWarning(const char* selectable_id, const char* po
     }
     ImGui::SameLine(0.0f, 0.0f);
 
+    const bool is_selectable_focused = ImGui::IsItemFocused();
+
     //Render text (with wrapping for the actual warning text)
     ImGui::PushStyleColor(ImGuiCol_Text, (text_color != nullptr) ? *text_color : Style_ImGuiCol_TextWarning);
 
@@ -2833,8 +2836,8 @@ void WindowSettings::SelectableWarning(const char* selectable_id, const char* po
         ImGui::PopStyleColor();
     }
 
-    //Store height for the selectable for next time if window is being hovered (could get bogus value otherwise)
-    if (ImGui::IsWindowHovered())
+    //Store height for the selectable for next time if window is being hovered or selectable focused (could get bogus value otherwise)
+    if ( (ImGui::IsWindowHovered()) || (is_selectable_focused) )
     {
         *selectable_height = ImGui::GetItemRectSize().y;
     }

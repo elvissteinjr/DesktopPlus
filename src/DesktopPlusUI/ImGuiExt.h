@@ -67,6 +67,11 @@ namespace ImGui
     //Brought into the public API since we need only that one sometimes
     void ClearActiveID();
 
+    //Allow checking for mapped nav inputs for implementing nav-related behavior
+    bool IsNavInputDownEx(ImGuiNavInput nav_input);                                 //Existing internal IsNavInputDown() doesn't allow for ImGuiNavInput_Dpad* with keyboard, this does
+    bool IsNavInputPressed(ImGuiNavInput nav_input, bool repeat = false);
+    bool IsNavInputReleased(ImGuiNavInput nav_input);
+
     //Get and set previous line height. Useful on complex layouts where a widget may take more height while not being supposed to push the next line further down
     float GetPreviousLineHeight();
     void SetPreviousLineHeight(float height);

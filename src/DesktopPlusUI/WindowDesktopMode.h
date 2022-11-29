@@ -10,6 +10,7 @@ enum WindowDesktopModePage
     wnddesktopmode_page_none,
     wnddesktopmode_page_main,
     wnddesktopmode_page_settings,
+    wnddesktopmode_page_profiles,
     wnddesktopmode_page_properties
 };
 

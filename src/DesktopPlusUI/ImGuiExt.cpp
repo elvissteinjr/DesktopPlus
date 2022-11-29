@@ -851,6 +851,40 @@ namespace ImGui
         return ret;
     }
 
+    //ImGui does not fill the dpad values from keyboard input, so we map them here if the current source is keyboard
+    ImGuiNavInput MapNavKeyboardDPad(ImGuiNavInput nav_input)
+    {
+        if (ImGui::GetCurrentContext()->NavInputSource != ImGuiInputSource_Keyboard)
+            return nav_input;
+
+        switch (nav_input)
+        {
+            case ImGuiNavInput_DpadLeft:  return ImGuiNavInput_KeyLeft_;
+            case ImGuiNavInput_DpadRight: return ImGuiNavInput_KeyRight_;
+            case ImGuiNavInput_DpadUp:    return ImGuiNavInput_KeyUp_;
+            case ImGuiNavInput_DpadDown:  return ImGuiNavInput_KeyDown_;
+            default:                      return nav_input;
+        }
+    }
+
+    bool IsNavInputDownEx(ImGuiNavInput nav_input)
+    {
+        return ImGui::IsNavInputDown(MapNavKeyboardDPad(nav_input));
+    }
+
+    bool ImGui::IsNavInputPressed(ImGuiNavInput nav_input, bool repeat)
+    {
+        if (repeat)
+            return (ImGui::GetNavInputAmount(MapNavKeyboardDPad(nav_input), ImGuiNavReadMode_Repeat) > 0.0f);
+        else
+            return (ImGui::GetNavInputAmount(MapNavKeyboardDPad(nav_input), ImGuiNavReadMode_Pressed) > 0.0f);
+    }
+
+    bool ImGui::IsNavInputReleased(ImGuiNavInput nav_input)
+    {
+        return (ImGui::GetNavInputAmount(MapNavKeyboardDPad(nav_input), ImGuiNavReadMode_Released) > 0.0f);
+    }
+
     float ImGui::GetPreviousLineHeight()
     {
         return GImGui->CurrentWindow->DC.PrevLineSize.y;

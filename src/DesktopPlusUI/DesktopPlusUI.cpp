@@ -44,7 +44,7 @@ void CreateRenderTarget(bool desktop_mode);
 void CleanupRenderTarget();
 void RefreshOverlayTextureSharing();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-void InitImGui(HWND hwnd);
+void InitImGui(HWND hwnd, bool desktop_mode);
 void ProcessCmdline(bool& force_desktop_mode);
 
 static bool g_ActionEditMode = false;
@@ -127,7 +127,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         CenterWindowToMonitor(hwnd, true);
     }
 
-    InitImGui(hwnd);
+    InitImGui(hwnd, desktop_mode);
     ImGuiIO& io = ImGui::GetIO();
 
     if (desktop_mode)
@@ -756,15 +756,18 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return ::DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-void InitImGui(HWND hwnd)
+void InitImGui(HWND hwnd, bool desktop_mode)
 {
     //Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); //(void)io;
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    ImGuiIO& io = ImGui::GetIO();
+
+    //Enable keyboard controls when in desktop mode
+    if (desktop_mode)
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
     io.IniFilename = nullptr;                   //We don't need any imgui.ini support
     io.ConfigInputTrickleEventQueue = false;    //Opt out of input trickling since it doesn't play well with VR scrolling (and lowers responsiveness on certain inputs)
 
