@@ -1920,18 +1920,18 @@ void WindowOverlayProperties::UpdatePagePositionChange()
 
     ImGui::Indent();
 
-    bool& force_upright = ConfigManager::GetRef(configid_bool_input_drag_force_upright);
-
-    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsForceUpright), &force_upright))
-    {
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_force_upright, force_upright);
-    }
-
     bool& auto_docking = ConfigManager::GetRef(configid_bool_input_drag_auto_docking);
 
     if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsAutoDocking), &auto_docking))
     {
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_auto_docking, auto_docking);
+    }
+
+    bool& force_upright = ConfigManager::GetRef(configid_bool_input_drag_force_upright);
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsForceUpright), &force_upright))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_force_upright, force_upright);
     }
 
     ImGui::Unindent();

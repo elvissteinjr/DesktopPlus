@@ -411,8 +411,8 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_input_global_hmd_pointer]                    = config.ReadBool("Input", "GlobalHMDPointer", false);
     m_ConfigFloat[configid_float_input_global_hmd_pointer_max_distance]     = config.ReadInt( "Input", "GlobalHMDPointerMaxDistance", 0) / 100.0f;
     m_ConfigBool[configid_bool_input_laser_pointer_block_input]             = config.ReadBool("Input", "LaserPointerBlockInput", false);
-    m_ConfigBool[configid_bool_input_drag_force_upright]                    = config.ReadBool("Input", "DragForceUpright", false);
     m_ConfigBool[configid_bool_input_drag_auto_docking]                     = config.ReadBool("Input", "DragAutoDocking", true);
+    m_ConfigBool[configid_bool_input_drag_force_upright]                    = config.ReadBool("Input", "DragForceUpright", false);
     m_ConfigBool[configid_bool_input_drag_fixed_distance]                   = config.ReadBool("Input", "DragFixedDistance", false);
     m_ConfigFloat[configid_float_input_drag_fixed_distance_m]               = config.ReadInt( "Input", "DragFixedDistanceCM", 200) / 100.0f;
     m_ConfigInt[configid_int_input_drag_fixed_distance_shape]               = config.ReadInt( "Input", "DragFixedDistanceShape", 0);
@@ -954,8 +954,8 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Input",  "GlobalHMDPointer",                   m_ConfigBool[configid_bool_input_global_hmd_pointer]);
     config.WriteInt( "Input",  "GlobalHMDPointerMaxDistance",    int(m_ConfigFloat[configid_float_input_global_hmd_pointer_max_distance] * 100.0f));
     config.WriteBool("Input",  "LaserPointerBlockInput",             m_ConfigBool[configid_bool_input_laser_pointer_block_input]);
-    config.WriteBool("Input",  "DragForceUpright",                   m_ConfigBool[configid_bool_input_drag_force_upright]);
     config.WriteBool("Input",  "DragAutoDocking",                    m_ConfigBool[configid_bool_input_drag_auto_docking]);
+    config.WriteBool("Input",  "DragForceUpright",                   m_ConfigBool[configid_bool_input_drag_force_upright]);
     config.WriteBool("Input",  "DragFixedDistance",                  m_ConfigBool[configid_bool_input_drag_fixed_distance]);
     config.WriteInt( "Input",  "DragFixedDistanceCM",            int(m_ConfigFloat[configid_float_input_drag_fixed_distance_m] * 100.0f));
     config.WriteInt( "Input",  "DragFixedDistanceShape",             m_ConfigInt[configid_int_input_drag_fixed_distance_shape]);
