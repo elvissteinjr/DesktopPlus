@@ -5215,10 +5215,15 @@ void OutputManager::ApplySettingTransform()
         }
         case ovrl_origin_seated_universe:
         {
-            Matrix4 matrix = m_OverlayDragger.GetBaseOffsetMatrix() * ConfigManager::Get().GetOverlayDetachedTransform();
+            Matrix4 matrix_base = m_OverlayDragger.GetBaseOffsetMatrix() * ConfigManager::Get().GetOverlayDetachedTransform();
 
-            vr::HmdMatrix34_t matrix_ovr = matrix.toOpenVR34();
-            vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, vr::TrackingUniverseStanding, &matrix_ovr);
+            //Offset transform by additional offset values
+            matrix_base.translate_relative(ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                           ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                           ConfigManager::GetValue(configid_float_overlay_offset_forward));
+
+            matrix = matrix_base.toOpenVR34();
+            vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, vr::TrackingUniverseStanding, &matrix);
             break;
         }
         case ovrl_origin_dashboard:
