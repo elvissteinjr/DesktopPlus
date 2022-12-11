@@ -2100,16 +2100,28 @@ void WindowOverlayProperties::UpdatePagePositionChange()
                     }
                 }
 
-                //Wheel -> Forward/Backward
+                //Wheel -> Forward/Backward or Change Width (when shift is down)
                 if (fabs(ImGui::GetIO().MouseWheel) > 0.0f)
                 {
-                    unsigned int packed_value = (ImGui::GetIO().MouseWheel < 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
-                    packed_value |= ipcactv_ovrl_pos_adjust_forwback;
-
-                    int steps = (int)(fabs(ImGui::GetIO().MouseWheel) * delta_step);
-                    for (int i = 0; i < steps; ++i)
+                    if (ImGui::GetIO().KeyShift)
                     {
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
+                        const float size_step = (snap_position) ? snap_position_size : 0.20f;
+                        float& overlay_width = ConfigManager::GetRef(configid_float_overlay_width);
+                        overlay_width = std::max(0.05f, overlay_width + (ImGui::GetIO().MouseWheel * size_step) );
+
+                        //Send adjusted width to dashboard app
+                        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_width, overlay_width);
+                    }
+                    else
+                    {
+                        unsigned int packed_value = (ImGui::GetIO().MouseWheel < 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
+                        packed_value |= ipcactv_ovrl_pos_adjust_forwback;
+
+                        int steps = (int)(fabs(ImGui::GetIO().MouseWheel) * delta_step);
+                        for (int i = 0; i < steps; ++i)
+                        {
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
+                        }
                     }
                 }
             }
