@@ -413,6 +413,13 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_input_laser_pointer_block_input]             = config.ReadBool("Input", "LaserPointerBlockInput", false);
     m_ConfigBool[configid_bool_input_drag_force_upright]                    = config.ReadBool("Input", "DragForceUpright", false);
     m_ConfigBool[configid_bool_input_drag_auto_docking]                     = config.ReadBool("Input", "DragAutoDocking", true);
+    m_ConfigBool[configid_bool_input_drag_fixed_distance]                   = config.ReadBool("Input", "DragFixedDistance", false);
+    m_ConfigFloat[configid_float_input_drag_fixed_distance_m]               = config.ReadInt( "Input", "DragFixedDistanceCM", 200) / 100.0f;
+    m_ConfigInt[configid_int_input_drag_fixed_distance_shape]               = config.ReadInt( "Input", "DragFixedDistanceShape", 0);
+    m_ConfigBool[configid_bool_input_drag_fixed_distance_auto_curve]        = config.ReadBool("Input", "DragFixedDistanceAutoCurve", true);
+    m_ConfigBool[configid_bool_input_drag_fixed_distance_auto_tilt]         = config.ReadBool("Input", "DragFixedDistanceAutoTilt", true);
+    m_ConfigBool[configid_bool_input_drag_snap_position]                    = config.ReadBool("Input", "DragSnapPosition", false);
+    m_ConfigFloat[configid_float_input_drag_snap_position_size]             = config.ReadInt( "Input", "DragSnapPositionSize", 10) / 100.0f;
 
     m_ConfigBool[configid_bool_input_mouse_render_cursor]                   = config.ReadBool("Mouse", "RenderCursor", true);
     m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]        = config.ReadBool("Mouse", "RenderIntersectionBlob", false);
@@ -949,6 +956,13 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Input",  "LaserPointerBlockInput",             m_ConfigBool[configid_bool_input_laser_pointer_block_input]);
     config.WriteBool("Input",  "DragForceUpright",                   m_ConfigBool[configid_bool_input_drag_force_upright]);
     config.WriteBool("Input",  "DragAutoDocking",                    m_ConfigBool[configid_bool_input_drag_auto_docking]);
+    config.WriteBool("Input",  "DragFixedDistance",                  m_ConfigBool[configid_bool_input_drag_fixed_distance]);
+    config.WriteInt( "Input",  "DragFixedDistanceCM",            int(m_ConfigFloat[configid_float_input_drag_fixed_distance_m] * 100.0f));
+    config.WriteInt( "Input",  "DragFixedDistanceShape",             m_ConfigInt[configid_int_input_drag_fixed_distance_shape]);
+    config.WriteBool("Input",  "DragFixedDistanceAutoCurve",         m_ConfigBool[configid_bool_input_drag_fixed_distance_auto_curve]);
+    config.WriteBool("Input",  "DragFixedDistanceAutoTilt",          m_ConfigBool[configid_bool_input_drag_fixed_distance_auto_tilt]);
+    config.WriteBool("Input",  "DragSnapPosition",                   m_ConfigBool[configid_bool_input_drag_snap_position]);
+    config.WriteInt( "Input",  "DragSnapPositionSize",           int(m_ConfigFloat[configid_float_input_drag_snap_position_size] * 100.0f));
 
     config.WriteBool("Mouse", "RenderCursor",              m_ConfigBool[configid_bool_input_mouse_render_cursor]);
     config.WriteBool("Mouse", "RenderIntersectionBlob",    m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]);

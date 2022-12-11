@@ -1659,6 +1659,7 @@ void UIManager::PositionOverlay()
                 vr::VROverlay()->ShowOverlay(m_OvrlHandleOverlayBar);
                 m_OvrlVisible = true;
                 UpdateOverlayDimming();
+                m_OverlayDragger.UpdateTempStandingPosition();
 
                 //We prevent the fade-out when Overlay Bar is newly visible while the dashboard SystemUI is being hovered until ithe pointer leaves that overlay at least once
                 if (is_systemui_hovered)

@@ -1619,6 +1619,10 @@ void WindowOverlayProperties::UpdatePagePositionChange()
         }
     }
 
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+    ImGui::BeginChild("PositionChangeChild", ImVec2(0.0f, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y), false, ImGuiWindowFlags_NavFlattened);
+    ImGui::PopStyleColor();
+
     const float column_width_1 = ImGui::GetFrameHeightWithSpacing() * 3.0f + style.ItemInnerSpacing.x;
     const float column_width_2 = m_CachedSizes.PositionChange_ButtonWidth + (style.ItemInnerSpacing.x * 2.0f);
     const float column_width_3 = style.ItemSpacing.x * 3.0f;
@@ -1930,6 +1934,105 @@ void WindowOverlayProperties::UpdatePagePositionChange()
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_auto_docking, auto_docking);
     }
 
+    ImGui::Unindent();
+
+    //Fixed Size
+    ImGui::Spacing();
+    ImGui::Columns(2, "ColumnFixedDistance", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
+    bool&  force_fixed_distance            = ConfigManager::GetRef(configid_bool_input_drag_fixed_distance);
+    float& force_fixed_distance_value      = ConfigManager::GetRef(configid_float_input_drag_fixed_distance_m);
+    int&   force_fixed_distance_shape      = ConfigManager::GetRef(configid_int_input_drag_fixed_distance_shape);
+    bool&  force_fixed_distance_auto_curve = ConfigManager::GetRef(configid_bool_input_drag_fixed_distance_auto_curve);
+    bool&  force_fixed_distance_auto_tilt  = ConfigManager::GetRef(configid_bool_input_drag_fixed_distance_auto_tilt);
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsForceDistance), &force_fixed_distance))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_fixed_distance, force_fixed_distance);
+    }
+
+    ImGui::NextColumn();
+
+    if (!force_fixed_distance)
+        ImGui::PushItemDisabled();
+
+    vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("FixedDistance") );
+    if (ImGui::SliderWithButtonsFloat("FixedDistanceValue", force_fixed_distance_value, 0.1f, 0.01f, 0.5f, 10.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
+    {
+        if (force_fixed_distance_value < 0.5f)
+            force_fixed_distance_value = 0.5f;
+
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_input_drag_fixed_distance_m, force_fixed_distance_value);
+    }
+    vr_keyboard.VRKeyboardInputEnd();
+
+    ImGui::NextColumn();
+    ImGui::Indent(ImGui::GetFrameHeightWithSpacing());
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsForceDistanceShape));
+    ImGui::NextColumn();
+
+    ImGui::SetNextItemWidth(-1);
+    if (TranslatedComboAnimated("##ComboFixedDistanceShape", force_fixed_distance_shape, 
+                                tstr_OvrlPropsPositionChangeDragSettingsForceDistanceShapeSphere, tstr_OvrlPropsPositionChangeDragSettingsForceDistanceShapeCylinder))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_drag_fixed_distance_shape, force_fixed_distance_shape);
+    }
+
+    ImGui::NextColumn();
+    ImGui::NextColumn();
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsForceDistanceAutoCurve), &force_fixed_distance_auto_curve))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_fixed_distance_auto_curve, force_fixed_distance_auto_curve);
+    }
+
+    ImGui::NextColumn();
+    ImGui::NextColumn();
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsForceDistanceAutoTilt), &force_fixed_distance_auto_tilt))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_fixed_distance_auto_tilt, force_fixed_distance_auto_tilt);
+    }
+
+    if (!force_fixed_distance)
+        ImGui::PopItemDisabled();
+
+    ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
+    ImGui::Spacing();
+    ImGui::NextColumn();
+
+    //Position Snapping
+    bool&  snap_position      = ConfigManager::GetRef(configid_bool_input_drag_snap_position);
+    float& snap_position_size = ConfigManager::GetRef(configid_float_input_drag_snap_position_size);
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsSnapPosition), &snap_position))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_snap_position, snap_position);
+    }
+    ImGui::NextColumn();
+
+    if (!snap_position)
+        ImGui::PushItemDisabled();
+
+    vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("SnapPosition") );
+    if (ImGui::SliderWithButtonsFloat("SnapPositionSize", snap_position_size, 0.1f, 0.01f, 0.01f, 1.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
+    {
+        if (snap_position_size < 0.01f)
+            snap_position_size = 0.01f;
+
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_input_drag_snap_position_size, snap_position_size);
+    }
+    vr_keyboard.VRKeyboardInputEnd();
+
+    if (!snap_position)
+        ImGui::PopItemDisabled();
+
+    ImGui::Columns(1);
+
+    ImGui::EndChild();
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 
     //--Confirmation buttons
@@ -2068,6 +2171,9 @@ void WindowOverlayProperties::UpdatePagePositionChange()
                 io.MousePos.y = active_capture_pos.y;
                 io.MouseClickedPos[0].y = io.MousePos.y;
             }
+
+            //Prevent scrolling on the parent window
+            ImGui::BlockWidgetInput();
         }
     }
 }

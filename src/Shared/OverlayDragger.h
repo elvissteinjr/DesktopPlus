@@ -15,6 +15,7 @@ class OverlayDragger
         Matrix4 m_DragModeMatrixTargetStart;
         Matrix4 m_DragModeMatrixSourceStart;
         Matrix4 m_DragModeMatrixTargetCurrent;
+        float m_DragModeSnappedExtraWidth;
 
         bool  m_DragGestureActive;
         float m_DragGestureScaleDistanceStart;
@@ -27,11 +28,13 @@ class OverlayDragger
 
         Matrix4 m_DashboardMatLast;
         float m_DashboardHMD_Y;                 //The HMDs y-position when the dashboard was activated. Used for dashboard-relative positioning
+        Vector3 m_TempStandingPosition;         //Standing position updated when the dashboard tab is activated or drag-mode activated while dashboard tab closed. Used as semi-fixed reference point
 
         void DragStartBase(bool is_gesture_drag = false);
         void DragGestureStartBase();
 
         void TransformForceUpright(Matrix4& transform) const;
+        void TransformForceDistance(Matrix4& transform, Vector3 reference_pos, float distance, bool use_cylinder_shape = false, bool auto_tilt = false) const;
 
     public:
         OverlayDragger();
@@ -56,6 +59,7 @@ class OverlayDragger
         void AbsoluteModeSet(bool is_active, float offset_forward); //Automatically reset on DragFinish()
 
         void UpdateDashboardHMD_Y();
+        void UpdateTempStandingPosition();
 
         bool IsDragActive() const;                                  //Doesn't include active gesture drag
         bool IsDragGestureActive() const;

@@ -86,6 +86,10 @@ enum ConfigID_Bool
     configid_bool_input_laser_pointer_block_input,
     configid_bool_input_drag_force_upright,
     configid_bool_input_drag_auto_docking,
+    configid_bool_input_drag_fixed_distance,
+    configid_bool_input_drag_fixed_distance_auto_curve,
+    configid_bool_input_drag_fixed_distance_auto_tilt,
+    configid_bool_input_drag_snap_position,
     configid_bool_windows_auto_focus_scene_app_dashboard,
     configid_bool_windows_winrt_auto_focus,
     configid_bool_windows_winrt_keep_on_screen,
@@ -154,6 +158,7 @@ enum ConfigID_Int
     configid_int_input_hotkey03_keycode,
     configid_int_input_hotkey03_action_id,
     configid_int_input_mouse_dbl_click_assist_duration_ms,
+    configid_int_input_drag_fixed_distance_shape,           //0 = Sphere, 1 = Cylinder
     configid_int_windows_winrt_dragging_mode,
     configid_int_windows_winrt_capture_lost_behavior,
     configid_int_browser_max_fps,                           //Browser overlays use this instead of update limits
@@ -192,6 +197,8 @@ enum ConfigID_Float
     configid_float_overlay_MAX,
     configid_float_input_detached_interaction_max_distance,
     configid_float_input_global_hmd_pointer_max_distance,
+    configid_float_input_drag_fixed_distance_m,
+    configid_float_input_drag_snap_position_size,
     configid_float_interface_last_vr_ui_scale,
     configid_float_performance_update_limit_ms,
     configid_float_state_overlay_transform_sync_value,      //Used for sending overlay transforms asynchronously. This is done by sending 16 of these after setting the target id

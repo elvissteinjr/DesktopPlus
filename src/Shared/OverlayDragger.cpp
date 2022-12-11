@@ -13,6 +13,7 @@ OverlayDragger::OverlayDragger() :
     m_DragModeOverlayID(k_ulOverlayID_None),
     m_DragModeOverlayHandle(vr::k_ulOverlayHandleInvalid),
     m_DragModeOverlayOrigin(ovrl_origin_room),
+    m_DragModeSnappedExtraWidth(0.0f),
     m_DragGestureActive(false),
     m_DragGestureScaleDistanceStart(0.0f),
     m_DragGestureScaleWidthStart(0.0f),
@@ -196,10 +197,68 @@ void OverlayDragger::DragUpdate()
 
             m_DragModeMatrixTargetCurrent = matrix_source_current * matrix_target_new;
 
-            //Do axis locking if managed overlay and setting enabled
-            if ( (m_DragModeOverlayID != k_ulOverlayID_None) && (ConfigManager::GetValue(configid_bool_input_drag_force_upright)) )
+            //Apply drag settings if managed overlay (while most would work on UI overlays, they're more of a hindrance most of the time)
+            if (m_DragModeOverlayID != k_ulOverlayID_None)
             {
-                TransformForceUpright(m_DragModeMatrixTargetCurrent);
+                //Do axis locking if enabled
+                if (ConfigManager::GetValue(configid_bool_input_drag_force_upright))
+                {
+                    TransformForceUpright(m_DragModeMatrixTargetCurrent);
+                }
+
+                //Snap position if enabled
+                if (ConfigManager::GetValue(configid_bool_input_drag_snap_position))
+                {
+                    const float& snap_size = ConfigManager::GetRef(configid_float_input_drag_snap_position_size);
+
+                    //Transform position to be multiples of snap size
+                    Vector3 pos = m_DragModeMatrixTargetCurrent.getTranslation();
+
+                    //Use center bottom if managed overlay to allow matching alignment of differently sized overlays
+                    Vector3 pos_bottom_orig  = OverlayManager::Get().GetOverlayCenterBottomTransform(m_DragModeOverlayID, m_DragModeOverlayHandle).getTranslation();
+                    Vector3 pos_middle = OverlayManager::Get().GetOverlayMiddleTransform(m_DragModeOverlayID, m_DragModeOverlayHandle).getTranslation();
+                    Vector3 pos_bottom_offset = pos_bottom_orig - pos_middle;
+                    pos += pos_bottom_offset;
+
+                    //Snap to size
+                    pos /= snap_size;
+                    pos.x = roundf(pos.x);
+                    pos.y = roundf(pos.y);
+                    pos.z = roundf(pos.z);
+                    pos *= snap_size;
+
+                    //Get difference of bottom centered transform and apply it to the original middle-aligned position
+                    pos = (pos - pos_bottom_offset);
+
+                    m_DragModeMatrixTargetCurrent.setTranslation(pos);
+                }
+
+                //Force fixed distance if enabled
+                if (ConfigManager::GetValue(configid_bool_input_drag_fixed_distance))
+                {
+                    const float& fixed_distance = ConfigManager::GetValue(configid_float_input_drag_fixed_distance_m);
+
+                    TransformForceDistance(m_DragModeMatrixTargetCurrent, m_TempStandingPosition, fixed_distance, (ConfigManager::GetValue(configid_int_input_drag_fixed_distance_shape) == 1), 
+                                           ConfigManager::GetValue(configid_bool_input_drag_fixed_distance_auto_tilt));
+
+                    //Calculate curvature based on overlay width and distance if auto-curving is enabled
+                    if (ConfigManager::GetValue(configid_bool_input_drag_fixed_distance_auto_curve))
+                    {
+                        float width  = OverlayManager::Get().GetConfigData(m_DragModeOverlayID).ConfigFloat[configid_float_overlay_width];
+                        float& curve = OverlayManager::Get().GetConfigData(m_DragModeOverlayID).ConfigFloat[configid_float_overlay_curvature];
+
+                        curve = clamp(width / (fixed_distance * 4.0f), 0.0f, 1.0f);
+
+                        vr::VROverlay()->SetOverlayCurvature(m_DragModeOverlayHandle, curve);
+
+                        //Sync adjusted curvature value
+                        #ifdef DPLUS_UI
+                            IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_curvature, curve);
+                        #else
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_curvature, curve);
+                        #endif
+                    }
+                }
             }
 
             vr::HmdMatrix34_t vrmat = m_DragModeMatrixTargetCurrent.toOpenVR34();
@@ -228,6 +287,19 @@ void OverlayDragger::DragAddDistance(float distance)
     {
         m_AbsoluteModeOffsetForward += distance * 0.5f;
         m_AbsoluteModeOffsetForward = std::max(0.01f, m_AbsoluteModeOffsetForward);
+    }
+    else if ( (m_DragModeOverlayID != k_ulOverlayID_None) && (ConfigManager::GetValue(configid_bool_input_drag_fixed_distance)) ) //Add to fixed distance setting instead if enabled and managed overlay
+    {
+        float& fixed_distance = ConfigManager::GetRef(configid_float_input_drag_fixed_distance_m);
+        fixed_distance += distance * 0.5f;
+        fixed_distance = std::max(0.5f, fixed_distance);
+
+        //Sync adjusted distance value
+        #ifdef DPLUS_UI
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_input_drag_fixed_distance_m, fixed_distance);
+        #else
+            IPCManager::Get().PostConfigMessageToUIApp(configid_float_input_drag_fixed_distance_m, fixed_distance);
+        #endif
     }
     else
     {
@@ -259,20 +331,67 @@ float OverlayDragger::DragAddWidth(float width)
     if (!IsDragActive())
         return 0.0f;
 
-    width = clamp(width, -0.25f, 0.25f) + 1.0f; //Expected range is smaller than for DragAddDistance()
+    const float width_orig = width;
+    width = clamp(width, -0.25f, 0.25f) + 1.0f + m_DragModeSnappedExtraWidth; //Expected range is smaller than for DragAddDistance()
 
     float overlay_width = 1.0f;
+    float overlay_width_min = 0.05f;
+
+    if (m_DragModeOverlayID != k_ulOverlayID_None)
+    {
+        const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_DragModeOverlayID);
+
+        overlay_width = data.ConfigFloat[configid_float_overlay_width];
+    }
+    else
+    {
+        vr::VROverlay()->GetOverlayWidthInMeters(m_DragModeOverlayHandle, &overlay_width);
+
+        overlay_width_min = 0.50f; //Usually used with ImGui window UI overlays, so use higher minimum width
+    }
+
+    const float overlay_width_orig = overlay_width;
+    overlay_width *= width;
+
+    if (overlay_width < overlay_width_min)
+    {
+        overlay_width = overlay_width_min;
+    }
+
+    //Snap width if snapping is enabled and managed overlay
+    if ( (m_DragModeOverlayID != k_ulOverlayID_None) && (ConfigManager::GetValue(configid_bool_input_drag_snap_position)) )
+    {
+        const float& snap_size = ConfigManager::GetRef(configid_float_input_drag_snap_position_size);
+
+        //Use round up/down depending on scale direction
+        overlay_width  = (width > 1.0f) ? floorf(overlay_width / snap_size) : ceilf(overlay_width / snap_size);
+        overlay_width *= snap_size;
+
+        //If the snapped width had no effect, add some of it up for next time
+        if (fabs(overlay_width - overlay_width_orig) < snap_size)
+        {
+            //Reset the extra width if the sign doesn't match anymore (direction changed)
+            if (sgn(m_DragModeSnappedExtraWidth) != sgn(width_orig))
+            {
+                m_DragModeSnappedExtraWidth = 0.0f;
+            }
+
+            m_DragModeSnappedExtraWidth += clamp(width_orig, -0.05f, 0.05f);
+
+            //Also prevent being snapped to a value of the opposite direction as it looks like some weird flickering then
+            overlay_width = overlay_width_orig;
+        }
+        else
+        {
+            m_DragModeSnappedExtraWidth = 0.0f;
+        }
+    }
+
+    vr::VROverlay()->SetOverlayWidthInMeters(m_DragModeOverlayHandle, overlay_width);
 
     if (m_DragModeOverlayID != k_ulOverlayID_None)
     {
         OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_DragModeOverlayID);
-
-        overlay_width = data.ConfigFloat[configid_float_overlay_width] * width;
-
-        if (overlay_width < 0.05f)
-            overlay_width = 0.05f;
-
-        vr::VROverlay()->SetOverlayWidthInMeters(m_DragModeOverlayHandle, overlay_width);
         data.ConfigFloat[configid_float_overlay_width] = overlay_width;
 
         #ifndef DPLUS_UI
@@ -281,17 +400,6 @@ float OverlayDragger::DragAddWidth(float width)
             IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_width, overlay_width);
             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
         #endif
-    }
-    else
-    {
-        vr::VROverlay()->GetOverlayWidthInMeters(m_DragModeOverlayHandle, &overlay_width);
-
-        overlay_width *= width;
-
-        if (overlay_width < 0.50f) //Usually used with ImGui window UI overlays, so use higher minimum width
-            overlay_width = 0.50f;
-
-        vr::VROverlay()->SetOverlayWidthInMeters(m_DragModeOverlayHandle, overlay_width);
     }
 
     return overlay_width;
@@ -492,10 +600,11 @@ Matrix4 OverlayDragger::DragFinish()
     }
 
     //Reset state
-    m_DragModeDeviceID      = -1;
-    m_DragModeOverlayID     = k_ulOverlayID_None;
-    m_DragModeOverlayHandle = vr::k_ulOverlayHandleInvalid;
-    m_AbsoluteModeActive    = false;
+    m_DragModeDeviceID          = -1;
+    m_DragModeOverlayID         = k_ulOverlayID_None;
+    m_DragModeOverlayHandle     = vr::k_ulOverlayHandleInvalid;
+    m_DragModeSnappedExtraWidth = 0.0f;
+    m_AbsoluteModeActive        = false;
 
     return matrix_target_relative;
 }
@@ -503,10 +612,11 @@ Matrix4 OverlayDragger::DragFinish()
 void OverlayDragger::DragCancel()
 {
     //Reset state
-    m_DragModeDeviceID      = -1;
-    m_DragModeOverlayID     = k_ulOverlayID_None;
-    m_DragModeOverlayHandle = vr::k_ulOverlayHandleInvalid;
-    m_AbsoluteModeActive    = false;
+    m_DragModeDeviceID          = -1;
+    m_DragModeOverlayID         = k_ulOverlayID_None;
+    m_DragModeOverlayHandle     = vr::k_ulOverlayHandleInvalid;
+    m_DragModeSnappedExtraWidth = 0.0f;
+    m_AbsoluteModeActive        = false;
 }
 
 void OverlayDragger::DragGestureStartBase()
@@ -547,6 +657,39 @@ void OverlayDragger::TransformForceUpright(Matrix4& transform) const
     mat_upright.setTranslation(ovrl_start);
 
     transform = mat_upright;
+}
+
+void OverlayDragger::TransformForceDistance(Matrix4& transform, Vector3 reference_pos, float distance, bool use_cylinder_shape, bool auto_tilt) const
+{
+    //Match origin y-position to the overlay's to achieve cylindrical position (acts as sphere otherwise)
+    if (use_cylinder_shape)
+        reference_pos.y = transform.getTranslation().y;
+
+    Matrix4 matrix_lookat = transform;
+    float distance_to_reference = matrix_lookat.getTranslation().distance(reference_pos);
+
+    //Use up-vector multiplied by rotation matrix to avoid locking at near-up transforms
+    Vector3 up = matrix_lookat * Vector3(0.0f, 1.0f, 0.0f);
+    TransformLookAt(matrix_lookat, reference_pos, up);
+    matrix_lookat.translate_relative(0.0f, 0.0f, distance_to_reference - distance);
+
+    if (auto_tilt)
+    {
+        //Transfer scale from original transform before replacing it with the lookat one
+        Vector3 row_1(transform[0], transform[1], transform[2]);
+        float scale_x = row_1.length(); //Scaling is always uniform so we just check the x-axis
+
+        Vector3 pos = matrix_lookat.getTranslation();
+        matrix_lookat.setTranslation({0.0f, 0.0f, 0.0f});
+        matrix_lookat.scale(scale_x);
+        matrix_lookat.setTranslation(pos);
+
+        transform = matrix_lookat;
+    }
+    else
+    {
+        transform.setTranslation(matrix_lookat.getTranslation());
+    }
 }
 
 void OverlayDragger::DragGestureStart(unsigned int overlay_id)
@@ -731,6 +874,24 @@ void OverlayDragger::UpdateDashboardHMD_Y()
             mat_pose.translate_relative(0.0f, 0.0f, 0.10f);
 
             m_DashboardHMD_Y = mat_pose.getTranslation().y;
+        }
+    }
+}
+
+void OverlayDragger::UpdateTempStandingPosition()
+{
+    vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+    if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+    {
+        Matrix4 mat_pose = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+        Vector3 pos_hmd = mat_pose.getTranslation();
+
+        //Allow for slight tolerance in position changes from head movement for a more fixed reference point
+        if (pos_hmd.distance(m_TempStandingPosition) > 0.05f)
+        {
+            m_TempStandingPosition = pos_hmd;
         }
     }
 }

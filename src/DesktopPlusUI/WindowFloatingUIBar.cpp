@@ -182,6 +182,12 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
         is_dragmode_enabled = !is_dragmode_enabled;
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragselectmode_show_hidden, false);
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragmode, is_dragmode_enabled);
+
+        //Update temporary standing position if dragmode has been activated and dashboard tab isn't active
+        if ((is_dragmode_enabled) && (!UIManager::Get()->IsOverlayBarOverlayVisible()))
+        {
+            UIManager::Get()->GetOverlayDragger().UpdateTempStandingPosition();
+        }
     }
 
     if (dragmode_was_enabled)

@@ -301,6 +301,14 @@ Overlay& OverlayManager::GetOverlay(unsigned int id)
         return m_OverlayNull; //Return null overlay when out of range
 }
 
+const Overlay& OverlayManager::GetOverlay(unsigned int id) const
+{
+    if (id < m_Overlays.size())
+        return m_Overlays[id];
+    else
+        return m_OverlayNull; //Return null overlay when out of range
+}
+
 Overlay& OverlayManager::GetCurrentOverlay()
 {
     return GetOverlay(m_CurrentOverlayID);
@@ -791,6 +799,8 @@ void OverlayManager::SetOverlayNamesAutoForWindow(const WindowInfo& window_info)
     }
 }
 
+#endif //ifdef DPLUS_UI
+
 Matrix4 OverlayManager::GetOverlayMiddleTransform(unsigned int id, vr::VROverlayHandle_t ovrl_handle) const
 {
     //Get handle if none was given
@@ -832,5 +842,3 @@ Matrix4 OverlayManager::GetOverlayCenterBottomTransform(unsigned int id, vr::VRO
 
     return GetOverlayTransformBase(ovrl_handle, id, true);
 }
-
-#endif //ifdef DPLUS_UI

@@ -1398,6 +1398,16 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         break;
                     }
                     case configid_bool_state_overlay_dragmode:
+                    {
+                        //Update temporary standing position if dragmode has been activated and dashboard tab isn't active
+                        if ((msg.lParam) && (!m_OvrlDashboardActive))
+                        {
+                            m_OverlayDragger.UpdateTempStandingPosition();
+                        }
+
+                        ApplySettingInputMode();
+                        break;
+                    }
                     case configid_bool_state_overlay_selectmode:
                     {
                         ApplySettingInputMode();
@@ -3669,6 +3679,7 @@ bool OutputManager::HandleOpenVREvents()
                     }
 
                     m_BackgroundOverlay.Update();
+                    m_OverlayDragger.UpdateTempStandingPosition();
 
                     if (ConfigManager::GetValue(configid_bool_interface_dim_ui))
                     {
@@ -5887,9 +5898,6 @@ void OutputManager::DetachedTransformReset(unsigned int overlay_id_ref)
 void OutputManager::DetachedTransformAdjust(unsigned int packed_value)
 {
     Matrix4& transform = ConfigManager::Get().GetOverlayDetachedTransform();
-    float distance = 0.05f;
-    float angle = 1.0f;
-    Vector3 translation = transform.getTranslation();
 
     //Unpack
     IPCActionOverlayPosAdjustTarget target = (IPCActionOverlayPosAdjustTarget)(packed_value & 0xF);
@@ -5942,6 +5950,15 @@ void OutputManager::DetachedTransformAdjust(unsigned int packed_value)
         //Perform rotation locally
         mat_back = transform;
         transform.identity();
+    }
+
+    float distance = 0.05f;
+    float angle = 1.0f;
+
+    //Use snap size as distance if drag snapping is enabled
+    if (ConfigManager::GetValue(configid_bool_input_drag_snap_position))
+    {
+        distance = ConfigManager::GetValue(configid_float_input_drag_snap_position_size);
     }
 
     if (!increase)

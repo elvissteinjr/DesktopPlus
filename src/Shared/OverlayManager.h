@@ -37,6 +37,7 @@ class OverlayManager
         unsigned int AddUIOverlay();                                    //Adds UI overlay without using any base data
         #ifndef DPLUS_UI
             Overlay& GetOverlay(unsigned int id);                       //Returns m_OverlayNull on error
+            const Overlay& GetOverlay(unsigned int id) const;           //Returns m_OverlayNull on error
             Overlay& GetCurrentOverlay();
             Overlay& GetPrimaryDashboardOverlay();                      //Returns first visible overlay with dashboard origin, or m_OverlayNull if none exists
         #endif
