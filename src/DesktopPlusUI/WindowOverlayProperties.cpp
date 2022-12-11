@@ -1569,6 +1569,8 @@ void WindowOverlayProperties::UpdatePageMainCatInterface()
 void WindowOverlayProperties::UpdatePagePositionChange()
 {
     ImGuiStyle& style = ImGui::GetStyle();
+    ImGuiIO& io = ImGui::GetIO();
+    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
     float& column_width_0 = m_CachedSizes.PositionChange_Column0Width;
 
@@ -1731,7 +1733,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
         if ((active_capture_type == 0) && (ImGui::IsItemHovered()) && ImGui::IsMouseDown(ImGuiMouseButton_Left))
         {
             active_capture_type = 1;
-            active_capture_pos = ImGui::GetIO().MousePos;
+            active_capture_pos = io.MousePos;
         }
 
         if (is_active)
@@ -1788,7 +1790,7 @@ void WindowOverlayProperties::UpdatePagePositionChange()
         if ((active_capture_type == 0) && (ImGui::IsItemHovered()) && ImGui::IsMouseDown(ImGuiMouseButton_Left))
         {
             active_capture_type = 2;
-            active_capture_pos = ImGui::GetIO().MousePos;
+            active_capture_pos = io.MousePos;
         }
 
         if (is_active)
@@ -1861,58 +1863,59 @@ void WindowOverlayProperties::UpdatePagePositionChange()
     ImGui::Unindent();
 
     //--Additional Offset
-    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
-
-    ImGui::Spacing();
-    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffset));
-
-    ImGui::Columns(2, "ColumnOffset", false);
-    ImGui::SetColumnWidth(0, m_Column0Width);
-
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffsetUpDown));
-    ImGui::NextColumn();
-
-    float& up = ConfigManager::GetRef(configid_float_overlay_offset_up);
-
-    vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetUp") );
-    if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
+    if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
     {
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_up, up);
+        ImGui::Spacing();
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffset));
+
+        ImGui::Columns(2, "ColumnOffset", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffsetUpDown));
+        ImGui::NextColumn();
+
+        float& up = ConfigManager::GetRef(configid_float_overlay_offset_up);
+
+        vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetUp") );
+        if (ImGui::SliderWithButtonsFloat("OverlayOffsetUp", up, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_up, up);
+        }
+        vr_keyboard.VRKeyboardInputEnd();
+
+        ImGui::NextColumn();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffsetRightLeft));
+        ImGui::NextColumn();
+
+        float& right = ConfigManager::GetRef(configid_float_overlay_offset_right);
+
+        vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetRight") );
+        if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_right, right);
+        }
+        vr_keyboard.VRKeyboardInputEnd();
+
+        ImGui::NextColumn();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffsetForwardBackward));
+        ImGui::NextColumn();
+
+        float& forward = ConfigManager::GetRef(configid_float_overlay_offset_forward);
+
+        vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetForward") );
+        if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_forward, forward);
+        }
+        vr_keyboard.VRKeyboardInputEnd();
+
+        ImGui::Columns(1);
     }
-    vr_keyboard.VRKeyboardInputEnd();
-
-    ImGui::NextColumn();
-
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffsetRightLeft));
-    ImGui::NextColumn();
-
-    float& right = ConfigManager::GetRef(configid_float_overlay_offset_right);
-
-    vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetRight") );
-    if (ImGui::SliderWithButtonsFloat("OverlayOffsetRight", right, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
-    {
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_right, right);
-    }
-    vr_keyboard.VRKeyboardInputEnd();
-
-    ImGui::NextColumn();
-
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionChangeOffsetForwardBackward));
-    ImGui::NextColumn();
-
-    float& forward = ConfigManager::GetRef(configid_float_overlay_offset_forward);
-
-    vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayOffsetForward") );
-    if (ImGui::SliderWithButtonsFloat("OverlayOffsetForward", forward, 0.1f, 0.01f, -5.0f, 5.0f, "%.2f m", ImGuiSliderFlags_Logarithmic))
-    {
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_offset_forward, forward);
-    }
-    vr_keyboard.VRKeyboardInputEnd();
-
-    ImGui::Columns(1);
 
     //--Drag Settings
     ImGui::Spacing();
@@ -2101,23 +2104,23 @@ void WindowOverlayProperties::UpdatePagePositionChange()
                 }
 
                 //Wheel -> Forward/Backward or Change Width (when shift is down)
-                if (fabs(ImGui::GetIO().MouseWheel) > 0.0f)
+                if (fabs(io.MouseWheel) > 0.0f)
                 {
-                    if (ImGui::GetIO().KeyShift)
+                    if (io.KeyShift)
                     {
                         const float size_step = (snap_position) ? snap_position_size : 0.20f;
                         float& overlay_width = ConfigManager::GetRef(configid_float_overlay_width);
-                        overlay_width = std::max(0.05f, overlay_width + (ImGui::GetIO().MouseWheel * size_step) );
+                        overlay_width = std::max(0.05f, overlay_width + (io.MouseWheel * size_step) );
 
                         //Send adjusted width to dashboard app
                         IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_width, overlay_width);
                     }
                     else
                     {
-                        unsigned int packed_value = (ImGui::GetIO().MouseWheel < 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
+                        unsigned int packed_value = (io.MouseWheel < 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
                         packed_value |= ipcactv_ovrl_pos_adjust_forwback;
 
-                        int steps = (int)(fabs(ImGui::GetIO().MouseWheel) * delta_step);
+                        int steps = (int)(fabs(io.MouseWheel) * delta_step);
                         for (int i = 0; i < steps; ++i)
                         {
                             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
@@ -2154,12 +2157,12 @@ void WindowOverlayProperties::UpdatePagePositionChange()
                 }
 
                 //Wheel -> Rotate Z+-
-                if (fabs(ImGui::GetIO().MouseWheel) > 0.0f)
+                if (fabs(io.MouseWheel) > 0.0f)
                 {
-                    unsigned int packed_value = (ImGui::GetIO().MouseWheel > 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
+                    unsigned int packed_value = (io.MouseWheel > 0.0f) ? ipcactv_ovrl_pos_adjust_increase : 0;
                     packed_value |= ipcactv_ovrl_pos_adjust_rotz;
 
-                    int steps = (int)(fabs(ImGui::GetIO().MouseWheel) * delta_step);
+                    int steps = (int)(fabs(io.MouseWheel) * delta_step);
                     for (int i = 0; i < steps; ++i)
                     {
                         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_position_adjust, packed_value);
@@ -2168,8 +2171,6 @@ void WindowOverlayProperties::UpdatePagePositionChange()
             }
 
             //Reset mouse cursor if needed
-            ImGuiIO& io = ImGui::GetIO();
-
             if (fabs(mouse_delta.x) > delta_step)
             {
                 io.WantSetMousePos = true;
