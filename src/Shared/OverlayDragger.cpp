@@ -778,12 +778,6 @@ void OverlayDragger::DragGestureUpdate()
 
                 Matrix4 matrix_rotate_diff = matrix_rotate_current_at_origin * matrix_rotate_last_inverse;
 
-                //Do axis locking if managed overlay and setting enabled
-                if ( (m_DragModeOverlayID != k_ulOverlayID_None) && (ConfigManager::GetValue(configid_bool_input_drag_force_upright)) )
-                {
-                    TransformForceUpright(matrix_rotate_diff);
-                }
-
                 //Apply difference
                 Matrix4& mat_overlay = m_DragModeMatrixTargetStart;
                 Vector3 pos = mat_overlay.getTranslation();
