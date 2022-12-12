@@ -4062,8 +4062,7 @@ bool OutputManager::HandleOpenVREvents()
                         m_OverlayDragger.DragGestureUpdate();
                     }
                 }
-
-                if ((m_OverlayDragger.GetDragDeviceID() == -1) && (!m_OverlayDragger.IsDragGestureActive()) && (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_hmd_floor))
+                else if (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_hmd_floor)
                 {
                     DetachedTransformUpdateHMDFloor();
                 }
