@@ -1345,7 +1345,8 @@ vr::TrackedDeviceIndex_t ConfigManager::GetPrimaryLaserPointerDevice() const
     vr::TrackedDeviceIndex_t device_index = vr::VROverlay()->GetPrimaryDashboardDevice();
 
     //No dashboard device, try Desktop+ laser pointer device
-    if (device_index == vr::k_unTrackedDeviceIndexInvalid)
+    /*if (device_index == vr::k_unTrackedDeviceIndexInvalid)*/
+    if (!vr::VROverlay()->IsDashboardVisible())
         return (vr::TrackedDeviceIndex_t)m_ConfigInt[configid_int_state_dplus_laser_pointer_device];
 
     return device_index;
@@ -1358,7 +1359,8 @@ bool ConfigManager::IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayH
 
     bool ret = false;
 
-    if (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid)
+    /*if (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid)*/
+    if (vr::VROverlay()->IsDashboardVisible())
         ret = vr::VROverlay()->IsHoverTargetOverlay(ulOverlayHandle);
 
     if (!ret)
