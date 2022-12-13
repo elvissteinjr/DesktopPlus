@@ -114,6 +114,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
     ImVec2 b_size_default = b_size;
 
     static unsigned int hovered_overlay_id_last = k_ulOverlayID_None;
+    static unsigned int right_down_overlay_id = k_ulOverlayID_None;
     unsigned int hovered_overlay_id = k_ulOverlayID_None;
     const unsigned int u_overlay_count = OverlayManager::Get().GetOverlayCount();
 
@@ -121,10 +122,13 @@ void WindowOverlayBar::UpdateOverlayButtons()
     {
         ImGui::PushID(list_unique_ids[i]);
 
-        bool is_active = ( (m_OverlayButtonActiveMenuID == i) || (properties_active_overlay == i) );
+        bool is_active = ( (m_OverlayButtonActiveMenuID == i) || (properties_active_overlay == i) || (right_down_overlay_id == i) );
 
         if (is_active)
-            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button,        ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+        }
 
         //Get icon texture ID
         OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
@@ -149,12 +153,14 @@ void WindowOverlayBar::UpdateOverlayButtons()
         }
 
         if (is_active)
-            ImGui::PopStyleColor();
+        {
+            ImGui::PopStyleColor(2);
+        }
 
         //Additional button behavior
         bool button_active = ImGui::IsItemActive();
-        ImVec2 pos = ImGui::GetItemRectMin();
-        float width = ImGui::GetItemRectSize().x;
+        ImVec2 pos         = ImGui::GetItemRectMin();
+        float width        = ImGui::GetItemRectSize().x;
 
         //Reset transform when holding the button for 3 or more seconds
         bool show_hold_message = false;
@@ -171,6 +177,46 @@ void WindowOverlayBar::UpdateOverlayButtons()
             else if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] > 0.5f)
             {
                 show_hold_message = true;
+            }
+        }
+
+        if (ImGui::IsItemHovered())
+        {
+            //Quick toggle visibility via double-click
+            const int click_count = ImGui::GetMouseClickedCount(ImGuiMouseButton_Left);
+            if ((click_count > 1) && (click_count % 2 == 0))     //ImGui keeps counting up so fast double-clicks in a row don't get detected as such with ImGui::IsMouseDoubleClicked()
+            {
+                bool& is_enabled = data.ConfigBool[configid_bool_overlay_enabled];
+
+                is_enabled = !is_enabled;
+
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, i);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_enabled, is_enabled);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+            }
+
+            //Quick switch properties via right-click
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+            {
+                right_down_overlay_id = i;
+            }
+
+            if ((ImGui::IsMouseReleased(ImGuiMouseButton_Right)) && (right_down_overlay_id == i))
+            {
+                WindowOverlayProperties& properties_window = UIManager::Get()->GetOverlayPropertiesWindow();
+
+                //Hide window instead if it's already open for this overlay
+                if ((properties_window.IsVisible()) && (properties_window.GetActiveOverlayID() == i))
+                {
+                    properties_window.Hide();
+                }
+                else
+                {
+                    properties_window.SetActiveOverlayID(i);
+                    properties_window.Show();
+                }
+
+                HideMenus();
             }
         }
 
@@ -265,6 +311,11 @@ void WindowOverlayBar::UpdateOverlayButtons()
     if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
     {
         m_IsDraggingOverlayButtons = false;
+    }
+
+    if ( (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) || (hovered_overlay_id == k_ulOverlayID_None) )
+    {
+        right_down_overlay_id = k_ulOverlayID_None;
     }
 }
 

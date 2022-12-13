@@ -771,6 +771,10 @@ void InitImGui(HWND hwnd, bool desktop_mode)
     io.IniFilename = nullptr;                   //We don't need any imgui.ini support
     io.ConfigInputTrickleEventQueue = false;    //Opt out of input trickling since it doesn't play well with VR scrolling (and lowers responsiveness on certain inputs)
 
+    //Use system double-click time in desktop mode, but set it to something VR-trigger-friendly otherwise
+    io.MouseDoubleClickTime = (desktop_mode) ? ::GetDoubleClickTime() / 1000.0f : 0.50f;
+    io.MouseDoubleClickMaxDist = 16.0f;
+
     //Setup Platform/Renderer bindings
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice.Get(), g_pd3dDeviceContext.Get());
