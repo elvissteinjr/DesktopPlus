@@ -20,12 +20,6 @@ WindowSettings::WindowSettings() :
     m_PageAnimationOffset(0.0f),
     m_PageAppearing(wndsettings_page_none),
     m_PageReturned(wndsettings_page_none),
-    m_IsScrolling(false),
-    m_ScrollMainCurrent(0.0f),
-    m_ScrollMainMaxPos(0.0f),
-    m_ScrollProgress(0.0f),
-    m_ScrollStartPos(0.0f),
-    m_ScrollTargetPos(0.0f),
     m_Column0Width(0.0f),
     m_WarningHeight(0.0f),
     m_ProfileOverlaySelectIsSaving(false)
@@ -42,7 +36,6 @@ WindowSettings::WindowSettings() :
     m_Pos = {float(rect.GetTL().x + 2), float(rect.GetTL().y + 2)};
 
     m_PageStack.push_back(wndsettings_page_main);
-    std::fill(std::begin(m_ScrollMainCatPos), std::end(m_ScrollMainCatPos), -1.0f);
 
     FloatingWindow::ResetTransformAll();
 }
@@ -583,58 +576,6 @@ void WindowSettings::UpdateWarnings()
 
 void WindowSettings::UpdatePageMain()
 {
-    static int jumpto_item_id = 0;
-    const TRMGRStrID jumpto_strings[wndsettings_cat_MAX] = 
-    {
-        tstr_SettingsCatInterface, 
-        tstr_SettingsCatEnvironment,
-        tstr_SettingsCatProfiles,
-        tstr_SettingsCatActions,
-        tstr_SettingsCatKeyboard,
-        tstr_SettingsCatMouse,
-        tstr_SettingsCatLaserPointer,
-        tstr_SettingsCatWindowOverlays,
-        tstr_SettingsCatBrowser,
-        tstr_SettingsCatPerformance,
-        tstr_SettingsCatVersionInfo,
-        tstr_SettingsCatWarnings,
-        tstr_SettingsCatStartup,
-        tstr_SettingsCatTroubleshooting
-    };
-
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted( TranslationManager::GetString(tstr_SettingsJumpTo) );
-    ImGui::SameLine();
-
-    const float combo_width = ImGui::GetFontSize() * 15.0f;
-    ImGui::SetCursorPosX( ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - combo_width );
-    ImGui::PushItemWidth(combo_width);
-    if (ImGui::BeginComboAnimated("##JumpTo", TranslationManager::GetString(jumpto_strings[jumpto_item_id]) ))
-    {
-        int i = 0;
-        for (const auto& item : jumpto_strings)
-        {
-            if (m_ScrollMainCatPos[i] != -1.0f) //Don't list if not visible (never set scroll position)
-            {
-                if (ImGui::Selectable(TranslationManager::GetString(item), (jumpto_item_id == i)))
-                {
-                    //Scroll to item
-                    m_ScrollTargetPos = std::min(m_ScrollMainCatPos[i], m_ScrollMainMaxPos);
-                    m_IsScrolling = true;
-                    m_ScrollProgress = 0.0f;
-                    m_ScrollStartPos = m_ScrollMainCurrent;
-
-                    jumpto_item_id = i;
-                }
-            }
-            i++;
-        }
-
-        ImGui::EndCombo();
-    }
-
-    ImGui::Separator();
-
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
     ImGui::BeginChild("SettingsMainContent", ImVec2(0.00f, 0.00f), false, ImGuiWindowFlags_NavFlattened);
     ImGui::PopStyleColor();
@@ -649,24 +590,6 @@ void WindowSettings::UpdatePageMain()
     UpdatePageMainCatPerformance();
     UpdatePageMainCatMisc();
 
-    //Scrolling
-    m_ScrollMainCurrent = ImGui::GetScrollY();
-    m_ScrollMainMaxPos  = ImGui::GetScrollMaxY();
-
-    if (m_IsScrolling)
-    {
-        m_ScrollProgress += ImGui::GetIO().DeltaTime * 3.0f;
-
-        if (m_ScrollProgress >= 1.0f)
-        {
-            m_ScrollProgress = 1.0f;
-            m_IsScrolling = false;
-        }
-
-        float scroll = smoothstep(m_ScrollProgress, m_ScrollStartPos, m_ScrollTargetPos);
-        ImGui::SetScrollY(scroll);
-    }
-
     ImGui::EndChild();
 }
 
@@ -674,8 +597,6 @@ void WindowSettings::UpdatePageMainCatInterface()
 {
     //Interface
     {
-        m_ScrollMainCatPos[wndsettings_cat_interface] = ImGui::GetCursorPosY();
-
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatInterface)); 
         ImGui::Columns(2, "ColumnInterface", false);
         ImGui::SetColumnWidth(0, m_Column0Width);
@@ -794,7 +715,6 @@ void WindowSettings::UpdatePageMainCatInterface()
         }
 
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_environment] = ImGui::GetCursorPosY();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatEnvironment)); 
         ImGui::Columns(2, "ColumnEnvironment", false);
@@ -843,7 +763,6 @@ void WindowSettings::UpdatePageMainCatActions()
     //Actions (strings are not translatable here since this is just temp stuff)
     {
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_actions] = ImGui::GetCursorPosY();
 
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Actions");
 
@@ -863,7 +782,6 @@ void WindowSettings::UpdatePageMainCatProfiles()
     //Profiles
     {
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_profiles] = ImGui::GetCursorPosY();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatProfiles)); 
         ImGui::Columns(2, "ColumnInterface", false);
@@ -907,7 +825,6 @@ void WindowSettings::UpdatePageMainCatInput()
     //Keyboard
     {
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_keyboard] = ImGui::GetCursorPosY();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatKeyboard)); 
         ImGui::Columns(2, "ColumnKeyboard", false);
@@ -1010,7 +927,6 @@ void WindowSettings::UpdatePageMainCatInput()
     //Mouse
     {
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_mouse] = ImGui::GetCursorPosY();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatMouse)); 
 
@@ -1089,7 +1005,6 @@ void WindowSettings::UpdatePageMainCatInput()
     //Laser Pointer
     {
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_laser_pointer] = ImGui::GetCursorPosY();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatLaserPointer));
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
@@ -1134,7 +1049,6 @@ void WindowSettings::UpdatePageMainCatWindows()
     //Window Overlays
     {
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_window_overlays] = ImGui::GetCursorPosY();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatWindowOverlays)); 
 
@@ -1229,7 +1143,6 @@ void WindowSettings::UpdatePageMainCatBrowser()
         VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_browser] = ImGui::GetCursorPosY();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatBrowser));
 
@@ -1296,7 +1209,6 @@ void WindowSettings::UpdatePageMainCatPerformance()
     //Performance
     {
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_performance] = ImGui::GetCursorPosY();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatPerformance)); 
         ImGui::Columns(2, "ColumnPerformance", false);
@@ -1354,7 +1266,6 @@ void WindowSettings::UpdatePageMainCatMisc()
     //Version Info
     {
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_version_info] = ImGui::GetCursorPosY();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatVersionInfo)); 
         ImGui::Columns(2, "ColumnVersion", false);
@@ -1368,7 +1279,6 @@ void WindowSettings::UpdatePageMainCatMisc()
     //Warnings
     {
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_warnings] = ImGui::GetCursorPosY();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatWarnings)); 
         ImGui::Columns(2, "ColumnResetWarnings", false);
@@ -1419,7 +1329,6 @@ void WindowSettings::UpdatePageMainCatMisc()
     if ( (ConfigManager::Get().IsSteamInstall()) || (UIManager::Get()->IsOpenVRLoaded()) ) //Only show if Steam install or we can access OpenVR settings
     {
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_startup] = ImGui::GetCursorPosY();
 
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatStartup));
         ImGui::Indent();
@@ -1448,7 +1357,6 @@ void WindowSettings::UpdatePageMainCatMisc()
     //Troubleshooting
     {
         ImGui::Spacing();
-        m_ScrollMainCatPos[wndsettings_cat_troubleshooting] = ImGui::GetCursorPosY();
 
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatTroubleshooting));
         ImGui::Columns(2, "ColumnTroubleshooting", false);

@@ -15,25 +15,6 @@ enum WindowSettingsPage
     wndsettings_page_reset_confirm
 };
 
-enum WindowSettingsMainCategory
-{
-    wndsettings_cat_interface,
-    wndsettings_cat_environment,
-    wndsettings_cat_profiles,
-    wndsettings_cat_actions,
-    wndsettings_cat_keyboard,
-    wndsettings_cat_mouse,
-    wndsettings_cat_laser_pointer,
-    wndsettings_cat_window_overlays,
-    wndsettings_cat_browser,
-    wndsettings_cat_performance,
-    wndsettings_cat_version_info,
-    wndsettings_cat_warnings,
-    wndsettings_cat_startup,
-    wndsettings_cat_troubleshooting,
-    wndsettings_cat_MAX
-};
-
 class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeInterop
 {
     private:
@@ -47,14 +28,6 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         float m_PageAnimationProgress;
         float m_PageAnimationStartPos;
         float m_PageAnimationOffset;
-
-        bool m_IsScrolling;
-        float m_ScrollMainCatPos[wndsettings_cat_MAX];
-        float m_ScrollMainCurrent;
-        float m_ScrollMainMaxPos;
-        float m_ScrollProgress;
-        float m_ScrollStartPos;
-        float m_ScrollTargetPos;
 
         float m_Column0Width;
         float m_WarningHeight;
