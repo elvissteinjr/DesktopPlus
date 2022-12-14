@@ -18,7 +18,9 @@ void WindowDesktopMode::UpdateTitleBar()
     ImVec2 img_size, img_uv_min, img_uv_max;
 
     m_TitleBarRect = {0.0f, 0.0f, ImGui::GetWindowSize().x, img_size_line_height.y + (style.WindowPadding.y * 2.0f)};
-    ImGui::PushClipRect({m_TitleBarRect.x, m_TitleBarRect.y}, {m_TitleBarRect.z, m_TitleBarRect.w}, false);
+
+    const ImVec2 title_bar_rect_min(m_TitleBarRect.x, m_TitleBarRect.y), title_bar_rect_max(m_TitleBarRect.z, m_TitleBarRect.w);
+    ImGui::PushClipRect(title_bar_rect_min, title_bar_rect_max, false);
 
     //Background color
     ImGui::GetWindowDrawList()->AddRectFilled({0.0f, 0.0f}, {m_TitleBarRect.z, m_TitleBarRect.w}, ImGui::GetColorU32(ImGuiCol_TitleBg));
@@ -96,6 +98,13 @@ void WindowDesktopMode::UpdateTitleBar()
         ImGui::PopItemDisabled();
 
     back_button_size = ImGui::GetItemRectSize();
+
+    //Check if title bar is hovered (except the back button) and notify embedded page windows that need this info
+    if (m_PageStack[m_PageStackPos] == wnddesktopmode_page_properties)
+    {
+        const bool is_title_bar_hovered = ( (!ImGui::IsItemHovered()) && (ImGui::IsMouseHoveringRect(title_bar_rect_min, title_bar_rect_max)) );
+        UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeOnTitleBarHover(is_title_bar_hovered);
+    }
 
     ImGui::PopStyleColor();
     ImGui::PopClipRect();

@@ -20,6 +20,7 @@ class FloatingWindowDesktopModeInterop
     public:
         virtual const char* DesktopModeGetTitle() = 0;
         virtual bool DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) = 0;   //Returns false on no icon
+        virtual void DesktopModeOnTitleBarHover(bool is_hovered) {};
         virtual bool DesktopModeGoBack() = 0;                                                           //Returns false if already on main page
 };
 

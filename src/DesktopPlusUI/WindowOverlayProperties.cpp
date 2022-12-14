@@ -170,6 +170,11 @@ bool WindowOverlayProperties::DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2
     }
 }
 
+void WindowOverlayProperties::DesktopModeOnTitleBarHover(bool is_hovered)
+{
+    m_IsTitleBarHovered = is_hovered;
+}
+
 bool WindowOverlayProperties::DesktopModeGoBack()
 {
     if (m_PageStackPos != 0)
@@ -193,6 +198,19 @@ void WindowOverlayProperties::WindowUpdate()
     //Keep window blank if no overlay is set (like when fading out from removing an overlay)
     if (m_ActiveOverlayID == k_ulOverlayID_None)
         return;
+
+    //Highlight overlay if title bar is hovered
+    static bool has_highlighted_overlay = false;
+    if (m_IsTitleBarHovered)
+    {
+        UIManager::Get()->HighlightOverlay(m_ActiveOverlayID);
+        has_highlighted_overlay = true;
+    }                                   //Don't remove highlight during drag (hover state is false) or mouse released state (causes one frame flicker after drag)
+    else if ( (has_highlighted_overlay) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!ImGui::IsMouseReleased(ImGuiMouseButton_Left)) )
+    {
+        UIManager::Get()->HighlightOverlay(k_ulOverlayID_None);
+        has_highlighted_overlay = false;
+    }
 
     ImGuiStyle& style = ImGui::GetStyle();
 
@@ -972,8 +990,8 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
     if (duplication_id != -1)
     {
         static std::string clone_tip_text;
-        static unsigned int highlit_overlay_id_last = k_ulOverlayID_None;
-        unsigned int highlit_overlay_id = k_ulOverlayID_None;
+        static unsigned int highlighted_overlay_id_last = k_ulOverlayID_None;
+        unsigned int highlighted_overlay_id = k_ulOverlayID_None;
 
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsBrowserCloned));
@@ -984,7 +1002,7 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
         if (ImGui::IsItemHovered())
         {
             //Highlight clone source overlay to give the user a better idea which one is the source (names are usually the same and the ID is not a good indicator)
-            highlit_overlay_id = (unsigned int)duplication_id;
+            highlighted_overlay_id = (unsigned int)duplication_id;
 
             //If newly hovered, generate tooltip text
             if (clone_tip_text.empty())
@@ -1001,10 +1019,10 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
             clone_tip_text = "";
         }
 
-        if (highlit_overlay_id_last != highlit_overlay_id)
+        if (highlighted_overlay_id_last != highlighted_overlay_id)
         {
-            UIManager::Get()->HighlightOverlay(highlit_overlay_id);
-            highlit_overlay_id_last = highlit_overlay_id;
+            UIManager::Get()->HighlightOverlay(highlighted_overlay_id);
+            highlighted_overlay_id_last = highlighted_overlay_id;
         }
 
         ImGui::NextColumn();

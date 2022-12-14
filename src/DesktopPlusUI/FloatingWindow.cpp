@@ -20,6 +20,7 @@ FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
                                    m_DragOrigin(ovrl_origin_dplus_tab),
                                    m_TitleBarMinWidth(64.0f),
                                    m_TitleBarTitleMaxWidth(-1.0f),
+                                   m_IsTitleBarHovered(false),
                                    m_HasAppearedOnce(false),
                                    m_IsWindowAppearing(false)
 {
@@ -83,7 +84,7 @@ void FloatingWindow::WindowUpdateBase()
 
     ImGui::Begin(m_WindowID.c_str(), nullptr, flags);
 
-    bool title_hover = ImGui::IsItemHovered(); //Current item is the title bar (needs to be checked before BeginTitleBar())
+    m_IsTitleBarHovered = ImGui::IsItemHovered(); //Current item is the title bar (needs to be checked before BeginTitleBar())
     m_IsWindowAppearing = ImGui::IsWindowAppearing();
 
     //Title bar
@@ -155,7 +156,7 @@ void FloatingWindow::WindowUpdateBase()
 
     ImGui::EndGroup();
 
-    title_hover = ( (title_hover) && (!ImGui::IsItemHovered()) ); //Title was hovered and no title bar element is hovered
+    m_IsTitleBarHovered = ( (m_IsTitleBarHovered) && (!ImGui::IsItemHovered()) ); //Title was hovered and no title bar element is hovered
     b_width = ImGui::GetItemRectSize().x;
 
     ImGui::PopStyleColor();
@@ -179,7 +180,7 @@ void FloatingWindow::WindowUpdateBase()
     }
 
     //Title bar dragging
-    if ( (m_OverlayStateCurrent->IsVisible) && (title_hover) && (UIManager::Get()->IsOpenVRLoaded()) )
+    if ( (m_OverlayStateCurrent->IsVisible) && (m_IsTitleBarHovered) && (UIManager::Get()->IsOpenVRLoaded()) )
     {
         if ( (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {

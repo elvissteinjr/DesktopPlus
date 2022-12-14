@@ -89,6 +89,7 @@ class WindowOverlayProperties : public FloatingWindow
         void UpdateDesktopMode();
         virtual const char* DesktopModeGetTitle();
         virtual bool DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max);
+        virtual void DesktopModeOnTitleBarHover(bool is_hovered);
         virtual bool DesktopModeGoBack();
 
         void MarkBrowserURLChanged();
