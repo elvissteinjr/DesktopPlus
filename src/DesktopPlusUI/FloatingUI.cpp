@@ -242,7 +242,8 @@ void FloatingUI::UpdateUITargetState()
 
         matrix.translate_relative(0.0f, -floating_ui_height_m / 3.0f, 0.0f);
 
-        if ( (is_newly_visible) || (!UIManager::Get()->IsDummyOverlayTransformUnstable()) )
+        //Don't update position if dummy transform is unstable unless it's target is not primary dashboard overlay or we're newly appearing
+        if ( (is_newly_visible) || (!UIManager::Get()->IsDummyOverlayTransformUnstable()) || (ovrl_id_hover_target != ovrl_id_primary_dashboard) )
         {
             vr::HmdMatrix34_t hmd_matrix = matrix.toOpenVR34();
             vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_floating_ui, vr::TrackingUniverseStanding, &hmd_matrix);
