@@ -1761,6 +1761,9 @@ void WindowOverlayProperties::UpdatePagePositionChange()
 
     if (UIManager::Get()->IsInDesktopMode())
     {
+        if (io.NavVisible)
+            ImGui::PushItemDisabled();
+
         bool is_active = (active_capture_type == 1);
 
         if (is_active)
@@ -1777,6 +1780,9 @@ void WindowOverlayProperties::UpdatePagePositionChange()
 
         if (is_active)
             ImGui::PopStyleColor();
+
+        if (io.NavVisible)
+            ImGui::PopItemDisabled();
     }
     else
     {
@@ -1816,6 +1822,9 @@ void WindowOverlayProperties::UpdatePagePositionChange()
 
     if (UIManager::Get()->IsInDesktopMode())
     {
+        if (io.NavVisible)
+            ImGui::PushItemDisabled();
+
         ImGui::PushID("##Rot");
 
         bool is_active = (active_capture_type == 2);
@@ -1836,6 +1845,9 @@ void WindowOverlayProperties::UpdatePagePositionChange()
             ImGui::PopStyleColor();
     
         ImGui::PopID();
+
+        if (io.NavVisible)
+            ImGui::PopItemDisabled();
     }
     else
     {
