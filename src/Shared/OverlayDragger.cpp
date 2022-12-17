@@ -135,10 +135,11 @@ void OverlayDragger::DragStart(unsigned int overlay_id)
 
     const OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
 
-    m_DragModeDeviceID      = -1;
-    m_DragModeOverlayID     = overlay_id;
-    m_DragModeOverlayOrigin = (OverlayOrigin)data.ConfigInt[configid_int_overlay_origin];
-    m_DragModeOverlayHandle = data.ConfigHandle[configid_handle_overlay_state_overlay_handle];
+    m_DragModeDeviceID            = -1;
+    m_DragModeOverlayID           = overlay_id;
+    m_DragModeOverlayOrigin       = (OverlayOrigin)data.ConfigInt[configid_int_overlay_origin];
+    m_DragModeOverlayOriginConfig = OverlayManager::Get().GetOriginConfigFromData(data);
+    m_DragModeOverlayHandle       = data.ConfigHandle[configid_handle_overlay_state_overlay_handle];
 
     DragStartBase(false);
 }
@@ -148,10 +149,11 @@ void OverlayDragger::DragStart(vr::VROverlayHandle_t overlay_handle, OverlayOrig
     if ( (IsDragActive()) || (IsDragGestureActive()) )
         return;
 
-    m_DragModeDeviceID      = -1;
-    m_DragModeOverlayID     = k_ulOverlayID_None;
-    m_DragModeOverlayHandle = overlay_handle;
-    m_DragModeOverlayOrigin = overlay_origin;
+    m_DragModeDeviceID            = -1;
+    m_DragModeOverlayID           = k_ulOverlayID_None;
+    m_DragModeOverlayHandle       = overlay_handle;
+    m_DragModeOverlayOrigin       = overlay_origin;
+    m_DragModeOverlayOriginConfig = OverlayOriginConfig();
 
     DragStartBase(false);
 }
@@ -407,10 +409,17 @@ float OverlayDragger::DragAddWidth(float width)
 
 Matrix4 OverlayDragger::GetBaseOffsetMatrix()
 {
-    return GetBaseOffsetMatrix((OverlayOrigin)ConfigManager::GetValue(configid_int_overlay_origin));
+    const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+    return GetBaseOffsetMatrix((OverlayOrigin)data.ConfigInt[configid_int_overlay_origin], OverlayManager::Get().GetOriginConfigFromData(data));
 }
 
 Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin)
+{
+    return GetBaseOffsetMatrix(overlay_origin, OverlayOriginConfig());
+}
+
+Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const OverlayOriginConfig& origin_config)
 {
     Matrix4 matrix; //Identity
 
@@ -431,6 +440,13 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin)
             {
                 Matrix4 mat_pose = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
                 Vector3 pos_offset = mat_pose.getTranslation();
+
+                //Force HMD pose upright to have it act as turning-only base position
+                if (origin_config.HMDFloorUseTurning)
+                {
+                    matrix = mat_pose;
+                    TransformForceUpright(matrix);
+                }
 
                 pos_offset.y = 0.0f;
                 matrix.setTranslation(pos_offset);
@@ -562,7 +578,7 @@ Matrix4 OverlayDragger::DragFinish()
     vr::VROverlay()->GetOverlayTransformAbsolute(m_DragModeOverlayHandle, &origin, &transform_target);
     Matrix4 matrix_target_finish = transform_target;
 
-    Matrix4 matrix_target_base = GetBaseOffsetMatrix(m_DragModeOverlayOrigin);
+    Matrix4 matrix_target_base = GetBaseOffsetMatrix(m_DragModeOverlayOrigin, m_DragModeOverlayOriginConfig);
     matrix_target_base.invert();
 
     Matrix4 matrix_target_relative = matrix_target_base * matrix_target_finish;
@@ -796,7 +812,7 @@ void OverlayDragger::DragGestureUpdate()
 
 Matrix4 OverlayDragger::DragGestureFinish()
 {
-    Matrix4 matrix_target_base = GetBaseOffsetMatrix(m_DragModeOverlayOrigin);
+    Matrix4 matrix_target_base = GetBaseOffsetMatrix(m_DragModeOverlayOrigin, m_DragModeOverlayOriginConfig);
     matrix_target_base.invert();
 
     Matrix4 matrix_target_relative = matrix_target_base * m_DragModeMatrixTargetStart;

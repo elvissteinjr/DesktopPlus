@@ -34,6 +34,7 @@ class WindowOverlayProperties : public FloatingWindow
         OverlayConfigData m_ConfigDataTemp;          //Stores config data used for restoring when a page is canceled
         bool m_IsConfigDataModified;                 //Set to true on page enter and cleared when a page is saving data
 
+        float m_OriginHMDFloorSettingsAnimationProgress;
         std::string m_CropButtonLabel;
         std::string m_WinRTSourceButtonLabel;
         char m_BufferOverlayName[1024];

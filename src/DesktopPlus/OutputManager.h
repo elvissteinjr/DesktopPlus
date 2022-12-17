@@ -126,6 +126,8 @@ class OutputManager
         void DetachedTransformReset(unsigned int overlay_id_ref = k_ulOverlayID_None);
         void DetachedTransformAdjust(unsigned int packed_value);
         void DetachedTransformConvertOrigin(unsigned int overlay_id, OverlayOrigin origin_from, OverlayOrigin origin_to);
+        void DetachedTransformConvertOrigin(unsigned int overlay_id, OverlayOrigin origin_from, OverlayOrigin origin_to, 
+                                            const OverlayOriginConfig& origin_config_from, const OverlayOriginConfig& origin_config_to);
         void DetachedTransformUpdateHMDFloor();
         void DetachedTransformUpdateSeatedPosition();
 

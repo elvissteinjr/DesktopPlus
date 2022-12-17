@@ -54,6 +54,11 @@ namespace ImGui
     //ColorPicker simplified for embedded widget use instead having of popups + translation support
     bool ColorPicker4Simple(const char* str_id, float col[4], float ref_col[4], const char* label_color_current = nullptr, const char* label_color_original = nullptr);
 
+    //Collapsing area which animates the content sliding downwards. Always call content widget functions (for content height calculations)
+    //Uses external animation progress variable to allow overriding when needed
+    void BeginCollapsingArea(const char* str_id, bool show_content, float& persist_animation_progress);
+    void EndCollapsingArea();
+
     //ImGuiItemFlags_Disabled is not exposed public API yet and has no styling, so here's something that does the job
     //BeginDisabled()/EndDisabled() exists now, but behaves slightly differently and styling may change, so let's keep this for the time being
     void PushItemDisabled();

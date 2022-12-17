@@ -27,6 +27,7 @@ enum ConfigID_Bool
     configid_bool_overlay_browser_allow_transparency,
     configid_bool_overlay_3D_enabled,
     configid_bool_overlay_3D_swapped,
+    configid_bool_overlay_origin_hmd_floor_use_turning,
     configid_bool_overlay_gazefade_enabled,
     configid_bool_overlay_input_enabled,
     configid_bool_overlay_input_dplus_lp_enabled,
@@ -275,6 +276,12 @@ enum OverlayOrigin
     ovrl_origin_aux,        //Tracker or whatever. No proper autodetection of additional devices yet, maybe in the future
     ovrl_origin_dplus_tab,  //Desktop+ dashboard dummy overlay, more reliable than dashboard origin. Not used by user overlays
     ovrl_origin_MAX
+};
+
+//Not stored in config but used to pass origin config values to functions dealing with overlay origins
+struct OverlayOriginConfig
+{
+    bool HMDFloorUseTurning = false;
 };
 
 enum MainbarDesktopListing

@@ -345,6 +345,14 @@ OverlayConfigData& OverlayManager::GetCurrentConfigData()
     return GetConfigData(m_CurrentOverlayID);
 }
 
+OverlayOriginConfig OverlayManager::GetOriginConfigFromData(const OverlayConfigData& data) const
+{
+    OverlayOriginConfig origin_config;
+    origin_config.HMDFloorUseTurning = data.ConfigBool[configid_bool_overlay_origin_hmd_floor_use_turning];
+
+    return origin_config;
+}
+
 unsigned int OverlayManager::GetCurrentOverlayID() const
 {
     return m_CurrentOverlayID;

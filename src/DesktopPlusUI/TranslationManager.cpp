@@ -194,6 +194,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsPositionOriginControllerL",
     "tstr_OvrlPropsPositionOriginControllerR",
     "tstr_OvrlPropsPositionOriginTracker1",
+    "tstr_OvrlPropsPositionOriginConfigHMDXYTurning",
     "tstr_OvrlPropsPositionDispMode",
     "tstr_OvrlPropsPositionDispModeAlways",
     "tstr_OvrlPropsPositionDispModeDashboard",

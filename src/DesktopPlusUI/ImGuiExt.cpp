@@ -785,6 +785,41 @@ namespace ImGui
         return value_changed;
     }
 
+    ImGuiID g_CollapsingArea_LastID = 0;
+    float g_CollapsingArea_WidgetBeginY = 0.0f;
+    void BeginCollapsingArea(const char* str_id, bool show_content, float& persist_animation_progress)
+    {
+        IM_ASSERT(g_CollapsingArea_LastID == 0 && "Called BeginCollapsingArea() before EndCollapsingArea() (nesting is not supported)");
+
+        //Animate when changing between show_content state
+        const float animation_step = ImGui::GetIO().DeltaTime * 3.0f;
+        persist_animation_progress = clamp(persist_animation_progress + ((show_content) ? animation_step : -animation_step), 0.0f, 1.0f);
+
+        //Set clipping
+        g_CollapsingArea_LastID = ImGui::GetID(str_id);     //Keep last ID in global to not require it in the EndCollapsingArea() call
+        const float content_height = ImGui::GetStateStorage()->GetFloat(g_CollapsingArea_LastID, 0.0f);
+        const float clip_height = smoothstep(persist_animation_progress, 0.0f, content_height);
+        ImVec2 clip_begin = ImGui::GetCursorScreenPos();
+        ImVec2 clip_end(clip_begin.x + ImGui::GetContentRegionAvail().x, clip_begin.y + clip_height);
+
+        ImGui::PushClipRect(clip_begin, clip_end, true);
+
+        //Pull cursor position further up to make widgets scroll down as they animate, keep start Y-pos in global to use in the next EndCollapsingArea() call
+        g_CollapsingArea_WidgetBeginY = (ImGui::GetCursorPosY() - content_height) + clip_height;
+        ImGui::SetCursorPosY(g_CollapsingArea_WidgetBeginY);
+    }
+
+    void EndCollapsingArea()
+    {
+        IM_ASSERT(g_CollapsingArea_LastID != 0 && "Called EndCollapsingArea() before BeginCollapsingArea()");
+
+        float& content_height = *ImGui::GetStateStorage()->GetFloatRef(g_CollapsingArea_LastID);
+        content_height = ImGui::GetCursorPosY() - g_CollapsingArea_WidgetBeginY;
+
+        ImGui::PopClipRect();
+        g_CollapsingArea_LastID = 0;
+    }
+
     void PushItemDisabled()
     {
         const ImGuiStyle& style = ImGui::GetStyle();

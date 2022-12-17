@@ -25,6 +25,7 @@ WindowOverlayProperties::WindowOverlayProperties() :
     m_ActiveOverlayID(k_ulOverlayID_None),
     m_Column0Width(0.0f),
     m_IsConfigDataModified(false),
+    m_OriginHMDFloorSettingsAnimationProgress(0.0f),
     m_BufferOverlayName{0},
     m_IsBrowserURLChanged(false)
 {
@@ -143,6 +144,8 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
         {
             m_WindowIconWin32IconCacheID = -1;
         }
+
+        m_OriginHMDFloorSettingsAnimationProgress = (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_hmd_floor) ? 1.0f : 0.0f;
     }
 
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_interface_overlay_current_id, (int)overlay_id);
@@ -462,6 +465,24 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
     ImGui::PopClipRect();
 
     ImGui::SetCursorScreenPos(backup_pos);
+    ImGui::NextColumn();
+
+    //Origin-specific settings
+    ImGui::NextColumn();
+
+    ImGui::BeginCollapsingArea("OriginHMDFloorSettings", (mode_origin == ovrl_origin_hmd_floor), m_OriginHMDFloorSettingsAnimationProgress);
+
+    bool& use_turning = ConfigManager::GetRef(configid_bool_overlay_origin_hmd_floor_use_turning);
+
+    ImGui::AlignTextToFramePadding();
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionOriginConfigHMDXYTurning), &use_turning))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_origin_hmd_floor_use_turning, use_turning);
+    }
+
+    ImGui::Spacing();
+    ImGui::EndCollapsingArea();
+
     ImGui::NextColumn();
 
     //Display Mode

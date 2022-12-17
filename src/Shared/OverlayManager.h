@@ -44,6 +44,7 @@ class OverlayManager
         OverlayConfigData& GetConfigData(unsigned int id);
         const OverlayConfigData& GetConfigData(unsigned int id) const;
         OverlayConfigData& GetCurrentConfigData();
+        OverlayOriginConfig GetOriginConfigFromData(const OverlayConfigData& data) const;
 
         unsigned int GetCurrentOverlayID() const;
         void SetCurrentOverlayID(unsigned int id);

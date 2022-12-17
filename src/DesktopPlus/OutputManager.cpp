@@ -1303,6 +1303,8 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
             if (msg.wParam < configid_bool_MAX)
             {
                 ConfigID_Bool bool_id = (ConfigID_Bool)msg.wParam;
+
+                bool previous_value = ConfigManager::GetValue(bool_id);
                 ConfigManager::SetValue(bool_id, msg.lParam);
 
                 switch (bool_id)
@@ -1316,6 +1318,19 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_bool_overlay_3D_swapped:
                     {
                         ApplySetting3DMode();
+                        break;
+                    }
+                    case configid_bool_overlay_origin_hmd_floor_use_turning:
+                    {
+                        const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+                        OverlayOriginConfig origin_config = OverlayManager::Get().GetOriginConfigFromData(data);
+                        OverlayOriginConfig origin_config_prev = origin_config;
+                        origin_config_prev.HMDFloorUseTurning = previous_value;
+
+                        OverlayOrigin origin = (OverlayOrigin)data.ConfigInt[configid_int_overlay_origin];
+
+                        DetachedTransformConvertOrigin(OverlayManager::Get().GetCurrentOverlayID(), origin, origin, origin_config_prev, origin_config);
+                        ApplySettingTransform();
                         break;
                     }
                     case configid_bool_overlay_enabled:
@@ -5701,7 +5716,9 @@ void OutputManager::DetachedTransformReset(unsigned int overlay_id_ref)
     const Overlay& overlay_ref = OverlayManager::Get().GetOverlay(overlay_id_ref);
     vr::VROverlayHandle_t ovrl_handle_ref = overlay_ref.GetHandle(); //Results in vr::k_ulOverlayHandleInvalid for k_ulOverlayID_None
 
-    if ( (ovrl_handle_ref == vr::k_ulOverlayHandleInvalid) && (overlay_origin < ovrl_origin_left_hand) )
+    const bool dont_use_reference = (overlay_origin >= ovrl_origin_hmd) || ( (overlay_origin == ovrl_origin_hmd_floor) && (ConfigManager::GetValue(configid_bool_overlay_origin_hmd_floor_use_turning)) );
+
+    if ( (ovrl_handle_ref == vr::k_ulOverlayHandleInvalid) && (!dont_use_reference) )
     {
         const Overlay& overlay_dashboard = OverlayManager::Get().GetPrimaryDashboardOverlay();
 
@@ -5805,6 +5822,13 @@ void OutputManager::DetachedTransformReset(unsigned int overlay_id_ref)
             case ovrl_origin_room:
             case ovrl_origin_hmd_floor:
             {
+                //Put it in front of the user's face instead when turning is enabled
+                if ( (overlay_origin == ovrl_origin_hmd_floor) && (ConfigManager::GetValue(configid_bool_overlay_origin_hmd_floor_use_turning)) )
+                {
+                    transform.translate_relative(0.0f, 1.0f, -2.5f);
+                    break;
+                }
+
                 vr::HmdMatrix34_t overlay_transform = {0};
                 vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, vr::TrackingUniverseStanding, {0.5f, 0.5f}, &overlay_transform);
 
@@ -5994,10 +6018,21 @@ void OutputManager::DetachedTransformConvertOrigin(unsigned int overlay_id, Over
     if (origin_from == origin_to)
         return;
 
-    Matrix4& transform = OverlayManager::Get().GetConfigData(overlay_id).ConfigTransform;
-    Matrix4 mat_origin_from = m_OverlayDragger.GetBaseOffsetMatrix(origin_from);
+    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+    const OverlayOriginConfig origin_config = OverlayManager::Get().GetOriginConfigFromData(data);
+    DetachedTransformConvertOrigin(overlay_id, origin_from, origin_to, origin_config, origin_config);
+}
 
-    Matrix4 mat_origin_to_inverse = m_OverlayDragger.GetBaseOffsetMatrix(origin_to);
+void OutputManager::DetachedTransformConvertOrigin(unsigned int overlay_id, OverlayOrigin origin_from, OverlayOrigin origin_to, 
+                                                   const OverlayOriginConfig& origin_config_from, const OverlayOriginConfig& origin_config_to)
+{
+    OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+    Matrix4& transform = data.ConfigTransform;
+
+    OverlayOriginConfig origin_config = OverlayManager::Get().GetOriginConfigFromData(data);
+    Matrix4 mat_origin_from = m_OverlayDragger.GetBaseOffsetMatrix(origin_from, origin_config_from);
+
+    Matrix4 mat_origin_to_inverse = m_OverlayDragger.GetBaseOffsetMatrix(origin_to, origin_config_to);
     mat_origin_to_inverse.invert();
 
     //Apply origin-from matrix to get absolute transform

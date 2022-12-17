@@ -11,6 +11,7 @@ class OverlayDragger
         unsigned int m_DragModeOverlayID;
         vr::VROverlayHandle_t m_DragModeOverlayHandle;
         OverlayOrigin m_DragModeOverlayOrigin;
+        OverlayOriginConfig m_DragModeOverlayOriginConfig;
 
         Matrix4 m_DragModeMatrixTargetStart;
         Matrix4 m_DragModeMatrixSourceStart;
@@ -40,11 +41,12 @@ class OverlayDragger
         OverlayDragger();
 
         Matrix4 GetBaseOffsetMatrix();
-        Matrix4 GetBaseOffsetMatrix(OverlayOrigin overlay_origin);
+        Matrix4 GetBaseOffsetMatrix(OverlayOrigin overlay_origin);  //Not recommended to use with origins that have config values
+        Matrix4 GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const OverlayOriginConfig& origin_config);
         void ApplyDashboardScale(Matrix4& matrix);
 
         void DragStart(unsigned int overlay_id);
-        void DragStart(vr::VROverlayHandle_t overlay_handle, OverlayOrigin overlay_origin = ovrl_origin_room);
+        void DragStart(vr::VROverlayHandle_t overlay_handle, OverlayOrigin overlay_origin = ovrl_origin_room); //Not recommended to use with origins that have config values
         void DragUpdate();
         void DragAddDistance(float distance);
         float DragAddWidth(float width);                            //Returns new width
