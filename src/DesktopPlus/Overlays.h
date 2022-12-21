@@ -5,7 +5,6 @@
 #include "OUtoSBSConverter.h"
 
 //About the Overlay class:
-//Overlay 0 (k_ulOverlayID_Dashboard) is the dashboard overlay. It always exists and is safe to access/returned when trying to access an invalid overlay id.
 //OutputManager's m_OvrlHandleDesktopTexture holds the actual texture handle for every other desktop duplication overlay created by SteamVR
 //This is *not* documented functionality in SteamVR, but it is the one with the best results.
 //Additional overlays are also almost free except for the compositor rendering them.
