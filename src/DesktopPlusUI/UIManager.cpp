@@ -838,6 +838,10 @@ WindowSettingsActionEdit& UIManager::GetSettingsActionEditWindow()
 void UIManager::SetWindowHandle(HWND handle)
 {
     m_WindowHandle = handle;
+
+    //WindowManager will be initialized before our window is ready, but won't be ready to receive window updates before our window is fully created, so we add it manually here
+    if (m_DesktopMode)
+        WindowManager::Get().WindowListAdd(handle);
 }
 
 HWND UIManager::GetWindowHandle() const
