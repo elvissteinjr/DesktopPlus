@@ -1646,7 +1646,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 ConfigID_Handle handle_id = (ConfigID_Handle)(msg.wParam - configid_bool_MAX - configid_int_MAX - configid_float_MAX);
 
                 uint64_t value = pun_cast<uint64_t, LPARAM>(msg.lParam);
-                intptr_t previous_value = ConfigManager::GetValue(handle_id);
+                uint64_t previous_value = ConfigManager::GetValue(handle_id);
                 ConfigManager::SetValue(handle_id, value);
 
                 switch (handle_id)
