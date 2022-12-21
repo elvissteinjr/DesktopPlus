@@ -20,6 +20,7 @@ FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
                                    m_DragOrigin(ovrl_origin_dplus_tab),
                                    m_TitleBarMinWidth(64.0f),
                                    m_TitleBarTitleMaxWidth(-1.0f),
+                                   m_TitleBarTitleIconAlpha(1.0f),
                                    m_IsTitleBarHovered(false),
                                    m_HasAppearedOnce(false),
                                    m_IsWindowAppearing(false)
@@ -103,6 +104,8 @@ void FloatingWindow::WindowUpdateBase()
         TextureManager::Get().GetWindowIconTextureInfo(m_WindowIconWin32IconCacheID, img_size, img_uv_min, img_uv_max);
     }
 
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_TitleBarTitleIconAlpha);
+
     ImGui::Image(io.Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
     ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
@@ -113,6 +116,8 @@ void FloatingWindow::WindowUpdateBase()
     ImGui::PushClipRect(ImGui::GetCursorScreenPos(), clip_end, true);
     ImGui::TextUnformatted( (m_WindowTitleStrID == tstr_NONE) ? m_WindowTitle.c_str() : TranslationManager::GetString(m_WindowTitleStrID) );
     ImGui::PopClipRect();
+
+    ImGui::PopStyleVar();
 
     float title_text_width = ImGui::GetItemRectSize().x;
 

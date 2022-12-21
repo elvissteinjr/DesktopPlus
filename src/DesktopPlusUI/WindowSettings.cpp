@@ -74,14 +74,6 @@ void WindowSettings::UpdateDesktopMode()
     WindowUpdate();
 }
 
-const char* WindowSettings::DesktopModeGetTitle()
-{
-    if (m_PageStack[0] == wndsettings_page_profiles)
-        return TranslationManager::GetString(tstr_SettingsProfilesOverlays);
-    else
-        return TranslationManager::GetString(m_WindowTitleStrID);
-}
-
 void WindowSettings::UpdateDesktopModeWarnings()
 {
     UpdateWarnings();
@@ -93,7 +85,15 @@ void WindowSettings::DesktopModeSetRootPage(WindowSettingsPage root_page)
     m_PageAppearing = root_page;
 }
 
-bool WindowSettings::DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max)
+const char* WindowSettings::DesktopModeGetTitle() const
+{
+    if (m_PageStack[0] == wndsettings_page_profiles)
+        return TranslationManager::GetString(tstr_SettingsProfilesOverlays);
+    else
+        return TranslationManager::GetString(m_WindowTitleStrID);
+}
+
+bool WindowSettings::DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const
 {
     return TextureManager::Get().GetTextureInfo(m_WindowIcon, size, uv_min, uv_max);
 }

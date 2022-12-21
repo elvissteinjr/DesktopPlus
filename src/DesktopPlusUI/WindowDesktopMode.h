@@ -19,10 +19,11 @@ enum WindowDesktopModePage
 class FloatingWindowDesktopModeInterop
 {
     public:
-        virtual const char* DesktopModeGetTitle() = 0;
-        virtual bool DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) = 0;   //Returns false on no icon
+        virtual const char* DesktopModeGetTitle() const = 0;
+        virtual bool DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const = 0;   //Returns false on no icon
+        virtual float DesktopModeGetTitleIconAlpha() const       { return 1.0f; }
         virtual void DesktopModeOnTitleBarHover(bool is_hovered) {};
-        virtual bool DesktopModeGoBack() = 0;                                                           //Returns false if already on main page
+        virtual bool DesktopModeGoBack() = 0;                                                                 //Returns false if already on main page
 };
 
 class WindowDesktopMode

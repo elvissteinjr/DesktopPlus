@@ -86,8 +86,8 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         void UpdateDesktopMode();
         void UpdateDesktopModeWarnings();
         void DesktopModeSetRootPage(WindowSettingsPage root_page);
-        virtual const char* DesktopModeGetTitle();
-        virtual bool DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max);
+        virtual const char* DesktopModeGetTitle() const;
+        virtual bool DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const;
         virtual bool DesktopModeGoBack();
 
         void ClearCachedTranslationStrings();

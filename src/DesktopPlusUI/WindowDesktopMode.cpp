@@ -33,21 +33,43 @@ void WindowDesktopMode::UpdateTitleBar()
     const float back_button_x = m_TitleBarRect.z - back_button_size.x - style.FramePadding.x;
 
     const char* title_str = nullptr;
+    float title_icon_alpha = 1.0f;
 
     switch (m_PageStack[m_PageStackPos])
     {
-        case wnddesktopmode_page_main:               title_str = "Desktop+";
-                                                     TextureManager::Get().GetTextureInfo(tmtex_icon_small_app_icon, img_size, img_uv_min, img_uv_max);              break;
-        case wnddesktopmode_page_settings:           /*fallthrough*/
-        case wnddesktopmode_page_profiles:           title_str = UIManager::Get()->GetSettingsWindow().DesktopModeGetTitle();
-                                                     UIManager::Get()->GetSettingsWindow().DesktopModeGetIconTextureInfo(img_size, img_uv_min, img_uv_max);          break;
-        case wnddesktopmode_page_properties:         title_str = UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGetTitle();
-                                                     UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGetIconTextureInfo(img_size, img_uv_min, img_uv_max); break;
-        case wnddesktopmode_page_add_window_overlay: title_str = TranslationManager::GetString(tstr_DesktopModePageAddWindowOverlayTitle);
-                                                     TextureManager::Get().GetTextureInfo(tmtex_icon_add, img_size, img_uv_min, img_uv_max);                         break;
+        case wnddesktopmode_page_main:
+        {
+            title_str = "Desktop+";
+            TextureManager::Get().GetTextureInfo(tmtex_icon_small_app_icon, img_size, img_uv_min, img_uv_max);
+            break;
+        }
+        case wnddesktopmode_page_settings:
+        case wnddesktopmode_page_profiles:
+        {
+            const WindowSettings& window_settings = UIManager::Get()->GetSettingsWindow();
+            title_str = window_settings.DesktopModeGetTitle();
+            window_settings.DesktopModeGetIconTextureInfo(img_size, img_uv_min, img_uv_max);
+            break;
+        }
+        case wnddesktopmode_page_properties:
+        {
+            const WindowOverlayProperties& window_properties = UIManager::Get()->GetOverlayPropertiesWindow();
+            title_str        = window_properties.DesktopModeGetTitle();
+            title_icon_alpha = window_properties.DesktopModeGetTitleIconAlpha();
+            window_properties.DesktopModeGetIconTextureInfo(img_size, img_uv_min, img_uv_max);
+            break;
+        }
+        case wnddesktopmode_page_add_window_overlay: 
+        {
+            title_str = TranslationManager::GetString(tstr_DesktopModePageAddWindowOverlayTitle);
+            TextureManager::Get().GetTextureInfo(tmtex_icon_add, img_size, img_uv_min, img_uv_max);
+            break;
+        }
     }
 
     ImGui::SetCursorPos(style.WindowPadding);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, title_icon_alpha);
 
     ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
     ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
@@ -61,6 +83,8 @@ void WindowDesktopMode::UpdateTitleBar()
     ImGui::PushClipRect(ImGui::GetCursorScreenPos(), clip_end, true);
     ImGui::TextUnformatted(title_str);
     ImGui::PopClipRect();
+
+    ImGui::PopStyleVar();
 
     float title_text_width = ImGui::GetItemRectSize().x;
 

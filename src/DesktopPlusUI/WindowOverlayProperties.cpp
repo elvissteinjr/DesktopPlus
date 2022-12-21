@@ -156,12 +156,12 @@ void WindowOverlayProperties::UpdateDesktopMode()
     WindowUpdate();
 }
 
-const char* WindowOverlayProperties::DesktopModeGetTitle()
+const char* WindowOverlayProperties::DesktopModeGetTitle() const
 {
     return m_WindowTitle.c_str();
 }
 
-bool WindowOverlayProperties::DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max)
+bool WindowOverlayProperties::DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const
 {
     if (m_WindowIconWin32IconCacheID == -1)
     {
@@ -171,6 +171,11 @@ bool WindowOverlayProperties::DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2
     {
         return TextureManager::Get().GetWindowIconTextureInfo(m_WindowIconWin32IconCacheID, size, uv_min, uv_max);
     }
+}
+
+float WindowOverlayProperties::DesktopModeGetTitleIconAlpha() const
+{
+    return m_TitleBarTitleIconAlpha;
 }
 
 void WindowOverlayProperties::DesktopModeOnTitleBarHover(bool is_hovered)
@@ -214,6 +219,9 @@ void WindowOverlayProperties::WindowUpdate()
         UIManager::Get()->HighlightOverlay(k_ulOverlayID_None);
         has_highlighted_overlay = false;
     }
+
+    //Set title icon/text alpha based on overlay visibility
+    m_TitleBarTitleIconAlpha = (ConfigManager::GetValue(configid_bool_overlay_enabled)) ? 1.0f : 0.5f;
 
     ImGuiStyle& style = ImGui::GetStyle();
 

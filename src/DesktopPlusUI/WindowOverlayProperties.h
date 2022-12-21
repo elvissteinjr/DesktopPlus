@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FloatingWindow.h"
+#include "WindowDesktopMode.h"
 
 enum WindowOverlayPropertiesPage
 {
@@ -11,7 +12,7 @@ enum WindowOverlayPropertiesPage
     wndovrlprop_page_graphics_capture_source,
 };
 
-class WindowOverlayProperties : public FloatingWindow
+class WindowOverlayProperties : public FloatingWindow, public FloatingWindowDesktopModeInterop
 {
     private:
         std::vector<WindowOverlayPropertiesPage> m_PageStack;
@@ -88,8 +89,9 @@ class WindowOverlayProperties : public FloatingWindow
         void SetActiveOverlayID(unsigned int overlay_id, bool skip_fade = false);              //Call with same as active ID to refresh window title and icon
 
         void UpdateDesktopMode();
-        virtual const char* DesktopModeGetTitle();
-        virtual bool DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max);
+        virtual const char* DesktopModeGetTitle() const;
+        virtual bool DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const;
+        virtual float DesktopModeGetTitleIconAlpha() const;
         virtual void DesktopModeOnTitleBarHover(bool is_hovered);
         virtual bool DesktopModeGoBack();
 
