@@ -1081,9 +1081,21 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     DuplicateOverlay((unsigned int)msg.lParam);
                     break;
                 }
-                case ipcact_overlay_new_ui:
+                case ipcact_overlay_new:
                 {
-                    DuplicateOverlay(k_ulOverlayID_None, true);
+                    int desktop_id = msg.lParam;
+
+                    OverlayCaptureSource capsource;
+
+                    switch (desktop_id)
+                    {
+                        case -2: capsource = ovrl_capsource_winrt_capture;       break;
+                        case -3: capsource = ovrl_capsource_ui;                  break;
+                        case -4: capsource = ovrl_capsource_browser;             break;
+                        default: capsource = ovrl_capsource_desktop_duplication;
+                    }
+
+                    AddOverlay(capsource, desktop_id, (HWND)ConfigManager::GetValue(configid_handle_state_arg_hwnd));
                     break;
                 }
                 case ipcact_overlay_new_drag:
@@ -2244,6 +2256,29 @@ float OutputManager::GetOverlayHeight(unsigned int overlay_id) const
 
     return data.ConfigFloat[configid_float_overlay_width] * ((float)crop_height / crop_width);
 }
+
+Matrix4 OutputManager::GetFallbackOverlayTransform() const
+{
+    Matrix4 transform;
+
+    //Get HMD pose
+    vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+    if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+    {
+        //Set to HMD position and offset 2m away
+        Matrix4 mat_hmd(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
+        transform = mat_hmd;
+        transform.translate_relative(0.0f, 0.0f, -2.0f);
+
+        //Rotate towards HMD position
+        TransformLookAt(transform, mat_hmd.getTranslation());
+    }
+
+    return transform;
+}
+
 void OutputManager::SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle)
 {
     vr::EVROverlayError vr_error = vr::VROverlay()->SetOverlayFromFile(overlay_handle, (ConfigManager::Get().GetApplicationPath() + "images/output_error.png").c_str());    
@@ -4878,6 +4913,30 @@ void OutputManager::DuplicateOverlay(unsigned int base_id, bool is_ui_overlay)
     ResetCurrentOverlay();
 }
 
+unsigned int OutputManager::AddOverlay(OverlayCaptureSource capture_source, int desktop_id, HWND window_handle)
+{
+    unsigned int new_id = OverlayManager::Get().AddOverlay(capture_source, desktop_id, window_handle);
+
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    OverlayManager::Get().SetCurrentOverlayID(new_id);
+
+    if (capture_source == ovrl_capsource_desktop_duplication)
+    {
+        CropToDisplay(desktop_id, true);
+    }
+
+    //Adjust width to a more suited default (UI does the same so no need to send over)
+    ConfigManager::SetValue(configid_float_overlay_width, 1.0f);
+
+    //Reset transform to default next to the primary dashboard overlay in most cases
+    DetachedTransformReset();
+    ResetCurrentOverlay();
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
+    return new_id;
+}
+
 unsigned int OutputManager::AddOverlayDrag(float source_distance, OverlayCaptureSource capture_source, int desktop_id, HWND window_handle, float overlay_width)
 {
     unsigned int new_id = OverlayManager::Get().AddOverlay(capture_source, desktop_id, window_handle);
@@ -5787,24 +5846,10 @@ void OutputManager::DetachedTransformReset(unsigned int overlay_id_ref)
             vr::VROverlay()->SetOverlayAlpha(ovrl_handle_ref, ref_overlay_alpha_orig);
         }
 
-        //If the reference overlay appears to be below ground we assume it has an invalid origin (i.e. dashboard tab never opened for dashboard overlay) and try to provide a better default
+        //If the reference overlay appears to be below ground we assume it has an invalid origin (i.e. dashboard tab never opened for dashboard overlay) and use the fallback transform
         if (transform.getTranslation().y < 0.0f)
         {
-            //Get HMD pose
-            vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-            vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
-            vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
-
-            if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
-            {
-                //Set to HMD position and offset 2m away
-                Matrix4 mat_hmd(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
-                transform = mat_hmd;
-                transform.translate_relative(0.0f, 0.0f, -2.0f);
-
-                //Rotate towards HMD position
-                TransformLookAt(transform, mat_hmd.getTranslation());
-            }
+            transform = GetFallbackOverlayTransform();
         }
 
         //Adapt to base offset for non-room origins
@@ -5833,6 +5878,12 @@ void OutputManager::DetachedTransformReset(unsigned int overlay_id_ref)
                 vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, vr::TrackingUniverseStanding, {0.5f, 0.5f}, &overlay_transform);
 
                 transform = overlay_transform;
+
+                //Use fallback transform if dashboard dummy is still set to identity (never opened Desktop+ dashboard tab)
+                if (transform == Matrix4())
+                {
+                    transform = GetFallbackOverlayTransform();
+                }
 
                 //Adapt to base offset for non-room origin
                 if (overlay_origin != ovrl_origin_room)

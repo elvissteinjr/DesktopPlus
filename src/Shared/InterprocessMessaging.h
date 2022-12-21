@@ -42,7 +42,8 @@ enum IPCActionID
                                         //Profile name is stored in configid_str_state_profile_name_load beforehand. ipcactv_ovrl_profile_multi_add queues profile IDs until called with -1
     ipcact_crop_to_active_window,       //Sent by UI application to adjust crop values to the active window. No data in lParam
     ipcact_overlay_duplicate,           //Sent by UI application to duplicate an overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
-    ipcact_overlay_new_ui,              //Sent by UI application to add a new UI overlay, also making it the active one. No data in lParam
+    ipcact_overlay_new,                 //Sent by UI application to add a new overlay. lParam is desktop ID or -2 for HWND, -3 for UI overlay
+                                        //HWND is stored in configid_handle_state_arg_hwnd beforehand
     ipcact_overlay_new_drag,            //Sent by UI application to add a new overlay. lParam is desktop ID or -2 for HWND, -3 for UI overlay, + pointer distance * 100 (low/high word order, signed)
                                         //HWND is stored in configid_handle_state_arg_hwnd beforehand
     ipcact_overlay_remove,              //Sent by UI or dashboard application to remove a overlay. lParam is ID of overlay to remove (typically the active ID)

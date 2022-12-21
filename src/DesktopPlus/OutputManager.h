@@ -67,6 +67,7 @@ class OutputManager
         bool IsDashboardTabActive() const;
         float GetDashboardScale() const;
         float GetOverlayHeight(unsigned int overlay_id) const;
+        Matrix4 GetFallbackOverlayTransform() const;    //Returns a matrix resulting in the overlay facing the HMD at 2m distance, used when other referenced aren't available
 
         void SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle);
         void SetOutputInvalid(); //Handles state when there's no valid output
@@ -111,6 +112,7 @@ class OutputManager
         void CropToActiveWindow();
         void CropToDisplay(int display_id, bool do_not_apply_setting = false);
         void DuplicateOverlay(unsigned int base_id, bool is_ui_overlay = false);
+        unsigned int AddOverlay(OverlayCaptureSource capture_source, int desktop_id = -2, HWND window_handle = nullptr);
         unsigned int AddOverlayDrag(float source_distance, OverlayCaptureSource capture_source, int desktop_id = -2, HWND window_handle = nullptr, float overlay_width = 0.5f);
 
         void ApplySettingCaptureSource();

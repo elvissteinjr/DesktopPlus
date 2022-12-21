@@ -3,6 +3,9 @@
 #include "imgui.h"
 #include "UIManager.h"
 #include "InterprocessMessaging.h"
+#include "WindowManager.h"
+#include "DesktopPlusWinRT.h"
+#include "DPBrowserAPIClient.h"
 
 WindowDesktopMode::WindowDesktopMode()
 {
@@ -33,13 +36,15 @@ void WindowDesktopMode::UpdateTitleBar()
 
     switch (m_PageStack[m_PageStackPos])
     {
-        case wnddesktopmode_page_main:       title_str = "Desktop+";
-                                             TextureManager::Get().GetTextureInfo(tmtex_icon_small_app_icon, img_size, img_uv_min, img_uv_max);              break;
-        case wnddesktopmode_page_settings:   /*fallthrough*/
-        case wnddesktopmode_page_profiles:   title_str = UIManager::Get()->GetSettingsWindow().DesktopModeGetTitle();
-                                             UIManager::Get()->GetSettingsWindow().DesktopModeGetIconTextureInfo(img_size, img_uv_min, img_uv_max);          break;
-        case wnddesktopmode_page_properties: title_str = UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGetTitle();
-                                             UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGetIconTextureInfo(img_size, img_uv_min, img_uv_max); break;
+        case wnddesktopmode_page_main:               title_str = "Desktop+";
+                                                     TextureManager::Get().GetTextureInfo(tmtex_icon_small_app_icon, img_size, img_uv_min, img_uv_max);              break;
+        case wnddesktopmode_page_settings:           /*fallthrough*/
+        case wnddesktopmode_page_profiles:           title_str = UIManager::Get()->GetSettingsWindow().DesktopModeGetTitle();
+                                                     UIManager::Get()->GetSettingsWindow().DesktopModeGetIconTextureInfo(img_size, img_uv_min, img_uv_max);          break;
+        case wnddesktopmode_page_properties:         title_str = UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGetTitle();
+                                                     UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGetIconTextureInfo(img_size, img_uv_min, img_uv_max); break;
+        case wnddesktopmode_page_add_window_overlay: title_str = TranslationManager::GetString(tstr_DesktopModePageAddWindowOverlayTitle);
+                                                     TextureManager::Get().GetTextureInfo(tmtex_icon_add, img_size, img_uv_min, img_uv_max);                         break;
     }
 
     ImGui::SetCursorPos(style.WindowPadding);
@@ -198,6 +203,7 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
     static unsigned int hovered_overlay_id_last     = k_ulOverlayID_None;
     static unsigned int right_down_overlay_id       = k_ulOverlayID_None;
     static unsigned int keyboard_swapped_overlay_id = k_ulOverlayID_None;
+    static bool add_overlay_right_down = false;
     unsigned int hovered_overlay_id = k_ulOverlayID_None;
     bool has_swapped = false;
 
@@ -208,9 +214,9 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
     {
         ImGui::PushID(list_unique_ids[i]);
 
+        //Force active header color when a menu is active or right mouse button is held down
         const bool is_active = ( (m_OverlayListActiveMenuID == i) || (right_down_overlay_id == i) );
 
-        //Force active header color when a menu is active or right mouse button is held down
         if (is_active)
         {
             ImGui::PushStyleColor(ImGuiCol_Header,        ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
@@ -263,8 +269,6 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
 
             //Additional selectable behavior
             bool selectable_active = ImGui::IsItemActive();
-            ImVec2 pos = ImGui::GetItemRectMin();
-            float width = ImGui::GetItemRectSize().x;
 
             if ( (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) || ((io.NavVisible) && (ImGui::IsItemFocused())) )
             {
@@ -333,7 +337,7 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
 
             if (m_OverlayListActiveMenuID == i)
             {
-                MenuOverlayList(i, selectable_active);
+                MenuOverlayList(i);
 
                 //Check if menu modified overlay count and bail then
                 if (OverlayManager::Get().GetOverlayCount() != u_overlay_count)
@@ -367,6 +371,75 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
         ImGui::PopID();
     }
 
+    //Static Add Overlay entry
+    {
+        if (u_overlay_count != 0)
+        {
+            ImGui::Separator();
+        }
+
+        //Force active header color when a menu is active or right mouse button is held down
+        const bool is_active = ( (m_IsOverlayAddMenuVisible) || (add_overlay_right_down) );
+
+        if (is_active)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Header,        ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+        }
+
+        //Use empty label here. Icon and actual label are manually created further down
+        if (ImGui::Selectable("##AddOverlay", is_active))
+        {
+            if (!m_IsDraggingOverlaySelectables)
+            {
+                HideMenus();
+                m_IsOverlayAddMenuVisible = true;
+                ImGui::OpenPopup("AddOverlayMenu");
+            }
+        }
+
+        if (is_active)
+        {
+            ImGui::PopStyleColor();
+            ImGui::PopStyleColor();
+        }
+
+        if (ImGui::IsItemVisible())
+        {
+            //Also allow right-click/menu key as the result looks like a context menu
+            if ((ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) || ((io.NavVisible) && (ImGui::IsItemFocused())))
+            {
+                if ((ImGui::IsMouseReleased(ImGuiMouseButton_Right)) || (ImGui::IsKeyReleased(ImGuiKey_Menu)))
+                {
+                    if ((!m_IsOverlayAddMenuVisible) && (!m_IsDraggingOverlaySelectables))
+                    {
+                        HideMenus();
+                        m_IsOverlayAddMenuVisible = true;
+                        ImGui::OpenPopup("AddOverlayMenu");
+                    }
+                }
+                else if ((ImGui::IsMouseDown(ImGuiMouseButton_Right)) || (ImGui::IsKeyDown(ImGuiKey_Menu)))
+                {
+                    add_overlay_right_down = true;   //For correct right-click visual
+                }
+            }
+
+            //Custom render the selectable label with icon
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            TextureManager::Get().GetTextureInfo(tmtex_icon_add, img_size, img_uv_min, img_uv_max);
+            ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+            //Label
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_DesktopModeOverlayListAdd));
+        }
+
+        if (m_IsOverlayAddMenuVisible)
+        {
+            MenuAddOverlay();
+        }
+    }
+
     //Don't change overlay highlight while mouse down as it won't be correct while dragging and flicker just before it
     if ( (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) && ((hovered_overlay_id_last != k_ulOverlayID_None) || (hovered_overlay_id != k_ulOverlayID_None)) )
     {
@@ -382,13 +455,74 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
     if ( (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) || (ImGui::IsKeyReleased(ImGuiKey_Menu)) )
     {
         right_down_overlay_id = k_ulOverlayID_None;
+        add_overlay_right_down = false;
     }
 
     ImGui::EndChild();
     ImGui::Unindent();
 }
 
-void WindowDesktopMode::MenuOverlayList(unsigned int overlay_id, bool is_item_active)
+void WindowDesktopMode::UpdatePageAddWindowOverlay()
+{
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DesktopModePageAddWindowOverlayHeader));
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::BeginChild("WindowList", ImVec2(0.0f, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y), true);
+
+    ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
+    ImVec2 img_size, img_uv_min, img_uv_max;
+
+    //List windows
+    for (const auto& window_info : WindowManager::Get().WindowListGet())
+    {
+        ImGui::PushID(window_info.GetWindowHandle());
+        if (ImGui::Selectable(""))
+        {
+            //Add overlay
+            HWND window_handle = window_info.GetWindowHandle();
+            OverlayManager::Get().AddOverlay(ovrl_capsource_winrt_capture, -2, window_handle);
+
+            //Send to dashboard app
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_state_arg_hwnd, (LPARAM)window_handle);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, -2);
+
+            PageGoBack();
+        }
+
+        ImGui::SameLine(0.0f, 0.0f);
+
+        int icon_id = TextureManager::Get().GetWindowIconCacheID(window_info.GetIcon());
+
+        if (icon_id != -1)
+        {
+            TextureManager::Get().GetWindowIconTextureInfo(icon_id, img_size, img_uv_min, img_uv_max);
+            ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        }
+
+        ImGui::TextUnformatted(window_info.GetListTitle().c_str());
+
+        ImGui::PopID();
+    }
+
+    ImGui::EndChild();
+
+    ImGui::Unindent();
+
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight()));
+
+    //--Cancel button
+    //No separator since this is right after a boxed child window
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel)))
+    {
+        PageGoBack();
+    }
+}
+
+void WindowDesktopMode::MenuOverlayList(unsigned int overlay_id)
 {
     m_MenuAlpha += ImGui::GetIO().DeltaTime * 12.0f;
 
@@ -401,7 +535,7 @@ void WindowDesktopMode::MenuOverlayList(unsigned int overlay_id, bool is_item_ac
     if (ImGui::BeginPopup("OverlayListMenu", ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings |
                                              ImGuiWindowFlags_AlwaysAutoResize))
     {
-        if ( (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) && (ImGui::IsAnyMouseClicked()) && (!is_item_active) )
+        if ( (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) && (ImGui::IsAnyMouseClicked()) )
         {
             HideMenus();
         }
@@ -471,10 +605,101 @@ void WindowDesktopMode::MenuOverlayList(unsigned int overlay_id, bool is_item_ac
     }
 }
 
+void WindowDesktopMode::MenuAddOverlay()
+{
+    m_MenuAlpha += ImGui::GetIO().DeltaTime * 12.0f;
+
+    if (m_MenuAlpha > 1.0f)
+        m_MenuAlpha = 1.0f;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_MenuAlpha);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+
+    if (ImGui::BeginPopup("AddOverlayMenu", ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings |
+                                            ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        if ( (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) && (ImGui::IsAnyMouseClicked()) )
+        {
+            HideMenus();
+        }
+
+        int desktop_count = ConfigManager::GetValue(configid_int_state_interface_desktop_count);
+
+        int new_overlay_desktop_id = -255;
+
+        for (int i = 0; i < desktop_count; ++i)
+        {
+            ImGui::PushID(i);
+
+            if (ImGui::Selectable(TranslationManager::Get().GetDesktopIDString(i)))
+            {
+                new_overlay_desktop_id = i;
+            }
+
+            ImGui::PopID();
+        }
+
+        if ( (DPWinRT_IsCaptureSupported()) && (ImGui::Selectable(TranslationManager::GetString(tstr_OverlayBarOvrlAddWindow), false)) )
+        {
+            HideMenus();
+            PageGoForward(wnddesktopmode_page_add_window_overlay);
+        }
+
+        //Don't offer Performance Monitor in desktop mode as this kind of overlay won't be visible after creation since its window isn't rendered in desktop mode
+        /*if (ImGui::Selectable(TranslationManager::GetString(tstr_SourcePerformanceMonitor)))
+        {
+            new_overlay_desktop_id = -3;
+        }*/
+
+        if (DPBrowserAPIClient::Get().IsBrowserAvailable())
+        {
+            if (ImGui::Selectable(TranslationManager::GetString(tstr_SourceBrowser)))
+            {
+                new_overlay_desktop_id = -4;
+            }
+        }
+
+        //Create new overlay if desktop or UI/Browser selectables were triggered
+        if (new_overlay_desktop_id != -255)
+        {
+            //Choose capture source
+            OverlayCaptureSource capsource;
+
+            switch (new_overlay_desktop_id)
+            {
+                case -3: capsource = ovrl_capsource_ui;      break;
+                case -4: capsource = ovrl_capsource_browser; break;
+                default: capsource = ovrl_capsource_desktop_duplication;
+            }
+
+            //Add overlay and sent to dashboard app
+            unsigned int overlay_id_new = OverlayManager::Get().AddOverlay(capsource, new_overlay_desktop_id);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, new_overlay_desktop_id);
+
+            //Adjust width to a more suited default (done here as well so it's set even without dashboard app running)
+            OverlayManager::Get().GetConfigData(overlay_id_new).ConfigFloat[configid_float_overlay_width] = 1.0f;
+
+            HideMenus();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::PopStyleVar();
+    ImGui::PopStyleVar();
+
+    //Handle popup being closed from nav
+    if (!ImGui::IsPopupOpen("AddOverlayMenu"))
+    {
+        HideMenus();
+    }
+}
+
 void WindowDesktopMode::HideMenus()
 {
     m_MenuAlpha = 0.0f;
     m_OverlayListActiveMenuID = k_ulOverlayID_None;
+    m_IsOverlayAddMenuVisible = false;
     m_IsMenuRemoveConfirmationVisible = false;
 
     UIManager::Get()->RepeatFrame();
@@ -580,10 +805,11 @@ void WindowDesktopMode::Update()
 
             switch (page_id)
             {
-                case wnddesktopmode_page_main:       UpdatePageMain();                                                   break;
-                case wnddesktopmode_page_settings:   /*fallthrough*/
-                case wnddesktopmode_page_profiles:   UIManager::Get()->GetSettingsWindow().UpdateDesktopMode();          break;
-                case wnddesktopmode_page_properties: UIManager::Get()->GetOverlayPropertiesWindow().UpdateDesktopMode(); break;
+                case wnddesktopmode_page_main:               UpdatePageMain();                                                   break;
+                case wnddesktopmode_page_settings:           /*fallthrough*/
+                case wnddesktopmode_page_profiles:           UIManager::Get()->GetSettingsWindow().UpdateDesktopMode();          break;
+                case wnddesktopmode_page_properties:         UIManager::Get()->GetOverlayPropertiesWindow().UpdateDesktopMode(); break;
+                case wnddesktopmode_page_add_window_overlay: UpdatePageAddWindowOverlay();                                       break;
                 default: break;
             }
         }

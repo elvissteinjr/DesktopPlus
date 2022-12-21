@@ -11,7 +11,8 @@ enum WindowDesktopModePage
     wnddesktopmode_page_main,
     wnddesktopmode_page_settings,
     wnddesktopmode_page_profiles,
-    wnddesktopmode_page_properties
+    wnddesktopmode_page_properties,
+    wnddesktopmode_page_add_window_overlay
 };
 
 //Interop functions for windows that have their content hosted as a sub-page in desktop mode
@@ -42,14 +43,17 @@ class WindowDesktopMode
 
         unsigned int m_OverlayListActiveMenuID = k_ulOverlayID_None;
         float m_MenuAlpha                      = 0.0f;
+        bool m_IsOverlayAddMenuVisible         = false;
         bool m_IsMenuRemoveConfirmationVisible = false;
         bool m_IsDraggingOverlaySelectables    = false;
 
         void UpdateTitleBar();
         void UpdatePageMain();
         void UpdatePageMainOverlayList();
+        void UpdatePageAddWindowOverlay();
 
-        void MenuOverlayList(unsigned int overlay_id, bool is_item_active);
+        void MenuOverlayList(unsigned int overlay_id);
+        void MenuAddOverlay();
         void HideMenus();
 
         void PageGoForward(WindowDesktopModePage new_page);
