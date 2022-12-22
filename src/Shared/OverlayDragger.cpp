@@ -588,11 +588,19 @@ Matrix4 OverlayDragger::DragFinish()
     {
         OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_DragModeOverlayID);
 
-        vr::VROverlay()->SetOverlayFlag(m_DragModeOverlayHandle, vr::VROverlayFlags_SendVRSmoothScrollEvents, false);
-
+        //Restore scroll method
         if (data.ConfigBool[configid_bool_overlay_input_enabled])
         {
-            vr::VROverlay()->SetOverlayFlag(m_DragModeOverlayHandle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
+            //No need to do anything if smooth scroll is enabled
+            if (!ConfigManager::GetValue(configid_bool_input_mouse_scroll_smooth))
+            {
+                vr::VROverlay()->SetOverlayFlag(m_DragModeOverlayHandle, vr::VROverlayFlags_SendVRSmoothScrollEvents,   false);
+                vr::VROverlay()->SetOverlayFlag(m_DragModeOverlayHandle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
+            }
+        }
+        else
+        {
+            vr::VROverlay()->SetOverlayFlag(m_DragModeOverlayHandle, vr::VROverlayFlags_SendVRSmoothScrollEvents, false);
         }
 
         //Counteract additonal offset that might've been present on the transform
