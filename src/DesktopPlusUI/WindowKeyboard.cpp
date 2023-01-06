@@ -1323,6 +1323,21 @@ void WindowKeyboard::ResetButtonState()
 
 bool WindowKeyboard::HandleOverlayEvent(const vr::VREvent_t& vr_event)
 {
+    //Notify dashboard app for focus enter/leave in case there's a reason to react to it
+    switch (vr_event.eventType)
+    {
+        case vr::VREvent_FocusEnter:
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_keyboard_ovrl_focus_enter);
+            break;
+        }
+        case vr::VREvent_FocusLeave:
+        {
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_keyboard_ovrl_focus_leave);
+            break;
+        }
+    }
+
     if (ImGui::GetCurrentContext() == nullptr)
         return false;
 

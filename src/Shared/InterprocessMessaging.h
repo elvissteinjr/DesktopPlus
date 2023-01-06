@@ -67,6 +67,8 @@ enum IPCActionID
     ipcact_keyboard_show_auto,          //Sent by dashboard application to show the VR keyboard with auto-visibility. lParam is assigned overlay ID (-1 to hide)
     ipcact_keyboard_vkey,               //Sent by UI application in response of a VR keyboard press. lParam is IPCKeyboardKeystateFlags + Win32 key code (low/high word order)
     ipcact_keyboard_wchar,              //Sent by UI application in response of a VR keyboard press. lParam is 1 wchar + key down bool (low/high word order)
+    ipcact_keyboard_ovrl_focus_enter,   //Sent by UI application in response to a VREvent_FocusEnter on the keyboard overlay. No data in lParam
+    ipcact_keyboard_ovrl_focus_leave,   //Sent by UI application in response to a VREvent_FocusLeave on the keyboard overlay. No data in lParam
     ipcact_lpointer_trigger_haptics,    //Sent by UI application to trigger laser pointer haptics (short UI interaction burst). lParam is tracked device index
     ipcact_lpointer_ui_mask_rect,       //Sent by UI application to update the UI intersection mask for the dplus laser pointer. lParam is DPRect packed with DPRect::Pack16() or -1 to finish the mask
     ipcact_MAX

@@ -1288,6 +1288,53 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     WindowManager::Get().RaiseAndFocusWindow((HWND)msg.lParam, &m_InputSim);
                     break;
                 }
+                case ipcact_keyboard_ovrl_focus_enter:
+                {
+                    //If a WinRT window capture is the focused overlay, check for window auto-focus so it's possible to type things
+                    if (ConfigManager::GetValue(configid_bool_windows_winrt_auto_focus))
+                    {
+                        const bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
+
+                        if (!drag_or_select_mode_enabled)
+                        {
+                            int focused_overlay_id = ConfigManager::Get().GetValue(configid_int_state_overlay_focused_id);
+
+                            if (focused_overlay_id != -1)
+                            {
+                                const Overlay& overlay = OverlayManager::Get().GetOverlay((unsigned int)focused_overlay_id);
+                                const OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)focused_overlay_id);
+
+                                if ((overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0))
+                                {
+                                    WindowManager::Get().RaiseAndFocusWindow((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], &m_InputSim);
+                                }
+                            }
+                        }
+                    }
+
+                    break;
+                }
+                case ipcact_keyboard_ovrl_focus_leave:
+                {
+                    //If leaving the keyboard while a WinRT window capture is the focused overlay and the option is enabled, focus the active scene app
+                    if (ConfigManager::GetValue(configid_bool_windows_winrt_auto_focus_scene_app))
+                    {
+                        int focused_overlay_id = ConfigManager::Get().GetValue(configid_int_state_overlay_focused_id);
+
+                        if (focused_overlay_id != -1)
+                        {
+                            const Overlay& overlay = OverlayManager::Get().GetOverlay((unsigned int)focused_overlay_id);
+                            const OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)focused_overlay_id);
+
+                            if ((overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0))
+                            {
+                                WindowManager::Get().FocusActiveVRSceneApp(&m_InputSim);
+                            }
+                        }
+                    }
+
+                    break;
+                }
                 case ipcact_lpointer_trigger_haptics:
                 {
                     m_LaserPointer.TriggerLaserPointerHaptics((vr::TrackedDeviceIndex_t)msg.lParam);
@@ -3954,7 +4001,7 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     overlay_focus_count++;
 
-                    bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
+                    const bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
 
                     if (!drag_or_select_mode_enabled)
                     {
@@ -3984,7 +4031,7 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     overlay_focus_count--;
 
-                    bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
+                    const bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
 
                     if (!drag_or_select_mode_enabled)
                     {
@@ -5501,7 +5548,7 @@ void OutputManager::ApplySettingInputMode()
     //Apply/Restore mouse settings first
     ApplySettingMouseInput();
 
-    bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
+    const bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
     //Always applies to all overlays
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
