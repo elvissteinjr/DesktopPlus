@@ -114,8 +114,15 @@ void AuxUIWindow::SetUpTextureBounds()
 
 void AuxUIWindow::StartTransitionFade()
 {
-    m_Visible = false;
-    m_IsTransitionFading = true;
+    if (m_Alpha != 0.0f)
+    {
+        m_Visible = false;
+        m_IsTransitionFading = true;
+    }
+    else //Just skip transition if the window is already invisible
+    {
+        m_Visible = true;
+    }
 }
 
 void AuxUIWindow::ApplyPendingValues()
@@ -145,7 +152,7 @@ bool AuxUIWindow::IsVisible()
 
 
 //--WindowDragHint
-WindowDragHint::WindowDragHint() : AuxUIWindow(auxui_drag_hint), m_TargetHand(vr::TrackedControllerRole_Invalid), m_IsDockingHint(true), m_IsDockingHintPending(true)
+WindowDragHint::WindowDragHint() : AuxUIWindow(auxui_drag_hint), m_TargetDevice(vr::k_unTrackedDeviceIndexInvalid), m_HintType(hint_docking), m_HintTypePending(hint_docking)
 {
     //Leave 2 pixel padding around so interpolation doesn't cut off the pixel border
     const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_aux_ui);
@@ -157,7 +164,9 @@ void WindowDragHint::SetUpOverlay()
 {
     vr::VROverlayHandle_t overlay_handle = UIManager::Get()->GetOverlayHandleAuxUI();
 
-    vr::VROverlay()->SetOverlayWidthInMeters(overlay_handle, OVERLAY_WIDTH_METERS_AUXUI_DRAG_HINT);
+    const float overlay_width = OVERLAY_WIDTH_METERS_AUXUI_DRAG_HINT * (m_Size.x / 200.0f);   //Scale width based on window width for consistent sizing
+
+    vr::VROverlay()->SetOverlayWidthInMeters(overlay_handle, overlay_width);
     vr::VROverlay()->SetOverlaySortOrder(overlay_handle, 100);
     vr::VROverlay()->SetOverlayAlpha(overlay_handle, 0.0f);
     vr::VROverlay()->SetOverlayInputMethod(overlay_handle, vr::VROverlayInputMethod_None);
@@ -169,46 +178,58 @@ void WindowDragHint::SetUpOverlay()
 
 void WindowDragHint::UpdateOverlayPos()
 {
-    //Initial offset (somewhat centered inside controller model, for Index at least)
+    //Check for never tracked device and show for HMD instead then
+    const bool is_device_never_tracked = vr::VRSystem()->GetBoolTrackedDeviceProperty(m_TargetDevice, vr::Prop_NeverTracked_Bool);
+    vr::TrackedDeviceIndex_t device_index = (is_device_never_tracked) ? vr::k_unTrackedDeviceIndex_Hmd : m_TargetDevice;
+
     Matrix4 mat;
-    mat.translate_relative(0.0f, 0.0f, 0.10f);
-    Vector3 pos = mat.getTranslation();
 
-    //Get poses
-    vr::TrackedDeviceIndex_t controller_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(m_TargetHand);
-    vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
-
-    if ( (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid) && (controller_index < vr::k_unMaxTrackedDeviceCount)  && (poses[controller_index].bPoseIsValid) )
+    if (device_index == vr::k_unTrackedDeviceIndex_Hmd) //Show in front of HMD
     {
-        //Rotate towards HMD position
-        Matrix4 mat_hmd(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
-        Matrix4 mat_controller(poses[controller_index].mDeviceToAbsoluteTracking);
-        mat = mat_controller;
-
-        TransformLookAt(mat, mat_hmd.getTranslation());
-
-        //Apply rotation difference between controller used as origin and lookat angle
-        mat.setTranslation({0.0f, 0.0f, 0.0f});
-        mat_controller.setTranslation({0.0f, 0.0f, 0.0f});
-        mat_controller.invert();
-        mat = mat_controller * mat;
-
-        //Restore position
-        mat.setTranslation(pos);
+        mat.scale(2.0f);                            //Scale on the transform itself for simplicity
+        mat.translate_relative(0.0f, 0.0f, -0.5f);  //Means this is -1m though
     }
+    else //Show on controller
+    {
+        //Initial offset (somewhat centered inside controller model, for Index at least)
+        mat.translate_relative(0.0f, 0.0f, 0.10f);
+        Vector3 pos = mat.getTranslation();
 
-    //Additional offset (move away from controller to avoid clipping, again value fits mostly for Index)
-    mat.translate_relative(0.0f, 0.0f, 0.10f);
+        //Get poses
+        vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+
+        if ( (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid) && (device_index < vr::k_unMaxTrackedDeviceCount)  && (poses[device_index].bPoseIsValid) )
+        {
+            //Rotate towards HMD position
+            Matrix4 mat_hmd(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
+            Matrix4 mat_controller(poses[device_index].mDeviceToAbsoluteTracking);
+            mat = mat_controller;
+
+            TransformLookAt(mat, mat_hmd.getTranslation());
+
+            //Apply rotation difference between controller used as origin and lookat angle
+            mat.setTranslation({0.0f, 0.0f, 0.0f});
+            mat_controller.setTranslation({0.0f, 0.0f, 0.0f});
+            mat_controller.invert();
+            mat = mat_controller * mat;
+
+            //Restore position
+            mat.setTranslation(pos);
+        }
+
+        //Additional offset (move away from controller to avoid clipping, again value fits mostly for Index)
+        mat.translate_relative(0.0f, 0.0f, 0.10f);
+    }
 
     //Set transform
     vr::HmdMatrix34_t mat_ovr = mat.toOpenVR34();
-    vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(UIManager::Get()->GetOverlayHandleAuxUI(), controller_index, &mat_ovr);
+    vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(UIManager::Get()->GetOverlayHandleAuxUI(), device_index, &mat_ovr);
 }
 
 void WindowDragHint::ApplyPendingValues()
 {
-    m_IsDockingHint = m_IsDockingHintPending;
+    m_HintType = m_HintTypePending;
 }
 
 void WindowDragHint::Update()
@@ -226,10 +247,12 @@ void WindowDragHint::Update()
     ImGui::SetNextWindowPos(m_Pos, ImGuiCond_Always);
     ImGui::Begin("WindowDragHint", nullptr, flags);
 
-    if (m_IsDockingHint)
-        ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintDocking));
-    else
-        ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintUndocking));
+    switch (m_HintType)
+    {
+        case WindowDragHint::hint_docking:     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintDocking));    break;
+        case WindowDragHint::hint_undocking:   ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintUndocking));  break;
+        case WindowDragHint::hint_ovrl_locked: ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintOvrlLocked)); break;
+    }
 
     m_Size = ImGui::GetWindowSize();
     ImGui::End();
@@ -251,23 +274,16 @@ void WindowDragHint::Update()
     }
 }
 
-void WindowDragHint::SetHintType(vr::ETrackedControllerRole controller_role, bool is_docking)
+void WindowDragHint::SetHintType(vr::TrackedDeviceIndex_t device_index, WindowDragHint::HintType hint_type)
 {
-    if (vr::IsRoleAllowedAsHand(controller_role))
-    {
-        if ((m_TargetHand == controller_role) && (m_IsDockingHint == is_docking))
-        {
-            return;
-        }
+    if ((m_TargetDevice == device_index) && (m_HintType == hint_type))
+        return;
 
-        m_TargetHand = controller_role;
-        m_IsDockingHintPending = is_docking; //Actual value set after transition
+    m_TargetDevice    = device_index;
+    m_HintTypePending = hint_type;    //Actual value set after transition
 
-        if (m_Visible)
-        {
-            StartTransitionFade();
-        }
-    }
+    if (m_Visible)
+        StartTransitionFade();
 }
 
 

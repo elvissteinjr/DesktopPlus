@@ -33,6 +33,7 @@ enum TMNGRTexID
     tmtex_icon_small_app_icon,
     tmtex_icon_small_close,
     tmtex_icon_small_move,
+    tmtex_icon_small_move_locked,
     tmtex_icon_small_add_window,
     tmtex_icon_small_actionbar,
     tmtex_icon_small_browser_back,

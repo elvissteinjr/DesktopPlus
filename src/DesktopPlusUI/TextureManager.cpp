@@ -45,6 +45,7 @@ const wchar_t* TextureManager::s_TextureFilenames[tmtex_MAX] =
     L"images/icons_small/small_app_icon.png",
     L"images/icons_small/small_close.png",
     L"images/icons_small/small_move.png",
+    L"images/icons_small/small_move_locked.png",
     L"images/icons_small/small_add_window.png",
     L"images/icons_small/small_actionbar.png",
     L"images/icons_small/small_browser_back.png",

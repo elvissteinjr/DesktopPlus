@@ -47,10 +47,19 @@ class AuxUIWindow
 
 class WindowDragHint : public AuxUIWindow
 {
+    public:
+        enum HintType
+        {
+            hint_none,
+            hint_docking,
+            hint_undocking,
+            hint_ovrl_locked
+        };
+
     private:
-        vr::ETrackedControllerRole m_TargetHand;
-        bool m_IsDockingHint;
-        bool m_IsDockingHintPending;
+        vr::TrackedDeviceIndex_t m_TargetDevice;
+        WindowDragHint::HintType m_HintType;
+        WindowDragHint::HintType m_HintTypePending;
 
         void SetUpOverlay();
         void UpdateOverlayPos();
@@ -60,7 +69,7 @@ class WindowDragHint : public AuxUIWindow
         WindowDragHint();
 
         void Update();
-        void SetHintType(vr::ETrackedControllerRole controller_role, bool is_docking);
+        void SetHintType(vr::TrackedDeviceIndex_t device_index, WindowDragHint::HintType hint_type);
 };
 
 class WindowGazeFadeAutoHint : public AuxUIWindow

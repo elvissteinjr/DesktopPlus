@@ -203,6 +203,7 @@ enum TRMGRStrID
     tstr_OvrlPropsPositionPosTip,
     tstr_OvrlPropsPositionChange,
     tstr_OvrlPropsPositionReset,
+    tstr_OvrlPropsPositionLock,
     tstr_OvrlPropsPositionChangeHeader,
     tstr_OvrlPropsPositionChangeHelp,
     tstr_OvrlPropsPositionChangeHelpDesktop,
@@ -323,6 +324,8 @@ enum TRMGRStrID
     tstr_FloatingUIHideOverlayTip,
     tstr_FloatingUIDragModeEnableTip,
     tstr_FloatingUIDragModeDisableTip,
+    tstr_FloatingUIDragModeHoldLockTip,
+    tstr_FloatingUIDragModeHoldUnlockTip,
     tstr_FloatingUIWindowAddTip,
     tstr_FloatingUIActionBarShowTip,
     tstr_FloatingUIActionBarHideTip,
@@ -376,6 +379,7 @@ enum TRMGRStrID
     tstr_PerformanceMonitorEmpty,
     tstr_AuxUIDragHintDocking,
     tstr_AuxUIDragHintUndocking,
+    tstr_AuxUIDragHintOvrlLocked,
     tstr_AuxUIGazeFadeAutoHint,           //%SECONDS% == Countdown seconds
     tstr_AuxUIGazeFadeAutoHintSingular,   //^
     tstr_DesktopModeCatTools,

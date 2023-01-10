@@ -1175,7 +1175,15 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                             m_InputSim.MouseSetLeftDown(false);
                             WindowManager::Get().SetTargetWindow(nullptr);
 
-                            m_OverlayDragger.DragStart(overlay_id);
+                            if (!ConfigManager::GetValue(configid_bool_overlay_transform_locked))
+                            {
+                                m_OverlayDragger.DragStart(overlay_id);
+                            }
+                            else
+                            {
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                            }
                         }
 
                         OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
@@ -4316,7 +4324,15 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                     //Start overlay drag if setting enabled
                     if (ConfigManager::GetValue(configid_int_windows_winrt_dragging_mode) == window_dragging_overlay)
                     {
-                        m_OverlayDragger.DragStart(OverlayManager::Get().GetCurrentOverlayID());
+                        if (!data.ConfigBool[configid_bool_overlay_transform_locked])
+                        {
+                            m_OverlayDragger.DragStart(OverlayManager::Get().GetCurrentOverlayID());
+                        }
+                        else
+                        {
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                        }
                     }
 
                     break; //We're not moving the cursor this time, get out
@@ -4407,14 +4423,30 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 {
                     if (m_OverlayDragger.GetDragDeviceID() == -1)
                     {
-                        m_OverlayDragger.DragStart(OverlayManager::Get().GetCurrentOverlayID());
+                        if (!data.ConfigBool[configid_bool_overlay_transform_locked])
+                        {
+                            m_OverlayDragger.DragStart(OverlayManager::Get().GetCurrentOverlayID());
+                        }
+                        else
+                        {
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                        }
                     }
                 }
                 else if (vr_event.data.mouse.button == vr::VRMouseButton_Right)
                 {
                     if (!m_OverlayDragger.IsDragGestureActive())
                     {
-                        m_OverlayDragger.DragGestureStart(OverlayManager::Get().GetCurrentOverlayID());
+                        if (!data.ConfigBool[configid_bool_overlay_transform_locked])
+                        {
+                            m_OverlayDragger.DragGestureStart(OverlayManager::Get().GetCurrentOverlayID());
+                        }
+                        else
+                        {
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                        }
                     }
                 }
                 break;
@@ -4580,6 +4612,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             {
                 m_MouseLeftDownOverlayID = k_ulOverlayID_None;
             }
+
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 0);
 
             break;
         }

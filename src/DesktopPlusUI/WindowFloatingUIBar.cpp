@@ -171,29 +171,61 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     //Drag-Mode Toggle Button (this is a global state)
     bool& is_dragmode_enabled = ConfigManager::GetRef(configid_bool_state_overlay_dragmode);
     bool dragmode_was_enabled = is_dragmode_enabled;
+    bool& is_overlay_transform_locked = overlay_data.ConfigBool[configid_bool_overlay_transform_locked];
 
     if (dragmode_was_enabled)
         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
     ImGui::PushID(tmtex_icon_small_move);
-    TextureManager::Get().GetTextureInfo(tmtex_icon_small_move, b_size, b_uv_min, b_uv_max);
+    TextureManager::Get().GetTextureInfo((is_overlay_transform_locked) ? tmtex_icon_small_move_locked : tmtex_icon_small_move, b_size, b_uv_min, b_uv_max);
     if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
     {
-        is_dragmode_enabled = !is_dragmode_enabled;
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragselectmode_show_hidden, false);
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragmode, is_dragmode_enabled);
-
-        //Update temporary standing position if dragmode has been activated and dashboard tab isn't active
-        if ((is_dragmode_enabled) && (!UIManager::Get()->IsOverlayBarOverlayVisible()))
+        if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 1.5f) //Don't do normal button behavior after lock toggle was triggered
         {
-            UIManager::Get()->GetOverlayDragger().UpdateTempStandingPosition();
+            is_dragmode_enabled = !is_dragmode_enabled;
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragselectmode_show_hidden, false);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragmode, is_dragmode_enabled);
+
+            //Update temporary standing position if dragmode has been activated and dashboard tab isn't active
+            if ((is_dragmode_enabled) && (!UIManager::Get()->IsOverlayBarOverlayVisible()))
+            {
+                UIManager::Get()->GetOverlayDragger().UpdateTempStandingPosition();
+            }
+        }
+    }
+
+    //Toggle transform lock when holding for 3 seconds
+    bool show_hold_message = false;
+
+    if (ImGui::IsItemActive())
+    {
+        if (io.MouseDownDuration[ImGuiMouseButton_Left] > 1.5f)
+        {
+            is_overlay_transform_locked = !is_overlay_transform_locked;
+
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_transform_locked, is_overlay_transform_locked);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+
+            io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so actual button won't get toggled
+        }
+        else if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] > 0.5f)
+        {
+            show_hold_message = true;
         }
     }
 
     if (dragmode_was_enabled)
         ImGui::PopStyleColor();
 
-    DisplayTooltipIfHovered(TranslationManager::GetString( (dragmode_was_enabled) ? tstr_FloatingUIDragModeDisableTip : tstr_FloatingUIDragModeEnableTip ));
+    if (show_hold_message)
+    {
+        DisplayTooltipIfHovered(TranslationManager::GetString((is_overlay_transform_locked) ? tstr_FloatingUIDragModeHoldUnlockTip: tstr_FloatingUIDragModeHoldLockTip));
+    }
+    else
+    {
+        DisplayTooltipIfHovered(TranslationManager::GetString((dragmode_was_enabled) ? tstr_FloatingUIDragModeDisableTip : tstr_FloatingUIDragModeEnableTip));
+    }
 
     ImGui::PopID();
     //

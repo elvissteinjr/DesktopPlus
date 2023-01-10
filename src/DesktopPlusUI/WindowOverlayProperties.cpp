@@ -539,6 +539,14 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
     if (!UIManager::Get()->IsOpenVRLoaded())
         ImGui::PopItemDisabled();
 
+    ImGui::SameLine();
+
+    bool& transform_locked = ConfigManager::GetRef(configid_bool_overlay_transform_locked);
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionLock), &transform_locked))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_transform_locked, transform_locked);
+    }
+
     ImGui::Columns(1);
 }
 
@@ -1613,7 +1621,7 @@ void WindowOverlayProperties::UpdatePageMainCatInterface()
     ImGui::Columns(1);
 }
 
-void WindowOverlayProperties::UpdatePagePositionChange()
+void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_settings)
 {
     ImGuiStyle& style = ImGui::GetStyle();
     ImGuiIO& io = ImGui::GetIO();
@@ -1623,6 +1631,22 @@ void WindowOverlayProperties::UpdatePagePositionChange()
 
     static int active_capture_type = 0; //0 = off, 1 = Move, 2 = Rotate
     static ImVec2 active_capture_pos;
+
+    static bool is_overlay_transform_temp_unlocked = false;
+
+    if (only_restore_settings)
+    {
+        //Undo temporary transform unlocking
+        if (is_overlay_transform_temp_unlocked)
+        {
+            ConfigManager::SetValue(configid_bool_overlay_transform_locked, true);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_transform_locked, true);
+
+            is_overlay_transform_temp_unlocked = false;
+        }
+
+        return;
+    }
 
     if ((m_PageAppearing == wndovrlprop_page_position_change) || (m_CachedSizes.PositionChange_Column0Width == 0.0f))
     {
@@ -1665,6 +1689,16 @@ void WindowOverlayProperties::UpdatePagePositionChange()
             is_changing_position = true;
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragselectmode_show_hidden, is_changing_position);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragmode, is_changing_position);
+        }
+
+        //Temporarily unlock overlay transform if it's locked
+        bool& is_overlay_transform_locked = ConfigManager::GetRef(configid_bool_overlay_transform_locked);
+        if (is_overlay_transform_locked)
+        {
+            is_overlay_transform_locked = false;
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_transform_locked, false);
+
+            is_overlay_transform_temp_unlocked = true;
         }
     }
 
@@ -2814,6 +2848,8 @@ void WindowOverlayProperties::OnPageLeaving(WindowOverlayPropertiesPage previous
             ConfigManager::SetValue(configid_bool_state_overlay_dragmode, false);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragselectmode_show_hidden, false);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_overlay_dragmode,                   false);
+
+            UpdatePagePositionChange(true); //Call to reset settings
             break;
         }
         case wndovrlprop_page_crop_change:

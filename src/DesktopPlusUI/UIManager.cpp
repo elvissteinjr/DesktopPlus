@@ -642,10 +642,28 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                         else
                         {
                             //Even config values above 0 are right hand, odd ones are left hand
-                            vr::ETrackedControllerRole role = (msg.lParam % 2 == 0) ? vr::TrackedControllerRole_RightHand : vr::TrackedControllerRole_LeftHand;
+                            const vr::ETrackedControllerRole role = (msg.lParam % 2 == 0) ? vr::TrackedControllerRole_RightHand : vr::TrackedControllerRole_LeftHand;
+                            const bool is_docking = (msg.lParam <= 2);
 
-                            m_AuxUI.GetDragHintWindow().SetHintType(role, (msg.lParam <= 2));
+                            m_AuxUI.GetDragHintWindow().SetHintType(vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(role), (is_docking) ? WindowDragHint::hint_docking : WindowDragHint::hint_undocking);
                             m_AuxUI.GetDragHintWindow().Show();
+                        }
+
+                        break;
+                    }
+                    case configid_int_state_drag_hint_type:
+                    {
+                        if (msg.lParam != 0)
+                        {
+                            //We don't use this config value for auto-docking hints since their display is handled alongside the docking state
+                            const WindowDragHint::HintType hint_type = WindowDragHint::hint_ovrl_locked;
+
+                            m_AuxUI.GetDragHintWindow().SetHintType(ConfigManager::GetValue(configid_int_state_drag_hint_device), hint_type);
+                            m_AuxUI.GetDragHintWindow().Show();
+                        }
+                        else
+                        {
+                            m_AuxUI.GetDragHintWindow().Hide();
                         }
 
                         break;

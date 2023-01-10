@@ -28,6 +28,7 @@ enum ConfigID_Bool
     configid_bool_overlay_3D_enabled,
     configid_bool_overlay_3D_swapped,
     configid_bool_overlay_origin_hmd_floor_use_turning,
+    configid_bool_overlay_transform_locked,
     configid_bool_overlay_gazefade_enabled,
     configid_bool_overlay_input_enabled,
     configid_bool_overlay_input_dplus_lp_enabled,
@@ -175,6 +176,8 @@ enum ConfigID_Int
     configid_int_state_performance_duplication_fps,
     configid_int_state_interface_desktop_count,             //Count of desktops after optionally filtering virtual WMR displays
     configid_int_state_auto_docking_state,                  //0 = Off, 1 = Left Hand, 2 = Right Hand (matches ETrackedControllerRole). +2 for detaching
+    configid_int_state_drag_hint_device,                    //Value is tracked device index. Set before changing configid_int_state_drag_hint_type
+    configid_int_state_drag_hint_type,                      //0 = Off, 1 = Overlay Position Locked
     configid_int_state_laser_pointer_device_hint,           //Used by dragging functions when laser pointer device can't be determined via other means (value is tracked device index)
     configid_int_state_dplus_laser_pointer_device,          //Tracked device index for active Desktop+ laser pointer
     configid_int_state_browser_content_blocker_list_count,
