@@ -273,7 +273,7 @@ void WindowKeyboard::WindowUpdate()
     if (!UIManager::Get()->IsInDesktopMode())
     {
         vr::TrackedDeviceIndex_t primary_device = ConfigManager::Get().GetPrimaryLaserPointerDevice();
-        bool dashboard_device_exists = ((vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid) && (vr::VROverlay()->IsDashboardVisible()));
+        bool dashboard_device_exists = (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid);
 
         //Use pos/size from ImGui since our stored members describe center pivoted max window space
         const ImVec2 cur_pos  = ImGui::GetWindowPos();
@@ -1367,7 +1367,7 @@ bool WindowKeyboard::HandleOverlayEvent(const vr::VREvent_t& vr_event)
     }
 
     //Skip if no valid device index or it's the system pointer (sends as device 0, HMD)
-    if ( (device_index >= vr::k_unMaxTrackedDeviceCount) || /*(vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid)*/(vr::VROverlay()->IsDashboardVisible()) )
+    if ( (device_index >= vr::k_unMaxTrackedDeviceCount) || (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid) )
         return false;
 
     switch (vr_event.eventType)

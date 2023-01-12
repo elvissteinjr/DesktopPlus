@@ -1888,7 +1888,7 @@ void UIManager::TriggerLaserPointerHaptics(vr::VROverlayHandle_t overlay_handle,
         return;
 
     //Trigger directly when dashboard pointer is active as it's going to be the right device anyways
-    if ( (device_index == vr::k_unTrackedDeviceIndexInvalid) && /*(vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid)*/(vr::VROverlay()->IsDashboardVisible()) )
+    if ( (device_index == vr::k_unTrackedDeviceIndexInvalid) && (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid) )
     {
         vr::VROverlay()->TriggerLaserMouseHapticVibration(overlay_handle, 0.0f, 1.0f, 0.16f);
     }
