@@ -1276,6 +1276,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         {
                             IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_winrt_hwnd, data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]);
                         }
+                        else if (overlay.GetTextureSource() == ovrl_texsource_browser) //Send browser nav state if it's an active browser overlay
+                        {
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_state_browser_nav_can_go_back,    data.ConfigBool[configid_bool_overlay_state_browser_nav_can_go_back]);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_state_browser_nav_can_go_forward, data.ConfigBool[configid_bool_overlay_state_browser_nav_can_go_forward]);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_state_browser_nav_is_loading,     data.ConfigBool[configid_bool_overlay_state_browser_nav_is_loading]);
+                        }
 
                         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
                     }
