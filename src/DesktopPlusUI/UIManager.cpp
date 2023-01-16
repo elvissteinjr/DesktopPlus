@@ -779,6 +779,8 @@ void UIManager::OnInitDone()
         m_WindowOverlayProperties.GetOverlayState(floating_window_ovrl_state_room).IsVisible = false;
         m_WindowOverlayProperties.GetOverlayState(floating_window_ovrl_state_dashboard_tab).IsVisible = false;
     }
+
+    UpdateDesktopOverlayPixelSize();
 }
 
 void UIManager::OnExit()
