@@ -2029,7 +2029,8 @@ void WindowSettings::UpdatePageProfiles()
     ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
-    ImGui::BeginChild("ProfileList", ImVec2(0.0f, (item_height * 15.0f) + inner_padding - m_WarningHeight), true);
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 22.0f : 15.0f;
+    ImGui::BeginChild("ProfileList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
     //List profiles
     int index = 0;
@@ -2971,7 +2972,7 @@ void WindowSettings::UpdatePageProfilePicker()
     ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
-    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 19.0f : 15.0f;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 22.0f : 15.0f;
     ImGui::BeginChild("ProfilePickerList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
     //List profiles
@@ -3008,8 +3009,6 @@ void WindowSettings::UpdatePageProfilePicker()
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 
     //Cancel button
-    ImGui::Separator();
-
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
     {
         PageGoBack();
@@ -3037,7 +3036,7 @@ void WindowSettings::UpdatePageActionPicker()
     ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
-    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 19.0f : 15.0f;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 22.0f : 15.0f;
     ImGui::BeginChild("ActionPickerList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
     //List default actions
@@ -3099,8 +3098,6 @@ void WindowSettings::UpdatePageActionPicker()
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 
     //Cancel button
-    ImGui::Separator();
-
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
     {
         PageGoBack();
