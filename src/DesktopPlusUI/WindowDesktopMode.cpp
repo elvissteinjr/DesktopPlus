@@ -45,6 +45,7 @@ void WindowDesktopMode::UpdateTitleBar()
         }
         case wnddesktopmode_page_settings:
         case wnddesktopmode_page_profiles:
+        case wnddesktopmode_page_app_profiles:
         {
             const WindowSettings& window_settings = UIManager::Get()->GetSettingsWindow();
             title_str = window_settings.DesktopModeGetTitle();
@@ -109,9 +110,10 @@ void WindowDesktopMode::UpdateTitleBar()
 
         switch (m_PageStack[m_PageStackPos])
         {
-            case wnddesktopmode_page_settings:   /*fallthrough*/
-            case wnddesktopmode_page_profiles:   did_go_back = UIManager::Get()->GetSettingsWindow().DesktopModeGoBack();          break;
-            case wnddesktopmode_page_properties: did_go_back = UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGoBack(); break;
+            case wnddesktopmode_page_settings:     /*fallthrough*/
+            case wnddesktopmode_page_profiles:     /*fallthrough*/
+            case wnddesktopmode_page_app_profiles: did_go_back = UIManager::Get()->GetSettingsWindow().DesktopModeGoBack();          break;
+            case wnddesktopmode_page_properties:   did_go_back = UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGoBack(); break;
             default: break;
         }
 
@@ -150,7 +152,7 @@ void WindowDesktopMode::UpdatePageMain()
     ImGui::Indent();
 
     const float item_height = ImGui::GetTextLineHeight() + style.ItemInnerSpacing.y;
-    ImGui::BeginChild("SettingsList", ImVec2(0.0f, (item_height * 3.0f) + style.ItemInnerSpacing.y), true);
+    ImGui::BeginChild("SettingsList", ImVec2(0.0f, (item_height * 4.0f) + style.ItemInnerSpacing.y), true);
 
     //Focus nav if we came back from settings
     if ( (io.NavVisible) && (m_PageReturned == wnddesktopmode_page_settings) )
@@ -181,6 +183,19 @@ void WindowDesktopMode::UpdatePageMain()
     {
         UIManager::Get()->GetSettingsWindow().DesktopModeSetRootPage(wndsettings_page_profiles);
         PageGoForward(wnddesktopmode_page_profiles);
+    }
+
+    //Focus nav if we came back from app profiles
+    if ( (io.NavVisible) && (m_PageReturned == wnddesktopmode_page_app_profiles) )
+    {
+        ImGui::SetKeyboardFocusHere();
+        m_PageReturned = wnddesktopmode_page_none;
+    }
+
+    if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsProfilesApps))) 
+    {
+        UIManager::Get()->GetSettingsWindow().DesktopModeSetRootPage(wndsettings_page_app_profiles);
+        PageGoForward(wnddesktopmode_page_app_profiles);
     }
 
     ImGui::EndChild();
@@ -831,7 +846,8 @@ void WindowDesktopMode::Update()
             {
                 case wnddesktopmode_page_main:               UpdatePageMain();                                                   break;
                 case wnddesktopmode_page_settings:           /*fallthrough*/
-                case wnddesktopmode_page_profiles:           UIManager::Get()->GetSettingsWindow().UpdateDesktopMode();          break;
+                case wnddesktopmode_page_profiles:           /*fallthrough*/
+                case wnddesktopmode_page_app_profiles:       UIManager::Get()->GetSettingsWindow().UpdateDesktopMode();          break;
                 case wnddesktopmode_page_properties:         UIManager::Get()->GetOverlayPropertiesWindow().UpdateDesktopMode(); break;
                 case wnddesktopmode_page_add_window_overlay: UpdatePageAddWindowOverlay();                                       break;
                 default: break;

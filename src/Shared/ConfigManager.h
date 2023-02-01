@@ -12,7 +12,7 @@
 
 #include "Matrices.h"
 #include "Actions.h"
-#include "Ini.h"
+#include "AppProfiles.h"
 #include "openvr.h"
 
 //Settings enums
@@ -55,6 +55,7 @@ enum ConfigID_Bool
     configid_bool_interface_warning_elevated_mode_hidden,
     configid_bool_interface_warning_browser_missing_hidden,
     configid_bool_interface_warning_browser_version_mismatch_hidden,
+    configid_bool_interface_warning_app_profile_active_hidden,
     configid_bool_interface_warning_welcome_hidden,
     configid_bool_interface_window_settings_restore_state,
     configid_bool_interface_window_properties_restore_state,
@@ -237,6 +238,8 @@ enum ConfigID_String
     configid_str_state_keyboard_string,                     //VR keyboard input for the dashboard application
     configid_str_state_dashboard_error_string,              //Error messages are displayed in VR through the UI app
     configid_str_state_profile_name_load,                   //Name of the profile to load 
+    configid_str_state_app_profile_key,                     //Target app key for app profile synching
+    configid_str_state_app_profile_data,                    //Serialized data string of app profile for synching
     configid_str_MAX
 };
 
@@ -353,6 +356,8 @@ class OverlayConfigData
         OverlayConfigData();
 };
 
+class Ini;
+
 class ConfigManager
 {
     private:
@@ -363,6 +368,7 @@ class ConfigManager
         std::string m_ConfigString[configid_str_MAX];
 
         ActionManager m_ActionManager;
+        AppProfileManager m_AppProfileManager;
 
         std::string m_ApplicationPath;
         std::string m_ExecutableName;
@@ -429,6 +435,7 @@ class ConfigManager
         ActionManager& GetActionManager();
         std::vector<CustomAction>& GetCustomActions();
         ActionOrderList& GetActionMainBarOrder();
+        AppProfileManager& GetAppProfileManager();
         Matrix4& GetOverlayDetachedTransform();
 
         const std::string& GetApplicationPath() const;

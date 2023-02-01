@@ -244,6 +244,18 @@ void Ini::RemoveKey(const char* section, const char* key)
         ini_property_remove(m_IniPtr, section_id, ini_find_property(m_IniPtr, section_id, key, 0)); //ini_property_remove checks for section_id range so this is fine
     }
 }
+
+std::vector<std::string> Ini::GetSectionList()
+{
+    std::vector<std::string> section_list;
+
+    for (int i = 0; i < ini_section_count(m_IniPtr); ++i)
+    {
+        section_list.push_back(ini_section_name(m_IniPtr, i));
+    }
+
+    return section_list;
+}
 //C++ Interface end. Below is normal ini.h code
 
 /**

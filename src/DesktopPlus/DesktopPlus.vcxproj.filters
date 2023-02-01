@@ -50,6 +50,9 @@
     <ClCompile Include="..\Shared\DPBrowserAPIClient.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\Shared\AppProfiles.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -107,6 +110,9 @@
       <Filter>Shared</Filter>
     </ClInclude>
     <ClInclude Include="..\Shared\DPBrowserAPIClient.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\AppProfiles.h">
       <Filter>Shared</Filter>
     </ClInclude>
   </ItemGroup>

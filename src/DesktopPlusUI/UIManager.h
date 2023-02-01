@@ -136,6 +136,7 @@ class UIManager
         void HandleDelayedIPCMessages();                                    //Calls HandleIPCMessage() for messages in m_DelayedICPMessages and clears it
         void OnInitDone();                                                  //Finishes up applying things that can only be applied after everything has finished loading
         void OnExit();
+        void OnProfileLoaded();
 
         FloatingUI& GetFloatingUI();
         VRKeyboard& GetVRKeyboard();

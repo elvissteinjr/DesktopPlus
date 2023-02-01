@@ -3,6 +3,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 typedef struct ini_t ini_t;
 
@@ -31,4 +32,6 @@ class Ini
         bool KeyExists(const char* section, const char* key) const;
         void RemoveSection(const char* section);
         void RemoveKey(const char* section, const char* key);
+
+        std::vector<std::string> GetSectionList();
 };

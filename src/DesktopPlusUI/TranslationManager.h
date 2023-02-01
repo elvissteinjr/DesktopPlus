@@ -35,6 +35,7 @@ enum TRMGRStrID
     tstr_SettingsWarningOverlayCreationErrorLimit,
     tstr_SettingsWarningOverlayCreationErrorOther,   //%ERRORNAME% == VROverlay::GetOverlayErrorNameFromEnum()
     tstr_SettingsWarningGraphicsCaptureError,        //%ERRORCODE% == WinRT HRESULT in hex notation
+    tstr_SettingsWarningAppProfileActive,            //%APPNAME% == name of active application
     tstr_SettingsWarningMenuDontShowAgain,
     tstr_SettingsWarningMenuDismiss,
     tstr_SettingsInterfaceLanguage,
@@ -89,6 +90,14 @@ enum TRMGRStrID
     tstr_SettingsProfilesOverlaysProfileSaveSelectHeaderList, 
     tstr_SettingsProfilesOverlaysProfileSaveSelectDo,
     tstr_SettingsProfilesOverlaysProfileSaveSelectDoFailed,
+    tstr_SettingsProfilesAppsHeader,
+    tstr_SettingsProfilesAppsHeaderNoVRTip,
+    tstr_SettingsProfilesAppsListEmpty,
+    tstr_SettingsProfilesAppsProfileHeaderActive,
+    tstr_SettingsProfilesAppsProfileEnabled,
+    tstr_SettingsProfilesAppsProfileOverlayProfile,
+    tstr_SettingsProfilesAppsProfileActionEnter,
+    tstr_SettingsProfilesAppsProfileActionLeave,
     tstr_SettingsKeyboardLayout,
     tstr_SettingsKeyboardSize,
     tstr_SettingsKeyboardBehavior,
@@ -394,6 +403,9 @@ enum TRMGRStrID
     tstr_DialogColorPickerHeader,
     tstr_DialogColorPickerCurrent,
     tstr_DialogColorPickerOriginal,
+    tstr_DialogProfilePickerHeader,
+    tstr_DialogProfilePickerNone,
+    tstr_DialogActionPickerHeader,
     tstr_SourceDesktopAll,
     tstr_SourceDesktopID,   //%ID% == Desktop ID
     tstr_SourceWinRTNone,

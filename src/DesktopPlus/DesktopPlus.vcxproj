@@ -104,6 +104,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Shared\Actions.cpp" />
+    <ClCompile Include="..\Shared\AppProfiles.cpp" />
     <ClCompile Include="..\Shared\ConfigManager.cpp" />
     <ClCompile Include="..\Shared\DPBrowserAPIClient.cpp" />
     <ClCompile Include="..\Shared\Ini.cpp" />
@@ -131,6 +132,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Shared\Actions.h" />
+    <ClInclude Include="..\Shared\AppProfiles.h" />
     <ClInclude Include="..\Shared\ConfigManager.h" />
     <ClInclude Include="..\Shared\DPBrowserAPI.h" />
     <ClInclude Include="..\Shared\DPBrowserAPIClient.h" />

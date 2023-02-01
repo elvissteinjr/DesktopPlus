@@ -237,6 +237,16 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                         RefreshOverlayTextureSharing();
                         break;
                     }
+                    case vr::VREvent_SceneApplicationChanged:
+                    {
+                        const bool loaded_overlay_profile = ConfigManager::Get().GetAppProfileManager().ActivateProfileForProcess(vr_event.data.process.pid);
+
+                        if (loaded_overlay_profile)
+                        {
+                            ui_manager.OnProfileLoaded();
+                        }
+                        break;
+                    }
                     case vr::VREvent_Quit:
                     {
                         do_quit = true;

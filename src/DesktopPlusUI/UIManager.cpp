@@ -781,6 +781,7 @@ void UIManager::OnInitDone()
     }
 
     UpdateDesktopOverlayPixelSize();
+    ConfigManager::Get().GetAppProfileManager().ActivateProfileForCurrentSceneApp();
 }
 
 void UIManager::OnExit()
@@ -808,6 +809,27 @@ void UIManager::OnExit()
     m_SharedTextureRef.Reset();
 
     WindowManager::Get().SetActive(false);
+}
+
+void UIManager::OnProfileLoaded()
+{
+    //Adjust current overlay ID for UI since this may have made the old selection invalid
+    int& current_overlay = ConfigManager::Get().GetRef(configid_int_interface_overlay_current_id);
+    current_overlay = clamp(current_overlay, 0, (int)OverlayManager::Get().GetOverlayCount() - 1);
+
+    //Adjust overlay properties window    
+    //Hide window if overlay ID no longer in range
+    if (m_WindowOverlayProperties.GetActiveOverlayID() >= OverlayManager::Get().GetOverlayCount())
+    {
+        m_WindowOverlayProperties.SetActiveOverlayID(k_ulOverlayID_None, true);
+        m_WindowOverlayProperties.Hide();
+    }
+    else //Just adjust switch if it is still is
+    {
+        m_WindowOverlayProperties.SetActiveOverlayID(m_WindowOverlayProperties.GetActiveOverlayID(), true);
+    }
+
+    RepeatFrame();
 }
 
 FloatingUI& UIManager::GetFloatingUI()
@@ -1455,6 +1477,13 @@ void UIManager::UpdateAnyWarningDisplayedState()
 
     //WinRT Capture error warning
     if ( (m_WinRTErrorLast != S_OK) && (m_OpenVRLoaded) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //App profile with overlay profile active warning
+    if ( (!ConfigManager::GetRef(configid_bool_interface_warning_app_profile_active_hidden)) && (ConfigManager::Get().GetAppProfileManager().IsActiveProfileWithOverlayProfile()) )
     {
         m_HasAnyWarning = true;
         return;

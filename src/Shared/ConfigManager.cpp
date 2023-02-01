@@ -5,6 +5,7 @@
 #include <fstream>
 
 #include "Util.h"
+#include "Ini.h"
 #include "OverlayManager.h"
 #include "InterprocessMessaging.h"
 #include "WindowManager.h"
@@ -629,6 +630,8 @@ bool ConfigManager::LoadConfigFromFile()
     //Load last used overlay config
     LoadMultiOverlayProfile(config);
 
+    m_AppProfileManager.LoadProfilesFromFile();
+
     return existed; //We use default values if it doesn't, but still return if the file existed
 }
 
@@ -900,7 +903,11 @@ void ConfigManager::SaveConfigToFile()
     std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
     Ini config(wpath.c_str());
 
-    SaveMultiOverlayProfile(config);
+    //Only save overlay config if no app profile that has loaded an overlay profile is active
+    if (!m_AppProfileManager.IsActiveProfileWithOverlayProfile())
+    {
+        SaveMultiOverlayProfile(config);
+    }
 
     config.WriteString("Interface", "LanguageFile",             m_ConfigString[configid_str_interface_language_file].c_str());
     config.WriteInt(   "Interface", "OverlayCurrentID",         m_ConfigInt[configid_int_interface_overlay_current_id]);
@@ -1065,6 +1072,8 @@ void ConfigManager::SaveConfigToFile()
     }
 
     config.Save();
+
+    m_AppProfileManager.SaveProfilesToFile();
 }
 
 #endif //ifdef DPLUS_UI
@@ -1319,6 +1328,11 @@ std::vector<CustomAction>& ConfigManager::GetCustomActions()
 ActionOrderList& ConfigManager::GetActionMainBarOrder()
 {
     return m_ActionManager.GetActionMainBarOrder();
+}
+
+AppProfileManager& ConfigManager::GetAppProfileManager()
+{
+    return m_AppProfileManager;
 }
 
 Matrix4& ConfigManager::GetOverlayDetachedTransform()

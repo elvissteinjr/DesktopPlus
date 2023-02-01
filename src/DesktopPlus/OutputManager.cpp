@@ -612,7 +612,11 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
         ovrl_error = vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusDesktopTexture", "Desktop+", &m_OvrlHandleDesktopTexture);
 
         //Load config again to properly initialize overlays that were loaded before OpenVR was available
-        ConfigManager::Get().LoadConfigFromFile();
+        const bool loaded_overlay_profile = ConfigManager::Get().GetAppProfileManager().ActivateProfileForCurrentSceneApp(); //Check if overlays from app profile need to be loaded first
+        if (!loaded_overlay_profile)
+        {
+            ConfigManager::Get().LoadConfigFromFile();
+        }       
 
         if (m_OvrlHandleDashboardDummy != vr::k_ulOverlayHandleInvalid)
         {
@@ -997,6 +1001,22 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     m_InputSim.KeyboardText(copystr.c_str());
                     break;
                 }
+                case configid_str_state_app_profile_data:
+                {
+                    const std::string& app_key = ConfigManager::GetValue(configid_str_state_app_profile_key);
+
+                    if (!app_key.empty())
+                    {
+                        AppProfile new_profile;
+                        new_profile.Deserialize(copystr);
+
+                        const bool loaded_overlay_profile = ConfigManager::Get().GetAppProfileManager().StoreProfile(app_key, new_profile);
+
+                        if (loaded_overlay_profile)
+                            ResetOverlays();
+                    }
+                    break;
+                }
                 default: break;
             }
         }
@@ -1366,6 +1386,15 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         rect.Unpack16(msg.lParam);
                         m_LaserPointer.UIIntersectionMaskAddRect(rect);
                     }
+                    break;
+                }
+                case ipcact_app_profile_remove:
+                {
+                    const bool loaded_overlay_profile = ConfigManager::Get().GetAppProfileManager().RemoveProfile(ConfigManager::GetValue(configid_str_state_app_profile_key));
+
+                    if (loaded_overlay_profile)
+                        ResetOverlays();
+
                     break;
                 }
             }
@@ -3934,9 +3963,19 @@ bool OutputManager::HandleOpenVREvents()
             }
             case vr::VREvent_SeatedZeroPoseReset:
             case vr::VREvent_ChaperoneUniverseHasChanged:
+            {
+                DetachedTransformUpdateSeatedPosition();
+                break;
+            }
             case vr::VREvent_SceneApplicationChanged:
             {
                 DetachedTransformUpdateSeatedPosition();
+
+                const bool loaded_overlay_profile = ConfigManager::Get().GetAppProfileManager().ActivateProfileForProcess(vr_event.data.process.pid);
+
+                if (loaded_overlay_profile)
+                    ResetOverlays();
+
                 break;
             }
             case vr::VREvent_Input_ActionManifestReloaded:

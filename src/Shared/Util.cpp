@@ -770,6 +770,12 @@ void SanitizeFileNameWString(std::wstring& str)
     str.erase( std::remove_if(str.begin(), str.end(), IsWCharInvalidForFileName), str.end() );
 }
 
+bool WStringCompareNatural(std::wstring& str1, std::wstring& str2)
+{
+    return (::CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE | SORT_DIGITSASNUMBERS, 
+                              str1.c_str(), (int)str1.size(), str2.c_str(), (int)str2.size(), nullptr, nullptr, 0) == CSTR_LESS_THAN);
+}
+
 //This ain't pretty, but GetKeyNameText() works with scancodes, which are not exactly the same and the output strings aren't that nice either (and always localized)
 //Should this be translatable?
 const char* g_VK_name[256] = 

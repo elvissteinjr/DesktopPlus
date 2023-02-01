@@ -92,6 +92,7 @@ void StringReplaceAll(std::string& source, const std::string& from, const std::s
 void WStringReplaceAll(std::wstring& source, const std::wstring& from, const std::wstring& to);
 bool IsWCharInvalidForFileName(wchar_t wchar);
 void SanitizeFileNameWString(std::wstring& str);
+bool WStringCompareNatural(std::wstring& str1, std::wstring& str2);
 
 //Virtual Keycode string mapping
 const char* GetStringForKeyCode(unsigned char keycode);

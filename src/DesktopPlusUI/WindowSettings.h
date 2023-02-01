@@ -11,7 +11,10 @@ enum WindowSettingsPage
     wndsettings_page_keyboard,
     wndsettings_page_profiles,
     wndsettings_page_profiles_overlay_select,
+    wndsettings_page_app_profiles,
     wndsettings_page_color_picker,
+    wndsettings_page_profile_picker,
+    wndsettings_page_action_picker,
     wndsettings_page_reset_confirm
 };
 
@@ -34,12 +37,18 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
 
         std::string m_WarningTextOverlayError;
         std::string m_WarningTextWinRTError;
+        std::string m_WarningTextAppProfile;
         std::string m_BrowserMaxFPSValueText;
         std::string m_BrowserBlockListCountText;
 
         std::string m_ProfileSelectionName;
         bool m_ProfileOverlaySelectIsSaving;
         std::vector<std::string> m_ProfileList;
+
+        std::string m_ProfilePickerName;
+        ActionID m_ActionPickerID;
+
+        std::vector< std::pair<std::string, std::string> > m_AppList;   //app key, app name
 
         //Struct of cached sizes which may change at any time on translation or DPI switching (only the ones that aren't updated unconditionally)
         struct
@@ -65,7 +74,10 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         void UpdatePageKeyboardLayout();
         void UpdatePageProfiles();
         void UpdatePageProfilesOverlaySelect();
+        void UpdatePageAppProfiles();
         void UpdatePageColorPicker();
+        void UpdatePageProfilePicker();
+        void UpdatePageActionPicker();
         void UpdatePageResetConfirm();
 
         void PageGoForward(WindowSettingsPage new_page);
@@ -74,6 +86,8 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         void PageGoHome();
 
         void SelectableWarning(const char* selectable_id, const char* popup_id, const char* text, bool show_warning_prefix = true, const ImVec4* text_color = nullptr);
+
+        void RefreshAppList();
 
     public:
         WindowSettings();

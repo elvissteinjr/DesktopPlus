@@ -11,6 +11,7 @@ enum WindowDesktopModePage
     wnddesktopmode_page_main,
     wnddesktopmode_page_settings,
     wnddesktopmode_page_profiles,
+    wnddesktopmode_page_app_profiles,
     wnddesktopmode_page_properties,
     wnddesktopmode_page_add_window_overlay
 };

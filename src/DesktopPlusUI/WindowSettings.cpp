@@ -1,6 +1,7 @@
 #include "WindowSettings.h"
 
 #include <sstream>
+#include <unordered_set>
 #include <shlwapi.h>
 
 #include "ImGuiExt.h"
@@ -22,7 +23,8 @@ WindowSettings::WindowSettings() :
     m_PageReturned(wndsettings_page_none),
     m_Column0Width(0.0f),
     m_WarningHeight(0.0f),
-    m_ProfileOverlaySelectIsSaving(false)
+    m_ProfileOverlaySelectIsSaving(false),
+    m_ActionPickerID(action_none)
 {
     m_WindowTitleStrID = tstr_SettingsWindowTitle;
     m_WindowIcon = tmtex_icon_xsmall_settings;
@@ -89,6 +91,8 @@ const char* WindowSettings::DesktopModeGetTitle() const
 {
     if (m_PageStack[0] == wndsettings_page_profiles)
         return TranslationManager::GetString(tstr_SettingsProfilesOverlays);
+    else if (m_PageStack[0] == wndsettings_page_app_profiles)
+        return TranslationManager::GetString(tstr_SettingsProfilesApps);
     else
         return TranslationManager::GetString(m_WindowTitleStrID);
 }
@@ -111,10 +115,11 @@ bool WindowSettings::DesktopModeGoBack()
 
 void WindowSettings::ClearCachedTranslationStrings()
 {
-    m_WarningTextOverlayError = "";
-    m_WarningTextWinRTError = "";
-    m_BrowserMaxFPSValueText = "";
-    m_BrowserBlockListCountText = "";
+    m_WarningTextOverlayError.clear();
+    m_WarningTextWinRTError.clear();
+    m_WarningTextAppProfile.clear();
+    m_BrowserMaxFPSValueText.clear();
+    m_BrowserBlockListCountText.clear();
 }
 
 void WindowSettings::WindowUpdate()
@@ -214,7 +219,10 @@ void WindowSettings::WindowUpdate()
                 case wndsettings_page_keyboard:                UpdatePageKeyboardLayout();          break;
                 case wndsettings_page_profiles:                UpdatePageProfiles();                break;
                 case wndsettings_page_profiles_overlay_select: UpdatePageProfilesOverlaySelect();   break;
+                case wndsettings_page_app_profiles:            UpdatePageAppProfiles();             break;
                 case wndsettings_page_color_picker:            UpdatePageColorPicker();             break;
+                case wndsettings_page_profile_picker:          UpdatePageProfilePicker();           break;
+                case wndsettings_page_action_picker:           UpdatePageActionPicker();            break;
                 case wndsettings_page_reset_confirm:           UpdatePageResetConfirm();            break;
                 default: break;
             }
@@ -548,6 +556,42 @@ void WindowSettings::UpdateWarnings()
         }
     }
 
+    //App profile with overlay profile active warning
+    {
+        bool& hide_app_profile_active_warning = ConfigManager::GetRef(configid_bool_interface_warning_app_profile_active_hidden);
+
+        if ( (!hide_app_profile_active_warning) && (ConfigManager::Get().GetAppProfileManager().IsActiveProfileWithOverlayProfile()) )
+        {
+            static std::string active_app_key_last;
+
+            //Format app name into cached translated string
+            if ( (m_WarningTextAppProfile.empty()) || (ConfigManager::Get().GetAppProfileManager().GetActiveProfileAppKey() != active_app_key_last) )
+            {
+                m_WarningTextAppProfile = TranslationManager::GetString(tstr_SettingsWarningAppProfileActive);
+                StringReplaceAll(m_WarningTextAppProfile, "%APPNAME%", ConfigManager::Get().GetAppProfileManager().GetActiveProfileAppName());
+
+                active_app_key_last = ConfigManager::Get().GetAppProfileManager().GetActiveProfileAppKey();
+            }
+
+            SelectableWarning("##WarningAppProfile", "DontShowAgain7", m_WarningTextAppProfile.c_str()); 
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DontShowAgain7", ImGuiWindowFlags_NoMove))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
+                {
+                    hide_app_profile_active_warning = true;
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
     //Separate from the main content if a warning was actually displayed
     if (warning_displayed)
     {
@@ -795,6 +839,19 @@ void WindowSettings::UpdatePageMainCatProfiles()
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesManage)))
         {
             PageGoForward(wndsettings_page_profiles);
+        }
+        ImGui::PopID();
+
+        ImGui::NextColumn();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsProfilesApps));
+        ImGui::NextColumn();
+
+        ImGui::PushID(tstr_SettingsProfilesApps);  //Avoid ID conflict from common "Manage" label
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesManage)))
+        {
+            PageGoForward(wndsettings_page_app_profiles);
         }
         ImGui::PopID();
 
@@ -1923,8 +1980,6 @@ void WindowSettings::UpdatePageProfiles()
     static bool has_loading_failed         = false;
     static bool has_deletion_failed        = false;
     static float list_buttons_width        = 0.0f;
-    static float last_font_size            = 0.0f;
-    static ImVec2 button_delete_size;
 
     if (m_PageAppearing == wndsettings_page_profiles)
     {
@@ -1974,9 +2029,9 @@ void WindowSettings::UpdatePageProfiles()
     ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
-    ImGui::BeginChild("LayoutList", ImVec2(0.0f, (item_height * 15.0f) + inner_padding - m_WarningHeight), true);
+    ImGui::BeginChild("ProfileList", ImVec2(0.0f, (item_height * 15.0f) + inner_padding - m_WarningHeight), true);
 
-    //List layouts
+    //List profiles
     int index = 0;
     for (const auto& name : m_ProfileList)
     {
@@ -2038,25 +2093,7 @@ void WindowSettings::UpdatePageProfiles()
 
         if (!has_loading_failed)
         {
-            //Adjust current overlay ID for UI since this may have made the old selection invalid
-            int& current_overlay = ConfigManager::Get().GetRef(configid_int_interface_overlay_current_id);
-            current_overlay = clamp(current_overlay, 0, (int)OverlayManager::Get().GetOverlayCount() - 1);
-
-            //Adjust overlay properties window
-            WindowOverlayProperties& properties_window = UIManager::Get()->GetOverlayPropertiesWindow();
-
-            //Hide window if overlay ID no longer in range
-            if (properties_window.GetActiveOverlayID() >= OverlayManager::Get().GetOverlayCount())
-            {
-                properties_window.SetActiveOverlayID(k_ulOverlayID_None, true);
-                properties_window.Hide();
-            }
-            else //Just adjust switch if it is still is
-            {
-                properties_window.SetActiveOverlayID(properties_window.GetActiveOverlayID(), true);
-            }
-
-            UIManager::Get()->RepeatFrame();
+            UIManager::Get()->OnProfileLoaded();
         }
 
         delete_confirm_state = false;
@@ -2151,7 +2188,7 @@ void WindowSettings::UpdatePageProfiles()
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 
     //Confirmation buttons (don't show when used as root page)
-    if (m_PageStack.size() != 1)
+    if (m_PageStack[0] != wndsettings_page_profiles)
     {
         ImGui::Separator();
 
@@ -2573,6 +2610,278 @@ void WindowSettings::UpdatePageProfilesOverlaySelect()
     }
 }
 
+void WindowSettings::UpdatePageAppProfiles()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+    AppProfileManager& app_profiles = ConfigManager::Get().GetAppProfileManager();
+
+    static int list_id = 0;
+    static AppProfile app_profile_selected_edit;        //Temporary copy of the selected profile for editing
+    static bool is_action_picker_for_leave = false;
+    static bool delete_confirm_state       = false;
+    static float delete_button_width       = 0.0f;
+    static float active_header_text_width  = 0.0f;
+    static ImVec2 no_apps_text_size;
+
+    if (m_PageAppearing == wndsettings_page_app_profiles)
+    {
+        RefreshAppList();
+
+        list_id = 0;
+        app_profile_selected_edit = app_profiles.GetProfile((m_AppList.empty()) ? "" : m_AppList[0].first);
+        delete_confirm_state = false;
+
+        UIManager::Get()->RepeatFrame();
+    }
+    
+    if (list_id >= m_AppList.size())
+    {
+        list_id = (m_AppList.empty()) ? -1 : 0;
+        app_profile_selected_edit = {};
+    }
+
+    if ((m_PageAppearing == wndsettings_page_app_profiles) || (m_CachedSizes.Profiles_ButtonDeleteSize.x == 0.0f))
+    {
+        //Figure out size for delete button. We need it to stay the same but also consider the case of the confirm text being longer in some languages
+        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete));
+        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm));
+        m_CachedSizes.Profiles_ButtonDeleteSize = (text_size_delete.x > text_size_confirm.x) ? text_size_delete : text_size_confirm;
+
+        m_CachedSizes.Profiles_ButtonDeleteSize.x += style.FramePadding.x * 2.0f;
+        m_CachedSizes.Profiles_ButtonDeleteSize.y += style.FramePadding.y * 2.0f;
+
+        UIManager::Get()->RepeatFrame();
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsProfilesAppsHeader) ); 
+
+    if (!UIManager::Get()->IsOpenVRLoaded())
+    {
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_SettingsProfilesAppsHeaderNoVRTip));
+    }
+
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 15.0f : 11.0f;
+    ImGui::BeginChild("AppList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
+
+    //Reset scroll when appearing
+    if (m_PageAppearing == wndsettings_page_app_profiles)
+    {
+        ImGui::SetScrollY(0.0f);
+    }
+
+    //List applications
+    const bool is_any_app_profile_active = !app_profiles.GetActiveProfileAppKey().empty();
+    const AppProfile& app_profile_active = app_profiles.GetProfile(app_profiles.GetActiveProfileAppKey());
+
+    //Use list clipper to minimize GetProfile() lookups
+    ImGuiListClipper list_clipper;
+    list_clipper.Begin((int)m_AppList.size());
+    while (list_clipper.Step())
+    {
+        for (int i = list_clipper.DisplayStart; i < list_clipper.DisplayEnd; ++i)
+        {
+            const AppProfile& app_profile = app_profiles.GetProfile(m_AppList[i].first);
+            const bool is_active_profile = ((is_any_app_profile_active) && (&app_profile == &app_profile_active));
+
+            if (!app_profile.IsEnabled)
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
+
+            if (is_active_profile)
+                ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextNotification);
+
+            ImGui::PushID(i);
+            if (ImGui::Selectable(m_AppList[i].second.c_str(), (i == list_id)))
+            {
+                list_id = i;
+                app_profile_selected_edit = app_profile;
+
+                delete_confirm_state = false;
+            }
+            ImGui::PopID();
+
+            if (is_active_profile)
+                ImGui::PopStyleColor();
+
+            if (!app_profile.IsEnabled)
+                ImGui::PopStyleVar();
+        }
+    }
+
+    if (m_AppList.empty())
+    {
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x / 2.0f - (no_apps_text_size.x / 2.0f));
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y / 2.0f - (no_apps_text_size.y / 2.0f));
+
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsProfilesAppsListEmpty));
+        no_apps_text_size = ImGui::GetItemRectSize();
+    }
+
+    ImGui::EndChild();
+    ImGui::Unindent();
+
+    const bool is_none  = (list_id == -1); //Would be rare, as we don't allow no selection unless the app list is really empty, but still handle that
+    const bool is_first = (list_id == 0);
+    const bool is_last  = (list_id == m_AppList.size() - 1);
+
+    if (!is_none)
+    {
+        const std::string& app_key_selected  = m_AppList[list_id].first;
+        const std::string& app_name_selected = m_AppList[list_id].second;
+        const bool is_active_profile = ((is_any_app_profile_active) && (app_key_selected == app_profiles.GetActiveProfileAppKey()));
+
+        static bool store_profile_changes = false;
+
+        if (m_PageReturned == wndsettings_page_profile_picker)
+        {
+            app_profile_selected_edit.OverlayProfileFileName = m_ProfilePickerName;
+
+            store_profile_changes = true;
+            m_PageReturned = wndsettings_page_none;
+        }
+        else if (m_PageReturned == wndsettings_page_action_picker)
+        {
+            if (is_action_picker_for_leave)
+            {
+                app_profile_selected_edit.ActionIDLeave = m_ActionPickerID;
+            }
+            else
+            {
+                app_profile_selected_edit.ActionIDEnter = m_ActionPickerID;
+            }
+
+            store_profile_changes = true;
+            m_PageReturned = wndsettings_page_none;
+        }
+
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), app_name_selected.c_str());
+
+        if (is_active_profile)
+        {
+            ImGui::SameLine();
+            ImGui::TextColoredUnformatted(Style_ImGuiCol_TextNotification, TranslationManager::GetString(tstr_SettingsProfilesAppsProfileHeaderActive));
+
+            active_header_text_width = ImGui::GetItemRectSize().x;
+        }
+
+        ImGui::Indent();
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsProfilesAppsProfileEnabled), &app_profile_selected_edit.IsEnabled))
+        {
+            store_profile_changes = true;
+        }
+        ImGui::Unindent();
+
+        ImGui::Columns(2, "ColumnAppProfile", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+        
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsProfilesAppsProfileOverlayProfile));
+        ImGui::NextColumn();
+
+        const char* overlay_profile_button_label = (app_profile_selected_edit.OverlayProfileFileName.empty()) ? TranslationManager::GetString(tstr_DialogProfilePickerNone) : 
+                                                                                                                app_profile_selected_edit.OverlayProfileFileName.c_str();
+
+        ImGui::PushID("ButtonOverlayProfile");
+        if (ImGui::Button(overlay_profile_button_label))
+        {
+            m_ProfilePickerName = app_profile_selected_edit.OverlayProfileFileName;
+            PageGoForward(wndsettings_page_profile_picker);
+        }
+        ImGui::PopID();
+
+        ImGui::NextColumn();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsProfilesAppsProfileActionEnter));
+        ImGui::NextColumn();
+
+        ImGui::PushID("ButtonActionEnter");
+        if (ImGui::Button(ConfigManager::Get().GetActionManager().GetActionName(app_profile_selected_edit.ActionIDEnter)))
+        {
+            m_ActionPickerID = app_profile_selected_edit.ActionIDEnter;
+            is_action_picker_for_leave = false;
+            PageGoForward(wndsettings_page_action_picker);
+        }
+        ImGui::PopID();
+
+        ImGui::NextColumn();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsProfilesAppsProfileActionLeave));
+        ImGui::NextColumn();
+
+        ImGui::PushID("ButtonActionLeave");
+        if (ImGui::Button(ConfigManager::Get().GetActionManager().GetActionName(app_profile_selected_edit.ActionIDLeave)))
+        {
+            m_ActionPickerID = app_profile_selected_edit.ActionIDLeave;
+            is_action_picker_for_leave = true;
+            PageGoForward(wndsettings_page_action_picker);
+        }
+        ImGui::PopID();
+
+        ImGui::Columns(1);
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - delete_button_width);
+
+        if (delete_confirm_state)
+        {
+            if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm), m_CachedSizes.Profiles_ButtonDeleteSize))
+            {
+                IPCManager::Get().SendStringToDashboardApp(configid_str_state_app_profile_key, app_key_selected, UIManager::Get()->GetWindowHandle());
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_app_profile_remove);
+
+                app_profiles.RemoveProfile(app_key_selected);
+                app_profile_selected_edit = {};
+
+                delete_confirm_state = false;
+            }
+        }
+        else
+        {
+            if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete), m_CachedSizes.Profiles_ButtonDeleteSize))
+            {
+                delete_confirm_state = true;
+            }
+        }
+
+        delete_button_width = ImGui::GetItemRectSize().x + style.IndentSpacing;
+
+        //Store and sync the profile if flag was set
+        if (store_profile_changes)
+        {
+            IPCManager::Get().SendStringToDashboardApp(configid_str_state_app_profile_key,  app_key_selected,                      UIManager::Get()->GetWindowHandle());
+            IPCManager::Get().SendStringToDashboardApp(configid_str_state_app_profile_data, app_profile_selected_edit.Serialize(), UIManager::Get()->GetWindowHandle());
+
+            const bool loaded_overlay_profile = app_profiles.StoreProfile(app_key_selected, app_profile_selected_edit);
+
+            if (loaded_overlay_profile)
+            {
+                UIManager::Get()->OnProfileLoaded();
+            }
+
+            store_profile_changes = false;
+        }
+    }
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+
+    //Confirmation buttons (don't show when used as root page)
+    if (m_PageStack[0] != wndsettings_page_app_profiles)
+    {
+        ImGui::Separator();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_DialogDone))) 
+        {
+            PageGoBack();
+        }
+    }
+}
+
 void WindowSettings::UpdatePageColorPicker()
 {
     static ImVec4 color_current;
@@ -2623,6 +2932,153 @@ void WindowSettings::UpdatePageColorPicker()
         ConfigManager::Get().SetValue(config_id, *(int*)&rgba);
         IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(config_id), *(int*)&rgba);
 
+        PageGoBack();
+    }
+}
+
+void WindowSettings::UpdatePageProfilePicker()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    bool scroll_to_selection = false;
+    static int list_id = -1;
+
+    if (m_PageAppearing == wndsettings_page_profile_picker)
+    {
+        //Load profile list
+        m_ProfileList = ConfigManager::Get().GetOverlayProfileList();
+        list_id = -1;
+
+        //Adjust entries from profile list for picker use
+        m_ProfileList[0] = TranslationManager::GetString(tstr_DialogProfilePickerNone);
+        m_ProfileList.erase(m_ProfileList.end() - 1);
+
+        //Pre-select previous selection if it can be found
+        const auto it = std::find(m_ProfileList.begin(), m_ProfileList.end(), m_ProfilePickerName);
+
+        if (it != m_ProfileList.end())
+        {
+            list_id = (int)std::distance(m_ProfileList.begin(), it);
+            scroll_to_selection = true;
+        }
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogProfilePickerHeader)); 
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 19.0f : 15.0f;
+    ImGui::BeginChild("ProfilePickerList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
+
+    //List profiles
+    int index = 0;
+    for (const auto& name : m_ProfileList)
+    {
+        ImGui::PushID(index);
+        if (ImGui::Selectable(name.c_str(), (index == list_id)))
+        {
+            list_id = index;
+            m_ProfilePickerName = (list_id == 0) ? "" : m_ProfileList[list_id];
+
+            PageGoBack();
+        }
+        ImGui::PopID();
+
+        if ( (scroll_to_selection) && (index == list_id) )
+        {
+            ImGui::SetScrollHereY();
+        }
+
+        index++;
+    }
+
+    ImGui::EndChild();
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+
+    //Cancel button
+    ImGui::Separator();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
+    {
+        PageGoBack();
+    }
+}
+
+void WindowSettings::UpdatePageActionPicker()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    bool scroll_to_selection = false;
+    static ActionID list_id = action_none;
+
+    if (m_PageAppearing == wndsettings_page_action_picker)
+    {
+        list_id = m_ActionPickerID;
+        scroll_to_selection = true;
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogActionPickerHeader)); 
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 19.0f : 15.0f;
+    ImGui::BeginChild("ActionPickerList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
+
+    //List default actions
+    for (int i = 0; i < action_built_in_MAX; ++i)
+    {
+        if (ImGui::Selectable(ActionManager::Get().GetActionName((ActionID)i), (i == list_id)))
+        {
+            list_id = (ActionID)i;
+            m_ActionPickerID = list_id;
+
+            PageGoBack();
+        }
+
+        if ( (scroll_to_selection) && ((ActionID)i == list_id) )
+        {
+            ImGui::SetScrollHereY();
+        }
+    }
+
+    //List custom actions
+    int act_index = 0;
+    for (CustomAction& action : ConfigManager::Get().GetCustomActions())
+    {
+        ActionID action_id = (ActionID)(act_index + action_custom);
+
+        ImGui::PushID(&action);
+        if (ImGui::Selectable(ActionManager::Get().GetActionName(action_id), (action_id == list_id) ))
+        {
+            list_id = action_id;
+            m_ActionPickerID = action_id;
+
+            PageGoBack();
+        }
+        ImGui::PopID();
+
+        if ( (scroll_to_selection) && (action_id == list_id) )
+        {
+            ImGui::SetScrollHereY();
+        }
+
+        act_index++;
+    }
+
+    ImGui::EndChild();
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+
+    //Cancel button
+    ImGui::Separator();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
+    {
         PageGoBack();
     }
 }
@@ -2748,5 +3204,147 @@ void WindowSettings::SelectableWarning(const char* selectable_id, const char* po
     if ( (ImGui::IsWindowHovered()) || (is_selectable_focused) )
     {
         *selectable_height = ImGui::GetItemRectSize().y;
+    }
+}
+
+void WindowSettings::RefreshAppList()
+{
+    m_AppList.clear();
+
+    //Each section is sorted alphabetically before being appended to the app list (via Win32, so UTF-16 needed)
+    struct app_sublist_entry
+    {
+        std::string app_key;
+        std::string app_name_utf8;
+        std::wstring app_name_utf16;
+    };
+    std::vector<app_sublist_entry> app_sublist;
+    auto app_sublist_compare = [](app_sublist_entry& a, app_sublist_entry& b) { return WStringCompareNatural(a.app_name_utf16, b.app_name_utf16); };
+
+    std::unordered_set<std::string> unique_app_keys;
+    char app_key_buffer[vr::k_unMaxApplicationKeyLength] = "";
+    char app_prop_buffer[vr::k_unMaxPropertyStringSize]  = "";
+    vr::EVRApplicationError app_error = vr::VRApplicationError_None;
+
+    //Have some keys in the unique app key set by default as a way to never show them in the actual list
+    unique_app_keys.insert("steam.app.250820");                         //"SteamVR"
+    unique_app_keys.insert("openvr.tool.steamvr_tutorial");
+    unique_app_keys.insert("openvr.tool.steamvr_room_setup");
+    unique_app_keys.insert("openvr.tool.steamvr_environments_tools");
+
+    //Add active app first
+    if (UIManager::Get()->IsOpenVRLoaded())
+    {
+        app_error = vr::VRApplications()->GetApplicationKeyByProcessId(vr::VRApplications()->GetCurrentSceneProcessId(), app_key_buffer, vr::k_unMaxApplicationKeyLength);
+
+        if (app_error == vr::VRApplicationError_None)
+        {
+            std::string app_key  = app_key_buffer;
+            std::string app_name = app_key;
+
+            vr::VRApplications()->GetApplicationPropertyString(app_key_buffer, vr::VRApplicationProperty_Name_String, app_prop_buffer, vr::k_unMaxPropertyStringSize, &app_error);
+
+            if (app_error == vr::VRApplicationError_None)
+            {
+                app_name = app_prop_buffer;
+            }
+
+            unique_app_keys.insert(app_key);
+            m_AppList.emplace_back(app_key, app_name);
+        }
+    }
+
+    //Add apps with profiles before listing all eligble apps
+    for (const auto& app_key : ConfigManager::Get().GetAppProfileManager().GetProfileAppKeyList())
+    {
+        std::string app_name;
+
+        //Only add if not already in list
+        if (unique_app_keys.find(app_key) == unique_app_keys.end())
+        {
+            if (UIManager::Get()->IsOpenVRLoaded())
+            {
+                vr::VRApplications()->GetApplicationPropertyString(app_key.c_str(), vr::VRApplicationProperty_Name_String, app_prop_buffer, vr::k_unMaxPropertyStringSize, &app_error);
+
+                if (app_error == vr::VRApplicationError_None)
+                {
+                    app_name = app_prop_buffer;
+                }
+            }
+            
+            //Fall back to last known application name if we can't get it from SteamVR
+            if (app_name.empty())
+            {
+                app_name = ConfigManager::Get().GetAppProfileManager().GetProfile(app_key).LastApplicationName;
+
+                //If that's still empty for some reason (shouldn't happen), fall back to app key
+                if (app_name.empty())
+                {
+                    app_name = app_key;
+                }
+            }
+
+            unique_app_keys.insert(app_key);
+            app_sublist.push_back( {app_key, app_name, WStringConvertFromUTF8(app_name.c_str())} );
+        }
+    }
+
+    //Sort this list before adding it to the rest
+    std::sort(app_sublist.begin(), app_sublist.end(), app_sublist_compare);
+
+    for (const auto& app : app_sublist)
+    {
+        m_AppList.emplace_back(app.app_key, app.app_name_utf8);
+    }
+
+    app_sublist.clear();
+
+    //List registered apps
+    if (UIManager::Get()->IsOpenVRLoaded())
+    {
+        uint32_t app_count = vr::VRApplications()->GetApplicationCount();
+
+        for (uint32_t i = 0; i < app_count; ++i)
+        {
+            app_error = vr::VRApplications()->GetApplicationKeyByIndex(i, app_key_buffer, vr::k_unMaxApplicationKeyLength);
+
+            if (app_error == vr::VRApplicationError_None)
+            {
+                const bool is_installed = vr::VRApplications()->IsApplicationInstalled(app_key_buffer);
+                const bool is_overlay   = vr::VRApplications()->GetApplicationPropertyBool(app_key_buffer, vr::VRApplicationProperty_IsDashboardOverlay_Bool);
+                const bool is_internal  = vr::VRApplications()->GetApplicationPropertyBool(app_key_buffer, vr::VRApplicationProperty_IsInternal_Bool);
+                //Application manifests and their properties aren't really documented but these two properties don't seem to matter for us
+                //const bool is_template  = vr::VRApplications()->GetApplicationPropertyBool(app_key_buffer, vr::VRApplicationProperty_IsTemplate_Bool);
+                //const bool is_instanced = vr::VRApplications()->GetApplicationPropertyBool(app_key_buffer, vr::VRApplicationProperty_IsInstanced_Bool);
+
+                if ( (is_installed) && (!is_overlay) && (!is_internal) )
+                {
+                    std::string app_key  = app_key_buffer;
+                    std::string app_name = app_key;
+
+                    //Only add if not already in list
+                    if (unique_app_keys.find(app_key) == unique_app_keys.end())
+                    {
+                        vr::VRApplications()->GetApplicationPropertyString(app_key_buffer, vr::VRApplicationProperty_Name_String, app_prop_buffer, vr::k_unMaxPropertyStringSize, &app_error);
+
+                        if (app_error == vr::VRApplicationError_None)
+                        {
+                            app_name = app_prop_buffer;
+                        }
+
+                        unique_app_keys.insert(app_key);
+                        app_sublist.push_back( {app_key, app_name, WStringConvertFromUTF8(app_name.c_str())} );
+                    }
+                }
+            }
+        }
+
+        //Sort this list before adding it to the rest
+        std::sort(app_sublist.begin(), app_sublist.end(), app_sublist_compare);
+
+        for (const auto& app : app_sublist)
+        {
+            m_AppList.emplace_back(app.app_key, app.app_name_utf8);
+        }
     }
 }

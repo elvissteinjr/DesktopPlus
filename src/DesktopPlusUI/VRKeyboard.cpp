@@ -4,6 +4,7 @@
 #include "UIManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
+#include "Ini.h"
 #include "DPBrowserAPIClient.h"
 
 #include "imgui_internal.h"
