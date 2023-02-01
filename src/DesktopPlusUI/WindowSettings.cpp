@@ -2941,6 +2941,7 @@ void WindowSettings::UpdatePageProfilePicker()
     ImGuiStyle& style = ImGui::GetStyle();
 
     bool scroll_to_selection = false;
+    static bool is_nav_focus_entry_pending = false;    //Focus has to be delayed until after the page animation is done
     static int list_id = -1;
 
     if (m_PageAppearing == wndsettings_page_profile_picker)
@@ -2960,6 +2961,7 @@ void WindowSettings::UpdatePageProfilePicker()
         {
             list_id = (int)std::distance(m_ProfileList.begin(), it);
             scroll_to_selection = true;
+            is_nav_focus_entry_pending = ImGui::GetIO().NavVisible;
         }
     }
 
@@ -2976,6 +2978,12 @@ void WindowSettings::UpdatePageProfilePicker()
     int index = 0;
     for (const auto& name : m_ProfileList)
     {
+        if ( (is_nav_focus_entry_pending) && (m_PageAnimationDir == 0) && (index == list_id) )
+        {
+            ImGui::SetKeyboardFocusHere();
+            is_nav_focus_entry_pending = false;
+        }
+
         ImGui::PushID(index);
         if (ImGui::Selectable(name.c_str(), (index == list_id)))
         {
@@ -2995,6 +3003,7 @@ void WindowSettings::UpdatePageProfilePicker()
     }
 
     ImGui::EndChild();
+    ImGui::Unindent();
 
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 
@@ -3013,11 +3022,13 @@ void WindowSettings::UpdatePageActionPicker()
 
     bool scroll_to_selection = false;
     static ActionID list_id = action_none;
+    static bool is_nav_focus_entry_pending = false;    //Focus has to be delayed until after the page animation is done
 
     if (m_PageAppearing == wndsettings_page_action_picker)
     {
         list_id = m_ActionPickerID;
         scroll_to_selection = true;
+        is_nav_focus_entry_pending = ImGui::GetIO().NavVisible;
     }
 
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogActionPickerHeader)); 
@@ -3032,6 +3043,12 @@ void WindowSettings::UpdatePageActionPicker()
     //List default actions
     for (int i = 0; i < action_built_in_MAX; ++i)
     {
+        if ( (is_nav_focus_entry_pending) && (m_PageAnimationDir == 0) && ((ActionID)i == list_id) )
+        {
+            ImGui::SetKeyboardFocusHere();
+            is_nav_focus_entry_pending = false;
+        }
+
         if (ImGui::Selectable(ActionManager::Get().GetActionName((ActionID)i), (i == list_id)))
         {
             list_id = (ActionID)i;
@@ -3052,6 +3069,12 @@ void WindowSettings::UpdatePageActionPicker()
     {
         ActionID action_id = (ActionID)(act_index + action_custom);
 
+        if ( (is_nav_focus_entry_pending) && (m_PageAnimationDir == 0) && (action_id == list_id) )
+        {
+            ImGui::SetKeyboardFocusHere();
+            is_nav_focus_entry_pending = false;
+        }
+
         ImGui::PushID(&action);
         if (ImGui::Selectable(ActionManager::Get().GetActionName(action_id), (action_id == list_id) ))
         {
@@ -3071,6 +3094,7 @@ void WindowSettings::UpdatePageActionPicker()
     }
 
     ImGui::EndChild();
+    ImGui::Unindent();
 
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 
