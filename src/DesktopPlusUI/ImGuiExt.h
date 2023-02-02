@@ -52,7 +52,7 @@ namespace ImGui
     void TextColoredUnformatted(const ImVec4& col, const char* text, const char* text_end = nullptr);
 
     //ColorPicker simplified for embedded widget use instead having of popups + translation support
-    bool ColorPicker4Simple(const char* str_id, float col[4], float ref_col[4], const char* label_color_current = nullptr, const char* label_color_original = nullptr);
+    bool ColorPicker4Simple(const char* str_id, float col[4], float ref_col[4], const char* label_color_current = nullptr, const char* label_color_original = nullptr, float scale = 1.0f);
 
     //Collapsing area which animates the content sliding downwards. Always call content widget functions (for content height calculations)
     //Uses external animation progress variable to allow overriding when needed

@@ -685,7 +685,7 @@ namespace ImGui
     }
 
     //Takes a nicely adjustable function and bolts it down to the options we need after making a few modifications
-    bool ColorPicker4Simple(const char* str_id, float col[4], float ref_col[4], const char* label_color_current, const char* label_color_original)
+    bool ColorPicker4Simple(const char* str_id, float col[4], float ref_col[4], const char* label_color_current, const char* label_color_original, float scale)
     {
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems)
@@ -711,7 +711,7 @@ namespace ImGui
                                           ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
 
         const float start_y           = ImGui::GetCursorScreenPos().y;
-        const float square_sz         = ImGui::GetFrameHeight();
+        const float square_sz         = ImGui::GetFrameHeight() * scale;
         const float picker_width      = square_sz * 15.5f;
         const float picker_bar_height = picker_width - (2.0f * (square_sz + style.ItemInnerSpacing.x));
         g.NextItemData.ClearFlags();

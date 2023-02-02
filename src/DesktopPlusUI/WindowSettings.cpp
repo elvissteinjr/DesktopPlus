@@ -2895,14 +2895,21 @@ void WindowSettings::UpdatePageColorPicker()
         color_original = color_current;
     }
 
+    ImGuiStyle& style = ImGui::GetStyle();
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
+    //Make page scrollable since we can't easily adjust the picker to space taken by warnings
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+    ImGui::BeginChild("SettingsColorPicker", ImVec2(0.00f, -ImGui::GetFrameHeightWithSpacing() - style.ItemSpacing.y), false, ImGuiWindowFlags_NavFlattened);
+    ImGui::PopStyleColor();
 
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogColorPickerHeader)); 
     ImGui::Indent();
 
     vr_keyboard.VRKeyboardInputBegin("#ColorPicker");
     if (ImGui::ColorPicker4Simple("#ColorPicker", &color_current.x, &color_original.x, 
-                                  TranslationManager::GetString(tstr_DialogColorPickerCurrent), TranslationManager::GetString(tstr_DialogColorPickerOriginal)))
+                                  TranslationManager::GetString(tstr_DialogColorPickerCurrent), TranslationManager::GetString(tstr_DialogColorPickerOriginal),
+                                  UIManager::Get()->IsInDesktopMode() ? 1.25f : 1.00f))
     {
         int rgba = pun_cast<int, ImU32>( ImGui::ColorConvertFloat4ToU32(color_current) );
 
@@ -2910,9 +2917,10 @@ void WindowSettings::UpdatePageColorPicker()
         IPCManager::Get().PostConfigMessageToDashboardApp(config_id, rgba);
     }
     vr_keyboard.VRKeyboardInputEnd();
-    
+
     ImGui::Unindent();
-    
+    ImGui::EndChild();
+
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 
     //Confirmation buttons
