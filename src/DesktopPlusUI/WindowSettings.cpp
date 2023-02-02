@@ -1980,6 +1980,7 @@ void WindowSettings::UpdatePageProfiles()
     static bool has_loading_failed         = false;
     static bool has_deletion_failed        = false;
     static float list_buttons_width        = 0.0f;
+    const bool is_root_page = (m_PageStack[0] == wndsettings_page_profiles);
 
     if (m_PageAppearing == wndsettings_page_profiles)
     {
@@ -2029,7 +2030,7 @@ void WindowSettings::UpdatePageProfiles()
     ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
-    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 22.0f : 15.0f;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? ( (is_root_page) ? 22.0f : 20.0f ) : 15.0f;
     ImGui::BeginChild("ProfileList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
     //List profiles
@@ -2189,7 +2190,7 @@ void WindowSettings::UpdatePageProfiles()
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 
     //Confirmation buttons (don't show when used as root page)
-    if (m_PageStack[0] != wndsettings_page_profiles)
+    if (!is_root_page)
     {
         ImGui::Separator();
 
@@ -2620,9 +2621,11 @@ void WindowSettings::UpdatePageAppProfiles()
     static AppProfile app_profile_selected_edit;        //Temporary copy of the selected profile for editing
     static bool is_action_picker_for_leave = false;
     static bool delete_confirm_state       = false;
+    static bool delete_disabled            = false;     //No actually reason to do this but to avoid user confusion from allowing to delete the same profile over and over
     static float delete_button_width       = 0.0f;
     static float active_header_text_width  = 0.0f;
     static ImVec2 no_apps_text_size;
+    const bool is_root_page = (m_PageStack[0] == wndsettings_page_app_profiles);
 
     if (m_PageAppearing == wndsettings_page_app_profiles)
     {
@@ -2631,6 +2634,7 @@ void WindowSettings::UpdatePageAppProfiles()
         list_id = 0;
         app_profile_selected_edit = app_profiles.GetProfile((m_AppList.empty()) ? "" : m_AppList[0].first);
         delete_confirm_state = false;
+        delete_disabled = false;
 
         UIManager::Get()->RepeatFrame();
     }
@@ -2667,7 +2671,7 @@ void WindowSettings::UpdatePageAppProfiles()
     ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
-    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 15.0f : 11.0f;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? ( (is_root_page) ? 16.0f : 15.0f ) : 11.0f;
     ImGui::BeginChild("AppList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
     //Reset scroll when appearing
@@ -2703,6 +2707,7 @@ void WindowSettings::UpdatePageAppProfiles()
                 app_profile_selected_edit = app_profile;
 
                 delete_confirm_state = false;
+                delete_disabled = !app_profiles.ProfileExists(m_AppList[i].first);
             }
             ImGui::PopID();
 
@@ -2740,23 +2745,24 @@ void WindowSettings::UpdatePageAppProfiles()
 
         if (m_PageReturned == wndsettings_page_profile_picker)
         {
+            store_profile_changes = (app_profile_selected_edit.OverlayProfileFileName != m_ProfilePickerName);
             app_profile_selected_edit.OverlayProfileFileName = m_ProfilePickerName;
 
-            store_profile_changes = true;
             m_PageReturned = wndsettings_page_none;
         }
         else if (m_PageReturned == wndsettings_page_action_picker)
         {
             if (is_action_picker_for_leave)
             {
+                store_profile_changes = (app_profile_selected_edit.ActionIDLeave != m_ActionPickerID);
                 app_profile_selected_edit.ActionIDLeave = m_ActionPickerID;
             }
             else
             {
+                store_profile_changes = (app_profile_selected_edit.ActionIDEnter != m_ActionPickerID);
                 app_profile_selected_edit.ActionIDEnter = m_ActionPickerID;
             }
 
-            store_profile_changes = true;
             m_PageReturned = wndsettings_page_none;
         }
 
@@ -2829,6 +2835,10 @@ void WindowSettings::UpdatePageAppProfiles()
 
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - delete_button_width);
 
+        const bool delete_disabled_prev = delete_disabled;
+        if (delete_disabled_prev)
+            ImGui::PushItemDisabled();
+
         if (delete_confirm_state)
         {
             if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm), m_CachedSizes.Profiles_ButtonDeleteSize))
@@ -2840,6 +2850,7 @@ void WindowSettings::UpdatePageAppProfiles()
                 app_profile_selected_edit = {};
 
                 delete_confirm_state = false;
+                delete_disabled = true;
             }
         }
         else
@@ -2849,6 +2860,9 @@ void WindowSettings::UpdatePageAppProfiles()
                 delete_confirm_state = true;
             }
         }
+
+        if (delete_disabled_prev)
+            ImGui::PopItemDisabled();
 
         delete_button_width = ImGui::GetItemRectSize().x + style.IndentSpacing;
 
@@ -2866,13 +2880,14 @@ void WindowSettings::UpdatePageAppProfiles()
             }
 
             store_profile_changes = false;
+            delete_disabled = false;
         }
     }
 
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 
     //Confirmation buttons (don't show when used as root page)
-    if (m_PageStack[0] != wndsettings_page_app_profiles)
+    if (!is_root_page)
     {
         ImGui::Separator();
 
@@ -2964,13 +2979,22 @@ void WindowSettings::UpdatePageProfilePicker()
         m_ProfileList.erase(m_ProfileList.end() - 1);
 
         //Pre-select previous selection if it can be found
-        const auto it = std::find(m_ProfileList.begin(), m_ProfileList.end(), m_ProfilePickerName);
-
-        if (it != m_ProfileList.end())
+        if (m_ProfilePickerName.empty())
         {
-            list_id = (int)std::distance(m_ProfileList.begin(), it);
+            list_id = 0;
             scroll_to_selection = true;
             is_nav_focus_entry_pending = ImGui::GetIO().NavVisible;
+        }
+        else
+        {
+            const auto it = std::find(m_ProfileList.begin(), m_ProfileList.end(), m_ProfilePickerName);
+
+            if (it != m_ProfileList.end())
+            {
+                list_id = (int)std::distance(m_ProfileList.begin(), it);
+                scroll_to_selection = true;
+                is_nav_focus_entry_pending = ImGui::GetIO().NavVisible;
+            }
         }
     }
 
@@ -3014,7 +3038,7 @@ void WindowSettings::UpdatePageProfilePicker()
     ImGui::EndChild();
     ImGui::Unindent();
 
-    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight()) );
 
     //Cancel button
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
