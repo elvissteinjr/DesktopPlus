@@ -6132,7 +6132,21 @@ void OutputManager::DetachedTransformAdjust(unsigned int packed_value)
             Matrix4 mat_hmd(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
             Matrix4 mat_lookat = mat_base_offset * transform;   //Apply base offset for LookAt
 
+            //Apply dashboard origin offset if needed
+            float overlay_height = 0.0f;
+            if (ConfigManager::GetValue(configid_int_overlay_origin) == ovrl_origin_dashboard)
+            {
+                overlay_height = GetOverlayHeight(OverlayManager::Get().GetCurrentOverlayID());
+                mat_lookat.translate_relative(0.0f, overlay_height / 2.0f, 0.0f);
+            }
+
             TransformLookAt(mat_lookat, mat_hmd.getTranslation());
+
+            //Remove dashboard origin offset again
+            if (ConfigManager::GetValue(configid_int_overlay_origin) == ovrl_origin_dashboard)
+            {
+                mat_lookat.translate_relative(0.0f, overlay_height / -2.0f, 0.0f);
+            }
 
             //Remove base offset again
             mat_base_offset.invert();
