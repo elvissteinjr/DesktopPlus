@@ -65,6 +65,19 @@ bool AppProfileManager::LoadProfilesFromFile()
 void AppProfileManager::SaveProfilesToFile()
 {
     std::wstring wpath = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "app_profiles.ini").c_str() );
+
+    //Don't write if no profiles
+    if (m_Profiles.empty())
+    {
+        //Delete application profile file instead of leaving an empty one behind
+        if (FileExists(wpath.c_str()))
+        {
+            ::DeleteFileW(wpath.c_str());
+        }
+
+        return;
+    }
+
     Ini pfile(wpath.c_str());
 
     char app_name_buffer[vr::k_unMaxPropertyStringSize]  = "";
