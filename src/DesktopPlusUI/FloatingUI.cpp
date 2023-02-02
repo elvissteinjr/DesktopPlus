@@ -214,8 +214,16 @@ void FloatingUI::UpdateUITargetState()
         //If the Floating UI is just appearing, adjust overlay size based on the distance between HMD and overlay
         if (is_newly_visible)
         {
-            //Use fixed size when using primary dashboard overlay fallback
+            bool use_fixed_size = false;
+
+            //Use fixed size when using primary dashboard overlay fallback and distance to dashboard is lower than 0.25m
             if (ovrl_handle_primary_dashboard == m_OvrlHandleCurrentUITarget)
+            {
+                Vector3 pos_dashboard_origin = UIManager::Get()->GetOverlayDragger().GetBaseOffsetMatrix(ovrl_origin_dashboard).getTranslation();
+                use_fixed_size = (pos_dashboard_origin.distance(matrix.getTranslation()) < 0.25f);
+            }
+
+            if (use_fixed_size)
             {
                 m_Width = 1.2f;
                 vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle_floating_ui, m_Width);
