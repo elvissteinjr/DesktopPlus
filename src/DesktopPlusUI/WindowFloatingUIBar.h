@@ -64,6 +64,9 @@ class WindowFloatingUIActionBar
 //Extra window currently only showing capture fps of the overlay if enabled
 class WindowFloatingUIOverlayStats
 {
+    private:
+        ImVec2 CalcPos(const WindowFloatingUIMainBar& mainbar, const WindowFloatingUIActionBar& actionbar, float& window_width) const;
+
     public:
         void Update(const WindowFloatingUIMainBar& mainbar, const WindowFloatingUIActionBar& actionbar, unsigned int overlay_id);
 };

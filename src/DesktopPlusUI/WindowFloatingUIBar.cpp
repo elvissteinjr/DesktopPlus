@@ -855,56 +855,105 @@ void WindowFloatingUIActionBar::UpdateActionButtons(unsigned int overlay_id)
 
 
 //-WindowFloatingUIOverlayStats
-void WindowFloatingUIOverlayStats::Update(const WindowFloatingUIMainBar& mainbar, const WindowFloatingUIActionBar& actionbar, unsigned int overlay_id)
+ImVec2 WindowFloatingUIOverlayStats::CalcPos(const WindowFloatingUIMainBar& mainbar, const WindowFloatingUIActionBar& actionbar, float& window_width) const
 {
-    //Don't display if disabled
-    if (!ConfigManager::Get().GetValue(configid_bool_performance_show_fps))
-        return;
-
-    //Use overlay data of duplication ID if one is set
-    int duplication_id = OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_duplication_id];
-    const OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData((duplication_id == -1) ? overlay_id : (unsigned int)duplication_id);
-
-    int fps = -1;
-    if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
-    {
-        fps = ConfigManager::GetValue(configid_int_state_performance_duplication_fps);
-    }
-    else if (overlay_data.ConfigInt[configid_int_overlay_capture_source] != ovrl_capsource_ui)
-    {
-        fps = overlay_data.ConfigInt[configid_int_overlay_state_fps];
-    }
-
-    //Don't display window if no fps value available
-    if (fps == -1)
-        return;
-
     const ImGuiStyle& style = ImGui::GetStyle();
 
-    //This is a fixed size window, which seems like a bad idea for localization, but since it uses performance monitor strings it already uses size constrained text
-    //(and "FPS" will be untranslated in practice)
-    const float window_width = ImGui::GetFontSize() * 3.5f; 
+    //Limit width to what we have left in the texture space
+    const float max_width = (mainbar.GetPos().x - UITextureSpaces::Get().GetRect(ui_texspace_floating_ui).GetBL().x) - style.ItemSpacing.x;
+    window_width = std::min(window_width, max_width);
 
     //Position the window left to either action- or main-bar, depending on visibility of action-bar (switching is animated alongside mainbar)
-    //Additionally moves the window down if the action-bar occupies all horizontal space
-    const ImVec2 actionbar_pos  = actionbar.GetPos();
-    const ImVec2 actionbar_size = actionbar.GetSize();
-    bool is_actionbar_blocking = (actionbar_pos.x < window_width + style.ItemSpacing.x);
-    ImVec2 pos;
+    //Additionally moves the window down if the action-bar occupies the horizontal space needed
+    const ImVec2& actionbar_pos  = actionbar.GetPos();
+    const ImVec2& actionbar_size = actionbar.GetSize();
+    const ImVec2& mainbar_pos    = mainbar.GetPos();
+    const bool is_actionbar_blocking = (actionbar_pos.x < window_width + style.ItemSpacing.x);
 
-    float max_x = (is_actionbar_blocking) ? actionbar_pos.x + window_width + style.ItemSpacing.x : actionbar_pos.x;
+    float max_x = actionbar_pos.x;
+
+    if (is_actionbar_blocking)
+    {
+        const float space_width = mainbar.GetPos().x - actionbar_pos.x + ImGui::GetStyle().ItemSpacing.x;  //Space between left side of action-bar and left side of main-bar
+
+        if (window_width > space_width)
+        {
+            max_x = mainbar_pos.x;
+        }
+        else
+        {
+            max_x = actionbar_pos.x + window_width + style.ItemSpacing.x;
+        }
+    }
+
+    ImVec2 pos;
     pos.x  = smoothstep(mainbar.GetAnimationProgress(), mainbar.GetPos().x, max_x);
-    pos.x -= ImGui::GetStyle().ItemSpacing.x;
+    pos.x -= style.ItemSpacing.x;
     pos.y  = smoothstep(mainbar.GetAnimationProgress(), actionbar_pos.y, (is_actionbar_blocking) ? actionbar_pos.y + actionbar_size.y + style.ItemSpacing.y : actionbar_pos.y);
 
-    //Actual window
-    ImGui::SetNextWindowPos(pos, 0, ImVec2(1.0f, 0.0f));    
-    ImGui::SetNextWindowSize(ImVec2(window_width, -1.0f));
-    ImGui::Begin("WindowFloatingUIStats", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
+    return pos;
+}
 
-    ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorFPS));
-    ImGui::SameLine();
-    ImGui::TextRight(0.0f, "%d", fps);
+void WindowFloatingUIOverlayStats::Update(const WindowFloatingUIMainBar& mainbar, const WindowFloatingUIActionBar& actionbar, unsigned int overlay_id)
+{
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing;
 
-    ImGui::End();
+    const OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(overlay_id);
+    const bool show_fps = !overlay_data.ConfigBool[configid_bool_overlay_state_no_output];
+
+    if (show_fps)
+    {
+        //Don't display if disabled
+        if (!ConfigManager::Get().GetValue(configid_bool_performance_show_fps))
+            return;
+
+        //Use overlay data of duplication ID if one is set
+        int duplication_id = OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_duplication_id];
+        const OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData((duplication_id == -1) ? overlay_id : (unsigned int)duplication_id);
+
+        int fps = -1;
+        if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+        {
+            fps = ConfigManager::GetValue(configid_int_state_performance_duplication_fps);
+        }
+        else if (overlay_data.ConfigInt[configid_int_overlay_capture_source] != ovrl_capsource_ui)
+        {
+            fps = overlay_data.ConfigInt[configid_int_overlay_state_fps];
+        }
+
+        //Don't display window if no fps value available
+        if (fps == -1)
+            return;
+
+        //This is a fixed size window, which seems like a bad idea for localization, but since it uses performance monitor strings it already uses size constrained text
+        //(and "FPS" will be untranslated in practice)
+        float window_width = ImGui::GetFontSize() * 3.5f;
+        ImVec2 pos = CalcPos(mainbar, actionbar, window_width);
+
+        //Actual window
+        ImGui::SetNextWindowPos(pos, 0, ImVec2(1.0f, 0.0f));    
+        ImGui::SetNextWindowSize(ImVec2(window_width, -1.0f));
+        ImGui::Begin("WindowFloatingUIStats", nullptr, window_flags);
+
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorFPS));
+        ImGui::SameLine();
+        ImGui::TextRight(0.0f, "%d", fps);
+
+        ImGui::End();
+    }
+    else  //Show name
+    {
+        float window_width = ImGui::CalcTextSize(overlay_data.ConfigNameStr.c_str()).x + style.ItemSpacing.x + style.ItemSpacing.x;
+        ImVec2 pos = CalcPos(mainbar, actionbar, window_width);
+
+        //Actual window
+        ImGui::SetNextWindowPos(pos, 0, ImVec2(1.0f, 0.0f));    
+        ImGui::SetNextWindowSize(ImVec2(window_width, -1.0f));
+        ImGui::Begin("WindowFloatingUIStats", nullptr, window_flags);
+
+        ImGui::TextUnformatted(overlay_data.ConfigNameStr.c_str());
+
+        ImGui::End();
+    }
 }

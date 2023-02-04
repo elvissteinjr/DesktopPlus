@@ -371,6 +371,21 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
         case ovrl_texsource_browser:             vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, DPBrowserAPIClient::Get().GetServerAppProcessID()); break;
         default: break;
     }
+
+    //Set output error config state
+    {
+        const bool has_no_output = (m_TextureSource == ovrl_texsource_none);
+        OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_ID);
+
+        if (data.ConfigBool[configid_bool_overlay_state_no_output] != has_no_output)
+        {
+            data.ConfigBool[configid_bool_overlay_state_no_output] = has_no_output;
+
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, m_ID);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_state_no_output, has_no_output);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+        }
+    }
 }
 
 OverlayTextureSource Overlay::GetTextureSource() const
