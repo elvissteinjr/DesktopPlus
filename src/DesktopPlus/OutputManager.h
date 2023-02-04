@@ -146,6 +146,7 @@ class OutputManager
         void OnSetOverlayWinRTCaptureWindow(unsigned int overlay_id); //Called when configid_intptr_overlay_state_winrt_hwnd changed
         void FinishQueuedOverlayRemovals();                           //Overlay removals are currently only queued up when requested during HandleWinRTMessage()
 
+        void FixInvalidDashboardLaunchState();
         void UpdateDashboardHMD_Y();
         bool HasDashboardMoved();
         void DimDashboard(bool do_dim);

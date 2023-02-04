@@ -733,6 +733,9 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     //Hotkeys can trigger actions requiring OpenVR, so only register after OpenVR init
     RegisterHotkeys();
 
+    //Try to get dashboard in proper state if needed
+    FixInvalidDashboardLaunchState();
+
     //Return error state to allow for accurate display if needed
     return {vr::VRInitError_None, ovrl_error, vrinput_init_success};
 }
@@ -6700,6 +6703,22 @@ void OutputManager::FinishQueuedOverlayRemovals()
 
     //RemoveOverlay() may have changed active ID, keep in sync
     ConfigManager::SetValue(configid_int_interface_overlay_current_id, OverlayManager::Get().GetCurrentOverlayID());
+}
+
+void OutputManager::FixInvalidDashboardLaunchState()
+{
+    //Workaround for glitchy behavior in SteamVR
+    //When launching SteamVR while wearing the HMD, the dashboard appears automatically. In this state, IsDashboardVisible() returns false and the HMD button is unable to close the dashboard.
+    //There are other things that aren't quite right and Desktop+ relies on the info to be correct in many cases.
+    //This somewhat works around the issue by opening the dashboard for our dashboard overlay. 
+    //While a little bit intrusive and not 100% reliable when Desktop+ is auto-launched alongside, it's better than nothing.
+    vr::VROverlayHandle_t system_dashboard;
+    vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
+
+    if ( (vr::VROverlay()->IsOverlayVisible(system_dashboard)) && (!vr::VROverlay()->IsDashboardVisible()) )
+    {
+        vr::VROverlay()->ShowDashboard("elvissteinjr.DesktopPlusDashboard");
+    }
 }
 
 void OutputManager::UpdateDashboardHMD_Y()

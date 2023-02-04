@@ -22,7 +22,7 @@ OverlayDragger::OverlayDragger() :
     m_AbsoluteModeOffsetForward(0.0f),
     m_DashboardHMD_Y(-100.0f)
 {
-
+    m_DashboardMatLast.zero();
 }
 
 void OverlayDragger::DragStartBase(bool is_gesture_drag)
@@ -460,14 +460,15 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
         }
         case ovrl_origin_dashboard:
         {
-            //Update dashboard transform if it's visible
-            if (vr::VROverlay()->IsDashboardVisible())
+            //Update dashboard transform if it's visible or we never set the dashboard matrix before (IsDashboardVisible() can return false while visible)
+            if ( (vr::VROverlay()->IsDashboardVisible()) || (m_DashboardMatLast.isZero()) )
             {
                 //This code is prone to break when Valve changes the entire dashboard once again
                 vr::VROverlayHandle_t system_dashboard;
                 vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
 
-                if (system_dashboard != vr::k_ulOverlayHandleInvalid)
+                //Double-checking dashboard overlay visibility for the case when IsDashboardVisible() is false while it's actually visible
+                if ( (system_dashboard != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsOverlayVisible(system_dashboard)) )
                 {
                     vr::HmdMatrix34_t matrix_overlay_system;
 
