@@ -98,6 +98,7 @@ class VRKeyboard
 
         void LoadLayoutFromFile(const std::string& filename);
         void LoadCurrentLayout();
+        static std::vector<KeyboardLayoutMetadata> GetKeyboardLayoutList();
 
         const KeyboardLayoutMetadata& GetLayoutMetadata() const;
         std::vector<KeyboardLayoutKey>& GetLayout(KeyboardLayoutSubLayout sublayout);

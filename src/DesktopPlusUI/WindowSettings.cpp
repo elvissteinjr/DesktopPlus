@@ -1758,35 +1758,16 @@ void WindowSettings::UpdatePageKeyboardLayout()
         vr_keyboard.GetWindow().Show();
 
         //Load layout list
-        list_layouts.clear();
         list_id = -1;
+        list_layouts = VRKeyboard::GetKeyboardLayoutList();
 
+        //Select matching entry
         const std::string& current_filename = ConfigManager::GetValue(configid_str_input_keyboard_layout_file);
-        const std::wstring wpath = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "keyboards/*.ini").c_str() );
-        WIN32_FIND_DATA find_data;
-        HANDLE handle_find = ::FindFirstFileW(wpath.c_str(), &find_data);
+        auto it = std::find_if(list_layouts.begin(), list_layouts.end(), [&current_filename](const auto& list_entry){ return (current_filename == list_entry.FileName); });
 
-        if (handle_find != INVALID_HANDLE_VALUE)
+        if (it != list_layouts.end())
         {
-            do
-            {
-                KeyboardLayoutMetadata metadata = VRKeyboard::LoadLayoutMetadataFromFile( StringConvertFromUTF16(find_data.cFileName) );
-
-                //If base cluster exists, layout is probably valid, add to list
-                if (metadata.HasCluster[kbdlayout_cluster_base])
-                {
-                    list_layouts.push_back(metadata);
-
-                    //Select matching entry when appearing
-                    if (list_layouts.back().FileName == current_filename)
-                    {
-                        list_id = (int)list_layouts.size() - 1;
-                    }
-                }
-            }
-            while (::FindNextFileW(handle_find, &find_data) != 0);
-
-            ::FindClose(handle_find);
+            list_id = (int)std::distance(list_layouts.begin(), it);
         }
 
         //Clusters

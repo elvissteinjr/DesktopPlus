@@ -231,6 +231,34 @@ void VRKeyboard::LoadCurrentLayout()
     LoadLayoutFromFile(ConfigManager::GetValue(configid_str_input_keyboard_layout_file));
 }
 
+std::vector<KeyboardLayoutMetadata> VRKeyboard::GetKeyboardLayoutList()
+{
+    std::vector<KeyboardLayoutMetadata> layout_list;
+
+    const std::wstring wpath = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "keyboards/*.ini").c_str() );
+    WIN32_FIND_DATA find_data;
+    HANDLE handle_find = ::FindFirstFileW(wpath.c_str(), &find_data);
+
+    if (handle_find != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            KeyboardLayoutMetadata metadata = LoadLayoutMetadataFromFile( StringConvertFromUTF16(find_data.cFileName) );
+
+            //If base cluster exists, layout is probably valid, add to list
+            if (metadata.HasCluster[kbdlayout_cluster_base])
+            {
+                layout_list.push_back(metadata);
+            }
+        }
+        while (::FindNextFileW(handle_find, &find_data) != 0);
+
+        ::FindClose(handle_find);
+    }
+
+    return layout_list;
+}
+
 const KeyboardLayoutMetadata& VRKeyboard::GetLayoutMetadata() const
 {
     return m_LayoutMetadata;
