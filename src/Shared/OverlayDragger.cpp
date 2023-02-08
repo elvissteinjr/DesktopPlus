@@ -128,6 +128,234 @@ void OverlayDragger::DragStartBase(bool is_gesture_drag)
     }
 }
 
+void OverlayDragger::DragGestureStartBase()
+{
+    if ( (IsDragActive()) || (IsDragGestureActive()) )
+        return;
+
+    DragStartBase(true); //Call the other drag start function to convert the overlay transform to absolute. This doesn't actually start the normal drag
+
+    DragGestureUpdate();
+
+    m_DragGestureScaleDistanceStart = m_DragGestureScaleDistanceLast;
+
+    if (m_DragModeOverlayID != k_ulOverlayID_None)
+    {
+        m_DragGestureScaleWidthStart = OverlayManager::Get().GetConfigData(m_DragModeOverlayID).ConfigFloat[configid_float_overlay_width];
+    }
+    else
+    {
+        vr::VROverlay()->GetOverlayWidthInMeters(m_DragModeOverlayHandle, &m_DragGestureScaleWidthStart);
+    }
+
+    m_DragGestureActive = true;
+}
+
+void OverlayDragger::TransformForceUpright(Matrix4& transform) const
+{
+    //Based off of ComputeHMDFacingTransform()... might not be the best way to do it, but it works.
+    static const Vector3 up = {0.0f, 1.0f, 0.0f};
+
+    Matrix4 matrix_temp  = transform;
+    Vector3 ovrl_start   = matrix_temp.translate_relative(0.0f, 0.0f, -0.001f).getTranslation();
+    Vector3 forward_temp = (ovrl_start - transform.getTranslation()).normalize();
+    Vector3 right        = forward_temp.cross(up).normalize();
+    Vector3 forward      = up.cross(right).normalize();
+
+    Matrix4 mat_upright(right, up, forward * -1.0f);
+    mat_upright.setTranslation(ovrl_start);
+
+    transform = mat_upright;
+}
+
+void OverlayDragger::TransformForceDistance(Matrix4& transform, Vector3 reference_pos, float distance, bool use_cylinder_shape, bool auto_tilt) const
+{
+    //Match origin y-position to the overlay's to achieve cylindrical position (acts as sphere otherwise)
+    if (use_cylinder_shape)
+        reference_pos.y = transform.getTranslation().y;
+
+    Matrix4 matrix_lookat = transform;
+    float distance_to_reference = matrix_lookat.getTranslation().distance(reference_pos);
+
+    //Use up-vector multiplied by rotation matrix to avoid locking at near-up transforms
+    Vector3 up = matrix_lookat * Vector3(0.0f, 1.0f, 0.0f);
+    TransformLookAt(matrix_lookat, reference_pos, up);
+    matrix_lookat.translate_relative(0.0f, 0.0f, distance_to_reference - distance);
+
+    if (auto_tilt)
+    {
+        //Transfer scale from original transform before replacing it with the lookat one
+        Vector3 row_1(transform[0], transform[1], transform[2]);
+        float scale_x = row_1.length(); //Scaling is always uniform so we just check the x-axis
+
+        Vector3 pos = matrix_lookat.getTranslation();
+        matrix_lookat.setTranslation({0.0f, 0.0f, 0.0f});
+        matrix_lookat.scale(scale_x);
+        matrix_lookat.setTranslation(pos);
+
+        transform = matrix_lookat;
+    }
+    else
+    {
+        transform.setTranslation(matrix_lookat.getTranslation());
+    }
+}
+
+Matrix4 OverlayDragger::GetBaseOffsetMatrix()
+{
+    const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+    return GetBaseOffsetMatrix((OverlayOrigin)data.ConfigInt[configid_int_overlay_origin], OverlayManager::Get().GetOriginConfigFromData(data));
+}
+
+Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin)
+{
+    return GetBaseOffsetMatrix(overlay_origin, OverlayOriginConfig());
+}
+
+Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const OverlayOriginConfig& origin_config)
+{
+    Matrix4 matrix; //Identity
+
+    vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
+
+    switch (overlay_origin)
+    {
+        case ovrl_origin_room:
+        {
+            break;
+        }
+        case ovrl_origin_hmd_floor:
+        {
+            vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+            vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+            if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+            {
+                Matrix4 mat_pose = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+                Vector3 pos_offset = mat_pose.getTranslation();
+
+                //Force HMD pose upright to have it act as turning-only base position
+                if (origin_config.HMDFloorUseTurning)
+                {
+                    matrix = mat_pose;
+                    TransformForceUpright(matrix);
+                }
+
+                pos_offset.y = 0.0f;
+                matrix.setTranslation(pos_offset);
+            }
+            break;
+        }
+        case ovrl_origin_seated_universe:
+        {
+            matrix = vr::VRSystem()->GetSeatedZeroPoseToStandingAbsoluteTrackingPose();
+            break;
+        }
+        case ovrl_origin_dashboard:
+        {
+            //Update dashboard transform if it's visible or we never set the dashboard matrix before (IsDashboardVisible() can return false while visible)
+            if ( (vr::VROverlay()->IsDashboardVisible()) || (m_DashboardMatLast.isZero()) )
+            {
+                //This code is prone to break when Valve changes the entire dashboard once again
+                vr::VROverlayHandle_t system_dashboard;
+                vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
+
+                //Double-checking dashboard overlay visibility for the case when IsDashboardVisible() is false while it's actually visible
+                if ( (system_dashboard != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsOverlayVisible(system_dashboard)) )
+                {
+                    vr::HmdMatrix34_t matrix_overlay_system;
+
+                    vr::HmdVector2_t overlay_system_size;
+                    vr::VROverlay()->GetOverlayMouseScale(system_dashboard, &overlay_system_size); //Coordinate size should be mouse scale
+
+                    vr::VROverlay()->GetTransformForOverlayCoordinates(system_dashboard, universe_origin, { overlay_system_size.v[0]/2.0f, 0.0f }, &matrix_overlay_system);
+                    m_DashboardMatLast = matrix_overlay_system;
+
+                    if (m_DashboardHMD_Y == -100.0f)    //If Desktop+ was started with the dashboard open, the value will still be default, so set it now
+                    {
+                        UpdateDashboardHMD_Y();
+                    }
+                }
+            }
+
+            matrix = m_DashboardMatLast;
+
+            Vector3 pos_offset = matrix.getTranslation();
+            pos_offset.y = m_DashboardHMD_Y;
+            pos_offset.y -= 0.44f;              //Move 0.44m down for better dashboard overlay default pos (needs to fit Floating UI though)
+            matrix.setTranslation(pos_offset);
+
+            break;
+        }
+        case ovrl_origin_hmd:
+        case ovrl_origin_right_hand:
+        case ovrl_origin_left_hand:
+        case ovrl_origin_aux:
+        {
+            //This is used for the dragging only. In other cases the origin is identity, as it's attached to the controller via OpenVR
+            vr::TrackedDeviceIndex_t device_index;
+
+            switch (overlay_origin)
+            {
+                case ovrl_origin_hmd:        device_index = vr::k_unTrackedDeviceIndex_Hmd;                                                              break;
+                case ovrl_origin_right_hand: device_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand); break;
+                case ovrl_origin_left_hand:  device_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand);  break;
+                case ovrl_origin_aux:        device_index = GetFirstVRTracker();                                                                         break;
+                default:                     device_index = vr::k_unTrackedDeviceIndexInvalid;
+            }
+
+            if (device_index != vr::k_unTrackedDeviceIndexInvalid)
+            {
+                vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+                vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+
+                if (poses[device_index].bPoseIsValid)
+                {
+                    matrix = poses[device_index].mDeviceToAbsoluteTracking;
+                }
+            }
+            break;
+        }
+        case ovrl_origin_dplus_tab:
+        {
+            vr::VROverlayHandle_t ovrl_handle_dplus;
+            vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &ovrl_handle_dplus);
+
+            if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
+            {
+                vr::HmdMatrix34_t matrix_dplus_tab;
+                vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
+
+                vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_dplus, origin, {0.5f, 0.0f}, &matrix_dplus_tab);
+
+                matrix = matrix_dplus_tab;
+            }
+            break;
+        }
+    }
+
+    return matrix;
+}
+
+void OverlayDragger::ApplyDashboardScale(Matrix4& matrix)
+{
+    Matrix4 mat_origin = GetBaseOffsetMatrix(ovrl_origin_dplus_tab);
+    Vector3 row_1(mat_origin[0], mat_origin[1], mat_origin[2]);
+    float dashboard_scale = 0.469f;
+
+    //If the dashboard scale cannot be determined yet (D+ tab hasn't been used yet), don't calculate and use the fallback value instead
+    if (row_1 != Vector3(1.0f, 0.0f, 0.0f))
+    {
+        dashboard_scale = row_1.length();
+    }
+
+    Vector3 translation = matrix.getTranslation();
+    matrix.setTranslation({0.0f, 0.0f, 0.0f});
+    matrix.scale(dashboard_scale);
+    matrix.setTranslation(translation);
+}
+
 void OverlayDragger::DragStart(unsigned int overlay_id)
 {
     if ( (IsDragActive()) || (IsDragGestureActive()) )
@@ -407,161 +635,6 @@ float OverlayDragger::DragAddWidth(float width)
     return overlay_width;
 }
 
-Matrix4 OverlayDragger::GetBaseOffsetMatrix()
-{
-    const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
-
-    return GetBaseOffsetMatrix((OverlayOrigin)data.ConfigInt[configid_int_overlay_origin], OverlayManager::Get().GetOriginConfigFromData(data));
-}
-
-Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin)
-{
-    return GetBaseOffsetMatrix(overlay_origin, OverlayOriginConfig());
-}
-
-Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const OverlayOriginConfig& origin_config)
-{
-    Matrix4 matrix; //Identity
-
-    vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
-
-    switch (overlay_origin)
-    {
-        case ovrl_origin_room:
-        {
-            break;
-        }
-        case ovrl_origin_hmd_floor:
-        {
-            vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-            vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
-
-            if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
-            {
-                Matrix4 mat_pose = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
-                Vector3 pos_offset = mat_pose.getTranslation();
-
-                //Force HMD pose upright to have it act as turning-only base position
-                if (origin_config.HMDFloorUseTurning)
-                {
-                    matrix = mat_pose;
-                    TransformForceUpright(matrix);
-                }
-
-                pos_offset.y = 0.0f;
-                matrix.setTranslation(pos_offset);
-            }
-            break;
-        }
-        case ovrl_origin_seated_universe:
-        {
-            matrix = vr::VRSystem()->GetSeatedZeroPoseToStandingAbsoluteTrackingPose();
-            break;
-        }
-        case ovrl_origin_dashboard:
-        {
-            //Update dashboard transform if it's visible or we never set the dashboard matrix before (IsDashboardVisible() can return false while visible)
-            if ( (vr::VROverlay()->IsDashboardVisible()) || (m_DashboardMatLast.isZero()) )
-            {
-                //This code is prone to break when Valve changes the entire dashboard once again
-                vr::VROverlayHandle_t system_dashboard;
-                vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
-
-                //Double-checking dashboard overlay visibility for the case when IsDashboardVisible() is false while it's actually visible
-                if ( (system_dashboard != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsOverlayVisible(system_dashboard)) )
-                {
-                    vr::HmdMatrix34_t matrix_overlay_system;
-
-                    vr::HmdVector2_t overlay_system_size;
-                    vr::VROverlay()->GetOverlayMouseScale(system_dashboard, &overlay_system_size); //Coordinate size should be mouse scale
-
-                    vr::VROverlay()->GetTransformForOverlayCoordinates(system_dashboard, universe_origin, { overlay_system_size.v[0]/2.0f, 0.0f }, &matrix_overlay_system);
-                    m_DashboardMatLast = matrix_overlay_system;
-
-                    if (m_DashboardHMD_Y == -100.0f)    //If Desktop+ was started with the dashboard open, the value will still be default, so set it now
-                    {
-                        UpdateDashboardHMD_Y();
-                    }
-                }
-            }
-
-            matrix = m_DashboardMatLast;
-
-            Vector3 pos_offset = matrix.getTranslation();
-            pos_offset.y = m_DashboardHMD_Y;
-            pos_offset.y -= 0.44f;              //Move 0.44m down for better dashboard overlay default pos (needs to fit Floating UI though)
-            matrix.setTranslation(pos_offset);
-
-            break;
-        }
-        case ovrl_origin_hmd:
-        case ovrl_origin_right_hand:
-        case ovrl_origin_left_hand:
-        case ovrl_origin_aux:
-        {
-            //This is used for the dragging only. In other cases the origin is identity, as it's attached to the controller via OpenVR
-            vr::TrackedDeviceIndex_t device_index;
-
-            switch (overlay_origin)
-            {
-                case ovrl_origin_hmd:        device_index = vr::k_unTrackedDeviceIndex_Hmd;                                                              break;
-                case ovrl_origin_right_hand: device_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand); break;
-                case ovrl_origin_left_hand:  device_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand);  break;
-                case ovrl_origin_aux:        device_index = GetFirstVRTracker();                                                                         break;
-                default:                     device_index = vr::k_unTrackedDeviceIndexInvalid;
-            }
-             
-            if (device_index != vr::k_unTrackedDeviceIndexInvalid)
-            {
-                vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-                vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
-
-                if (poses[device_index].bPoseIsValid)
-                {
-                    matrix = poses[device_index].mDeviceToAbsoluteTracking;
-                }
-            }
-            break;
-        }
-        case ovrl_origin_dplus_tab:
-        {
-            vr::VROverlayHandle_t ovrl_handle_dplus;
-            vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &ovrl_handle_dplus);
-
-            if (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid)
-            {
-                vr::HmdMatrix34_t matrix_dplus_tab;
-                vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
-
-                vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_dplus, origin, {0.5f, 0.0f}, &matrix_dplus_tab);
-                
-                matrix = matrix_dplus_tab;
-            }
-            break;
-        }
-    }
-
-    return matrix;
-}
-
-void OverlayDragger::ApplyDashboardScale(Matrix4& matrix)
-{
-    Matrix4 mat_origin = GetBaseOffsetMatrix(ovrl_origin_dplus_tab);
-    Vector3 row_1(mat_origin[0], mat_origin[1], mat_origin[2]);
-    float dashboard_scale = 0.469f;
-
-    //If the dashboard scale cannot be determined yet (D+ tab hasn't been used yet), don't calculate and use the fallback value instead
-    if (row_1 != Vector3(1.0f, 0.0f, 0.0f))
-    {
-        dashboard_scale = row_1.length();
-    }
-
-    Vector3 translation = matrix.getTranslation();
-    matrix.setTranslation({0.0f, 0.0f, 0.0f});
-    matrix.scale(dashboard_scale);
-    matrix.setTranslation(translation);
-}
-
 Matrix4 OverlayDragger::DragFinish()
 {
     DragUpdate();
@@ -611,14 +684,14 @@ Matrix4 OverlayDragger::DragFinish()
 
         //Counteract origin offset for dashboard origin overlays
         #ifndef DPLUS_UI
-            if (m_DragModeOverlayOrigin == ovrl_origin_dashboard)
+        if (m_DragModeOverlayOrigin == ovrl_origin_dashboard)
+        {
+            if (OutputManager* outmgr = OutputManager::Get())
             {
-                if (OutputManager* outmgr = OutputManager::Get())
-                {
-                    float height = outmgr->GetOverlayHeight(m_DragModeOverlayID);
-                    matrix_target_relative.translate_relative(0.0f, height / -2.0f, 0.0f);
-                }
+                float height = outmgr->GetOverlayHeight(m_DragModeOverlayID);
+                matrix_target_relative.translate_relative(0.0f, height / -2.0f, 0.0f);
             }
+        }
         #endif
 
         data.ConfigTransform = matrix_target_relative;
@@ -642,79 +715,6 @@ void OverlayDragger::DragCancel()
     m_DragModeOverlayHandle     = vr::k_ulOverlayHandleInvalid;
     m_DragModeSnappedExtraWidth = 0.0f;
     m_AbsoluteModeActive        = false;
-}
-
-void OverlayDragger::DragGestureStartBase()
-{
-    if ( (IsDragActive()) || (IsDragGestureActive()) )
-        return;
-
-    DragStartBase(true); //Call the other drag start function to convert the overlay transform to absolute. This doesn't actually start the normal drag
-
-    DragGestureUpdate();
-
-    m_DragGestureScaleDistanceStart = m_DragGestureScaleDistanceLast;
-
-    if (m_DragModeOverlayID != k_ulOverlayID_None)
-    {
-        m_DragGestureScaleWidthStart = OverlayManager::Get().GetConfigData(m_DragModeOverlayID).ConfigFloat[configid_float_overlay_width];
-    }
-    else
-    {
-        vr::VROverlay()->GetOverlayWidthInMeters(m_DragModeOverlayHandle, &m_DragGestureScaleWidthStart);
-    }
-
-    m_DragGestureActive = true;
-}
-
-void OverlayDragger::TransformForceUpright(Matrix4& transform) const
-{
-    //Based off of ComputeHMDFacingTransform()... might not be the best way to do it, but it works.
-    static const Vector3 up = {0.0f, 1.0f, 0.0f};
-
-    Matrix4 matrix_temp  = transform;
-    Vector3 ovrl_start   = matrix_temp.translate_relative(0.0f, 0.0f, -0.001f).getTranslation();
-    Vector3 forward_temp = (ovrl_start - transform.getTranslation()).normalize();
-    Vector3 right        = forward_temp.cross(up).normalize();
-    Vector3 forward      = up.cross(right).normalize();
-
-    Matrix4 mat_upright(right, up, forward * -1.0f);
-    mat_upright.setTranslation(ovrl_start);
-
-    transform = mat_upright;
-}
-
-void OverlayDragger::TransformForceDistance(Matrix4& transform, Vector3 reference_pos, float distance, bool use_cylinder_shape, bool auto_tilt) const
-{
-    //Match origin y-position to the overlay's to achieve cylindrical position (acts as sphere otherwise)
-    if (use_cylinder_shape)
-        reference_pos.y = transform.getTranslation().y;
-
-    Matrix4 matrix_lookat = transform;
-    float distance_to_reference = matrix_lookat.getTranslation().distance(reference_pos);
-
-    //Use up-vector multiplied by rotation matrix to avoid locking at near-up transforms
-    Vector3 up = matrix_lookat * Vector3(0.0f, 1.0f, 0.0f);
-    TransformLookAt(matrix_lookat, reference_pos, up);
-    matrix_lookat.translate_relative(0.0f, 0.0f, distance_to_reference - distance);
-
-    if (auto_tilt)
-    {
-        //Transfer scale from original transform before replacing it with the lookat one
-        Vector3 row_1(transform[0], transform[1], transform[2]);
-        float scale_x = row_1.length(); //Scaling is always uniform so we just check the x-axis
-
-        Vector3 pos = matrix_lookat.getTranslation();
-        matrix_lookat.setTranslation({0.0f, 0.0f, 0.0f});
-        matrix_lookat.scale(scale_x);
-        matrix_lookat.setTranslation(pos);
-
-        transform = matrix_lookat;
-    }
-    else
-    {
-        transform.setTranslation(matrix_lookat.getTranslation());
-    }
 }
 
 void OverlayDragger::DragGestureStart(unsigned int overlay_id)
