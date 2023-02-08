@@ -9,18 +9,16 @@
 std::string StringConvertFromUTF16(LPCWSTR str)
 {
     std::string stdstr;
-    int length_utf8 = WideCharToMultiByte(CP_UTF8, 0, str, -1, nullptr, 0, nullptr, nullptr);
+    int length_utf8 = ::WideCharToMultiByte(CP_UTF8, 0, str, -1, nullptr, 0, nullptr, nullptr);
 
     if (length_utf8 != 0)
     {
-        char* str_utf8 = new char[length_utf8];
+        auto str_utf8 = std::unique_ptr<char[]>{new char[length_utf8]};
 
-        if (WideCharToMultiByte(CP_UTF8, 0, str, -1, str_utf8, length_utf8, nullptr, nullptr) != 0)
+        if (::WideCharToMultiByte(CP_UTF8, 0, str, -1, str_utf8.get(), length_utf8, nullptr, nullptr) != 0)
         {
-            stdstr = str_utf8;
+            stdstr = str_utf8.get();
         }
-
-        delete[] str_utf8;
     }
 
     return stdstr;
@@ -29,18 +27,16 @@ std::string StringConvertFromUTF16(LPCWSTR str)
 std::wstring WStringConvertFromUTF8(const char * str)
 {
     std::wstring wstr;
-    int length_utf16 = MultiByteToWideChar(CP_UTF8, 0, str, -1, nullptr, 0);
+    int length_utf16 = ::MultiByteToWideChar(CP_UTF8, 0, str, -1, nullptr, 0);
 
     if (length_utf16 != 0)
     {
-        WCHAR* str_utf16 = new WCHAR[length_utf16];
+        auto str_utf16 = std::unique_ptr<WCHAR[]>{new WCHAR[length_utf16]};
 
-        if (MultiByteToWideChar(CP_UTF8, 0, str, -1, str_utf16, length_utf16) != 0)
+        if (::MultiByteToWideChar(CP_UTF8, 0, str, -1, str_utf16.get(), length_utf16) != 0)
         {
-            wstr = str_utf16;
+            wstr = str_utf16.get();
         }
-
-        delete[] str_utf16;
     }
 
     return wstr;
@@ -50,18 +46,16 @@ std::wstring WStringConvertFromUTF8(const char * str)
 std::wstring WStringConvertFromLocalEncoding(const char* str)
 {
     std::wstring wstr;
-    int length_utf16 = MultiByteToWideChar(CP_ACP, 0, str, -1, nullptr, 0);
+    int length_utf16 = ::MultiByteToWideChar(CP_ACP, 0, str, -1, nullptr, 0);
 
     if (length_utf16 != 0)
     {
-        WCHAR* str_utf16 = new WCHAR[length_utf16];
+        auto str_utf16 = std::unique_ptr<WCHAR[]>{new WCHAR[length_utf16]};
 
-        if (MultiByteToWideChar(CP_ACP, 0, str, -1, str_utf16, length_utf16) != 0)
+        if (::MultiByteToWideChar(CP_ACP, 0, str, -1, str_utf16.get(), length_utf16) != 0)
         {
-            wstr = str_utf16;
+            wstr = str_utf16.get();
         }
-
-        delete[] str_utf16;
     }
 
     return wstr;
