@@ -423,6 +423,13 @@ enum TRMGRStrID
 
 class TranslationManager
 {
+    public:
+        struct ListEntry
+        {
+            std::string FileName;
+            std::string ListName;
+        };
+
     private:
         static const char* s_StringIDNames[tstr_MAX];
         std::string m_Strings[tstr_MAX];
@@ -440,6 +447,7 @@ class TranslationManager
         static const char* GetString(TRMGRStrID str_id);      //Strings are not sanitized in any way, so probably a bad idea to feed straight into ImGui functions calling printf
         static TRMGRStrID GetStringID(const char* str);       //May return tstr_NONE
         static std::string GetTranslationNameFromFile(const std::string& filename);
+        static std::vector<TranslationManager::ListEntry> GetTranslationList();
 
         void LoadTranslationFromFile(const std::string& filename);
 

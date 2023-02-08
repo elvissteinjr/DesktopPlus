@@ -652,51 +652,32 @@ void WindowSettings::UpdatePageMainCatInterface()
         ImGui::PushItemWidth(-1);
         if (ImGui::BeginComboAnimated("##ComboLang", TranslationManager::Get().GetCurrentTranslationName() ))
         {
-            static std::vector< std::pair<std::string, std::string> > list_langs; //filename, list name
+            static std::vector<TranslationManager::ListEntry> list_langs;
             static int list_id = 0;
 
+            //Load language list when dropdown is used for the first time
             if ( (ImGui::IsWindowAppearing()) && (list_langs.empty()) )
             {
-                //Load language list
                 list_id = 0;
+                list_langs = TranslationManager::GetTranslationList();
 
+                //Select matching entry
                 const std::string& current_filename = ConfigManager::GetValue(configid_str_interface_language_file);
-                const std::wstring wpath = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "lang/*.ini").c_str() );
-                WIN32_FIND_DATA find_data;
-                HANDLE handle_find = ::FindFirstFileW(wpath.c_str(), &find_data);
+                auto it = std::find_if(list_langs.begin(), list_langs.end(), [&current_filename](const auto& list_entry){ return (current_filename == list_entry.FileName); });
 
-                if (handle_find != INVALID_HANDLE_VALUE)
+                if (it != list_langs.end())
                 {
-                    do
-                    {
-                        const std::string filename_utf8 = StringConvertFromUTF16(find_data.cFileName);
-                        const std::string name = TranslationManager::GetTranslationNameFromFile(filename_utf8);
-
-                        //If name could be read, add to list
-                        if (!name.empty())
-                        {
-                            list_langs.push_back( std::make_pair(filename_utf8, name) );
-
-                            //Select matching entry when appearing
-                            if (filename_utf8 == current_filename)
-                            {
-                                list_id = (int)list_langs.size() - 1;
-                            }
-                        }
-                    }
-                    while (::FindNextFileW(handle_find, &find_data) != 0);
-
-                    ::FindClose(handle_find);
+                    list_id = (int)std::distance(list_langs.begin(), it);
                 }
             }
 
             int i = 0;
             for (const auto& item : list_langs)
             {
-                if (ImGui::Selectable(item.second.c_str(), (list_id == i)))
+                if (ImGui::Selectable(item.ListName.c_str(), (list_id == i)))
                 {
-                    ConfigManager::SetValue(configid_str_interface_language_file, item.first);
-                    TranslationManager::Get().LoadTranslationFromFile(item.first);
+                    ConfigManager::SetValue(configid_str_interface_language_file, item.FileName);
+                    TranslationManager::Get().LoadTranslationFromFile(item.FileName);
                     UIManager::Get()->OnTranslationChanged();
 
                     list_id = i;

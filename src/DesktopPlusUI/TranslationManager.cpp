@@ -467,6 +467,35 @@ std::string TranslationManager::GetTranslationNameFromFile(const std::string& fi
     return name;
 }
 
+std::vector<TranslationManager::ListEntry> TranslationManager::GetTranslationList()
+{
+    std::vector<TranslationManager::ListEntry> lang_list;
+
+    const std::wstring wpath = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "lang/*.ini").c_str() );
+    WIN32_FIND_DATA find_data;
+    HANDLE handle_find = ::FindFirstFileW(wpath.c_str(), &find_data);
+
+    if (handle_find != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            const std::string filename_utf8 = StringConvertFromUTF16(find_data.cFileName);
+            const std::string name = GetTranslationNameFromFile(filename_utf8);
+
+            //If name could be read, add to list
+            if (!name.empty())
+            {
+                lang_list.push_back({filename_utf8, name});
+            }
+        }
+        while (::FindNextFileW(handle_find, &find_data) != 0);
+
+        ::FindClose(handle_find);
+    }
+
+    return lang_list;
+}
+
 void TranslationManager::LoadTranslationFromFile(const std::string& filename)
 {
     //When filename empty (called from empty config value), figure out the user's language to default to that
