@@ -342,6 +342,7 @@ enum TRMGRStrID
     tstr_FloatingUIBrowserGoForwardTip,
     tstr_FloatingUIBrowserRefreshTip,
     tstr_FloatingUIBrowserStopTip,
+    tstr_FloatingUIActionBarEmpty,
     tstr_ActionNone,
     tstr_ActionKeyboardShow,
     tstr_ActionKeyboardHide,

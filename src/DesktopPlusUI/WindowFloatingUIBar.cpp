@@ -687,12 +687,29 @@ void WindowFloatingUIActionBar::Update(unsigned int overlay_id)
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 
+    const ImVec2 cursor_pos = ImGui::GetCursorPos();
+
     if (OverlayManager::Get().GetConfigData(overlay_id).ConfigBool[configid_bool_overlay_floatingui_desktops_enabled])
     {
         UpdateDesktopButtons(overlay_id);
     }
 
     UpdateActionButtons(overlay_id);
+
+    //Check if there any buttons added by above functions and if not, display placeholder text so the window doesn't look weird
+    const ImVec2 cursor_pos_orig = ImGui::GetCursorPos();
+    if (cursor_pos_orig.x == cursor_pos.x)
+    {
+        //Match height of what a normal button would take up and middle-align the text
+        ImVec2 b_size, b_uv_min, b_uv_max;
+        TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
+        b_size.x += style.FramePadding.x * 2.0f;
+        b_size.y += style.FramePadding.y * 2.0f;
+
+        ImGui::Dummy({0.0f, b_size.y});
+        ImGui::SetCursorPosY(cursor_pos.y + (b_size.y / 2.0f) - (ImGui::GetFontSize() / 2.0f));
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_FloatingUIActionBarEmpty));
+    }
 
     ImGui::PopStyleColor(); //ImGuiCol_Button
     ImGui::PopStyleVar();   //ImGuiStyleVar_FrameRounding
