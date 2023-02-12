@@ -6245,6 +6245,9 @@ void OutputManager::DetachedTransformConvertOrigin(unsigned int overlay_id, Over
 
     //Apply inverse of origin-to matrix to get transform relative to new origin
     transform = mat_origin_to_inverse * transform;
+
+    //Sync transform so the UI doesn't have the wrong idea if no drag occurs after this
+    DetachedTransformSync(overlay_id);
 }
 
 void OutputManager::DetachedTransformUpdateHMDFloor()
