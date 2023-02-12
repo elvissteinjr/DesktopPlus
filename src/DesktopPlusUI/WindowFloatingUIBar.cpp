@@ -457,7 +457,7 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
                 current_desktop_new = -1;
             }
         }
-        DisplayTooltipIfHovered("Combined Desktop");
+        DisplayTooltipIfHovered(TranslationManager::GetString(tstr_SourceDesktopAll));
         ImGui::PopID();
         ImGui::SameLine();
 
@@ -523,7 +523,7 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
                 if (current_desktop_new <= -1)
                     current_desktop_new = desktop_count - 1;
             }
-            DisplayTooltipIfHovered("Previous Desktop");
+            DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIActionBarDesktopPrev));
             ImGui::PopID();
             ImGui::SameLine();
 
@@ -536,7 +536,7 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
                 if (current_desktop_new == desktop_count)
                     current_desktop_new = 0;
             }
-            DisplayTooltipIfHovered("Next Desktop");
+            DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIActionBarDesktopNext));
             ImGui::PopID();
             ImGui::SameLine();
             break;
