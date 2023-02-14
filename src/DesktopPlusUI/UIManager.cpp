@@ -219,7 +219,7 @@ vr::EVRInitError UIManager::InitOverlay()
     if (!m_DesktopMode) //For desktop mode we only init OpenVR, but don't set up any overlays
     {
         //This loop gets rid of any other process hogging our overlay key. Though in normal situations another Desktop+UI process would've already be killed before this
-        while (true)
+        for (int tries = 0; tries < 10; ++tries)
         {
             ovrl_error = vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusUI", "Desktop+UI", &m_OvrlHandleOverlayBar);
 
@@ -242,19 +242,20 @@ vr::EVRInitError UIManager::InitOverlay()
                     else
                     {
                         ovrl_error = vr::VROverlayError_KeyInUse;
-                        break;
                     }
                 }
                 else
                 {
                     ovrl_error = vr::VROverlayError_KeyInUse;
-                    break;
                 }
             }
             else
             {
                 break;
             }
+
+            //Try again in a bit to check if it's just a race with some external cleanup
+            ::Sleep(200);
         }
 
         if (m_OvrlHandleOverlayBar != vr::k_ulOverlayHandleInvalid)
@@ -809,6 +810,8 @@ void UIManager::OnExit()
     m_SharedTextureRef.Reset();
 
     WindowManager::Get().SetActive(false);
+
+    vr::VR_Shutdown();
 }
 
 void UIManager::OnProfileLoaded()
