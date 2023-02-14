@@ -76,9 +76,16 @@ void WindowKeyboard::UpdateVisibility()
         {
             ovrl_handle_assigned = OverlayManager::Get().GetConfigData((unsigned int)assigned_overlay_id).ConfigHandle[configid_handle_overlay_state_overlay_handle];
 
-            if ( (ovrl_handle_assigned != vr::k_ulOverlayHandleInvalid) && (m_OverlayStateCurrent->IsVisible != vr::VROverlay()->IsOverlayVisible(ovrl_handle_assigned)) )
+            if (ovrl_handle_assigned != vr::k_ulOverlayHandleInvalid)
             {
-                (m_OverlayStateCurrent->IsVisible) ? Hide() : Show();
+                if (m_OverlayStateCurrent->IsVisible != vr::VROverlay()->IsOverlayVisible(ovrl_handle_assigned))
+                {
+                    (m_OverlayStateCurrent->IsVisible) ? Hide() : Show();
+                }
+            }
+            else  //Overlay doesn't exist anymore, remove assignment
+            {
+                SetAssignedOverlayID(-1);
             }
         }
 
