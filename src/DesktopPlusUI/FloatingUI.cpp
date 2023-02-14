@@ -153,22 +153,29 @@ void FloatingUI::UpdateUITargetState()
 
                 if (ovrl_handle != vr::k_ulOverlayHandleInvalid)
                 {
+                    //Check if this is the primary dashboard overlay
+                    if ( (ovrl_id_primary_dashboard == k_ulOverlayID_None) && (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_dashboard) && 
+                         (data.ConfigInt[configid_int_overlay_display_mode] != ovrl_dispmode_scene) )
+                    {
+                        //First dashboard origin with non-scene display mode is considered to be the primary dashboard overlay, but only really use it if enabled with FloatingUI on and in dashboard
+                        if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (data.ConfigBool[configid_bool_overlay_floatingui_enabled]) && (UIManager::Get()->IsOverlayBarOverlayVisible()) && 
+                            (vr::VROverlay()->IsOverlayVisible(ovrl_handle)) )
+                        {
+                            ovrl_handle_primary_dashboard = ovrl_handle;
+                            ovrl_id_primary_dashboard = i;
+                        }
+                    }
+
+                    //Check if this the hover target overlay
                     if ( (data.ConfigBool[configid_bool_overlay_floatingui_enabled]) && (ConfigManager::Get().IsLaserPointerTargetOverlay(ovrl_handle)) )
                     {
                         ovrl_handle_hover_target = ovrl_handle;
                         ovrl_id_hover_target = i;
 
-                        break;
-                    }
-                    else if ( (ovrl_id_primary_dashboard == k_ulOverlayID_None) && (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_dashboard) && 
-                              (data.ConfigInt[configid_int_overlay_display_mode] != ovrl_dispmode_scene) )
-                    {
-                        //First dashboard origin with non-scene display mode is considered to be the primary dashboard overlay, but only really use it if enabled with FloatingUI on and in dashboard
-                        if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (data.ConfigBool[configid_bool_overlay_floatingui_enabled]) && (UIManager::Get()->IsOverlayBarOverlayVisible()) && 
-                             (vr::VROverlay()->IsOverlayVisible(ovrl_handle)) )
+                        //Break here unless we still need to find the primary dashboard overlay
+                        if (ovrl_id_primary_dashboard != k_ulOverlayID_None)
                         {
-                            ovrl_handle_primary_dashboard = ovrl_handle;
-                            ovrl_id_primary_dashboard = i;
+                            break;
                         }
                     }
                 }
