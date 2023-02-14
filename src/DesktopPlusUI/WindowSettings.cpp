@@ -2401,7 +2401,14 @@ void WindowSettings::UpdatePageProfilesOverlaySelect()
         ImGui::SetNextItemWidth(-1.0f);
         const float item_height = ImGui::GetFrameHeight() + style.ItemSpacing.y;
         const float inner_padding = style.FramePadding.y + style.ItemInnerSpacing.y;
-        ImGui::BeginChild("OverlayList", ImVec2(0.0f, (item_height * ((m_ProfileOverlaySelectIsSaving) ? 12.0f : 13.0f) ) + inner_padding - m_WarningHeight), true);
+        float item_count = (m_ProfileOverlaySelectIsSaving) ? 12.0f : 14.0f;
+
+        if (UIManager::Get()->IsInDesktopMode())
+        {
+            item_count +=  2.0f;
+        }
+
+        ImGui::BeginChild("OverlayList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
         //Reset scroll when appearing
         if (m_PageAppearing == wndsettings_page_profiles_overlay_select)
