@@ -226,8 +226,9 @@ void FloatingUI::UpdateUITargetState()
             //Use fixed size when using primary dashboard overlay fallback and distance to dashboard is lower than 0.25m
             if (ovrl_handle_primary_dashboard == m_OvrlHandleCurrentUITarget)
             {
-                Vector3 pos_dashboard_origin = UIManager::Get()->GetOverlayDragger().GetBaseOffsetMatrix(ovrl_origin_dashboard).getTranslation();
-                use_fixed_size = (pos_dashboard_origin.distance(matrix.getTranslation()) < 0.25f);
+                //Use relative transform data here as dashboard transform can be unreliable during launch
+                const float distance = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget).ConfigTransform.getTranslation().distance({0.0f, 0.0f, 0.0f});
+                use_fixed_size = (distance < 0.25f);
             }
 
             if (use_fixed_size)
