@@ -247,7 +247,7 @@ void DPBrowserAPIClient::HandleIPCMessage(const MSG& msg)
                 IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_state_browser_nav_can_go_back,    data.ConfigBool[configid_bool_overlay_state_browser_nav_can_go_back]);
                 IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_state_browser_nav_can_go_forward, data.ConfigBool[configid_bool_overlay_state_browser_nav_can_go_forward]);
                 IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_state_browser_nav_is_loading,     data.ConfigBool[configid_bool_overlay_state_browser_nav_is_loading]);
-                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
             }
 
             m_IPCOverlayTarget = vr::k_ulOverlayHandleInvalid;
