@@ -44,6 +44,7 @@ class DPBrowserAPIClient : public DPBrowserAPI
         virtual void DPBrowser_SetResolution(vr::VROverlayHandle_t overlay_handle, int width, int height) override;
         virtual void DPBrowser_SetFPS(vr::VROverlayHandle_t overlay_handle, int fps) override;
         virtual void DPBrowser_SetZoomLevel(vr::VROverlayHandle_t overlay_handle, float zoom_level) override;
+        virtual void DPBrowser_SetOverUnder3D(vr::VROverlayHandle_t overlay_handle, bool is_over_under_3D, int crop_x, int crop_y, int crop_width, int crop_height) override;
 
         virtual void DPBrowser_MouseMove(vr::VROverlayHandle_t overlay_handle, int x, int y) override;
         virtual void DPBrowser_MouseLeave(vr::VROverlayHandle_t overlay_handle) override;

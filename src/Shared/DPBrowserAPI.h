@@ -7,7 +7,7 @@
 
 #include "openvr.h"
 
-static const int k_lDPBrowserAPIVersion = 2;
+static const int k_lDPBrowserAPIVersion = 3;
 LPCWSTR const g_WindowClassNameBrowserApp        = L"elvdesktopbrowser";
 LPCWSTR const g_WindowMessageNameBrowserApp      = L"WMIPC_DPLUS_BrowserCommand";
 const char* const g_AppKeyBrowserApp             = "elvissteinjr.DesktopPlusBrowser";
@@ -27,6 +27,7 @@ enum DPBrowserICPCommandID
     dpbrowser_ipccmd_set_resoution,             //lParam = Width & Height (in low/high word order, signed), uses set_overlay_target arg
     dpbrowser_ipccmd_set_fps,                   //lParam = fps, uses set_overlay_target arg
     dpbrowser_ipccmd_set_zoom,                  //lParam = Zoom (float packed as LPARAM), uses set_overlay_target arg
+    dpbrowser_ipccmd_set_ou3d_crop,             //lParam = DPRect packed with DPRect::Pack16() or -1 to disable, uses set_overlay_target arg
     dpbrowser_ipccmd_mouse_move,                //lParam = X & Y (in low/high word order, signed), uses set_overlay_target arg
     dpbrowser_ipccmd_mouse_leave,               //lParam = overlay_handle
     dpbrowser_ipccmd_mouse_down,                //lParam = EVRMouseButton, uses set_overlay_target arg
@@ -94,6 +95,7 @@ class DPBrowserAPI
         virtual void DPBrowser_SetResolution(vr::VROverlayHandle_t overlay_handle, int width, int height) = 0;
         virtual void DPBrowser_SetFPS(vr::VROverlayHandle_t overlay_handle, int fps) = 0;
         virtual void DPBrowser_SetZoomLevel(vr::VROverlayHandle_t overlay_handle, float zoom_level) = 0;
+        virtual void DPBrowser_SetOverUnder3D(vr::VROverlayHandle_t overlay_handle, bool is_over_under_3D, int crop_x, int crop_y, int crop_width, int crop_height) = 0;
 
         virtual void DPBrowser_MouseMove(vr::VROverlayHandle_t overlay_handle, int x, int y) = 0;
         virtual void DPBrowser_MouseLeave(vr::VROverlayHandle_t overlay_handle) = 0;

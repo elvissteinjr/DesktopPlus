@@ -33,6 +33,10 @@ HRESULT OUtoSBSConverter::Convert(ID3D11Device* device, ID3D11DeviceContext* dev
         //Delete old resources if they exist
         CleanRefs();
 
+        //Get source desc to match format (we assume it doesn't change unexpectedly to avoid doing this every call)
+        D3D11_TEXTURE2D_DESC tex_source_desc;
+        tex_source->GetDesc(&tex_source_desc);
+
         //Create texture
         D3D11_TEXTURE2D_DESC TexD;
         RtlZeroMemory(&TexD, sizeof(D3D11_TEXTURE2D_DESC));
@@ -40,7 +44,7 @@ HRESULT OUtoSBSConverter::Convert(ID3D11Device* device, ID3D11DeviceContext* dev
         TexD.Height = sbs_height;
         TexD.MipLevels = 1;
         TexD.ArraySize = 1;
-        TexD.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        TexD.Format = tex_source_desc.Format;
         TexD.SampleDesc.Count = 1;
         TexD.Usage = D3D11_USAGE_DEFAULT;
         TexD.BindFlags = D3D11_BIND_SHADER_RESOURCE;
@@ -80,7 +84,7 @@ HRESULT OUtoSBSConverter::Convert(ID3D11Device* device, ID3D11DeviceContext* dev
     }
 
     //Copy top and bottom half of the cropped region into the left and right halves of SBS texture
-    D3D11_BOX source_region;
+    D3D11_BOX source_region = {0};
     source_region.left   = clamp(crop_x, 0, tex_source_width);
     source_region.right  = clamp(crop_x + crop_width, 0, tex_source_width);
     source_region.top    = clamp(crop_y, 0, tex_source_height);

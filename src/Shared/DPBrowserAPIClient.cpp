@@ -429,6 +429,24 @@ void DPBrowserAPIClient::DPBrowser_SetZoomLevel(vr::VROverlayHandle_t overlay_ha
     ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_set_zoom, pun_cast<LPARAM, float>(zoom_level));
 }
 
+void DPBrowserAPIClient::DPBrowser_SetOverUnder3D(vr::VROverlayHandle_t overlay_handle, bool is_over_under_3D, int crop_x, int crop_y, int crop_width, int crop_height)
+{
+    if (!LaunchServerIfNotRunning())
+        return;
+
+    ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_set_overlay_target, overlay_handle);
+
+    if (is_over_under_3D)
+    {
+        DPRect dp_rect(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
+        ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_set_ou3d_crop, (LPARAM)dp_rect.Pack16());
+    }
+    else
+    {
+        ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_set_ou3d_crop, -1);
+    }
+}
+
 void DPBrowserAPIClient::DPBrowser_MouseMove(vr::VROverlayHandle_t overlay_handle, int x, int y)
 {
     if (m_ServerWindowHandle == nullptr)

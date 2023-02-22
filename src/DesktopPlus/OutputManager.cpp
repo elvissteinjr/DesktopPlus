@@ -5274,7 +5274,15 @@ void OutputManager::ApplySetting3DMode()
 
     if (is_enabled)
     {
-        if (data.ConfigBool[configid_bool_overlay_3D_swapped])
+        bool is_swapped = data.ConfigBool[configid_bool_overlay_3D_swapped];
+
+        //Browser overlay textures are flipped vertically, which results in the OU to SBS converted texture to have the eyes swapped, so inverted swapped state to counteract this 
+        if ((overlay_current.GetTextureSource() == ovrl_texsource_browser) && (mode >= ovrl_3Dmode_ou))
+        {
+            is_swapped = !is_swapped;
+        }
+
+        if (is_swapped)
         {
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Parallel, false);
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Crossed, true);
@@ -5613,7 +5621,7 @@ void OutputManager::ApplySettingCrop()
     }
     else if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_browser) //Same with browser
     {
-        //TODO: Handle OU 3D
+        DPBrowserAPIClient::Get().DPBrowser_SetOverUnder3D(ovrl_handle, is_ou3d, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
 
         //Browser overlay textures are flipped vertically, so swap the UVs to result in a flipped image to correct it
         tex_bounds.vMin = -tex_bounds.vMin + 1.0f;
