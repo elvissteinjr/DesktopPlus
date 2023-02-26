@@ -51,13 +51,10 @@ OverlayCapture::OverlayCapture(winrt::IDirect3DDevice const& device, winrt::Grap
         }
     #endif
 
-    //Set mouse scale on all overlays and send size updates to default them to -1 until we get the real size on the first frame update
-    vr::HmdVector2_t mouse_scale = {(float)m_Item.Size().Width, (float)m_Item.Size().Height};
+    //Send size updates for all overlays to default them to -1 until we get the real size on the first frame update
     for (const auto& overlay : m_Overlays)
     {
         ::PostThreadMessage(m_GlobalMainThreadID, WM_DPLUSWINRT_SIZE, overlay.Handle, MAKELPARAM(-1, -1));
-
-        vr::VROverlay()->SetOverlayMouseScale(overlay.Handle, &mouse_scale);
     }
 
     //Init update limiter frequency (we don't init starting time until after the first frame)
@@ -110,7 +107,6 @@ void OverlayCapture::OnOverlayDataRefresh()
     size_t ou_count = 0;
     size_t pause_count = 0;
     m_UpdateLimiterDelay.QuadPart = UINT_MAX;
-    vr::HmdVector2_t mouse_scale = {(float)m_LastTextureSize.Width, (float)m_LastTextureSize.Height};
 
     for (const auto& overlay : m_Overlays)
     {
@@ -131,11 +127,10 @@ void OverlayCapture::OnOverlayDataRefresh()
             ou_count++;
         }
 
-        //And also send size and set mouse scale again in case a fresh overlay was added
+        //And also send size again in case a fresh overlay was added
         if (m_InitialSizingDone)
         {
             ::PostThreadMessage(m_GlobalMainThreadID, WM_DPLUSWINRT_SIZE, overlay.Handle, MAKELPARAM(m_LastTextureSize.Width, m_LastTextureSize.Height));
-            vr::VROverlay()->SetOverlayMouseScale(overlay.Handle, &mouse_scale);
         }
     }
 
@@ -226,19 +221,16 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
 
             m_OverlaySharedTextureSetupsNeeded = 5;
 
-            //Send overlay size updates and set mouse scale
+            //Send overlay size updates
             //If the initial sizing has not been done yet, wait until there's no frame pool recreation pending before setting it
             //We do this because windows with native decorations are initially just reported with the client size.
             //The real size follows on the next frame after having resized the frame pool
             //This is necessary to not trip up adaptive overlay sizing
             if ((m_InitialSizingDone) || (!recreate_frame_pool))
             {
-                vr::HmdVector2_t mouse_scale = {(float)texture_desc.Width, (float)texture_desc.Height};
                 for (const auto& overlay : m_Overlays)
                 {
                     ::PostThreadMessage(m_GlobalMainThreadID, WM_DPLUSWINRT_SIZE, overlay.Handle, MAKELPARAM(texture_desc.Width, texture_desc.Height));
-
-                    vr::VROverlay()->SetOverlayMouseScale(overlay.Handle, &mouse_scale);
                 }
 
                 m_InitialSizingDone = true;

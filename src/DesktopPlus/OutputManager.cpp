@@ -1450,6 +1450,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         ApplySettingCrop();
                         ApplySettingTransform();
+                        ApplySettingMouseScale();
                         break;
                     }
                     case configid_bool_overlay_input_enabled:
@@ -1615,6 +1616,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         ApplySettingCrop();
                         ApplySettingTransform();
+                        ApplySettingMouseScale();
                         break;
                     }
                     case configid_int_overlay_3D_mode:
@@ -1825,7 +1827,7 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
             OverlayManager::Get().SetCurrentOverlayID(overlay_id);
             ApplySettingCrop();
             ApplySettingTransform();
-            //Mouse scale is set by WinRT library
+            ApplySettingMouseScale();
             OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
             break;
@@ -4329,11 +4331,31 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                     }
                 }
             }
-            else
+            else if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
             {
                 content_height = m_DesktopHeight;
                 offset_x = m_DesktopX;
                 offset_y = m_DesktopY;
+            }
+
+            //SteamVR ignores 3D properties when adjusting coordinates for custom UV values, so we need to add offsets manually
+            if (data.ConfigBool[configid_bool_overlay_3D_enabled])
+            {
+                Overlay3DMode mode_3D = (Overlay3DMode)data.ConfigInt[configid_int_overlay_3D_mode];
+
+                if (mode_3D >= ovrl_3Dmode_hou)
+                {
+                    offset_x += overlay_current.GetValidatedCropRect().GetTL().x;
+
+                    if (overlay_current.GetTextureSource() != ovrl_texsource_browser)   //Browser uses flipped texture and needs no vertical adjustment
+                    {
+                        offset_y += overlay_current.GetValidatedCropRect().GetBR().y - content_height;
+                    }
+                }
+                else
+                {
+                    offset_x += overlay_current.GetValidatedCropRect().GetTL().x / 2;
+                }
             }
 
             //GL space (0,0 is bottom left), so we need to flip that around (not correct for browser overlays, but also not relevant for how the values are used with them right now)
@@ -4358,7 +4380,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             //If browser overlay, pass event along and skip the rest
             if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
             {
-                DPBrowserAPIClient::Get().DPBrowser_MouseMove(overlay_current.GetHandle(), vr_event.data.mouse.x, vr_event.data.mouse.y);
+                DPBrowserAPIClient::Get().DPBrowser_MouseMove(overlay_current.GetHandle(), vr_event.data.mouse.x + offset_x, vr_event.data.mouse.y + offset_y);
                 m_MouseLastLaserPointerX = pointer_x;
                 m_MouseLastLaserPointerY = pointer_y;
 
@@ -4966,6 +4988,7 @@ void OutputManager::CropToActiveWindow()
 
         ApplySettingCrop();
         ApplySettingTransform();
+        ApplySettingMouseScale();
     }
 }
 
@@ -5004,6 +5027,7 @@ void OutputManager::CropToDisplay(int display_id, bool do_not_apply_setting)
     {
         ApplySettingCrop();
         ApplySettingTransform();
+        ApplySettingMouseScale();
     }
 }
 
@@ -5277,7 +5301,7 @@ void OutputManager::ApplySetting3DMode()
         bool is_swapped = data.ConfigBool[configid_bool_overlay_3D_swapped];
 
         //Browser overlay textures are flipped vertically, which results in the OU to SBS converted texture to have the eyes swapped, so inverted swapped state to counteract this 
-        if ((overlay_current.GetTextureSource() == ovrl_texsource_browser) && (mode >= ovrl_3Dmode_ou))
+        if ((overlay_current.GetTextureSource() == ovrl_texsource_browser) && (mode >= ovrl_3Dmode_hou))
         {
             is_swapped = !is_swapped;
         }
@@ -5337,6 +5361,7 @@ void OutputManager::ApplySetting3DMode()
     //WinRT OU3D state is set in ApplySettingCrop since it needs cropping values
 
     ApplySettingCrop();
+    ApplySettingMouseScale();
 }
 
 void OutputManager::ApplySettingTransform()
@@ -5740,48 +5765,7 @@ void OutputManager::ApplySettingMouseInput()
 
         vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_HideLaserIntersection, hide_intersection);
 
-        //Set mouse scale
-        if (overlay.GetTextureSource() == ovrl_texsource_none)
-        {
-            //The mouse scale defines the surface aspect ratio for the intersection test... yeah. If it's off there will be hits over empty space, so try to match it even here
-            vr::HmdVector2_t mouse_scale = {0};
-            uint32_t ovrl_tex_width = 1, ovrl_tex_height = 1;
-
-            //Content size might not be what the current texture size is in case of ovrl_texsource_none
-            /*if (vr::VROverlay()->GetOverlayTextureSize(ovrl_handle, &ovrl_tex_width, &ovrl_tex_height) == vr::VROverlayError_None) //GetOverlayTextureSize() currently leaks, so don't use it
-            {
-                mouse_scale.v[0] = ovrl_tex_width;
-                mouse_scale.v[1] = ovrl_tex_height;
-            }
-            else*/ //ovrl_texsource_none pretty much means overlay output error texture, so fall back to that if we can't get the real size
-            {
-                mouse_scale.v[0] = k_lOverlayOutputErrorTextureWidth;
-                mouse_scale.v[1] = k_lOverlayOutputErrorTextureHeight;
-            }
-
-            vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
-        }
-        else if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
-        {
-            vr::HmdVector2_t mouse_scale = {0};
-            mouse_scale.v[0] = m_DesktopWidth;
-            mouse_scale.v[1] = m_DesktopHeight;
-
-            vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
-        }
-        else if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_browser)
-        {
-            //Use duplication IDs' data if any is set
-            int duplication_id = ConfigManager::GetValue(configid_int_overlay_duplication_id);
-            const OverlayConfigData& overlay_data = (duplication_id != -1) ? OverlayManager::Get().GetConfigData((unsigned int)duplication_id) : OverlayManager::Get().GetCurrentConfigData();
-
-            vr::HmdVector2_t mouse_scale = {0};
-            mouse_scale.v[0] = overlay_data.ConfigInt[configid_int_overlay_state_content_width];
-            mouse_scale.v[1] = overlay_data.ConfigInt[configid_int_overlay_state_content_height];
-
-            vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
-        }
-        //Mouse scale for ovrl_texsource_winrt_capture is set by WinRT library | Mouse scale for ovrl_texsource_ui is set by UI process
+        ApplySettingMouseScale();
 
         //Reset intersection mask if not UI overlay
         if (overlay.GetTextureSource() != ovrl_texsource_ui)
@@ -5791,6 +5775,87 @@ void OutputManager::ApplySettingMouseInput()
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+}
+
+void OutputManager::ApplySettingMouseScale()
+{
+    Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+    OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+    vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
+
+    //UI overlays handle the mouse scale themselves
+    if (overlay.GetTextureSource() == ovrl_texsource_ui)
+        return;
+
+    //Set mouse scale based on capture source
+    vr::HmdVector2_t mouse_scale = {0};
+
+    if (overlay.GetTextureSource() == ovrl_texsource_none)
+    {
+        //The mouse scale defines the surface aspect ratio for the intersection test... yeah. If it's off there will be hits over empty space, so try to match it even here
+        //uint32_t ovrl_tex_width = 1, ovrl_tex_height = 1;
+
+        //Content size might not be what the current texture size is in case of ovrl_texsource_none
+        /*if (vr::VROverlay()->GetOverlayTextureSize(ovrl_handle, &ovrl_tex_width, &ovrl_tex_height) == vr::VROverlayError_None) //GetOverlayTextureSize() currently leaks, so don't use it
+        {
+        mouse_scale.v[0] = ovrl_tex_width;
+        mouse_scale.v[1] = ovrl_tex_height;
+        }
+        else*/ //ovrl_texsource_none pretty much means overlay output error texture, so fall back to that if we can't get the real size
+        {
+            mouse_scale.v[0] = k_lOverlayOutputErrorTextureWidth;
+            mouse_scale.v[1] = k_lOverlayOutputErrorTextureHeight;
+        }
+    }
+    else
+    {
+        switch (data.ConfigInt[configid_int_overlay_capture_source])
+        {
+            case ovrl_capsource_desktop_duplication:
+            {
+                mouse_scale.v[0] = m_DesktopWidth;
+                mouse_scale.v[1] = m_DesktopHeight;
+                break;
+            }
+            case ovrl_capsource_winrt_capture:
+            case ovrl_capsource_browser:
+            {
+                //Use duplication IDs' data if any is set
+                int duplication_id = ConfigManager::GetValue(configid_int_overlay_duplication_id);
+                const OverlayConfigData& overlay_data = (duplication_id != -1) ? OverlayManager::Get().GetConfigData((unsigned int)duplication_id) : data;
+
+                mouse_scale.v[0] = overlay_data.ConfigInt[configid_int_overlay_state_content_width];
+                mouse_scale.v[1] = overlay_data.ConfigInt[configid_int_overlay_state_content_height];
+                break;
+            }
+        }
+
+        //Adjust for 3D so surface aspect ratio for laser pointing matches what is seen.
+        //This blocks half or more pixels, but it's not clear what the real target coordinates are with content being different in each eye
+        if (data.ConfigBool[configid_bool_overlay_3D_enabled])
+        {
+            switch (data.ConfigInt[configid_int_overlay_3D_mode])
+            {
+                case ovrl_3Dmode_hsbs:
+                case ovrl_3Dmode_sbs:
+                {
+                    mouse_scale.v[0] /= 2.0f; 
+                    break;
+                }
+                case ovrl_3Dmode_hou:
+                case ovrl_3Dmode_ou:
+                {
+                    //OU converted to SBS will have texture size based on crop rect
+                    const DPRect& crop_rect = overlay.GetValidatedCropRect();
+
+                    mouse_scale.v[0] = crop_rect.GetWidth();
+                    mouse_scale.v[1] = crop_rect.GetHeight() / 2.0f;
+                }
+            }
+        }
+    }
+
+    vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
 }
 
 void OutputManager::ApplySettingUpdateLimiter()

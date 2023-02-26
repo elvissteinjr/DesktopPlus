@@ -8,8 +8,7 @@
 
 //Based on the Win32CaptureSample by Robert Mikhayelyan: https://github.com/robmikh/Win32CaptureSample
 
-//For Graphics Capture, all overlay texture handling is handed off to this library. Apart from that and the mouse scale, everything else is still
-//handled by OutputManager as usual, however.
+//For Graphics Capture, all overlay texture handling is handed off to this library. Everything else is still handled by OutputManager as usual, however.
 
 //As a general rule, the callee of the library functions is responsible to check for support first, otherwise it may throw or crash
 //In release builds, capture thread exceptions are caught and handled as unexpected errors, trying to just stop the thread. Ideally it never comes to that, of course.

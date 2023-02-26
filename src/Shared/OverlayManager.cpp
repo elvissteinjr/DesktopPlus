@@ -41,31 +41,37 @@ Matrix4 OverlayManager::GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handl
 
     int ovrl_pixel_width = 1, ovrl_pixel_height = 1;
 
-    if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+    vr::HmdVector2_t ovrl_mouse_scale;
+    //Use mouse scale of overlay if possible as it can sometimes differ from the config size (and GetOverlayTextureSize() currently leaks GPU memory, oops)
+    if (vr::VROverlay()->GetOverlayMouseScale(ovrl_handle, &ovrl_mouse_scale) == vr::VROverlayError_None)
     {
-        #ifdef DPLUS_UI
-            UIManager::Get()->GetDesktopOverlayPixelSize(ovrl_pixel_width, ovrl_pixel_height);
-        #else
-            if (OutputManager* outmgr = OutputManager::Get())
-            {
-                ovrl_pixel_width  = outmgr->GetDesktopWidth();
-                ovrl_pixel_height = outmgr->GetDesktopHeight();
-            }
-        #endif
+        ovrl_pixel_width  = (int)ovrl_mouse_scale.v[0];
+        ovrl_pixel_height = (int)ovrl_mouse_scale.v[1];
     }
     else
     {
-        vr::HmdVector2_t ovrl_mouse_scale;
-        //Use mouse scale of overlay if possible as it can sometimes differ from the config size (and GetOverlayTextureSize() currently leaks GPU memory, oops)
-        if (vr::VROverlay()->GetOverlayMouseScale(ovrl_handle, &ovrl_mouse_scale) == vr::VROverlayError_None)
+        ovrl_pixel_width  = data.ConfigInt[configid_int_overlay_state_content_width];
+        ovrl_pixel_height = data.ConfigInt[configid_int_overlay_state_content_height];
+
+        //If we can't get mouse scale we still need to make the 3D adjustments ourselves here
+        if (data.ConfigBool[configid_bool_overlay_3D_enabled])
         {
-            ovrl_pixel_width  = (int)ovrl_mouse_scale.v[0];
-            ovrl_pixel_height = (int)ovrl_mouse_scale.v[1];
-        }
-        else
-        {
-            ovrl_pixel_width  = data.ConfigInt[configid_int_overlay_state_content_width];
-            ovrl_pixel_height = data.ConfigInt[configid_int_overlay_state_content_height];
+            switch (data.ConfigInt[configid_int_overlay_3D_mode])
+            {
+                case ovrl_3Dmode_hsbs:
+                case ovrl_3Dmode_sbs:
+                {
+                    ovrl_pixel_width /= 2; 
+                    break;
+                }
+                case ovrl_3Dmode_hou:
+                case ovrl_3Dmode_ou:
+                {
+                    //OU converted to SBS will have texture size based on crop rect
+                    ovrl_pixel_width  = data.ConfigInt[configid_int_overlay_crop_width];
+                    ovrl_pixel_height = data.ConfigInt[configid_int_overlay_crop_height] / 2;
+                }
+            }
         }
     }
 
@@ -84,17 +90,10 @@ Matrix4 OverlayManager::GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handl
 
         if (data.ConfigBool[configid_bool_overlay_3D_enabled])
         {
-            if ((data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) || (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_ou))
-            {
-                //Additionally check if the overlay is actually displaying 3D content right now (can be not the case when error texture is shown)
-                uint32_t ovrl_flags = 0;
-                vr::VROverlay()->GetOverlayFlags(ovrl_handle, &ovrl_flags);
+            float texel_aspect = 1.0f;
+            vr::VROverlay()->GetOverlayTexelAspect(ovrl_handle, &texel_aspect);
 
-                if ((ovrl_flags & vr::VROverlayFlags_SideBySide_Parallel) || (ovrl_flags & vr::VROverlayFlags_SideBySide_Crossed))
-                {
-                    height_factor_3d = (data.ConfigInt[configid_int_overlay_3D_mode] == ovrl_3Dmode_sbs) ? 2.0f : 0.5f;
-                }
-            }
+            height_factor_3d = 1.0f / texel_aspect;
         }
 
         //Attempt to calculate the correct offset to bottom, taking in account all the things GetTransformForOverlayCoordinates() does not

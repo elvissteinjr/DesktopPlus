@@ -121,6 +121,7 @@ class OutputManager
         void ApplySettingCrop();
         void ApplySettingInputMode();
         void ApplySettingMouseInput();
+        void ApplySettingMouseScale();
         void ApplySettingUpdateLimiter();
 
         void DetachedTransformSync(unsigned int overlay_id);

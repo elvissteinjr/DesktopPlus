@@ -288,7 +288,7 @@ void Overlay::UpdateValidatedCropRect()
     else //Fall back to default crop when cropping is disabled
     {
         //Current desktop cropping values for desktop duplication
-        if (m_TextureSource == ovrl_texsource_desktop_duplication)
+        if ((m_TextureSource == ovrl_texsource_desktop_duplication) || (m_TextureSource == ovrl_texsource_desktop_duplication_3dou_converted))
         {
             outmgr->CropToDisplay(data.ConfigInt[configid_int_overlay_desktop_id], x, y, width, height);
         }
