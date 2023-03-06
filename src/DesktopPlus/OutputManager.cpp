@@ -5260,11 +5260,8 @@ void OutputManager::ApplySettingCaptureSource()
                     ApplySetting3DMode();
                     ApplySettingUpdateLimiter();
 
-                    //Pause if not visible
-                    if (!overlay.IsVisible())
-                    {
-                        DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(overlay.GetHandle(), true);
-                    }
+                    //Set pause state in case overlay is hidden or differs from duplication source
+                    DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(overlay.GetHandle(), !overlay.IsVisible());
                 }
 
                 //Set texture source to browser if possible, which sets the rendering PID to the browser server process
