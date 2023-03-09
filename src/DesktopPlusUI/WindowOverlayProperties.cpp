@@ -1179,6 +1179,7 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsBrowserWidth));
         ImGui::NextColumn();
 
+        bool changed_width = false, changed_height = false;
         int& user_width = data.ConfigInt[configid_int_overlay_user_width];
 
         vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("UserWidth") );
@@ -1189,18 +1190,14 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
             //Don't do live updates from text input (can lead to undesirable visuals, especially when removing all text)
             if (!ImGui::IsAnyTempInputTextActive())
             {
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_user_width, user_width);
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+                changed_width = true;
             }
         }
         vr_keyboard.VRKeyboardInputEnd();
 
         if (ImGui::IsItemDeactivatedAfterEdit())
         {
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_user_width, user_width);
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+            changed_width = true;
         }
 
         ImGui::NextColumn();
@@ -1216,18 +1213,41 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
 
             if (!ImGui::IsAnyTempInputTextActive())
             {
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_user_height, user_height);
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+                changed_height = true;
             }
         }
         vr_keyboard.VRKeyboardInputEnd();
 
         if (ImGui::IsItemDeactivatedAfterEdit())
         {
+            changed_height = true;
+        }
+
+        if (changed_width)
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_user_width, user_width);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+
+            //Also set for all overlays using this as duplication source (so reading code doesn't need to care about it being duplicated)
+            for (unsigned int overlay_id : OverlayManager::Get().FindDuplicatedOverlaysForOverlay(config_overlay_id))
+            {
+                OverlayConfigData& data_dup = OverlayManager::Get().GetConfigData(overlay_id);
+                data_dup.ConfigInt[configid_int_overlay_user_width] = user_width;
+                //Dashboard app does the same, so no need to send these changes over
+            }
+        }
+        else if (changed_height)
+        {
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, config_overlay_id);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_user_height, user_height);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+
+            for (unsigned int overlay_id : OverlayManager::Get().FindDuplicatedOverlaysForOverlay(config_overlay_id))
+            {
+                OverlayConfigData& data_dup = OverlayManager::Get().GetConfigData(overlay_id);
+                data_dup.ConfigInt[configid_int_overlay_user_height] = user_height;
+            }
         }
 
         ImGui::NextColumn();

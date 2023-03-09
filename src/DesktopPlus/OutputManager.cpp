@@ -1600,10 +1600,41 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                             ConfigManager::SetValue(configid_int_overlay_state_content_width,  user_width);
                             ConfigManager::SetValue(configid_int_overlay_state_content_height, user_height);
 
+                            //Update crop as it depends on user size
+                            if (ConfigManager::GetValue(configid_bool_overlay_crop_enabled))
+                            {
+                                ApplySettingCrop();
+                            }
+
+                            //Send to UI
                             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)OverlayManager::Get().GetCurrentOverlayID());
                             IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_width,  user_width);
                             IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_height, user_height);
                             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+
+                            //Also do it for everything using this as duplication source
+                            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+                            for (unsigned int overlay_id : OverlayManager::Get().FindDuplicatedOverlaysForOverlay(OverlayManager::Get().GetCurrentOverlayID()))
+                            {
+                                OverlayManager::Get().SetCurrentOverlayID(overlay_id);
+
+                                //Set config values for duplicated overlays as well so code only reading from it doesn't have to care about them being duplicated
+                                ConfigManager::SetValue(configid_int_overlay_user_width,           user_width);
+                                ConfigManager::SetValue(configid_int_overlay_user_height,          user_height);
+                                ConfigManager::SetValue(configid_int_overlay_state_content_width,  user_width);
+                                ConfigManager::SetValue(configid_int_overlay_state_content_height, user_height);
+
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_width,  user_width);
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_height, user_height);
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+
+                                if (ConfigManager::GetValue(configid_bool_overlay_crop_enabled))
+                                {
+                                    ApplySettingCrop();
+                                }
+                            }
+                            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
                             ApplySettingMouseInput();
                         }

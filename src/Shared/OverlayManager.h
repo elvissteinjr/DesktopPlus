@@ -60,6 +60,9 @@ class OverlayManager
             std::vector<unsigned int> FindInactiveOverlaysForWindow(const WindowInfo& window_info) const;
         #endif
 
+        //Returns list of overlay IDs using source_id as duplication ID
+        std::vector<unsigned int> FindDuplicatedOverlaysForOverlay(unsigned int source_id) const;
+
         void ConvertDuplicatedOverlayToStandalone(unsigned int id, bool no_reset = false);
 
         #ifdef DPLUS_UI

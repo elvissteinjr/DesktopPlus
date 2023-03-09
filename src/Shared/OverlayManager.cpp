@@ -670,6 +670,23 @@ std::vector<unsigned int> OverlayManager::FindInactiveOverlaysForWindow(const Wi
 
 #endif //ifndef DPLUS_UI
 
+std::vector<unsigned int> OverlayManager::FindDuplicatedOverlaysForOverlay(unsigned int source_id) const
+{
+    std::vector<unsigned int> matching_overlay_ids;
+
+    for (unsigned int i = 0; i < m_OverlayConfigData.size(); ++i)
+    {
+        const OverlayConfigData& data = m_OverlayConfigData[i];
+
+        if (data.ConfigInt[configid_int_overlay_duplication_id] == source_id)
+        {
+            matching_overlay_ids.push_back(i);
+        }
+    }
+
+    return matching_overlay_ids;
+}
+
 void OverlayManager::ConvertDuplicatedOverlayToStandalone(unsigned int id, bool no_reset)
 {
     if (id < m_OverlayConfigData.size())
