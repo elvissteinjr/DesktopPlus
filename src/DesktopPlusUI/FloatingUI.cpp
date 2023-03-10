@@ -75,7 +75,10 @@ void FloatingUI::Update()
         }
         else if (m_Visible) //Make sure the input method is always set when visible, even after partial fade-out
         {
-            vr::VROverlay()->SetOverlayInputMethod(ovrl_handle_floating_ui, vr::VROverlayInputMethod_Mouse);
+            if (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp))
+            {
+                vr::VROverlay()->SetOverlayInputMethod(ovrl_handle_floating_ui, vr::VROverlayInputMethod_Mouse);
+            }
         }
     }
 
