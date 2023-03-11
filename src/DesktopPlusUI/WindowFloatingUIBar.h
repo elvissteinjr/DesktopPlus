@@ -19,6 +19,7 @@ class WindowFloatingUIMainBar
         WindowFloatingUIMainBar();
 
         void Update(float mainbar_height, unsigned int overlay_id);
+        void UpdatePerformanceMonitorButtons();
         void UpdateBrowserButtons(unsigned int overlay_id);
 
         const ImVec2& GetPos() const;

@@ -161,8 +161,11 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     }
     //
 
-    //Browser navigation/reload buttons (only show if browser overlay)
-    if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+    if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui) //Performance Monitor reset button (only show if UI overlay)
+    {
+        UpdatePerformanceMonitorButtons();
+    }
+    else if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser) //Browser navigation/reload buttons (only show if browser overlay)
     {
         UpdateBrowserButtons(overlay_id);
     }
@@ -267,6 +270,29 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     {
         m_AnimationProgress = (is_actionbar_enabled) ? 1.0f : 0.0f;
     }
+}
+
+void WindowFloatingUIMainBar::UpdatePerformanceMonitorButtons()
+{
+    ImGuiIO& io = ImGui::GetIO();
+
+    ImVec2 b_size, b_uv_min, b_uv_max;
+    TextureManager::Get().GetTextureInfo(tmtex_icon_small_close, b_size, b_uv_min, b_uv_max);
+    const ImGuiStyle& style = ImGui::GetStyle();
+
+    //Reset Cumulative Values Button
+    ImGui::PushID(tmtex_icon_small_performance_monitor_reset);
+    TextureManager::Get().GetTextureInfo(tmtex_icon_small_performance_monitor_reset, b_size, b_uv_min, b_uv_max);
+    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    {
+        UIManager::Get()->GetPerformanceWindow().ResetCumulativeValues();
+    }
+
+    DisplayTooltipIfHovered(TranslationManager::GetString(tstr_OvrlPropsPerfMonResetValues));
+
+    ImGui::PopID();
+
+    ImGui::SameLine();
 }
 
 void WindowFloatingUIMainBar::UpdateBrowserButtons(unsigned int overlay_id)
