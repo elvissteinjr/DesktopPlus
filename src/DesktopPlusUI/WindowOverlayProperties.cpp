@@ -2385,6 +2385,9 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
     int crop_width_ui   = (crop_width  == -1) ? crop_width_max  + 1 : crop_width;
     int crop_height_ui  = (crop_height == -1) ? crop_height_max + 1 : crop_height;
 
+    static int crop_width_before_edit  = -1;
+    static int crop_height_before_edit = -1;
+
     const bool disable_sliders = ((ovrl_width == -1) && (ovrl_height == -1));
     const bool is_crop_invalid = ((crop_x > ovrl_width - 1) || (crop_y > ovrl_height - 1) || (crop_width_max < 1) || (crop_height_max < 1));
 
@@ -2406,21 +2409,34 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsCropX));
     ImGui::NextColumn();
 
+    //We need to delay handling the change after checking if it was newly activated in order to have the crop width adjust back automatically when possible
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("CropX") );
-    if (ImGui::SliderWithButtonsInt("CropX", crop_x, 1, 1, 0, ovrl_width - 1, "%d px"))
+    const bool crop_x_changed = ImGui::SliderWithButtonsInt("CropX", crop_x, 1, 1, 0, ovrl_width - 1, "%d px");
+    vr_keyboard.VRKeyboardInputEnd();
+
+    if (ImGui::IsItemActivated())
+    {
+        crop_width_before_edit = crop_width;
+    }
+
+    if (crop_x_changed)
     {
         //Note that we need to clamp the new value as neither the buttons nor the slider on direct input do so (they could, but this is in line with the rest of ImGui)
         crop_x = clamp(crop_x, 0, ovrl_width - 1);
 
-        if (crop_x + crop_width > ovrl_width)
+        if (crop_x + crop_width_before_edit > ovrl_width)
         {
             crop_width = ovrl_width - crop_x;
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_width, crop_width);
+        }
+        else if (crop_width != crop_width_before_edit)
+        {
+            crop_width = crop_width_before_edit;
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_width, crop_width);
         }
 
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_x, crop_x);
     }
-    vr_keyboard.VRKeyboardInputEnd();
 
     ImGui::NextColumn();
 
@@ -2429,19 +2445,31 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
     ImGui::NextColumn();
 
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("CropY") );
-    if (ImGui::SliderWithButtonsInt("CropY", crop_y, 1, 1, 0, ovrl_height - 1, "%d px"))
+    const bool crop_y_changed = ImGui::SliderWithButtonsInt("CropY", crop_y, 1, 1, 0, ovrl_height - 1, "%d px");
+    vr_keyboard.VRKeyboardInputEnd();
+
+    if (ImGui::IsItemActivated())
+    {
+        crop_height_before_edit = crop_height;
+    }
+
+    if (crop_y_changed)
     {
         crop_y = clamp(crop_y, 0, ovrl_height - 1);
 
-        if (crop_y + crop_height > ovrl_height)
+        if (crop_y + crop_height_before_edit > ovrl_height)
         {
             crop_height = ovrl_height - crop_y;
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_height, crop_height);
+        }
+        else if (crop_height != crop_height_before_edit)
+        {
+            crop_height = crop_height_before_edit;
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_height, crop_height);
         }
 
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_y, crop_y);
     }
-    vr_keyboard.VRKeyboardInputEnd();
 
     ImGui::NextColumn();
 
