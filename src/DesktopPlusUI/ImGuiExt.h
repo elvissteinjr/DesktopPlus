@@ -122,6 +122,24 @@ namespace ImGui
     //Returns string shortened to fit width_max in the active font
     std::string StringEllipsis(const char* str, float width_max);
 
+    //Fairly specific, yet general enough custom widget that contains an draggable & resizable rectangle in a fixed size area
+    struct ImGuiDraggableRectAreaState
+    {
+        ImVec2 RectPos;
+        ImVec2 RectSize;
+
+        ImVec2 RectPosDragStart;
+        ImVec2 RectSizeDragStart;
+        ImGuiMouseButton DragMouseButton = ImGuiMouseButton_Left;
+        ImGuiDir EdgeDragHDir            = ImGuiDir_None;
+        ImGuiDir EdgeDragVDir            = ImGuiDir_None;
+        bool EdgeDragActive              = false;
+        bool EdgeDragHighlightVisible    = false;
+    };
+
+    //Returns true if the rectangle was modified
+    bool DraggableRectArea(const char* str_id, const ImVec2& area_size, ImGuiDraggableRectAreaState& state);
+
     //Stores an ImGui mouse state or something that would like to be one and can set from or apply to global state if needed. 
     //Somewhat hacky, but pretty unproblematic when used correctly.
     class ImGuiMouseState

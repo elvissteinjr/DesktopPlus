@@ -246,6 +246,7 @@ enum TRMGRStrID
     tstr_OvrlPropsAppearanceCrop,
     tstr_OvrlPropsAppearanceCropValueMax,
     tstr_OvrlPropsCrop,
+    tstr_OvrlPropsCropHelp,
     tstr_OvrlPropsCropManualAdjust,
     tstr_OvrlPropsCropInvalidTip,
     tstr_OvrlPropsCropX,

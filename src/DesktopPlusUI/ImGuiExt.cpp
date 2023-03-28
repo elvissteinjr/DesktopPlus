@@ -26,7 +26,7 @@ namespace ImGui
         const bool mouse_left_clicked_old = io.MouseClicked[ImGuiMouseButton_Left];
         const bool key_ctrl_old = io.KeyCtrl;
 
-        if (io.MouseDown[ImGuiMouseButton_Right])
+        if (io.MouseClicked[ImGuiMouseButton_Right])
         {
             io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
@@ -130,7 +130,7 @@ namespace ImGui
         const bool mouse_left_clicked_old = io.MouseClicked[ImGuiMouseButton_Left];
         const bool key_ctrl_old = io.KeyCtrl;
 
-        if (io.MouseDown[ImGuiMouseButton_Right])
+        if (io.MouseClicked[ImGuiMouseButton_Right])
         {
             io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
@@ -1121,6 +1121,252 @@ namespace ImGui
         }
 
         return str_out;
+    }
+
+    bool DraggableRectArea(const char* str_id, const ImVec2& area_size, ImGuiDraggableRectAreaState& state)
+    {
+        ImGuiIO& io = ImGui::GetIO();
+
+        ImVec2& offset       = state.RectPos;
+        ImVec2& size         = state.RectSize;
+        ImVec2& offset_start = state.RectPosDragStart;
+        ImVec2& size_start   = state.RectSizeDragStart;
+        ImVec2 offset_prev   = offset;
+        ImVec2 size_prev     = size;
+
+        ImGuiMouseButton& drag_mouse_button = state.DragMouseButton;
+        ImGuiDir& edge_drag_h_dir           = state.EdgeDragHDir;
+        ImGuiDir& edge_drag_v_dir           = state.EdgeDragVDir;
+        bool& is_edge_drag_active           = state.EdgeDragActive;
+        bool& highlight_edge                = state.EdgeDragHighlightVisible;
+
+        bool is_drag_active = false;
+
+        //This widget is mouse-only and interacts weirdly with the ImGui navigation.
+        //I've been unable to get ImGui to skip over it or bend it to work in sane manner, so I've resorted to disabling the items when nav is visible
+        const bool was_disabled_initially = (GImGui->CurrentItemFlags & ImGuiItemFlags_Disabled);
+        const bool disable_for_nav = (io.NavVisible && !ImGui::IsMouseClicked(ImGuiMouseButton_Left));
+
+        if (disable_for_nav)
+            ImGui::PushItemDisabledNoVisual();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
+        if (ImGui::BeginChild(str_id, area_size, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NavFlattened))
+        {
+            const float drag_threshold_prev = io.MouseDragThreshold;
+            io.MouseDragThreshold = 0.0f;
+
+            ImVec2 pos_area = ImGui::GetCursorScreenPos();
+            ImVec2 pos_button = pos_area;
+            pos_button.x += roundf(offset.x);
+            pos_button.y += roundf(offset.y);
+            const float drag_margin = ImGui::GetFontSize() / 2.0f;
+
+            //Draw rectangle manually
+            ImVec4 col_button = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+            ImVec4 col_fill = col_button;
+            col_fill.w = 0.25f;
+
+            ImGui::GetWindowDrawList()->AddRectFilled(pos_button, {roundf(pos_button.x + size.x), roundf(pos_button.y + size.y)}, ImGui::GetColorU32(col_fill));
+            ImGui::GetWindowDrawList()->AddRect(pos_button,       {roundf(pos_button.x + size.x), roundf(pos_button.y + size.y)}, ImGui::GetColorU32(col_button));
+
+            if (highlight_edge)
+            {
+                if ((size.x > drag_margin * 2.0f) && (size.y > drag_margin * 2.0f))
+                {
+                    col_fill.w = 0.10f;
+
+                    //This highlights the inner part actually, but still does the trick
+                    ImGui::GetWindowDrawList()->AddRectFilled({pos_button.x + drag_margin, pos_button.y + drag_margin},
+                                                              {roundf(pos_button.x + size.x - drag_margin), roundf(pos_button.y + size.y - drag_margin)},
+                                                              ImGui::GetColorU32(col_fill));
+                }
+            }
+
+            highlight_edge = false;
+
+            //Invisible button spanning the entire area to catch right clicks anywhere for relative drag
+            if (ImGui::InvisibleButton("DraggableRectArea", area_size, ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_PressedOnClick))
+            {
+                offset_start = offset;
+                size_start   = size;
+                drag_mouse_button = ImGuiMouseButton_Right;
+
+                edge_drag_h_dir = ImGuiDir_None;
+                edge_drag_v_dir = ImGuiDir_None;
+                is_edge_drag_active = false;
+            }
+            else if (ImGui::IsItemActive())
+            {
+                is_drag_active = true;
+            }
+
+            //Pad the button size/pos to allow for off-edge grabs
+            ImVec2 pos_button_padded = pos_button;
+            pos_button_padded.x -= drag_margin / 2.0f;
+            pos_button_padded.y -= drag_margin / 2.0f;
+
+            ImVec2 size_button_padded = size;
+            size_button_padded.x += drag_margin;
+            size_button_padded.y += drag_margin;
+
+            ImGui::SetCursorScreenPos(pos_button_padded);
+            ImGui::SetItemAllowOverlap();
+            if (ImGui::InvisibleButton("DraggableRect", size_button_padded, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_PressedOnClick | ImGuiButtonFlags_AllowItemOverlap))
+            {
+                offset_start = offset;
+                size_start   = size;
+                drag_mouse_button = ImGuiMouseButton_Left;
+
+                const ImVec2 pos(io.MouseClickedPos[drag_mouse_button].x - pos_area.x, io.MouseClickedPos[drag_mouse_button].y - pos_area.y);
+
+                edge_drag_h_dir = ImGuiDir_None;
+                edge_drag_v_dir = ImGuiDir_None;
+
+                if (pos.x < offset.x + drag_margin)
+                    edge_drag_h_dir = ImGuiDir_Left;
+                else if (pos.x > offset.x + size.x - drag_margin)
+                    edge_drag_h_dir = ImGuiDir_Right;
+
+                if (pos.y < offset.y + drag_margin)
+                    edge_drag_v_dir = ImGuiDir_Up;
+                else if (pos.y > offset.y + size.y - drag_margin)
+                    edge_drag_v_dir = ImGuiDir_Down;
+
+                is_edge_drag_active = ((edge_drag_h_dir != ImGuiDir_None) || (edge_drag_v_dir != ImGuiDir_None));
+            }
+            else if (ImGui::IsItemActive())
+            {
+                is_drag_active = true;
+            }
+
+            if (is_drag_active)
+            {
+                if (is_edge_drag_active)
+                {
+                    if (edge_drag_h_dir == ImGuiDir_Left)
+                    {
+                        size.x = size_start.x - ImGui::GetMouseDragDelta(drag_mouse_button).x;
+                        offset.x = offset_start.x - (size.x - size_start.x);
+
+                        if (offset.x < 0.0f)
+                        {
+                            size.x += offset.x;
+                            offset.x = 0.0f;
+                        }
+                        else if (offset.x > area_size.x)   //When dragged to opposite edge (width is negative)
+                        {
+                            size.x -= area_size.x - offset.x;
+                            offset.x = area_size.x;
+                        }
+                    }
+                    else if (edge_drag_h_dir == ImGuiDir_Right)
+                    {
+                        size.x = size_start.x + ImGui::GetMouseDragDelta(drag_mouse_button).x;
+                        size.x = std::min(size.x, area_size.x - offset.x);
+                        offset.x = offset_start.x;
+
+                        if (size.x + offset.x < 0.0f) //When dragged to opposite edge (width is negative)
+                        {
+                            size.x -= size.x + offset.x;
+                        }
+                    }
+
+                    if (edge_drag_v_dir == ImGuiDir_Up)
+                    {
+                        size.y = size_start.y - ImGui::GetMouseDragDelta(drag_mouse_button).y;
+                        offset.y = offset_start.y - (size.y - size_start.y);
+
+                        if (offset.y < 0.0f)
+                        {
+                            size.y += offset.y;
+                            offset.y = 0.0f;
+                        }
+                        else if (offset.y > area_size.y)   //When dragged to opposite edge (height is negative)
+                        {
+                            size.y -= area_size.y - offset.y;
+                            offset.y = area_size.y;
+                        }
+                    }
+                    else if (edge_drag_v_dir == ImGuiDir_Down)
+                    {
+                        size.y = size_start.y + ImGui::GetMouseDragDelta(drag_mouse_button).y;
+                        size.y = std::min(size.y, area_size.y - offset.y);
+                        offset.y = offset_start.y;
+
+                        if (size.y + offset.y < 0.0f) //When dragged to opposite edge (height is negative)
+                        {
+                            size.y -= size.y + offset.y;
+                        }
+                    }
+                }
+                else  //Normal drag
+                {
+                    //Alt key scroll swapping is usually already done by ImGui but seems to be blocked by something down the line so we do it ourselves, whatever
+                    if (io.KeyAlt)
+                    {
+                        io.MouseWheelH = -io.MouseWheel;
+                        io.MouseWheel = 0.0f;
+                    }
+
+                    //Adjust size from wheel input (with deadzone for smooth scrolling input)
+                    if (fabs(io.MouseWheelH) > 0.05f)
+                    {
+                        float size_diff = size.x;
+                        size.x *= 1.0f + (io.MouseWheelH / -10.0f);
+                        size_diff = size.x - size_diff;
+
+                        offset_start.x -= size_diff / 2.0f;
+                    }
+
+                    if (fabs(io.MouseWheel) > 0.05f)
+                    {
+                        float size_diff = size.y;
+                        size.y *= 1.0f + (io.MouseWheel / 10.0f);
+                        size_diff = size.y - size_diff;
+
+                        offset_start.y -= size_diff / 2.0f;
+                    }
+
+                    offset.x = offset_start.x + ImGui::GetMouseDragDelta(drag_mouse_button).x;
+                    offset.y = offset_start.y + ImGui::GetMouseDragDelta(drag_mouse_button).y;
+                }
+
+                //Correct inverted rectangle
+                if (size.x < 0.0f)
+                {
+                    offset.x += size.x;
+                    size.x *= -1.0f;
+                }
+
+                if (size.y < 0.0f)
+                {
+                    offset.y += size.y;
+                    size.y *= -1.0f;
+                }
+
+                //Clamp to area
+                offset.x = clamp(offset.x, 0.0f, area_size.x - size.x);
+                offset.y = clamp(offset.y, 0.0f, area_size.y - size.y);
+
+                size.x = clamp(size.x, 1.0f, area_size.x);
+                size.y = clamp(size.y, 1.0f, area_size.y);
+            }
+            else
+            {
+                highlight_edge = ImGui::IsItemHovered( (was_disabled_initially) ? 0 : ImGuiHoveredFlags_AllowWhenDisabled );
+            }
+
+            io.MouseDragThreshold = drag_threshold_prev;
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
+
+        if (disable_for_nav)
+            ImGui::PopItemDisabledNoVisual();
+
+        return ( (is_drag_active) && ((offset.x != offset_prev.x) || (offset.y != offset_prev.y) || 
+                                      (size.x   != size_prev.x)   || (size.y   != size_prev.y)) );
     }
 
 

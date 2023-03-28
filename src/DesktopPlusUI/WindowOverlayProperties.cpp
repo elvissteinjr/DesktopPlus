@@ -2307,6 +2307,13 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
 void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
 {
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    static ImGui::ImGuiDraggableRectAreaState draggable_rect_state;
+    static ImVec2 draggable_rect_area;
+    static ImVec2 draggable_rect_area_base_size;
+    static ImVec4 draggable_rect_base_rect;
+    static float draggable_rect_scale = 1.0f;
 
     bool& crop_enabled = ConfigManager::GetRef(configid_bool_overlay_crop_enabled);
     int& crop_x        = ConfigManager::GetRef(configid_int_overlay_crop_x);
@@ -2347,8 +2354,6 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_crop_enabled, true);
     }
 
-    ImGui::TextUnformatted("(More things will still go here)");
-
     int ovrl_width, ovrl_height;
 
     if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_desktop_duplication)
@@ -2385,24 +2390,97 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
     int crop_width_ui   = (crop_width  == -1) ? crop_width_max  + 1 : crop_width;
     int crop_height_ui  = (crop_height == -1) ? crop_height_max + 1 : crop_height;
 
+    const bool disable_crop_edit = ((ovrl_width == -1) && (ovrl_height == -1));
+    const bool is_crop_invalid = ((crop_x > ovrl_width - 1) || (crop_y > ovrl_height - 1) || (crop_width_max < 1) || (crop_height_max < 1));
+
+    //--Cropping Area (Draggable Crop Rect)
+    const bool ovrl_size_changed = ((draggable_rect_area_base_size.x != ovrl_width) || (draggable_rect_area_base_size.y != ovrl_height));
+    const bool base_rect_changed = ((draggable_rect_base_rect.x != crop_x)     || (draggable_rect_base_rect.y != crop_y) || 
+                                    (draggable_rect_base_rect.z != crop_width) || (draggable_rect_base_rect.w != crop_height));
+
+    if (ovrl_size_changed)
+    {
+        //Figure out sizing for the draggable rect area
+        const float region_width = ImGui::GetContentRegionAvail().x - style.IndentSpacing - 2.0f;   //The -2 comes from ceiling the area floats for slight oversizing
+        const float region_height = (UIManager::Get()->IsInDesktopMode()) ? ImGui::GetFontSize() * 16.0f : ImGui::GetFontSize() * 10.5f;
+        draggable_rect_scale = std::min(region_width / ovrl_width, region_height / ovrl_height);
+        draggable_rect_area = {std::max(8.0f, ceilf(ovrl_width * draggable_rect_scale)), std::max(8.0f, ceilf(ovrl_height * draggable_rect_scale))};
+
+        draggable_rect_area_base_size = {(float)ovrl_width, (float)ovrl_height};
+    }
+
+    //Detect external changes to the rect and apply to draggable rect (we try to avoid constantly converting back and forth to not fall into float inaccuracy troubles)
+    if (base_rect_changed)
+    {
+        draggable_rect_state.RectPos.x  = crop_x         * draggable_rect_scale;
+        draggable_rect_state.RectPos.y  = crop_y         * draggable_rect_scale;
+        draggable_rect_state.RectSize.x = ((crop_width  == -1) ? crop_width_max  : crop_width)  * draggable_rect_scale;
+        draggable_rect_state.RectSize.y = ((crop_height == -1) ? crop_height_max : crop_height) * draggable_rect_scale;
+
+        draggable_rect_base_rect = {(float)crop_x, (float)crop_y, (float)crop_width, (float)crop_height};
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCrop));
+
+    ImGui::Indent();
+    ImGui::PushTextWrapPos();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsCropHelp));
+    ImGui::PopTextWrapPos();
+
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x / 2.0f) - (draggable_rect_area.x / 2.0f));
+
+    if (disable_crop_edit)
+        ImGui::PushItemDisabled();
+
+    if (ImGui::DraggableRectArea("DragArea", draggable_rect_area, draggable_rect_state))
+    {
+        crop_x      = clamp((int)floorf(draggable_rect_state.RectPos.x / draggable_rect_scale), 0, ovrl_width  - 1);
+        crop_y      = clamp((int)floorf(draggable_rect_state.RectPos.y / draggable_rect_scale), 0, ovrl_height - 1);
+        crop_width_max  = ovrl_width  - crop_x;
+        crop_height_max = ovrl_height - crop_y;
+        crop_width  = clamp((int)ceilf(draggable_rect_state.RectSize.x / draggable_rect_scale), 1, crop_width_max);
+        crop_height = clamp((int)ceilf(draggable_rect_state.RectSize.y / draggable_rect_scale), 1, crop_height_max);
+
+        //Set to max if width/height matches total width (we don't do it partial crops which could still use max values tho)
+        if (crop_width >= ovrl_width)
+        {
+            crop_width = -1;
+        }
+
+        if (crop_height >= ovrl_height)
+        {
+            crop_height = -1;
+        }
+
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_width,  crop_width);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_height, crop_height);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_x,      crop_x);
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_y,      crop_y);
+
+        draggable_rect_base_rect = {(float)crop_x, (float)crop_y, (float)crop_width, (float)crop_height};
+    }
+
+    if (disable_crop_edit)
+        ImGui::PopItemDisabled();
+
+    ImGui::Unindent();
+
+    //--Manual Adjustment
     static int crop_width_before_edit  = -1;
     static int crop_height_before_edit = -1;
 
-    const bool disable_sliders = ((ovrl_width == -1) && (ovrl_height == -1));
-    const bool is_crop_invalid = ((crop_x > ovrl_width - 1) || (crop_y > ovrl_height - 1) || (crop_width_max < 1) || (crop_height_max < 1));
-
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCropManualAdjust));
 
-    if ( (!disable_sliders) && (is_crop_invalid) )
+    if ( (!disable_crop_edit) && (is_crop_invalid) )
     {
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_OvrlPropsCropInvalidTip), "(!)");
     }
 
     ImGui::Columns(2, "ColumnCrop", false);
     ImGui::SetColumnWidth(0, m_Column0Width);
 
-    if (disable_sliders)
+    if (disable_crop_edit)
         ImGui::PushItemDisabled();
 
     ImGui::AlignTextToFramePadding();
@@ -2533,7 +2611,7 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
         }
     }
 
-    if (disable_sliders)
+    if (disable_crop_edit)
         ImGui::PopItemDisabled();
 
     ImGui::Columns(1);
@@ -2547,6 +2625,10 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
     {
         m_IsConfigDataModified = false;
         PageGoBack();
+
+        //DraggableRectArea() runs into positional flicker from ImGui::GetCursorScreenPos() for one frame when going back from here. 
+        //Haven't been able to track down the reason for it (only happens on this button), but the RepeatFrame() bandaid works
+        UIManager::Get()->RepeatFrame();
     }
 
     ImGui::SameLine();
@@ -2572,8 +2654,8 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
             crop_width  = -1;
             crop_height = -1;
 
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_x, crop_x);
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_y, crop_y);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_x,      crop_x);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_y,      crop_y);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_width,  crop_width);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_crop_height, crop_height);
         }
