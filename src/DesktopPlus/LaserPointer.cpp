@@ -21,11 +21,14 @@ LaserPointer::LaserPointer() : m_ActivationOrigin(dplp_activation_origin_none),
 
 LaserPointer::~LaserPointer()
 {
-    for (auto& lp_device : m_Devices)
+    if (vr::VROverlay() != nullptr)
     {
-        if (lp_device.OvrlHandle != vr::k_ulOverlayHandleInvalid)
+        for (auto& lp_device : m_Devices)
         {
-            vr::VROverlay()->DestroyOverlay(lp_device.OvrlHandle);
+            if (lp_device.OvrlHandle != vr::k_ulOverlayHandleInvalid)
+            {
+                vr::VROverlay()->DestroyOverlay(lp_device.OvrlHandle);
+            }
         }
     }
 }
