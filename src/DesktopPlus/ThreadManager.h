@@ -11,7 +11,7 @@ class THREADMANAGER
         void Clean();
         DUPL_RETURN Initialize(INT SingleOutput, UINT OutputCount, HANDLE UnexpectedErrorEvent, HANDLE ExpectedErrorEvent, HANDLE NewFrameProcessedEvent,
                                HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent, HANDLE TerminateThreadsEvent,
-                               HANDLE SharedHandle, _In_ RECT* DesktopDim, IDXGIAdapter* DXGIAdapter);
+                               HANDLE SharedHandle, _In_ RECT* DesktopDim, IDXGIAdapter* DXGIAdapter, bool WMRIgnoreVScreens);
         PTR_INFO* GetPointerInfo();         //Should only be called when shared surface mutex has be aquired
         DPRect& GetDirtyRegionTotal();      //Should only be called when shared surface mutex has be aquired
         void WaitForThreadTermination();

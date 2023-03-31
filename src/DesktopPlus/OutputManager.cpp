@@ -727,6 +727,7 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
 
     //Check if it's a WMR system and set up for that if needed
     SetConfigForWMR(ConfigManager::GetRef(configid_int_interface_wmr_ignore_vscreens));
+    DPWinRT_SetDesktopEnumerationFlags( (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1) );
 
     //Init background overlay if needed
     m_BackgroundOverlay.Update();
@@ -1673,6 +1674,13 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         {
                             DPBrowserAPIClient::Get().DPBrowser_SetFPS(OverlayManager::Get().GetCurrentOverlay().GetHandle(), msg.lParam);
                         }
+                        break;
+                    }
+                    case configid_int_interface_wmr_ignore_vscreens:
+                    {
+                        DPWinRT_SetDesktopEnumerationFlags((msg.lParam == 1));
+                        //May affect desktop enumeration, reset mirroring
+                        reset_mirroring = true;
                         break;
                     }
                     case configid_int_input_hotkey01_keycode:
@@ -3230,122 +3238,60 @@ DUPL_RETURN OutputManager::InitShaders()
 DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds)
 {
     HRESULT hr;
+    *OutCount = 0;
+    const int desktop_count = m_DesktopRects.size();
 
-    // Get DXGI resources
-    IDXGIDevice* DxgiDevice = nullptr;
-    hr = m_Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DxgiDevice));
-    if (FAILED(hr))
+    //Output doesn't exist. This will result in a soft-error invalid output state (system may be in an transition state, in which case we'll automatically recover)
+    if (SingleOutput >= desktop_count) 
     {
-        return ProcessFailure(nullptr, L"Failed to QI for DXGI device", L"Desktop+ Error", hr);
-    }
+        m_DesktopX      = 0;
+        m_DesktopY      = 0;
+        m_DesktopWidth  = -1;
+        m_DesktopHeight = -1;
 
-    IDXGIAdapter* DxgiAdapter = nullptr;
-    hr = DxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&DxgiAdapter));
-    DxgiDevice->Release();
-    DxgiDevice = nullptr;
-    if (FAILED(hr))
-    {
-        return ProcessFailure(m_Device, L"Failed to get parent DXGI adapter", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
-    }
-
-    // Set initial values so that we always catch the right coordinates
-    DeskBounds->left   = INT_MAX;
-    DeskBounds->right  = INT_MIN;
-    DeskBounds->top    = INT_MAX;
-    DeskBounds->bottom = INT_MIN;
-
-    IDXGIOutput* DxgiOutput = nullptr;
-
-    // Figure out right dimensions for full size desktop texture and # of outputs to duplicate
-    UINT OutputCount;
-    if (SingleOutput < 0)
-    {
-        int desktop_count = ConfigManager::GetValue(configid_int_state_interface_desktop_count);
-
-        hr = S_OK;
-        for (OutputCount = 0; SUCCEEDED(hr); ++OutputCount)
-        {
-            //Break early if used desktop count is lower than actual output count
-            if (OutputCount >= desktop_count)
-            {
-                ++OutputCount;
-                break;
-            }
-
-            if (DxgiOutput)
-            {
-                DxgiOutput->Release();
-                DxgiOutput = nullptr;
-            }
-            hr = DxgiAdapter->EnumOutputs(OutputCount, &DxgiOutput);
-            if (DxgiOutput && (hr != DXGI_ERROR_NOT_FOUND))
-            {
-                DXGI_OUTPUT_DESC DesktopDesc;
-                DxgiOutput->GetDesc(&DesktopDesc);
-
-                DeskBounds->left   = std::min(DesktopDesc.DesktopCoordinates.left, DeskBounds->left);
-                DeskBounds->top    = std::min(DesktopDesc.DesktopCoordinates.top, DeskBounds->top);
-                DeskBounds->right  = std::max(DesktopDesc.DesktopCoordinates.right, DeskBounds->right);
-                DeskBounds->bottom = std::max(DesktopDesc.DesktopCoordinates.bottom, DeskBounds->bottom);
-            }
-        }
-
-        --OutputCount;
-    }
-    else
-    {
-        hr = DxgiAdapter->EnumOutputs(SingleOutput, &DxgiOutput);
-        if (FAILED(hr)) //Output doesn't exist. This will result in a soft-error invalid output state
-        {
-            DxgiAdapter->Release();
-            DxgiAdapter = nullptr;
-
-            m_DesktopX      = 0;
-            m_DesktopY      = 0;
-            m_DesktopWidth  = -1;
-            m_DesktopHeight = -1;
-
-            *OutCount = 0;
-
-            return DUPL_RETURN_ERROR_EXPECTED;
-        }
-
-        DXGI_OUTPUT_DESC DesktopDesc;
-        DxgiOutput->GetDesc(&DesktopDesc);
-        *DeskBounds = DesktopDesc.DesktopCoordinates;
-
-        DxgiOutput->Release();
-        DxgiOutput = nullptr;
-
-        OutputCount = 1;
-    }
-
-    DxgiAdapter->Release();
-    DxgiAdapter = nullptr;
-
-    // Set passed in output count variable
-    *OutCount = OutputCount;
-
-    if (OutputCount == 0) //This state can only be entered on the combined desktop setting now... oops?
-    {
-        // We could not find any outputs, the system must be in a transition so return expected error
-        // so we will attempt to recreate
         return DUPL_RETURN_ERROR_EXPECTED;
     }
 
+    //Figure out right dimensions for full size desktop texture
+    DPRect output_rect;
+    if (SingleOutput < 0)
+    {
+        //Combined desktop, add up all desktop rects
+        for (const DPRect& rect : m_DesktopRects)
+        {
+            (output_rect.GetWidth() == 0) ? output_rect = rect : output_rect.Add(rect);
+        }
+
+        *OutCount = desktop_count;
+    }
+    else
+    {
+        //Single desktop, grab cached desktop rect
+        if (SingleOutput < desktop_count)
+        {
+            output_rect = m_DesktopRects[SingleOutput];
+            *OutCount = 1;
+        }
+    }
+
     //Store size and position
-    m_DesktopX      = DeskBounds->left;
-    m_DesktopY      = DeskBounds->top;
-    m_DesktopWidth  = DeskBounds->right - DeskBounds->left;
-    m_DesktopHeight = DeskBounds->bottom - DeskBounds->top;
+    m_DesktopX      = output_rect.GetTL().x;
+    m_DesktopY      = output_rect.GetTL().y;
+    m_DesktopWidth  = output_rect.GetWidth();
+    m_DesktopHeight = output_rect.GetHeight();
+
+    DeskBounds->left   = output_rect.GetTL().x;
+    DeskBounds->top    = output_rect.GetTL().y;
+    DeskBounds->right  = output_rect.GetBR().x;
+    DeskBounds->bottom = output_rect.GetBR().y;
 
     //Set it as mouse scale on the desktop texture overlay for the UI to read the resolution from there
-    vr::HmdVector2_t mouse_scale;
+    vr::HmdVector2_t mouse_scale = {0};
     mouse_scale.v[0] = m_DesktopWidth;
     mouse_scale.v[1] = m_DesktopHeight;
     vr::VROverlay()->SetOverlayMouseScale(m_OvrlHandleDesktopTexture, &mouse_scale);
 
-    // Create shared texture for all duplication threads to draw into
+    //Create shared texture for all duplication threads to draw into
     D3D11_TEXTURE2D_DESC TexD;
     RtlZeroMemory(&TexD, sizeof(D3D11_TEXTURE2D_DESC));
     TexD.Width            = m_DesktopWidth;
@@ -3369,7 +3315,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
 
     if (FAILED(hr))
     {
-        if (OutputCount != 1)
+        if (output_rect.GetWidth() != 0)
         {
             // If we are duplicating the complete desktop we try to create a single texture to hold the
             // complete desktop image and blit updates from the per output DDA interface.  The GPU can

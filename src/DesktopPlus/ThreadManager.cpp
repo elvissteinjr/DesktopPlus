@@ -99,7 +99,7 @@ void THREADMANAGER::CleanDx(_Inout_ DX_RESOURCES* Data)
 //
 DUPL_RETURN THREADMANAGER::Initialize(INT SingleOutput, UINT OutputCount, HANDLE UnexpectedErrorEvent, HANDLE ExpectedErrorEvent, HANDLE NewFrameProcessedEvent,
                                       HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent, HANDLE TerminateThreadsEvent,
-                                      HANDLE SharedHandle, _In_ RECT* DesktopDim, IDXGIAdapter* DXGIAdapter)
+                                      HANDLE SharedHandle, _In_ RECT* DesktopDim, IDXGIAdapter* DXGIAdapter, bool WMRIgnoreVScreens)
 {
     m_ThreadCount = OutputCount;
     m_ThreadHandles = new (std::nothrow) HANDLE[m_ThreadCount];
@@ -125,6 +125,7 @@ DUPL_RETURN THREADMANAGER::Initialize(INT SingleOutput, UINT OutputCount, HANDLE
         m_ThreadData[i].OffsetY = DesktopDim->top;
         m_ThreadData[i].PtrInfo = &m_PtrInfo;
         m_ThreadData[i].DirtyRegionTotal = &m_DirtyRegionTotal;
+        m_ThreadData[i].WMRIgnoreVScreens = WMRIgnoreVScreens;
 
         RtlZeroMemory(&m_ThreadData[i].DxRes, sizeof(DX_RESOURCES));
         Ret = InitializeDx(&m_ThreadData[i].DxRes, DXGIAdapter);

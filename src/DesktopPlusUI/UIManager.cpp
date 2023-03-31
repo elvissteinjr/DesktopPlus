@@ -1622,7 +1622,7 @@ void UIManager::UpdateDesktopOverlayPixelSize()
         }
         else    //Single desktop, try to get the screen resolution for it
         {
-            DEVMODE mode = GetDevmodeForDisplayID(desktop_id);
+            DEVMODE mode = GetDevmodeForDisplayID(desktop_id, (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1));
 
             if (mode.dmSize != 0)
             {

@@ -386,7 +386,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 if (SharedHandle)
                 {
                     Ret = ThreadMgr.Initialize(SingleOutput, OutputCount, UnexpectedErrorEvent, ExpectedErrorEvent, NewFrameProcessedEvent, PauseDuplicationEvent,
-                                               ResumeDuplicationEvent, TerminateThreadsEvent, SharedHandle, &DeskBounds, OutMgr.GetDXGIAdapter());
+                                               ResumeDuplicationEvent, TerminateThreadsEvent, SharedHandle, &DeskBounds, OutMgr.GetDXGIAdapter(), 
+                                               (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1));
                 }
                 else
                 {
@@ -736,7 +737,7 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
     }
 
     // Make duplication manager
-    Ret = DuplMgr.InitDupl(TData->DxRes.Device, TData->Output);
+    Ret = DuplMgr.InitDupl(TData->DxRes.Device, TData->Output, TData->WMRIgnoreVScreens);
     if (Ret != DUPL_RETURN_SUCCESS)
     {
         goto Exit;

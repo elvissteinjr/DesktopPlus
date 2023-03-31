@@ -73,8 +73,8 @@ inline float lin2log(float value_normalized)
 #define HIDWORD(qw)         ((DWORD)(((qw) >> 32) & 0xffffffff))
 
 //Display stuff
-DEVMODE GetDevmodeForDisplayID(int display_id, HMONITOR* hmon = nullptr); //DEVMODE.dmSize != 0 on success
-int GetMonitorRefreshRate(int display_id);
+DEVMODE GetDevmodeForDisplayID(int display_id, bool wmr_ignore_vscreens, HMONITOR* hmon = nullptr); //DEVMODE.dmSize != 0 on success
+int GetMonitorRefreshRate(int display_id, bool wmr_ignore_vscreens);
 void CenterRectToMonitor(LPRECT prc);
 void CenterWindowToMonitor(HWND hwnd, bool use_cursor_pos = false);
 void ForceScreenRefresh();
