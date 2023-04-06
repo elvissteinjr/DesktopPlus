@@ -166,7 +166,7 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
 
     //Find the nearest intersecting overlay
     vr::VROverlayHandle_t nearest_target_overlay = vr::k_ulOverlayHandleInvalid;
-    bool is_nearest_target_overlay_ui = false;
+    OverlayTextureSource nearest_texture_source = ovrl_texsource_none;
     vr::VROverlayIntersectionResults_t nearest_results = {0};
     nearest_results.fDistance = FLT_MAX;
 
@@ -177,8 +177,18 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
         nearest_target_overlay = m_ForceTargetOverlayHandle;
 
         //Check if forced target overlay is UI overlay
-        is_nearest_target_overlay_ui = ( (std::find(m_OverlayHandlesUI.begin(), m_OverlayHandlesUI.end(), nearest_target_overlay) != m_OverlayHandlesUI.end()) || 
-                                         (std::find(m_OverlayHandlesMultiLaser.begin(), m_OverlayHandlesMultiLaser.end(), nearest_target_overlay) != m_OverlayHandlesMultiLaser.end()) );
+        const bool is_forced_ui = ( (std::find(m_OverlayHandlesUI.begin(), m_OverlayHandlesUI.end(), nearest_target_overlay) != m_OverlayHandlesUI.end()) || 
+                                    (std::find(m_OverlayHandlesMultiLaser.begin(), m_OverlayHandlesMultiLaser.end(), nearest_target_overlay) != m_OverlayHandlesMultiLaser.end()) );
+
+        if (is_forced_ui)
+        {
+            nearest_texture_source = ovrl_texsource_ui;
+        }
+        else
+        {
+            unsigned int overlay_id = OverlayManager::Get().FindOverlayID(m_ForceTargetOverlayHandle);
+            nearest_texture_source = OverlayManager::Get().GetOverlay(overlay_id).GetTextureSource();
+        }
     }
 
     //If input is held down, do not switch overlays and act as if overlay space is extending past the surface when not hitting it
@@ -194,8 +204,7 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
             {
                 if (vr::VROverlay()->ComputeOverlayIntersection(lp_device.OvrlHandleTargetLast, &params, &results))
                 {
-                    //Check UI intersection mask if the target overlay was an UI overlay
-                    if ( (!lp_device.IsHandleOvrlTargetLastUI) || (UIIntersectionMaskHitTest(results.vUVs)) )
+                    if (IntersectionMaskHitTest(lp_device.OvrlHandleTargetLastTextureSource, results.vUVs))
                     {
                         nearest_target_overlay = lp_device.OvrlHandleTargetLast;
                     }
@@ -222,10 +231,11 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     if ( (input_method == vr::VROverlayInputMethod_Mouse) && 
                          (vr::VROverlay()->ComputeOverlayIntersection(overlay.GetHandle(), &params, &results)) && (results.fDistance < nearest_results.fDistance) )
                     {
-                        //If Performance Montior, perform UI hit-test as described below
-                        if ( (OverlayManager::Get().GetConfigData(i).ConfigInt[configid_int_overlay_capture_source] != ovrl_capsource_ui) || (UIIntersectionMaskHitTest(results.vUVs)) )
+                        //If Desktop Duplication/Performance Montior, this performs an extra hit-test as described below
+                        if (IntersectionMaskHitTest(overlay.GetTextureSource(), results.vUVs))
                         {
                             nearest_target_overlay = overlay.GetHandle();
+                            nearest_texture_source = overlay.GetTextureSource();
                             nearest_results        = results;
                         }
                     }
@@ -245,10 +255,10 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     vr::VROverlay()->GetOverlayInputMethod(overlay_handle, &input_method);
 
                     if ( (input_method == vr::VROverlayInputMethod_Mouse) && (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && 
-                         (results.fDistance < nearest_results.fDistance) && (UIIntersectionMaskHitTest(results.vUVs)) )
+                         (results.fDistance < nearest_results.fDistance) && (IntersectionMaskHitTest(ovrl_texsource_ui, results.vUVs)) )
                     {
                         nearest_target_overlay       = overlay_handle;
-                        is_nearest_target_overlay_ui = true;
+                        nearest_texture_source       = ovrl_texsource_ui;
                         nearest_results              = results;
                     }
                 }
@@ -264,11 +274,11 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     vr::VROverlay()->GetOverlayInputMethod(overlay_handle, &input_method);
 
                     if ( (input_method == vr::VROverlayInputMethod_Mouse) && (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && 
-                         (results.fDistance < nearest_results.fDistance) && (UIIntersectionMaskHitTest(results.vUVs)) )
+                         (results.fDistance < nearest_results.fDistance) && (IntersectionMaskHitTest(ovrl_texsource_ui, results.vUVs)) )
                     {
                         hit_multilaser               = true;
                         nearest_target_overlay       = overlay_handle;
-                        is_nearest_target_overlay_ui = true;
+                        nearest_texture_source       = ovrl_texsource_ui;
                         nearest_results              = results;
                     }
                 }
@@ -277,8 +287,8 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
             //Non-MultiLaser hits are discared when not using the primary device
             if ( (!hit_multilaser) && (!is_primary_device) )
             {
-                nearest_target_overlay       = vr::k_ulOverlayHandleInvalid;
-                is_nearest_target_overlay_ui = false;
+                nearest_target_overlay = vr::k_ulOverlayHandleInvalid;
+                nearest_texture_source = ovrl_texsource_none;
             }
 
             lp_device.IsActiveForMultiLaserInput = hit_multilaser;
@@ -382,8 +392,8 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
         }
 
         //Act as if the overlay was hit for the rest of this function
-        nearest_target_overlay       = lp_device.OvrlHandleTargetLast;
-        is_nearest_target_overlay_ui = lp_device.IsHandleOvrlTargetLastUI;
+        nearest_target_overlay = lp_device.OvrlHandleTargetLast;
+        nearest_texture_source = lp_device.OvrlHandleTargetLastTextureSource;
     }
     else
     {
@@ -496,8 +506,8 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
 
     if (nearest_target_overlay != lp_device.OvrlHandleTargetLast)
     {
-        lp_device.OvrlHandleTargetLast     = nearest_target_overlay;
-        lp_device.IsHandleOvrlTargetLastUI = is_nearest_target_overlay_ui;
+        lp_device.OvrlHandleTargetLast              = nearest_target_overlay;
+        lp_device.OvrlHandleTargetLastTextureSource = nearest_texture_source;
 
         if (is_primary_device)
         {
@@ -852,8 +862,7 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
                     if ( (input_method == vr::VROverlayInputMethod_Mouse) && 
                          (vr::VROverlay()->ComputeOverlayIntersection(overlay.GetHandle(), &params, &results)) && (results.fDistance <= max_distance) )
                     {
-                        //If Performance Montior, perform UI hit-test as described below
-                        if ( (OverlayManager::Get().GetConfigData(i).ConfigInt[configid_int_overlay_capture_source] != ovrl_capsource_ui) || (UIIntersectionMaskHitTest(results.vUVs)) )
+                        if (IntersectionMaskHitTest(overlay.GetTextureSource(), results.vUVs))
                         {
                             return device_index;
                         }
@@ -868,7 +877,8 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
             {
                 if (vr::VROverlay()->IsOverlayVisible(overlay_handle))
                 {
-                    if ( (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && (results.fDistance <= max_distance) && (UIIntersectionMaskHitTest(results.vUVs)) )
+                    if ( (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && (results.fDistance <= max_distance) && 
+                         (IntersectionMaskHitTest(ovrl_texsource_ui, results.vUVs)) )
                     {
                         return device_index;
                     }
@@ -880,7 +890,8 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
             {
                 if (vr::VROverlay()->IsOverlayVisible(overlay_handle))
                 {
-                    if ( (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && (results.fDistance <= max_distance) && (UIIntersectionMaskHitTest(results.vUVs)) )
+                    if ( (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, &results)) && (results.fDistance <= max_distance) && 
+                         (IntersectionMaskHitTest(ovrl_texsource_ui, results.vUVs)) )
                     {
                         return device_index;
                     }
@@ -892,19 +903,39 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
     return vr::k_unTrackedDeviceIndexInvalid;
 }
 
-bool LaserPointer::UIIntersectionMaskHitTest(vr::HmdVector2_t& uv) const
+bool LaserPointer::IntersectionMaskHitTest(OverlayTextureSource texsource, vr::HmdVector2_t& uv) const
 {
-    Vector2Int point(int(uv.v[0] * m_UIMouseScale.x), int((-uv.v[1] + 1.0f) * m_UIMouseScale.y));
-
-    for (const auto& rect : m_UIIntersectionMaskRects)
+    if (texsource == ovrl_texsource_desktop_duplication)
     {
-        if (rect.Contains(point))
+        Vector2Int point(int(uv.v[0] * OutputManager::Get()->GetDesktopWidth()), int((-uv.v[1] + 1.0f) * OutputManager::Get()->GetDesktopHeight()));
+
+        for (const auto& rect : OutputManager::Get()->GetDesktopRects())
         {
-            return true;
+            if (rect.Contains(point))
+            {
+                return true;
+            }
         }
+
+        return false;
+    }
+    else if (texsource == ovrl_texsource_ui)
+    {
+        Vector2Int point(int(uv.v[0] * m_UIMouseScale.x), int((-uv.v[1] + 1.0f) * m_UIMouseScale.y));
+
+        for (const auto& rect : m_UIIntersectionMaskRects)
+        {
+            if (rect.Contains(point))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    return false;
+    //Other texture sources don't have masks, so they always pass
+    return true;
 }
 
 void LaserPointer::UIIntersectionMaskAddRect(DPRect& rect)

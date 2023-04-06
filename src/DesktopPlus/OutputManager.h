@@ -58,6 +58,7 @@ class OutputManager
         float GetHMDFrameRate() const;
         int GetDesktopWidth() const;
         int GetDesktopHeight() const;
+        const std::vector<DPRect>& GetDesktopRects() const;
 
         void ShowOverlay(unsigned int id);
         void HideOverlay(unsigned int id);
