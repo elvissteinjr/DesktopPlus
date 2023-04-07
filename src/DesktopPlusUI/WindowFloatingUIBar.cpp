@@ -197,8 +197,8 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
         }
     }
 
-    //Toggle transform lock when holding for 3 seconds
-    bool show_hold_message = false;
+    //Toggle transform lock when holding for 1.5 seconds
+    bool show_hold_message_lock = false;
 
     if (ImGui::IsItemActive())
     {
@@ -212,16 +212,16 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
 
             io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so actual button won't get toggled
         }
-        else if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] > 0.5f)
+        else if (io.MouseDownDuration[ImGuiMouseButton_Left] > 0.5f)
         {
-            show_hold_message = true;
+            show_hold_message_lock = true;
         }
     }
 
     if (dragmode_was_enabled)
         ImGui::PopStyleColor();
 
-    if (show_hold_message)
+    if (show_hold_message_lock)
     {
         DisplayTooltipIfHovered(TranslationManager::GetString((is_overlay_transform_locked) ? tstr_FloatingUIDragModeHoldUnlockTip: tstr_FloatingUIDragModeHoldLockTip));
     }
@@ -240,14 +240,55 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     TextureManager::Get().GetTextureInfo(tmtex_icon_small_close, b_size, b_uv_min, b_uv_max);
     if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
     {
-        overlay_data.ConfigBool[configid_bool_overlay_enabled] = false;
+        if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 2.5f) //Don't do normal button behavior after lock toggle was triggered
+        {
+            overlay_data.ConfigBool[configid_bool_overlay_enabled] = false;
 
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_enabled, false);
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_enabled, false);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+        }
     }
 
-    DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIHideOverlayTip));
+    //Toggle transform lock when holding for 2.5 seconds
+    bool show_hold_message_remove = false;
+
+    if (ImGui::IsItemActive())
+    {
+        if (io.MouseDownDuration[ImGuiMouseButton_Left] > 2.5f) //Longer delay compared to other holds because this is pretty destructive (but still less than rare transform resets)
+        {
+            OverlayManager::Get().RemoveOverlay(overlay_id);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_remove, overlay_id);
+
+            //Hide properties window if it's open for this overlay
+            WindowOverlayProperties& properties_window = UIManager::Get()->GetOverlayPropertiesWindow();
+
+            if (properties_window.GetActiveOverlayID() == overlay_id)
+            {
+                properties_window.SetActiveOverlayID(k_ulOverlayID_None, true);
+                properties_window.Hide();
+            }
+            else if (properties_window.GetActiveOverlayID() > overlay_id) //Adjust properties window active overlay ID if it's open for an overlay that had its ID shifted
+            {
+                properties_window.SetActiveOverlayID(properties_window.GetActiveOverlayID() - 1, true);
+            }
+
+            io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so actual button won't get toggled
+        }
+        else if (io.MouseDownDuration[ImGuiMouseButton_Left] > 0.5f)
+        {
+            show_hold_message_remove = true;
+        }
+    }
+
+    if (show_hold_message_remove)
+    {
+        DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIHideOverlayHoldTip));
+    }
+    else
+    {
+        DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIHideOverlayTip));
+    }
 
     ImGui::PopID();
     //
@@ -644,7 +685,7 @@ void WindowFloatingUIActionBar::ButtonActionKeyboard(unsigned int overlay_id, Im
             keyboard_window.ResetTransformAll();
             io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so transform changes don't get blocked
         }
-        else if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] > 0.5f)
+        else if (io.MouseDownDuration[ImGuiMouseButton_Left] > 0.5f)
         {
             tooltip_strid = tstr_OverlayBarTooltipResetHold;
         }

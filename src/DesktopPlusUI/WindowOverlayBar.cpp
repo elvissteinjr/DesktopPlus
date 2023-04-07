@@ -174,7 +174,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
                 overlay_properties.ResetTransformAll();
                 io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so transform changes don't get blocked
             }
-            else if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] > 0.5f)
+            else if (io.MouseDownDuration[ImGuiMouseButton_Left] > 0.5f)
             {
                 show_hold_message = true;
             }
@@ -785,7 +785,7 @@ void WindowOverlayBar::Update()
             floating_settings.ResetTransformAll();
             io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so transform changes don't get blocked
         }
-        else if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] > 0.5f)
+        else if (io.MouseDownDuration[ImGuiMouseButton_Left] > 0.5f)
         {
             show_hold_message = true;
         }

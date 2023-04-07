@@ -333,6 +333,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OverlayBarTooltipSettings",
     "tstr_OverlayBarTooltipResetHold",
     "tstr_FloatingUIHideOverlayTip",
+    "tstr_FloatingUIHideOverlayHoldTip",
     "tstr_FloatingUIDragModeEnableTip",
     "tstr_FloatingUIDragModeDisableTip",
     "tstr_FloatingUIDragModeHoldLockTip",
