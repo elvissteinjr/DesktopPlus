@@ -143,14 +143,29 @@ bool GetOverlayIntersectionParamsForDevice(vr::VROverlayIntersectionParams_t& pa
 }
 
 bool ComputeOverlayIntersectionForDevice(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, vr::VROverlayIntersectionResults_t* results,
-                                         bool use_tip_offset)
+                                         bool use_tip_offset, bool front_face_only)
 {
     vr::VROverlayIntersectionParams_t params = {0};
 
     if (GetOverlayIntersectionParamsForDevice(params, device_index, tracking_origin, use_tip_offset))
-        return vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, results);
-
+    {
+        if (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, results))
+        {
+            return ( (!front_face_only) || (IsOverlayIntersectionHitFrontFacing(params, *results)) );
+        }
+    }
+        
     return false;
+}
+
+bool IsOverlayIntersectionHitFrontFacing(const vr::VROverlayIntersectionParams_t& params, const vr::VROverlayIntersectionResults_t& results)
+{
+    Vector3 intersect_src_pos       = params.vSource;
+    Vector3 intersect_target_pos    = results.vPoint;
+    Vector3 intersect_target_normal = results.vNormal;
+    intersect_target_normal.normalize();
+
+    return (intersect_target_normal.dot(intersect_src_pos - intersect_target_pos) >= 0.0f);
 }
 
 Matrix4 ComputeHMDFacingTransform(float distance)

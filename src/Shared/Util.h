@@ -26,7 +26,9 @@ void TransformLookAt(Matrix4& matrix, const Vector3 pos_target, const Vector3 up
 bool GetOverlayIntersectionParamsForDevice(vr::VROverlayIntersectionParams_t& params, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, bool use_tip_offset = true);
 //Returns if intersection happened
 bool ComputeOverlayIntersectionForDevice(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, vr::VROverlayIntersectionResults_t* results, 
-                                         bool use_tip_offset = true);
+                                         bool use_tip_offset = true, bool front_face_only = true);
+//Returns true if intersection hit the front side of the overlay
+bool IsOverlayIntersectionHitFrontFacing(const vr::VROverlayIntersectionParams_t& params, const vr::VROverlayIntersectionResults_t& results);
 
 //Returns transform similar to the dashboard transform (not a perfect match, though)
 Matrix4 ComputeHMDFacingTransform(float distance);
