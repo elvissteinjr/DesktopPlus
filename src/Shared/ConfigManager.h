@@ -177,6 +177,7 @@ enum ConfigID_Int
     configid_int_state_mouse_dbl_click_assist_duration_ms,  //Internally used value, which will replace -1 with the current double-click delay automatically
     configid_int_state_performance_duplication_fps,
     configid_int_state_interface_desktop_count,             //Count of desktops after optionally filtering virtual WMR displays
+    configid_int_state_interface_floating_ui_hovered_id,    //Floating UI target overlay ID set only while the laser pointer is pointing at the Floating UI overlay. -1 = None
     configid_int_state_auto_docking_state,                  //0 = Off, 1 = Left Hand, 2 = Right Hand (matches ETrackedControllerRole). +2 for detaching
     configid_int_state_drag_hint_device,                    //Value is tracked device index. Set before changing configid_int_state_drag_hint_type
     configid_int_state_drag_hint_type,                      //0 = Off, 1 = Overlay Position Locked
