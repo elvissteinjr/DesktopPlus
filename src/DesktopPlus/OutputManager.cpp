@@ -1575,7 +1575,17 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
                     case configid_int_overlay_desktop_id:
                     {
-                        CropToDisplay(msg.lParam);
+                        if (ConfigManager::GetValue(configid_bool_overlay_crop_enabled))
+                        {
+                            CropToDisplay(msg.lParam);
+                        }
+                        else //Don't touch cropping setting values if it's disabled and just update the validated crop rect instead
+                        {
+                            OverlayManager::Get().GetCurrentOverlay().UpdateValidatedCropRect();        
+                            ApplySettingCrop();
+                            ApplySettingTransform();
+                            ApplySettingMouseScale();
+                        }
 
                         reset_mirroring = (ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring) && (msg.lParam != previous_value));
                         break;
