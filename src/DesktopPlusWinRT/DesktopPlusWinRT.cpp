@@ -154,6 +154,11 @@ void DPWinRT_Init()
             g_IsCaptureSupported = false;
             g_APIContractPresent = 0;
         }
+        catch (const std::bad_alloc&) //GraphicsCaptureSession::IsSupported() may throw std::bad_alloc on Windows 10 in some situations, so we catch that to avoid crashing
+        {
+            g_IsCaptureSupported = false;
+            g_APIContractPresent = 0;
+        }
     }
     winrt::clear_factory_cache();
     winrt::uninit_apartment();
