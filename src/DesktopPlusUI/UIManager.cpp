@@ -617,6 +617,18 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                         OverlayManager::Get().SetCurrentOverlayNameAuto();
                         break;
                     }
+                    case configid_int_overlay_crop_x:
+                    case configid_int_overlay_crop_y:
+                    case configid_int_overlay_crop_width:
+                    case configid_int_overlay_crop_height:
+                    {
+                        //Crop changed while properties window is visible for the current overlay, force refresh of cached crop button label
+                        if ( (m_WindowOverlayProperties.IsVisibleOrFading()) && (m_WindowOverlayProperties.GetActiveOverlayID() == OverlayManager::Get().GetCurrentOverlayID()) )
+                        {
+                            m_WindowOverlayProperties.SetActiveOverlayID(m_WindowOverlayProperties.GetActiveOverlayID(), true);
+                        }
+                        break;
+                    }
                     case configid_int_interface_overlay_current_id:
                     {
                         OverlayManager::Get().SetCurrentOverlayID((unsigned int)msg.lParam);
