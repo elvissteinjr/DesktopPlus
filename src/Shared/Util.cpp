@@ -365,6 +365,7 @@ DEVMODE GetDevmodeForDisplayID(int display_id, bool wmr_ignore_vscreens, HMONITO
 
                     if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
                     {
+                        ++i;
                         continue;
                     }
                 }
