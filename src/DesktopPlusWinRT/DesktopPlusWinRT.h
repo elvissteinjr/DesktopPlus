@@ -48,6 +48,7 @@ DPLUSWINRT_API bool DPWinRT_IsCaptureSupported();                      //Build 1
 DPLUSWINRT_API bool DPWinRT_IsCaptureFromHandleSupported();            //Build 1903
 DPLUSWINRT_API bool DPWinRT_IsCaptureFromCombinedDesktopSupported();   //Build 2004
 DPLUSWINRT_API bool DPWinRT_IsCaptureCursorEnabledPropertySupported(); //Build 2004
+DPLUSWINRT_API bool DPWinRT_IsBorderRequiredPropertySupported();       //Windows 11
 
 DPLUSWINRT_API bool DPWinRT_StartCaptureFromHWND(vr::VROverlayHandle_t overlay_handle, HWND handle);
 DPLUSWINRT_API bool DPWinRT_StartCaptureFromDesktop(vr::VROverlayHandle_t overlay_handle, int desktop_id); //-1 is combined desktop, as usual

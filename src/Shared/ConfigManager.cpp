@@ -5,6 +5,7 @@
 #include <fstream>
 
 #include "Util.h"
+#include "Logging.h"
 #include "Ini.h"
 #include "OverlayManager.h"
 #include "InterprocessMessaging.h"
@@ -347,6 +348,8 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
 
 bool ConfigManager::LoadConfigFromFile()
 {
+    LOG_F(INFO, "Loading config...");
+
     std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
     bool existed = FileExists(wpath.c_str());
 
@@ -354,6 +357,7 @@ bool ConfigManager::LoadConfigFromFile()
     if (!existed)
     {
         wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_default.ini").c_str() );
+        LOG_F(INFO, "Config file not found. Loading default config file instead");
     }
 
     Ini config(wpath.c_str());
@@ -617,6 +621,7 @@ bool ConfigManager::LoadConfigFromFile()
 
     //Query elevated mode state
     m_ConfigBool[configid_bool_state_misc_elevated_mode_active] = IPCManager::IsElevatedModeProcessRunning();
+    LOG_IF_F(INFO, m_ConfigBool[configid_bool_state_misc_elevated_mode_active], "Elevated mode is active");
 
     #ifdef DPLUS_UI
         UIManager::Get()->GetSettingsWindow().ApplyCurrentOverlayState();
@@ -631,6 +636,8 @@ bool ConfigManager::LoadConfigFromFile()
     LoadMultiOverlayProfile(config);
 
     m_AppProfileManager.LoadProfilesFromFile();
+
+    LOG_F(INFO, "Loaded config");
 
     return existed; //We use default values if it doesn't, but still return if the file existed
 }
@@ -1104,6 +1111,8 @@ void ConfigManager::LoadOverlayProfileDefault(bool multi_overlay)
 
 bool ConfigManager::LoadMultiOverlayProfileFromFile(const std::string& filename, bool clear_existing_overlays, std::vector<char>* ovrl_inclusion_list)
 {
+    LOG_F(INFO, "Loading overlay profile \"%s\"...", filename.c_str());
+
     std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "profiles/" + filename).c_str() );
 
     if (FileExists(wpath.c_str()))
@@ -1118,6 +1127,8 @@ bool ConfigManager::LoadMultiOverlayProfileFromFile(const std::string& filename,
 
 bool ConfigManager::SaveMultiOverlayProfileToFile(const std::string& filename, std::vector<char>* ovrl_inclusion_list)
 {
+    LOG_F(INFO, "Saving overlay profile \"%s\"...", filename.c_str());
+
     std::string path = m_ApplicationPath + "profiles/" + filename;
     Ini config(WStringConvertFromUTF8(path.c_str()));
 
@@ -1127,6 +1138,8 @@ bool ConfigManager::SaveMultiOverlayProfileToFile(const std::string& filename, s
 
 bool ConfigManager::DeleteOverlayProfile(const std::string& filename)
 {
+    LOG_F(INFO, "Deleted overlay profile \"%s\"...", filename.c_str());
+
     std::string path = m_ApplicationPath + "profiles/" + filename;
     return (::DeleteFileW(WStringConvertFromUTF8(path.c_str()).c_str()) != 0);
 }

@@ -229,6 +229,8 @@ vr::EVRInitError UIManager::InitOverlay()
 
                 if ((ovrl_error == vr::VROverlayError_None) && (m_OvrlHandleOverlayBar != vr::k_ulOverlayHandleInvalid))
                 {
+                    LOG_F(INFO, "Overlay key already in use, killing owning process...");
+
                     uint32_t pid = vr::VROverlay()->GetOverlayRenderingPid(m_OvrlHandleOverlayBar);
 
                     HANDLE phandle;
@@ -1031,6 +1033,9 @@ void UIManager::DisableRestartOnExit()
 
 void UIManager::Restart(bool desktop_mode)
 {
+    LOG_IF_F(INFO, !desktop_mode, "Restarting...");
+    LOG_IF_F(INFO,  desktop_mode, "Restarting into desktop mode...");
+
     ConfigManager::Get().SaveConfigToFile();
 
     UIManager::Get()->DisableRestartOnExit();
@@ -1051,6 +1056,8 @@ void UIManager::Restart(bool desktop_mode)
 
 void UIManager::RestartIntoActionEditor()
 {
+    LOG_F(INFO, "Restarting into Action Editor...");
+
     ConfigManager::Get().SaveConfigToFile();
 
     UIManager::Get()->DisableRestartOnExit();
@@ -1071,6 +1078,8 @@ void UIManager::RestartIntoActionEditor()
 
 void UIManager::RestartDashboardApp(bool force_steam)
 {
+    LOG_F(INFO, "Restarting dashboard app...%s", (force_steam) ? " (using Steam)" : "");
+
     ConfigManager::Get().ResetConfigStateValues();
     ConfigManager::Get().SaveConfigToFile();
 
@@ -1137,6 +1146,8 @@ void UIManager::RestartDashboardApp(bool force_steam)
 
 void UIManager::ElevatedModeEnter()
 {
+    LOG_F(INFO, "Entered elevated mode");
+
     STARTUPINFO si = {0};
     PROCESS_INFORMATION pi = {0};
     si.cb = sizeof(si);
@@ -1151,6 +1162,8 @@ void UIManager::ElevatedModeEnter()
 
 void UIManager::ElevatedModeLeave()
 {
+    LOG_F(INFO, "Left elevated mode");
+
     //Kindly ask elevated mode process to quit
     if (HWND window = ::FindWindow(g_WindowClassNameElevatedMode, nullptr))
     {

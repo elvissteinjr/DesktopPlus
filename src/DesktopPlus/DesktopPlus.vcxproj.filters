@@ -53,6 +53,12 @@
     <ClCompile Include="..\Shared\AppProfiles.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\Shared\loguru.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Shared\Logging.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -113,6 +119,12 @@
       <Filter>Shared</Filter>
     </ClInclude>
     <ClInclude Include="..\Shared\AppProfiles.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\Logging.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\loguru.hpp">
       <Filter>Shared</Filter>
     </ClInclude>
   </ItemGroup>

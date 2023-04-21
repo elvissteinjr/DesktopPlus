@@ -15,6 +15,7 @@
 #include "Matrices.h"
 #include "DPRect.h"
 
+#include "Logging.h"
 #include "NotificationIcon.h"
 #include "OverlayDragger.h"
 #include "FloatingUI.h"

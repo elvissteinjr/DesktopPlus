@@ -6,6 +6,7 @@
 #include "InputSimulator.h"
 #include "WindowManager.h"
 #include "Util.h"
+#include "Logging.h"
 
 static bool g_ElevatedMode_ComInitDone = false;
 
@@ -14,9 +15,21 @@ bool HandleIPCMessage(MSG msg);
 
 int ElevatedModeEnter(HINSTANCE hinstance)
 {
+    DPLog_Init("DesktopPlusElevatedMode");
+
     //Don't run if the dashboard app is not running or process isn't even elevated
-    if ( (!IPCManager::Get().IsDashboardAppRunning()) || (!IsProcessElevated()) )
+    if (!IPCManager::Get().IsDashboardAppRunning())
+    {
+        LOG_F(INFO, "Started in elevated mode, but dashboard process is not running. Exiting...");
         return E_NOT_VALID_STATE;
+    }
+    else if (!IsProcessElevated())
+    {
+        LOG_F(INFO, "Started in elevated mode, but process was not launched elevated. Exiting...");
+        return E_NOT_VALID_STATE;
+    }
+
+    LOG_F(INFO, "Desktop+ running in elevated mode");
 
     //Register class
     WNDCLASSEXW wc;
@@ -56,6 +69,8 @@ int ElevatedModeEnter(HINSTANCE hinstance)
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_misc_elevated_mode_active, true);
     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_elevated_mode_active, true);
 
+    LOG_F(INFO, "Finished startup");
+
     //Wait for callbacks, update or quit message
     MSG msg;
     while (::GetMessage(&msg, 0, 0, 0))
@@ -66,6 +81,8 @@ int ElevatedModeEnter(HINSTANCE hinstance)
             HandleIPCMessage(msg);
         }
     }
+
+    LOG_F(INFO, "Shutting down...");
 
     //Send config update to dashboard and UI process to disable it again
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_misc_elevated_mode_active, false);

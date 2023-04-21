@@ -8,6 +8,7 @@
 
 #include "ConfigManager.h"
 #include "Util.h"
+#include "Logging.h"
 #include "Ini.h"
 
 std::string AppProfileManager::GetCurrentSceneAppKey() const
@@ -191,6 +192,7 @@ bool AppProfileManager::ActivateProfile(const std::string& app_key)
             {
                 if (OutputManager* outmgr = OutputManager::Get())
                 {
+                    VLOG_F(1, "Executing profile exit action ID %d for app profile \"%s\"...", profile_prev.ActionIDLeave, m_AppKeyActiveProfile.c_str());
                     outmgr->DoAction(profile_prev.ActionIDLeave);
                 }
             }
@@ -198,6 +200,9 @@ bool AppProfileManager::ActivateProfile(const std::string& app_key)
     #endif
 
     const AppProfile& profile = GetProfile(app_key);    //This will be m_NullProfile on missing or blank app_key
+
+    LOG_IF_F(INFO, (!is_reloading_profile) && (&profile != &m_NullProfile), "Activating app profile \"%s\"...", app_key.c_str());
+    LOG_IF_F(INFO,  (is_reloading_profile) && (&profile != &m_NullProfile), "Reloading app profile \"%s\"...", app_key.c_str());
 
     //Look up and cache app name
     if (!is_reloading_profile)
@@ -258,6 +263,7 @@ bool AppProfileManager::ActivateProfile(const std::string& app_key)
         {
             if (OutputManager* outmgr = OutputManager::Get())
             {
+                VLOG_F(1, "Executing profile enter action ID %d for app profile \"%s\"...", profile.ActionIDEnter, m_AppKeyActiveProfile.c_str());
                 outmgr->DoAction(profile.ActionIDEnter);
             }
         }

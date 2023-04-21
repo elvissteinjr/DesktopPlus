@@ -21,6 +21,7 @@
 #include "ThreadManager.h"
 #include "InterprocessMessaging.h"
 #include "ElevatedMode.h"
+#include "Logging.h"
 
 // Below are lists of errors expect from Dxgi API calls when a transition event like mode change, PnpStop, PnpStart
 // desktop switch, TDR or session disconnect/reconnect. In all these cases we want the application to clean up the threads that process
@@ -66,7 +67,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 bool SpawnProcessWithDefaultEnv(LPCWSTR application_name, LPWSTR commandline = nullptr);
 void ProcessCmdline(bool& use_elevated_mode);
 bool DisplayInitError(vr::EVRInitError vr_init_error, vr::EVROverlayError vr_overlay_error, bool vr_input_success);
-void WriteMessageToLog(_In_ LPCWSTR str);
 
 //
 // Class for progressive waits
@@ -167,6 +167,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         return ElevatedModeEnter(hInstance);
     }
 
+    DPLog_Init("DesktopPlus");
+
     INT SingleOutput = 0;
 
     // Synchronization
@@ -265,6 +267,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     //Init WinRT DLL
     DPWinRT_Init();
+    DPLog_DPWinRT_SupportInfo();
+    LOG_F(INFO, "Loaded WinRT library");
 
     //Init BrowserClientAPI (this doesn't start the browser process, only checks for presence)
     DPBrowserAPIClient::Get().Init();
@@ -282,6 +286,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     {
         std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlusUI.exe";
         SpawnProcessWithDefaultEnv(path.c_str());
+
+        LOG_F(INFO, "Launched Desktop+ UI process");
     }
 
     //Message loop
@@ -336,6 +342,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         {
             if (!FirstTime)
             {
+                LOG_F(INFO, "System transition occured, reinitializing...");
+
                 // Terminate other threads
                 ResetEvent(PauseDuplicationEvent);
                 SetEvent(ResumeDuplicationEvent);
@@ -483,6 +491,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
     }
 
+    LOG_F(INFO, "Shutting down...");
+
     //Remove all overlays since they may access things on destruction after we're shut down otherwise
     OverlayManager::Get().RemoveAllOverlays();
 
@@ -582,6 +592,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             //Update desktop count and rects
             if (OutputManager::Get())
             {
+                LOG_F(INFO, "WM_DISPLAYCHANGE recieved, re-enumerating outputs...");
                 OutputManager::Get()->EnumerateOutputs();
             }
             break;
@@ -641,11 +652,11 @@ bool DisplayInitError(vr::EVRInitError vr_init_error, vr::EVROverlayError vr_ove
     {
         if ( (vr_init_error == vr::VRInitError_Init_HmdNotFound) || (vr_init_error == vr::VRInitError_Init_HmdNotFoundPresenceFailed) )
         {
-            DisplayMsg(L"Failed to init OpenVR: HMD not found.\nRe-launch application with a HMD connected.", L"Desktop+ Error", S_OK);
+            DisplayMsg(L"Failed to init OpenVR: HMD not found.\nRe-launch application with a HMD connected.", L"Desktop+ Error", E_FAIL);
         }
         else if (vr_init_error == vr::VRInitError_Init_InvalidInterface)
         {
-            DisplayMsg(L"Failed to init OpenVR: Invalid Interface.\nMake sure to have the latest version of SteamVR installed.", L"Desktop+ Error", S_OK);
+            DisplayMsg(L"Failed to init OpenVR: Invalid Interface.\nMake sure to have the latest version of SteamVR installed.", L"Desktop+ Error", E_FAIL);
         }
         else if (vr_init_error != vr::VRInitError_Init_InitCanceledByUser) //Exclude canceled, supposed to be always silent exit
         {
@@ -653,7 +664,7 @@ bool DisplayInitError(vr::EVRInitError vr_init_error, vr::EVROverlayError vr_ove
             error_str += WStringConvertFromUTF8(vr::VR_GetVRInitErrorAsEnglishDescription(vr_init_error));
             error_str += L".";
 
-            DisplayMsg(error_str.c_str(), L"Desktop+ Error", S_OK);
+            DisplayMsg(error_str.c_str(), L"Desktop+ Error", E_FAIL);
         }
 
         return true;
@@ -665,7 +676,7 @@ bool DisplayInitError(vr::EVRInitError vr_init_error, vr::EVROverlayError vr_ove
         error_str += WStringConvertFromUTF8(vr::VROverlay()->GetOverlayErrorNameFromEnum(vr_overlay_error));
         error_str += L".";
 
-        DisplayMsg(error_str.c_str(), L"Desktop+ Error", S_OK);
+        DisplayMsg(error_str.c_str(), L"Desktop+ Error", E_FAIL);
 
         return true;
     }
@@ -673,7 +684,7 @@ bool DisplayInitError(vr::EVRInitError vr_init_error, vr::EVROverlayError vr_ove
     if (!vr_input_success)
     {
         //VRInput not working is bad, but doesn't stop us from running, so just log it
-        WriteMessageToLog(L"Failed to load VRInput action manifest. Some input-related functionality will not be available.");
+        LOG_F(WARNING, "Failed to load VRInput action manifest. Some input-related functionality will not be available");
     }
 
     return false;
@@ -932,36 +943,37 @@ DUPL_RETURN ProcessFailure(_In_opt_ ID3D11Device* device, _In_ LPCWSTR str, _In_
 //
 void DisplayMsg(_In_ LPCWSTR str, _In_ LPCWSTR title, HRESULT hr)
 {
-    if (SUCCEEDED(hr))
+    //Generate a proper error message with description from the OS, unless it's E_FAIL which is unspecified anyways and we use it for our own errors passed to this function
+    std::wstringstream ss;
+
+    if (hr != E_FAIL)
     {
-        //WriteMessageToLog(str); //It's an error log, so don't write it there
-        MessageBoxW(nullptr, str, title, MB_OK);
-        return;
+        std::error_code ec(hr, std::system_category());
+        ss << str << L":\n" << WStringConvertFromLocalEncoding(ec.message().c_str()) << L" (0x" << std::hex << std::setfill(L'0') << std::setw(8) << hr << L")";
+    }
+    else
+    {
+        ss << str;
     }
 
-    //Generate a proper error message with description from the OS
-    std::error_code ec(hr, std::system_category());
-    std::wstringstream ss;
-    ss << str << L":\n" << WStringConvertFromLocalEncoding(ec.message().c_str()) << L" (0x" << std::hex << std::setfill(L'0') << std::setw(8) << hr << L")";
+    std::string str_u8 = StringConvertFromUTF16(ss.str().c_str());
 
-    WriteMessageToLog(ss.str().c_str());
+    //Try having the UI app display it if it's an error
+    if (!SUCCEEDED(hr))
+    {
+        HWND window = (OutputManager::Get() != nullptr) ? OutputManager::Get()->GetWindowHandle() : nullptr;
+        IPCManager::Get().SendStringToUIApp(configid_str_state_dashboard_error_string, str_u8.c_str(), window);
+    }
 
-    //Try having the UI app display it if possible
-    HWND window = (OutputManager::Get() != nullptr) ? OutputManager::Get()->GetWindowHandle() : nullptr;
-    IPCManager::Get().SendStringToUIApp(configid_str_state_dashboard_error_string, StringConvertFromUTF16(ss.str().c_str()), window);
-}
+    //Get rid of newlines before logging (system error strings comes with CRLF while \n is treated as LF-only before writing to file...)
+    StringReplaceAll(str_u8, "\r\n", " ");
+    StringReplaceAll(str_u8, "\n",   " ");
 
-void WriteMessageToLog(_In_ LPCWSTR str)
-{
-    //Get rid of newlines (system error strings comes with CRLF while \n is treated as LF-only before writing to file...)
-    std::wstring wstr(str);
-    WStringReplaceAll(wstr, L"\r\n", L" ");
-    WStringReplaceAll(wstr, L"\n", L" ");
+    VLOG_F((SUCCEEDED(hr)) ? loguru::Verbosity_INFO : loguru::Verbosity_ERROR, str_u8.c_str());
 
-    //Get the time
-    std::time_t t = std::time(nullptr);
-    std::tm tm = *std::localtime(&t);
-
-    std::wofstream err_log("error.log", std::ios::app | std::ios::binary); //btw. the resulting file is in local encoding, not utf-16, but that's good enough
-    err_log << std::put_time(&tm, L"[%Y-%m-%d %H:%M] ") << wstr << L"\n";
+    //While we always try to send error messages to the UI app to have it display in VR, show the message on the desktop if UI is not running or VR isn't loaded
+    if ((!IPCManager::IsUIAppRunning()) || (vr::VROverlay() == nullptr))
+    {
+        ::MessageBoxW(nullptr, str, title, MB_OK);
+    }
 }

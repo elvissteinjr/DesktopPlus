@@ -3,6 +3,7 @@
 #include "ConfigManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
+#include "Logging.h"
 
 #ifdef DPLUS_UI
     #include "UIManager.h"
@@ -49,6 +50,7 @@ bool DPBrowserAPIClient::LaunchServerIfNotRunning()
             //Launch browser process unelevated if possible. May fail under certain circumstances, but we won't fall back to normal launch
             if (!ShellExecuteUnelevated(browser_exe_path.c_str(), browser_arg_buffer.get(), browser_working_dir.c_str()))
             {
+                LOG_F(ERROR, "Failed to launch Desktop+ Browser as unelevated process");
                 return false;
             }
         }
@@ -66,6 +68,7 @@ bool DPBrowserAPIClient::LaunchServerIfNotRunning()
             ::CloseHandle(pi.hProcess);
             ::CloseHandle(pi.hThread);
 
+            LOG_F(ERROR, "Failed to launch Desktop+ Browser process");
             return false;
         }
 
@@ -92,15 +95,22 @@ bool DPBrowserAPIClient::LaunchServerIfNotRunning()
     }
 
     //Check if the API versions match
-    if ( (m_ServerWindowHandle != nullptr) && (::SendMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_get_api_version, 0) != k_lDPBrowserAPIVersion) )
+    if (m_ServerWindowHandle != nullptr)
     {
-        m_HasServerAPIMismatch = true;
-        m_ServerWindowHandle = nullptr;
+        const int server_api_version = ::SendMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_get_api_version, 0);
 
-        //Post config state to UI to allow displaying a warning since the UI doesn't try to launch the browser process on its own in most cases
-        IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_browser_version_mismatch, true);
+        if (server_api_version != k_lDPBrowserAPIVersion)
+        {
+            m_HasServerAPIMismatch = true;
+            m_ServerWindowHandle = nullptr;
 
-        return false;
+            //Post config state to UI to allow displaying a warning since the UI doesn't try to launch the browser process on its own in most cases
+            IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_browser_version_mismatch, true);
+
+            LOG_F(ERROR, "Desktop+ Browser API version does not match! Expected version %d, but got %d", k_lDPBrowserAPIVersion, server_api_version);
+
+            return false;
+        }
     }
 
     //Apply pending settings, if there are any
@@ -115,6 +125,8 @@ bool DPBrowserAPIClient::LaunchServerIfNotRunning()
         DPBrowser_ContentBlockSetEnabled( (m_PendingSettingContentBlockEnabled != 0) );
         m_PendingSettingContentBlockEnabled = -1;
     }
+
+    LOG_F(INFO, "Launched Desktop+ Browser process");
 
     return true;
 }
@@ -163,6 +175,8 @@ bool DPBrowserAPIClient::Init()
 
     //Register custom message ID
     m_Win32MessageID = ::RegisterWindowMessage(g_WindowMessageNameBrowserApp);
+
+    LOG_F(INFO, "Desktop+ Browser is %s", (IsBrowserAvailable()) ? "available" : "not available");
 
     return true;
 }

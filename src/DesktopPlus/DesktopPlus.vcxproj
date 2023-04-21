@@ -51,7 +51,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN8;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>LOGURU_FILENAME_WIDTH=30;LOGURU_VERBOSE_SCOPE_ENDINGS=0;WIN32;_DEBUG;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN8;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -74,7 +74,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN8;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>LOGURU_FILENAME_WIDTH=30;LOGURU_VERBOSE_SCOPE_ENDINGS=0;WIN32;NDEBUG;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN8;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>None</DebugInformationFormat>
       <Optimization>Full</Optimization>
@@ -109,6 +109,8 @@
     <ClCompile Include="..\Shared\DPBrowserAPIClient.cpp" />
     <ClCompile Include="..\Shared\Ini.cpp" />
     <ClCompile Include="..\Shared\InterprocessMessaging.cpp" />
+    <ClCompile Include="..\Shared\Logging.cpp" />
+    <ClCompile Include="..\Shared\loguru.cpp" />
     <ClCompile Include="..\Shared\Matrices.cpp" />
     <ClCompile Include="..\Shared\OUtoSBSConverter.cpp" />
     <ClCompile Include="..\Shared\OverlayDragger.cpp" />
@@ -139,6 +141,8 @@
     <ClInclude Include="..\Shared\DPRect.h" />
     <ClInclude Include="..\Shared\Ini.h" />
     <ClInclude Include="..\Shared\InterprocessMessaging.h" />
+    <ClInclude Include="..\Shared\Logging.h" />
+    <ClInclude Include="..\Shared\loguru.hpp" />
     <ClInclude Include="..\Shared\Matrices.h" />
     <ClInclude Include="..\Shared\openvr.h" />
     <ClInclude Include="..\Shared\OUtoSBSConverter.h" />

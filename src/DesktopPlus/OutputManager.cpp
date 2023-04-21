@@ -11,6 +11,7 @@ using namespace DirectX;
 
 #include "WindowManager.h"
 #include "Util.h"
+#include "Logging.h"
 
 #include "DesktopPlusWinRT.h"
 #include "DPBrowserAPIClient.h"
@@ -275,6 +276,8 @@ void OutputManager::CleanRefs()
 //
 DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds)
 {
+    LOG_F(INFO, "Initializing Desktop Duplication...");
+
     HRESULT hr = S_OK;
 
     m_OutputInvalid = false;
@@ -382,6 +385,8 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
         }
 
         adapter_ptr_vr = nullptr;
+
+        LOG_F(INFO, "Using cross-GPU copy");
     }
 
     // Create shared texture
@@ -570,6 +575,8 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     if (!vr::VROverlay())
         return {vr::VRInitError_Init_InvalidInterface, ovrl_error, false};
 
+    DPLog_SteamVR_SystemInfo();
+
     m_OvrlHandleDashboardDummy = vr::k_ulOverlayHandleInvalid;
     m_OvrlHandleIcon = vr::k_ulOverlayHandleInvalid;
     m_OvrlHandleDesktopTexture = vr::k_ulOverlayHandleInvalid;
@@ -586,6 +593,8 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
 
             if ((ovrl_error == vr::VROverlayError_None) && (m_OvrlHandleDashboardDummy != vr::k_ulOverlayHandleInvalid))
             {
+                LOG_F(INFO, "Overlay key already in use, killing owning process...");
+
                 uint32_t pid = vr::VROverlay()->GetOverlayRenderingPid(m_OvrlHandleDashboardDummy);
 
                 HANDLE phandle = ::OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, TRUE, pid);
@@ -654,6 +663,8 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     vr::EVRApplicationError app_error;
     if (!is_steam_app)
     {
+        LOG_F(INFO, "Process was not launched by Steam, setting SteamVR application identity");
+
         vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
 
         if (!vr::VRApplications()->IsApplicationInstalled(g_AppKeyDashboardApp))
@@ -670,6 +681,7 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     //Set application auto-launch to true if it's the first launch
     if (m_IsFirstLaunch)
     {
+        LOG_F(INFO, "First launch detected. Setting application to auto-launch with SteamVR");
         app_error = vr::VRApplications()->SetApplicationAutoLaunch(g_AppKeyDashboardApp, true);
 
         if (app_error == vr::VRApplicationError_None)
@@ -736,6 +748,7 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     //Check if it's a WMR system and set up for that if needed
     SetConfigForWMR(ConfigManager::GetRef(configid_int_interface_wmr_ignore_vscreens));
     DPWinRT_SetDesktopEnumerationFlags( (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1) );
+    LOG_IF_F(INFO, (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1), "WMR headset detected, ignoring additional virtual displays");
 
     //Init background overlay if needed
     m_BackgroundOverlay.Update();
@@ -1934,6 +1947,8 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
         {
             //We get capture lost messages for each affected overlay, so just forward the error to the UI so a warning can be displayed for now
             IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_winrt_thread_error, msg.lParam);
+
+            LOG_F(ERROR, "Unexpected error occurred in a Graphics Capture thread! (%#x)", (unsigned int)msg.lParam);
             break;
         }
         case WM_DPLUSWINRT_FPS:
@@ -2461,6 +2476,8 @@ void OutputManager::SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle)
 
 void OutputManager::SetOutputInvalid()
 {
+    LOG_F(WARNING, "No outputs available!");
+
     m_OutputInvalid = true;
     SetOutputErrorTexture(m_OvrlHandleDesktopTexture);
     m_DesktopWidth  = k_lOverlayOutputErrorTextureWidth;
@@ -2813,6 +2830,8 @@ const LARGE_INTEGER& OutputManager::GetUpdateLimiterDelay()
 
 int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_preferred, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_vr)
 {
+    LOG_SCOPE_F(INFO, "Detected Outputs");
+
     Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
     Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_preferred;
     Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_vr;
@@ -2834,6 +2853,9 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
 
         while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
         {
+            DXGI_ADAPTER_DESC adapter_desc;
+            adapter_ptr->GetDesc(&adapter_desc);
+
             int first_output_adapter = output_count;
 
             if (i == vr_gpu_id)
@@ -2845,11 +2867,9 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
             //This still only works correctly when they have the last desktops in the system, but that should pretty much be always the case
             if (wmr_ignore_vscreens)
             {
-                DXGI_ADAPTER_DESC adapter_desc;
-                adapter_ptr->GetDesc(&adapter_desc);
-
                 if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
                 {
+                    LOG_F(INFO, "Skipping \"Virtual Display Adapter\"");
                     ++i;
                     continue;
                 }
@@ -2857,6 +2877,16 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
 
             //Count the available outputs
             Microsoft::WRL::ComPtr<IDXGIOutput> output_ptr;
+
+            //Check if there are gonna be any outputs before logging the GPU to avoid confusion (there may be multiple adapters per GPU with no outputs attached)
+            if (adapter_ptr->EnumOutputs(0, &output_ptr) == DXGI_ERROR_NOT_FOUND)
+            {
+                ++i;
+                continue;
+            }
+
+            LOG_SCOPE_F(INFO, "GPU %u: %s (Device ID %u)", i + 1, StringConvertFromUTF16(adapter_desc.Description).c_str(), adapter_desc.DeviceId);
+
             UINT output_index = 0;
             while (adapter_ptr->EnumOutputs(output_index, &output_ptr) != DXGI_ERROR_NOT_FOUND)
             {
@@ -2876,6 +2906,11 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
                 output_ptr->GetDesc(&output_desc);
                 m_DesktopRects.emplace_back(output_desc.DesktopCoordinates.left,  output_desc.DesktopCoordinates.top, 
                                             output_desc.DesktopCoordinates.right, output_desc.DesktopCoordinates.bottom);
+
+                LOG_F(INFO, "Desktop %u: %4d,%4d | %4dx%4d (%s)", output_count + 1, 
+                      output_desc.DesktopCoordinates.left, output_desc.DesktopCoordinates.top,
+                      output_desc.DesktopCoordinates.right - output_desc.DesktopCoordinates.left, output_desc.DesktopCoordinates.bottom - output_desc.DesktopCoordinates.top,
+                      StringConvertFromUTF16(output_desc.DeviceName).c_str());
 
                 ++output_count;
                 ++output_index;
@@ -3899,6 +3934,8 @@ bool OutputManager::DesktopTextureAlphaCheck()
 
     //Cleanup
     m_DeviceContext->Unmap(tex_staging.Get(), 0);
+
+    LOG_IF_F(WARNING, ret, "Failed Desktop Duplication alpha check, using extra render pass");
 
     return ret;
 }

@@ -205,6 +205,20 @@ bool DPWinRT_IsCaptureCursorEnabledPropertySupported()
     #endif
 }
 
+bool DPWinRT_IsBorderRequiredPropertySupported()
+{
+    #ifndef DPLUSWINRT_STUB
+        #if WINDOWS_FOUNDATION_UNIVERSALAPICONTRACT_VERSION >= 0xc0000
+        if (winrt::Metadata::ApiInformation::IsPropertyPresent(L"Windows.Graphics.Capture.GraphicsCaptureSession", L"IsBorderRequired"))
+        {
+            return true;
+        }
+        #endif
+    #endif
+
+    return false;
+}
+
 bool DPWinRT_StartCaptureFromHWND(vr::VROverlayHandle_t overlay_handle, HWND handle)
 {
     #ifndef DPLUSWINRT_STUB

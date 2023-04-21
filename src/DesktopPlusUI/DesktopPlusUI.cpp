@@ -52,11 +52,14 @@ static bool g_ActionEditMode = false;
 // Main code
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ INT nCmdShow)
 {
+    DPLog_Init("DesktopPlusUI");
+
     bool force_desktop_mode = false;
     ProcessCmdline(force_desktop_mode);
 
     //Automatically use desktop mode if dashboard app isn't running
     bool desktop_mode = ( (force_desktop_mode) || (!IPCManager::IsDashboardAppRunning()) || (g_ActionEditMode) );
+    LOG_F(INFO, "Desktop+ UI running in %s", (desktop_mode) ? "desktop mode" : "VR mode");
 
     //Make sure only one instance is running
     StopProcessByWindowClass(g_WindowClassNameUIApp);
@@ -82,6 +85,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     //Init WinRT DLL
     DPWinRT_Init();
+    LOG_F(INFO, "Loaded WinRT library");
 
     //Init BrowserClientAPI (this doesn't start the browser process, only checks for presence)
     DPBrowserAPIClient::Get().Init();
@@ -103,9 +107,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         {
             ::UnregisterClass(wc.lpszClassName, wc.hInstance);
 
+            LOG_F(ERROR, "OpenVR init failed!");
+
             //Try starting in desktop mode instead
             if (!desktop_mode)
             {
+                LOG_F(INFO, "Attempting to start in desktop mode instead...");
                 ui_manager.Restart(true);
             }
 
@@ -113,13 +120,19 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
     }
 
+    DPLog_SteamVR_SystemInfo();
+
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd, desktop_mode))
     {
         CleanupDeviceD3D();
         ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+
+        LOG_F(ERROR, "Direct3D init failed!");
+
         return 1;
     }
+    LOG_F(INFO, "Loaded Direct3D");
 
     //Center window to the right monitor before setting real size for DPI detection to be correct
     if (desktop_mode)
@@ -129,6 +142,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     InitImGui(hwnd, desktop_mode);
     ImGuiIO& io = ImGui::GetIO();
+
+    LOG_F(INFO, "Loaded Dear ImGui");
 
     if (desktop_mode)
     {
@@ -159,6 +174,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     }
 
     ui_manager.OnInitDone();
+    LOG_F(INFO, "Finished startup");
 
     //Main loop
     MSG msg;
@@ -516,6 +532,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             }
         }
     }
+
+    LOG_F(INFO, "Shutting down...");
 
     // Cleanup
     ui_manager.OnExit();
