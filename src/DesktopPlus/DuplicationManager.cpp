@@ -79,6 +79,7 @@ DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output,
 
                 if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
                 {
+                    ++i;
                     continue;
                 }
             }

@@ -2322,6 +2322,7 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
 
                 if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
                 {
+                    ++i;
                     continue;
                 }
             }
