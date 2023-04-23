@@ -187,6 +187,9 @@ void SetConfigForWMR(int& wmr_ignore_vscreens)
 
 vr::EVROverlayError SetSharedOverlayTexture(vr::VROverlayHandle_t ovrl_handle_source, vr::VROverlayHandle_t ovrl_handle_target, ID3D11Resource* device_texture_ref)
 {
+    if (device_texture_ref == nullptr)
+        return vr::VROverlayError_InvalidTexture;
+
     //Get overlay texture handle from OpenVR and set it as handle for the target overlay
     ID3D11ShaderResourceView* ovrl_shader_res;
     uint32_t ovrl_width;
@@ -230,7 +233,7 @@ vr::EVROverlayError SetSharedOverlayTexture(vr::VROverlayHandle_t ovrl_handle_so
     return ovrl_error;
 }
 
-DEVMODE GetDevmodeForDisplayID(int display_id, HMONITOR* hmon)
+DEVMODE GetDevmodeForDisplayID(int display_id, bool wmr_ignore_vscreens, HMONITOR* hmon)
 {
     if (display_id == -1)
         display_id = 0;
@@ -252,6 +255,18 @@ DEVMODE GetDevmodeForDisplayID(int display_id, HMONITOR* hmon)
             Microsoft::WRL::ComPtr<IDXGIOutput> output_ptr;
             while (adapter_ptr->EnumOutputs(output_count, &output_ptr) != DXGI_ERROR_NOT_FOUND)
             {
+                //Check if this a WMR virtual display adapter and skip it when the option is enabled
+                if (wmr_ignore_vscreens)
+                {
+                    DXGI_ADAPTER_DESC adapter_desc;
+                    adapter_ptr->GetDesc(&adapter_desc);
+
+                    if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
+                    {
+                        continue;
+                    }
+                }
+
                 //Check if this happens to be the output we're looking for
                 if (display_id == output_count)
                 {
@@ -292,9 +307,9 @@ DEVMODE GetDevmodeForDisplayID(int display_id, HMONITOR* hmon)
     return mode;
 }
 
-int GetMonitorRefreshRate(int display_id)
+int GetMonitorRefreshRate(int display_id, bool wmr_ignore_vscreens)
 {
-    DEVMODE mode = GetDevmodeForDisplayID(display_id);
+    DEVMODE mode = GetDevmodeForDisplayID(display_id, wmr_ignore_vscreens);
 
     if ( (mode.dmSize != 0) && (mode.dmFields & DM_DISPLAYFREQUENCY) ) //Something would be wrong if that field isn't supported, but let's check anyways
     {

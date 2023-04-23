@@ -106,6 +106,7 @@ typedef struct _THREAD_DATA
     PTR_INFO* PtrInfo;
     DX_RESOURCES DxRes;
     DPRect* DirtyRegionTotal;
+    bool WMRIgnoreVScreens;
 } THREAD_DATA;
 
 //

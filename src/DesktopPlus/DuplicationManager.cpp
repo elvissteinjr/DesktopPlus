@@ -1,4 +1,5 @@
 #include "DuplicationManager.h"
+#include <wrl/client.h>
 
 //
 // Constructor sets up references / variables
@@ -46,7 +47,7 @@ DUPLICATIONMANAGER::~DUPLICATIONMANAGER()
 //
 // Initialize duplication interfaces
 //
-DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output)
+DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output, bool WMRIgnoreVScreens)
 {
     m_OutputNumber = Output;
 
@@ -54,29 +55,62 @@ DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output)
     m_Device = Device;
     m_Device->AddRef();
 
-    // Get DXGI device
-    IDXGIDevice* DxgiDevice = nullptr;
-    HRESULT hr = m_Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DxgiDevice));
-    if (FAILED(hr))
+    //Enumerate adapters the same way the main thread does so IDs match in multi-GPU situations
+    //Desktop Duplication of desktops spanned across multiple GPUs is not supported right now, however
+    //DuplicateOutput() will fail if the adapter for the output doesn't match Device
+    Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
+    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_output;
+    int output_id_adapter = Output;           //Output ID on the adapter actually used. Only different from initial Output if there's desktops across multiple GPUs
+
+    HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
+    if (!FAILED(hr))
     {
-        return ProcessFailure(nullptr, L"Failed to QI for DXGI device", L"Desktop+ Error", hr);
+        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
+        UINT i = 0;
+        int output_count = 0;
+
+        while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
+        {
+            //Check if this a WMR virtual display adapter and skip it when the option is enabled
+            if (WMRIgnoreVScreens)
+            {
+                DXGI_ADAPTER_DESC adapter_desc;
+                adapter_ptr->GetDesc(&adapter_desc);
+
+                if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
+                {
+                    continue;
+                }
+            }
+
+            //Count the available outputs
+            Microsoft::WRL::ComPtr<IDXGIOutput> output_ptr;
+            UINT output_index = 0;
+            while (adapter_ptr->EnumOutputs(output_index, &output_ptr) != DXGI_ERROR_NOT_FOUND)
+            {
+                //Check if this happens to be the output we're looking for
+                if ( (adapter_ptr_output == nullptr) && (Output == output_count) )
+                {
+                    adapter_ptr_output = adapter_ptr;
+                    output_id_adapter = output_index;
+                }
+
+                ++output_count;
+                ++output_index;
+            }
+
+            ++i;
+        }
     }
 
-    // Get DXGI adapter
-    IDXGIAdapter* DxgiAdapter = nullptr;
-    hr = DxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&DxgiAdapter));
-    DxgiDevice->Release();
-    DxgiDevice = nullptr;
-    if (FAILED(hr))
+    if (adapter_ptr_output == nullptr)
     {
-        return ProcessFailure(m_Device, L"Failed to get parent DXGI adapter", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device, L"Failed to get the output's DXGI adapter", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
-    // Get output
-    IDXGIOutput* DxgiOutput = nullptr;
-    hr = DxgiAdapter->EnumOutputs(Output, &DxgiOutput);
-    DxgiAdapter->Release();
-    DxgiAdapter = nullptr;
+    //Get output
+    Microsoft::WRL::ComPtr<IDXGIOutput> DxgiOutput;
+    hr = adapter_ptr_output->EnumOutputs(output_id_adapter, &DxgiOutput);
     if (FAILED(hr))
     {
         return ProcessFailure(m_Device, L"Failed to get specified DXGI output", L"Desktop+ Error", hr, EnumOutputsExpectedErrors);
@@ -84,20 +118,15 @@ DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output)
 
     DxgiOutput->GetDesc(&m_OutputDesc);
 
-    // QI for Output 1
-    IDXGIOutput1* DxgiOutput1 = nullptr;
-    hr = DxgiOutput->QueryInterface(__uuidof(DxgiOutput1), reinterpret_cast<void**>(&DxgiOutput1));
-    DxgiOutput->Release();
-    DxgiOutput = nullptr;
+    Microsoft::WRL::ComPtr<IDXGIOutput1> DxgiOutput1;
+    hr = DxgiOutput.As(&DxgiOutput1);
     if (FAILED(hr))
     {
-        return ProcessFailure(nullptr, L"Failed to QI for DxgiOutput1", L"Desktop+ Error", hr);
+        return ProcessFailure(nullptr, L"Failed to get output as DxgiOutput1", L"Desktop+ Error", hr);
     }
 
-    // Create desktop duplication
+    //Create desktop duplication
     hr = DxgiOutput1->DuplicateOutput(m_Device, &m_DeskDupl);
-    DxgiOutput1->Release();
-    DxgiOutput1 = nullptr;
     if (FAILED(hr))
     {
         if (hr == DXGI_ERROR_NOT_CURRENTLY_AVAILABLE)

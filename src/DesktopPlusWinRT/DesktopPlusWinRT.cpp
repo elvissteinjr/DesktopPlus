@@ -31,6 +31,9 @@ static std::vector<DPWinRTThreadData> g_Threads;
 //- Only accessed by main thread
 static bool g_IsCursorEnabled;
 
+//- Rarely accessed atomics
+static std::atomic<bool> g_DesktopEnumFlagIgnoreWMRScreens;
+
 namespace winrt
 {
     using namespace Windows::Foundation;
@@ -144,6 +147,7 @@ void DPWinRT_Init()
     winrt::uninit_apartment();
 
     g_IsCursorEnabled = true;
+    g_DesktopEnumFlagIgnoreWMRScreens = true;
 
     #endif
 }
@@ -472,6 +476,12 @@ void DPWinRT_SetCaptureCursorEnabled(bool is_cursor_enabled)
     #endif //DPLUSWINRT_STUB
 }
 
+void DPWinRT_SetDesktopEnumerationFlags(bool ignore_wmr_screens)
+{
+    //This really is just a flag that could be hard coded to true in theory, but we keep our options open down the line even if it means carrying this everywhere
+    g_DesktopEnumFlagIgnoreWMRScreens = ignore_wmr_screens;
+}
+
 #undef _DEBUG
 
 #ifndef DPLUSWINRT_STUB
@@ -524,7 +534,7 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
                 if (data.DesktopID != -1)
                 {
                     HMONITOR monitor_handle = nullptr;
-                    GetDevmodeForDisplayID(data.DesktopID, &monitor_handle);
+                    GetDevmodeForDisplayID(data.DesktopID, g_DesktopEnumFlagIgnoreWMRScreens, &monitor_handle);
 
                     if (monitor_handle != nullptr)
                     {
