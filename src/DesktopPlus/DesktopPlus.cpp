@@ -16,6 +16,7 @@
 #include "DisplayManager.h"
 #include "DuplicationManager.h"
 #include "OutputManager.h"
+#include "OverlayManager.h"
 #include "ThreadManager.h"
 #include "InterprocessMessaging.h"
 #include "ElevatedMode.h"
@@ -478,6 +479,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
     }
 
+    //Remove all overlays since they may access things on destruction after we're shut down otherwise (dashboard needs be explicitly removed)
+    OverlayManager::Get().RemoveAllOverlays();
+    OverlayManager::Get().RemoveOverlay(k_ulOverlayID_Dashboard);
+    
     // Make sure all other threads have exited
     if (SetEvent(TerminateThreadsEvent))
     {
