@@ -294,6 +294,15 @@ void FloatingUI::UpdateUITargetState()
     {
         m_Visible = true;
     }
+
+    //Update config state if it changed. This state is only set if the Floating UI itself is the hover target
+    const int target_overlay_id_new = ((m_OvrlIDCurrentUITarget != k_ulOverlayID_None) && (ovrl_handle_hover_target == ovrl_handle_floating_ui)) ? (int)m_OvrlIDCurrentUITarget : -1;
+    int& target_overlay_id_config = ConfigManager::Get().GetConfigIntRef(configid_int_state_interface_floating_ui_hovered_id);
+    if (target_overlay_id_config != target_overlay_id_new)
+    {
+        target_overlay_id_config = target_overlay_id_new;
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_interface_floating_ui_hovered_id), target_overlay_id_config);
+    }
 }
 
 bool FloatingUI::IsVisible() const

@@ -130,6 +130,7 @@ enum ConfigID_Int
     configid_int_state_keyboard_modifiers,                  //Keyboard modifier state when keyboard helper is enabled and visible (allows UI seeing state while elevated app is in focus)
     configid_int_state_performance_duplication_fps,
     configid_int_state_interface_desktop_count,             //Count of desktops after optionally filtering virtual WMR displays
+    configid_int_state_interface_floating_ui_hovered_id,    //Floating UI target overlay ID set only while the laser pointer is pointing at the Floating UI overlay. -1 = None
     configid_int_MAX
 };
 

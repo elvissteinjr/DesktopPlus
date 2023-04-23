@@ -5945,21 +5945,35 @@ void OutputManager::DetachedOverlayGazeFade()
 
             float alpha = clamp((distance * -fade_rate) + ((gaze_distance - 0.1f) * 10.0f), 0.0f, 1.0f); //There's nothing smart behind this, just trial and error
 
-            //Adapt alpha result from a 0.0 - 1.0 range to gazefade_opacity - overlay_opacity and invert if necessary
-            float max_alpha = ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity);
-            float min_alpha = ConfigManager::Get().GetConfigFloat(configid_float_overlay_gazefade_opacity);
-            float range_length = max_alpha - min_alpha;
+            const float max_alpha = ConfigManager::Get().GetConfigFloat(configid_float_overlay_opacity);
+            const float min_alpha = ConfigManager::Get().GetConfigFloat(configid_float_overlay_gazefade_opacity);
+            Overlay& current_overlay = OverlayManager::Get().GetCurrentOverlay();
 
-            if (range_length >= 0.0f)
+            //Use max alpha when the overlay or the Floating UI targeting the overlay is being pointed at
+            if ((vr::VROverlay()->IsHoverTargetOverlay(current_overlay.GetHandle())) || 
+                ((unsigned int)ConfigManager::Get().GetConfigInt(configid_int_state_interface_floating_ui_hovered_id) == current_overlay.GetID()))
             {
-                alpha = (alpha * range_length) + min_alpha;
+                alpha = std::max(min_alpha, max_alpha); //Take whatever's more visible as the user probably wants to be able to see the overlay
             }
-            else //Gaze Fade target opacity higher than overlay opcacity, invert behavior
+            else //Adapt alpha result from a 0.0 - 1.0 range to gazefade_opacity - overlay_opacity and invert if necessary
             {
-                alpha = ((alpha - 1.0f) * range_length) + max_alpha;
+                const float range_length = max_alpha - min_alpha;
+
+                if (range_length >= 0.0f)
+                {
+                    alpha = (alpha * range_length) + min_alpha;
+                }
+                else //Gaze Fade target opacity higher than overlay opcacity, invert behavior
+                {
+                    alpha = ((alpha - 1.0f) * range_length) + max_alpha;
+                }
             }
-            
-            OverlayManager::Get().GetCurrentOverlay().SetOpacity(alpha);
+
+            //Limit alpha change per frame to smooth out things when abrupt changes happen (i.e. overlay capture took a bit to re-enable or laser pointer forces full alpha)
+            const float prev_alpha = current_overlay.GetOpacity();
+            const float diff = alpha - prev_alpha;
+
+            current_overlay.SetOpacity(prev_alpha + clamp(diff, -0.1f, 0.1f));
         }
     }
 }
