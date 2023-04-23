@@ -4915,8 +4915,27 @@ void OutputManager::ApplySettingMouseInput()
         }
         //Mouse scale for ovrl_texsource_winrt_capture is set by WinRT library | Mouse scale for ovrl_texsource_ui is set by UI process
 
-        //Reset intersection mask if not UI overlay
-        if (overlay.GetTextureSource() != ovrl_texsource_ui)
+        //Set intersection mask for desktop duplication overlays
+        if (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication)
+        {
+            std::vector<vr::VROverlayIntersectionMaskPrimitive_t> primitives;
+            primitives.reserve(m_DesktopRects.size());
+
+            for (const DPRect& rect : m_DesktopRects)
+            {
+                vr::VROverlayIntersectionMaskPrimitive_t primitive;
+                primitive.m_nPrimitiveType = vr::OverlayIntersectionPrimitiveType_Rectangle;
+                primitive.m_Primitive.m_Rectangle.m_flTopLeftX = rect.GetTL().x;
+                primitive.m_Primitive.m_Rectangle.m_flTopLeftY = rect.GetTL().y;
+                primitive.m_Primitive.m_Rectangle.m_flWidth    = rect.GetWidth();
+                primitive.m_Primitive.m_Rectangle.m_flHeight   = rect.GetHeight();
+
+                primitives.push_back(primitive);
+            }
+
+            vr::VROverlay()->SetOverlayIntersectionMask(ovrl_handle, primitives.data(), (uint32_t)primitives.size());
+        }
+        else if (overlay.GetTextureSource() != ovrl_texsource_ui) //Or reset intersection mask if not UI overlay
         {
             vr::VROverlay()->SetOverlayIntersectionMask(ovrl_handle, nullptr, 0);
         }
