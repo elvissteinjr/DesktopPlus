@@ -1991,6 +1991,9 @@ void OutputManager::SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle)
     vr::VROverlay()->SetOverlayFlag(overlay_handle, vr::VROverlayFlags_SideBySide_Parallel, false);
     vr::VROverlay()->SetOverlayFlag(overlay_handle, vr::VROverlayFlags_SideBySide_Crossed,  false);
     vr::VROverlay()->SetOverlayTexelAspect(overlay_handle, 1.0f);
+
+    //Mouse scale needs to be updated as well
+    ApplySettingMouseInput();
 }
 
 void OutputManager::SetOutputInvalid()
