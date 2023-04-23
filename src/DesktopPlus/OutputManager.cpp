@@ -3647,9 +3647,7 @@ bool OutputManager::HandleOpenVREvents()
                         DragGestureUpdate();
                     }
                 }
-
-                if ((data.ConfigBool[configid_bool_overlay_detached]) && (m_DragModeDeviceID == -1) && (!m_DragGestureActive) &&
-                    (data.ConfigInt[configid_int_overlay_detached_origin] == ovrl_origin_hmd_floor))
+                else if (data.ConfigInt[configid_int_overlay_detached_origin] == ovrl_origin_hmd_floor)
                 {
                     DetachedTransformUpdateHMDFloor();
                 }
@@ -5332,6 +5330,7 @@ void OutputManager::DragFinish()
 
     //Restore normal mode
     m_DragModeDeviceID = -1;
+    m_DragModeOverlayID = k_ulOverlayID_None;
     ResetMouseLastLaserPointerPos();
 
     vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRSmoothScrollEvents, false);
@@ -5439,6 +5438,7 @@ void OutputManager::DragGestureFinish()
     ApplySettingTransform();
 
     m_DragGestureActive = false;
+    m_DragModeOverlayID = k_ulOverlayID_None;
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
