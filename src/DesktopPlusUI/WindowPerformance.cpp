@@ -1033,7 +1033,15 @@ void WindowPerformance::UpdateStatValuesSteamVR()
                 m_FrameCountTotalCount++;
 
                 if (m_FrameCountTotalCount != 0)
+                {
                     m_FPS_Average = m_FrameCountTotal / (float)m_FrameCountTotalCount;
+
+                    //Ignore very small decimals as they occur often and are more confusing than helpful when the fps are actually totally fine (as they don't really go away)
+                    if (fabs(m_FPS_Average - roundf(m_FPS_Average)) < 0.05f)
+                    {
+                        m_FPS_Average = roundf(m_FPS_Average);
+                    }
+                }
             }
         }
 

@@ -181,7 +181,7 @@ bool Win32PerformanceData::Update()
 
             if (pdh_status == ERROR_SUCCESS)
             {
-                m_CPULoad = (float)counter_value.doubleValue;
+                m_CPULoad = std::min((float)counter_value.doubleValue, 100.0f);
             }
         }
     }
@@ -227,7 +227,7 @@ bool Win32PerformanceData::Update()
                         }
                     }
 
-                    m_GPULoad = (float)total_load;
+                    m_GPULoad = std::min((float)total_load, 100.0f);
                 }
             }
         }
@@ -265,6 +265,7 @@ bool Win32PerformanceData::Update()
                         if ( (item_luid.LowPart == m_GPUTargetLUID.LowPart) && (item_luid.HighPart == m_GPUTargetLUID.HighPart) )
                         {
                             m_VRAMUsedGB = float(items[i].FmtValue.doubleValue / (1024.0 * 1024.0 * 1024.0));
+                            m_VRAMUsedGB = std::min(m_VRAMUsedGB, m_VRAMTotalGB);
                             break;
                         }
                     }
@@ -274,10 +275,11 @@ bool Win32PerformanceData::Update()
     }
 
     //RAM Used
-    MEMORYSTATUSEX mem_info;
+    MEMORYSTATUSEX mem_info = {};
     mem_info.dwLength = sizeof(MEMORYSTATUSEX);
     ::GlobalMemoryStatusEx(&mem_info);
     m_RAMUsedGB = float((mem_info.ullTotalPhys - mem_info.ullAvailPhys) / (1024.0 * 1024.0 * 1024.0));
+    m_RAMUsedGB = std::min(m_RAMUsedGB, m_RAMTotalGB);
 
     return true;
 }
