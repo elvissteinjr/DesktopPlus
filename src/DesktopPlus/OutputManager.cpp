@@ -121,6 +121,9 @@ OutputManager::~OutputManager()
 
     //Undo dimmed dashboard on exit
     DimDashboard(false);
+
+    //Shutdown VR for good
+    vr::VR_Shutdown();
 }
 
 //
@@ -576,7 +579,7 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     m_OvrlHandleDesktopTexture = vr::k_ulOverlayHandleInvalid;
 
     //We already got rid of another instance of this app if there was any, but this loop takes care of it too if the detection failed or something uses our overlay key
-    while (true)
+    for (int tries = 0; tries < 10; ++tries)
     {
         ovrl_error = vr::VROverlay()->CreateDashboardOverlay("elvissteinjr.DesktopPlusDashboard", "Desktop+", &m_OvrlHandleDashboardDummy, &m_OvrlHandleIcon);
 
@@ -598,19 +601,20 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
                 else
                 {
                     ovrl_error = vr::VROverlayError_KeyInUse;
-                    break;
                 }
-            }       
+            }
             else
             {
                 ovrl_error = vr::VROverlayError_KeyInUse;
-                break;
             }
         }
         else
         {
             break;
         }
+
+        //Try again in a bit to check if it's just a race with some external cleanup
+        ::Sleep(200);
     }
 
     
