@@ -59,6 +59,8 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OutputInvalid(false),
     m_OutputPendingDirtyRect{-1, -1, -1, -1},
     m_OvrlHandleMain(vr::k_ulOverlayHandleInvalid),
+    m_OutputAlphaCheckFailed(false),
+    m_OutputAlphaChecksPending(0),
     m_OvrlHandleIcon(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleDashboardDummy(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleDesktopTexture(vr::k_ulOverlayHandleInvalid),
@@ -556,6 +558,12 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     }
 
     ResetOverlays();
+
+    //On some systems, the Desktop Duplication output is translucent for some reason
+    //We check the texture's pixels for the first few frame updates to make sure we can use the straight copy path, which should be the case on most machines
+    //If it fails we use a pixel shader to fix the alpha channel during frame updates
+    m_OutputAlphaCheckFailed   = false;
+    m_OutputAlphaChecksPending = 10;
 
     return Return;
 }
@@ -2810,28 +2818,46 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
 
 void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
 {
-    // Set resources
-    UINT Stride = sizeof(VERTEX);
-    UINT Offset = 0;
-    const FLOAT blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    m_DeviceContext->OMSetBlendState(nullptr, blendFactor, 0xffffffff);
-    m_DeviceContext->OMSetRenderTargets(1, &m_OvrlRTV, nullptr);
-    m_DeviceContext->VSSetShader(m_VertexShader, nullptr, 0);
-    m_DeviceContext->PSSetShader(m_PixelShader, nullptr, 0);
-    m_DeviceContext->PSSetShaderResources(0, 1, &m_ShaderResource);
-    m_DeviceContext->PSSetSamplers(0, 1, &m_Sampler);
-    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    m_DeviceContext->IASetVertexBuffers(0, 1, &m_VertexBuffer, &Stride, &Offset);
-
-    // Draw textured quad onto render target
-    if (clear_rtv)
+    //Do a straight copy if there are no issues with that or do the alpha check if it's still pending
+    if ((!m_OutputAlphaCheckFailed) || (m_OutputAlphaChecksPending > 0))
     {
-        const float bgColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        m_DeviceContext->ClearRenderTargetView(m_OvrlRTV, bgColor);
-    }
+        m_DeviceContext->CopyResource(m_OvrlTex, m_SharedSurf);
 
-    m_DeviceContext->Draw(NUMVERTICES, 0);
+        if (m_OutputAlphaChecksPending > 0)
+        {
+            //Check for translucent pixels (not fast)
+            m_OutputAlphaCheckFailed = DesktopTextureAlphaCheck();
+
+            m_OutputAlphaChecksPending--;
+        }
+    }
+    
+    //Draw the frame to the texture with the alpha channel fixing pixel shader if we have to
+    if (m_OutputAlphaCheckFailed)
+    {
+        // Set resources
+        UINT Stride = sizeof(VERTEX);
+        UINT Offset = 0;
+        const FLOAT blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        m_DeviceContext->OMSetBlendState(nullptr, blendFactor, 0xffffffff);
+        m_DeviceContext->OMSetRenderTargets(1, &m_OvrlRTV, nullptr);
+        m_DeviceContext->VSSetShader(m_VertexShader, nullptr, 0);
+        m_DeviceContext->PSSetShader(m_PixelShader, nullptr, 0);
+        m_DeviceContext->PSSetShaderResources(0, 1, &m_ShaderResource);
+        m_DeviceContext->PSSetSamplers(0, 1, &m_Sampler);
+        m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        m_DeviceContext->IASetVertexBuffers(0, 1, &m_VertexBuffer, &Stride, &Offset);
+
+        // Draw textured quad onto render target
+        if (clear_rtv)
+        {
+            const float bgColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+            m_DeviceContext->ClearRenderTargetView(m_OvrlRTV, bgColor);
+        }
+
+        m_DeviceContext->Draw(NUMVERTICES, 0);
+    }
 }
 
 //
@@ -3200,6 +3226,86 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
     }
 
     return DUPL_RETURN_UPD_SUCCESS_REFRESHED_OVERLAY;
+}
+
+bool OutputManager::DesktopTextureAlphaCheck()
+{
+    if (m_DesktopRects.empty())
+        return false;
+
+    //Sanity check texture dimensions
+    D3D11_TEXTURE2D_DESC desc_ovrl_tex;
+    m_OvrlTex->GetDesc(&desc_ovrl_tex);
+
+    if ( ((UINT)m_DesktopWidth != desc_ovrl_tex.Width) || ((UINT)m_DesktopHeight != desc_ovrl_tex.Height) )
+        return false;
+
+    //Read one pixel for each desktop
+    const int pixel_count = m_DesktopRects.size();
+
+    //Create a staging texture
+    D3D11_TEXTURE2D_DESC desc = {0};
+    desc.Width              = pixel_count;
+    desc.Height             = 1;
+    desc.MipLevels          = 1;
+    desc.ArraySize          = 1;
+    desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM;
+    desc.SampleDesc.Count   = 1;
+    desc.SampleDesc.Quality = 0;
+    desc.Usage              = D3D11_USAGE_STAGING;
+    desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
+    desc.BindFlags          = 0;
+    desc.MiscFlags          = 0;
+
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> tex_staging;
+    HRESULT hr = m_Device->CreateTexture2D(&desc, nullptr, &tex_staging);
+    if (FAILED(hr))
+    {
+        return false;
+    }
+
+    //Copy a single pixel to staging texture for each desktop
+    D3D11_BOX box = {0};
+    box.front = 0;
+    box.back  = 1;
+
+    UINT dst_x = 0;
+    for (const DPRect& rect : m_DesktopRects)
+    {
+        box.left   = rect.GetTL().x;
+        box.right  = rect.GetTL().x + 1;
+        box.top    = rect.GetTL().y;
+        box.bottom = rect.GetTL().y + 1;
+
+        m_DeviceContext->CopySubresourceRegion(tex_staging.Get(), 0, dst_x, 0, 0, m_OvrlTex, 0, &box);
+        dst_x++;
+    }
+
+    //Map texture and get the pixels we just copied
+    D3D11_MAPPED_SUBRESOURCE mapped_resource;
+    hr = m_DeviceContext->Map(tex_staging.Get(), 0, D3D11_MAP_READ, 0, &mapped_resource);
+    if (FAILED(hr))
+    {
+        return false;
+    }
+
+    //Check alpha value for anything between 0% and 100% transparency, which should not happen but apparently does
+    bool ret = false;
+    for (int i = 0; i < pixel_count * 4; i += 4)
+    {
+        unsigned char a = ((unsigned char*)mapped_resource.pData)[i + 3];
+
+        if ((a > 0) && (a < 255))
+        {
+            ret = true;
+            break;
+        }
+    }
+
+    //Cleanup
+    m_DeviceContext->Unmap(tex_staging.Get(), 0);
+
+    return ret;
 }
 
 bool OutputManager::HandleOpenVREvents()

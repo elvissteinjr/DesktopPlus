@@ -13,7 +13,7 @@ struct PS_INPUT
 float4 PS(PS_INPUT input) : SV_Target
 {
 	float4 color;
-	color.rgb = tx.Sample(samLinear, input.Tex);
-	color.a = 1.0f;                                  //Enfore full alpha as on some system the duplication output isn't opaque for some reason
+	color = tx.Sample(samLinear, input.Tex);
+	color.a = (color.a > 0.0) ? 1.0 : 0.0;   //Enforce 1-bit alpha as on some systems the duplication output isn't opaque for some reason
 	return color;
 }

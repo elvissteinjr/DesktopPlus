@@ -89,6 +89,7 @@ class OutputManager
         void DrawFrameToOverlayTex(bool clear_rtv = true);
         DUPL_RETURN DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo);
         DUPL_RETURN_UPD RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy = false); //Refreshes the overlay texture of the VR runtime with content of the m_OvrlTex backing texture
+        bool DesktopTextureAlphaCheck();
 
         bool HandleOpenVREvents();  //Returns true if quit event happened
         void OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned int& current_overlay_old);
@@ -180,6 +181,8 @@ class OutputManager
         bool m_OutputPendingFullRefresh;
         DPRect m_OutputPendingDirtyRect;
         DPRect m_OutputLastClippingRect;
+        int m_OutputAlphaChecksPending;
+        bool m_OutputAlphaCheckFailed;          //Output appears to be translucent and needs its alpha channel stripped during texture copy
 
         vr::VROverlayHandle_t m_OvrlHandleDashboardDummy;
         vr::VROverlayHandle_t m_OvrlHandleIcon;
