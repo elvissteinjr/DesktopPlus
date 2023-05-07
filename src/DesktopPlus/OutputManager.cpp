@@ -5910,8 +5910,8 @@ void OutputManager::ApplySettingMouseInput()
             {
                 vr::VROverlayIntersectionMaskPrimitive_t primitive;
                 primitive.m_nPrimitiveType = vr::OverlayIntersectionPrimitiveType_Rectangle;
-                primitive.m_Primitive.m_Rectangle.m_flTopLeftX = rect.GetTL().x;
-                primitive.m_Primitive.m_Rectangle.m_flTopLeftY = rect.GetTL().y;
+                primitive.m_Primitive.m_Rectangle.m_flTopLeftX = rect.GetTL().x - m_DesktopX;
+                primitive.m_Primitive.m_Rectangle.m_flTopLeftY = rect.GetTL().y - m_DesktopY;
                 primitive.m_Primitive.m_Rectangle.m_flWidth    = rect.GetWidth();
                 primitive.m_Primitive.m_Rectangle.m_flHeight   = rect.GetHeight();
 
