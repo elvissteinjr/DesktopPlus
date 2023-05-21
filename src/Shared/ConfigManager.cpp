@@ -445,6 +445,15 @@ bool ConfigManager::LoadConfigFromFile()
     std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config.ini").c_str() );
     bool existed = FileExists(wpath.c_str());
 
+    //In preparation for NewUI/3.0+ Desktop+ migrating legacy config files and using the normal "config.ini" filename, 
+    //load "config_legacy.ini" instead if it exists (will be renamed to this before migration)
+    std::wstring wpath_legacy = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config_legacy.ini").c_str() );
+    if (FileExists(wpath_legacy.c_str()))
+    {
+        wpath = wpath_legacy;
+        existed = true;
+    }
+
     //If config.ini doesn't exist (yet), load from config_default.ini instead, which hopefully does (would still work to a lesser extent though)
     if (!existed)
     {
@@ -821,6 +830,14 @@ void ConfigManager::RemoveScaleFromTransform(Matrix4& transform, float* width)
 void ConfigManager::SaveConfigToFile()
 {
     std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config.ini").c_str() );
+
+    //Save to "config_legacy.ini" instead if it exists (see LoadConfigFromFile())
+    std::wstring wpath_legacy = WStringConvertFromUTF8( std::string(m_ApplicationPath + "/config_legacy.ini").c_str() );
+    if (FileExists(wpath_legacy.c_str()))
+    {
+        wpath = wpath_legacy;
+    }
+
     Ini config(wpath.c_str());
 
     SaveMultiOverlayProfile(config);
