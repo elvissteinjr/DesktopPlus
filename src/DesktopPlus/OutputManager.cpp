@@ -3273,10 +3273,10 @@ bool OutputManager::DesktopTextureAlphaCheck()
     UINT dst_x = 0;
     for (const DPRect& rect : m_DesktopRects)
     {
-        box.left   = rect.GetTL().x;
-        box.right  = rect.GetTL().x + 1;
-        box.top    = rect.GetTL().y;
-        box.bottom = rect.GetTL().y + 1;
+        box.left   = rect.GetTL().x - m_DesktopX;
+        box.right  = box.right  + 1;
+        box.top    = rect.GetTL().y - m_DesktopY;
+        box.bottom = box.bottom + 1;
 
         m_DeviceContext->CopySubresourceRegion(tex_staging.Get(), 0, dst_x, 0, 0, m_OvrlTex, 0, &box);
         dst_x++;
@@ -4926,8 +4926,8 @@ void OutputManager::ApplySettingMouseInput()
             {
                 vr::VROverlayIntersectionMaskPrimitive_t primitive;
                 primitive.m_nPrimitiveType = vr::OverlayIntersectionPrimitiveType_Rectangle;
-                primitive.m_Primitive.m_Rectangle.m_flTopLeftX = rect.GetTL().x;
-                primitive.m_Primitive.m_Rectangle.m_flTopLeftY = rect.GetTL().y;
+                primitive.m_Primitive.m_Rectangle.m_flTopLeftX = rect.GetTL().x - m_DesktopX;
+                primitive.m_Primitive.m_Rectangle.m_flTopLeftY = rect.GetTL().y - m_DesktopY;
                 primitive.m_Primitive.m_Rectangle.m_flWidth    = rect.GetWidth();
                 primitive.m_Primitive.m_Rectangle.m_flHeight   = rect.GetHeight();
 
