@@ -305,13 +305,12 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     //Get preferred adapter if there is any, this detects which GPU the target desktop is on
     Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_preferred;
     Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_vr;
-    int output_id_adapter = SingleOutput;           //Output ID on the adapter actually used. Only different from initial SingleOutput if there's desktops across multiple GPUs
 
     std::vector<DPRect> desktop_rects_prev = m_DesktopRects;
     int desktop_x_prev = m_DesktopX;
     int desktop_y_prev = m_DesktopY;
 
-    SingleOutput = EnumerateOutputs(SingleOutput, &adapter_ptr_preferred, &adapter_ptr_vr);
+    EnumerateOutputs(SingleOutput, &adapter_ptr_preferred, &adapter_ptr_vr);
 
     //If there's no preferred adapter it should default to the one the HMD is connected to
     if (adapter_ptr_preferred == nullptr) 
@@ -396,7 +395,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     }
 
     // Create shared texture
-    DUPL_RETURN Return = CreateTextures(output_id_adapter, OutCount, DeskBounds);
+    DUPL_RETURN Return = CreateTextures(SingleOutput, OutCount, DeskBounds);
     if (Return != DUPL_RETURN_SUCCESS)
     {
         return Return;
@@ -2681,39 +2680,62 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
     }
 
     //Figure out right dimensions for full size desktop texture
-    DPRect output_rect;
+    DPRect output_rect_total;
     if (SingleOutput < 0)
     {
+        //Combined desktop, also count desktops on the used adapter
+        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr = GetDXGIAdapter();
+
+        UINT output_index_adapter = 0;
         hr = S_OK;
 
-        //Combined desktop, add up all desktop rects
-        for (const DPRect& rect : m_DesktopRects)
+        while (SUCCEEDED(hr))
         {
-            (output_rect.GetWidth() == 0) ? output_rect = rect : output_rect.Add(rect);
+            //Break early if used desktop count is lower than actual output count
+            if (output_index_adapter >= desktop_count)
+            {
+                ++output_index_adapter;
+                break;
+            }
+
+            Microsoft::WRL::ComPtr<IDXGIOutput> output_ptr;
+            hr = adapter_ptr->EnumOutputs(output_index_adapter, &output_ptr);
+            if ((output_ptr != nullptr) && (hr != DXGI_ERROR_NOT_FOUND))
+            {
+                DXGI_OUTPUT_DESC output_desc;
+                output_ptr->GetDesc(&output_desc);
+
+                DPRect output_rect(output_desc.DesktopCoordinates.left,  output_desc.DesktopCoordinates.top, 
+                                   output_desc.DesktopCoordinates.right, output_desc.DesktopCoordinates.bottom);
+
+                (output_rect_total.GetWidth() == 0) ? output_rect_total = output_rect : output_rect_total.Add(output_rect);
+            }
+
+            ++output_index_adapter;
         }
 
-        *OutCount = desktop_count;
+        *OutCount = output_index_adapter - 1;
     }
     else
     {
         //Single desktop, grab cached desktop rect
         if (SingleOutput < desktop_count)
         {
-            output_rect = m_DesktopRects[SingleOutput];
+            output_rect_total = m_DesktopRects[SingleOutput];
             *OutCount = 1;
         }
     }
 
     //Store size and position
-    m_DesktopX      = output_rect.GetTL().x;
-    m_DesktopY      = output_rect.GetTL().y;
-    m_DesktopWidth  = output_rect.GetWidth();
-    m_DesktopHeight = output_rect.GetHeight();
+    m_DesktopX      = output_rect_total.GetTL().x;
+    m_DesktopY      = output_rect_total.GetTL().y;
+    m_DesktopWidth  = output_rect_total.GetWidth();
+    m_DesktopHeight = output_rect_total.GetHeight();
 
-    DeskBounds->left   = output_rect.GetTL().x;
-    DeskBounds->top    = output_rect.GetTL().y;
-    DeskBounds->right  = output_rect.GetBR().x;
-    DeskBounds->bottom = output_rect.GetBR().y;
+    DeskBounds->left   = output_rect_total.GetTL().x;
+    DeskBounds->top    = output_rect_total.GetTL().y;
+    DeskBounds->right  = output_rect_total.GetBR().x;
+    DeskBounds->bottom = output_rect_total.GetBR().y;
 
     //Set it as mouse scale on the desktop texture overlay for the UI to read the resolution from there
     vr::HmdVector2_t mouse_scale = {0};
@@ -2745,7 +2767,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
 
     if (FAILED(hr))
     {
-        if (output_rect.GetWidth() != 0)
+        if (output_rect_total.GetWidth() != 0)
         {
             // If we are duplicating the complete desktop we try to create a single texture to hold the
             // complete desktop image and blit updates from the per output DDA interface.  The GPU can
