@@ -3926,10 +3926,10 @@ bool OutputManager::DesktopTextureAlphaCheck()
     UINT dst_x = 0;
     for (const DPRect& rect : m_DesktopRects)
     {
-        box.left   = rect.GetTL().x - m_DesktopX;
-        box.right  = box.right  + 1;
-        box.top    = rect.GetTL().y - m_DesktopY;
-        box.bottom = box.bottom + 1;
+        box.left   = clamp(rect.GetTL().x - m_DesktopX, 0, m_DesktopWidth - 1);
+        box.right  = clamp(box.left + 1, 1u, (UINT)m_DesktopWidth);
+        box.top    = clamp(rect.GetTL().y - m_DesktopY, 0, m_DesktopHeight - 1);
+        box.bottom = clamp(box.top + 1, 1u, (UINT)m_DesktopHeight);
 
         m_DeviceContext->CopySubresourceRegion(tex_staging.Get(), 0, dst_x, 0, 0, m_OvrlTex, 0, &box);
         dst_x++;
