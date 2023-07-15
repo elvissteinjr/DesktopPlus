@@ -14,8 +14,11 @@ void DPLog_Init(const char* name)
     const std::wstring filename_u16      = WStringConvertFromUTF8(name) + L".log";
     const std::wstring filename_prev_u16 = WStringConvertFromUTF8(name) + L"_prev.log";
 
+    //We always append, but if we just rotated the log we set it to truncate further down to avoid the blank lines at the top
+    loguru::FileMode log_file_mode = loguru::Append;
+
     //Check the creation time and rotate if it was created a week or longer ago
-    HANDLE file_handle = ::CreateFileW(filename_u16.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+    HANDLE file_handle = ::CreateFileW(filename_u16.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
 
     FILETIME ftime_log_create;
     if (::GetFileTime(file_handle, &ftime_log_create, nullptr, nullptr))
@@ -33,15 +36,22 @@ void DPLog_Init(const char* name)
         {
             ::DeleteFileW(filename_prev_u16.c_str());
             ::MoveFileW(filename_u16.c_str(), filename_prev_u16.c_str());
+
+            //Windows' file system tunneling preserves the creation date between deleting and creating a new log file, so set it manually here
+            file_handle = ::CreateFileW(filename_u16.c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, 0, nullptr);
+            if (file_handle != INVALID_HANDLE_VALUE)
+            {
+                ::SetFileTime(file_handle, &ftime_current, nullptr, nullptr);
+                ::CloseHandle(file_handle);
+            }
+
+            log_file_mode = loguru::Truncate;
         }
     }
     else
     {
         ::CloseHandle(file_handle);
     }
-
-    //We always append, but if we just rotated the log we set it to truncate to avoid the blank lines at the top
-    const loguru::FileMode log_file_mode = (FileExists(filename_u16.c_str())) ? loguru::Append : loguru::Truncate;
 
     //Set some Loguru settings
     loguru::g_internal_verbosity = 1;
