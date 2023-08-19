@@ -1004,23 +1004,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
             switch (str_id)
             {
-                case configid_str_state_action_value_string:
-                {
-                    std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
-                    const int id = ConfigManager::GetValue(configid_int_state_action_current);
-
-                    //Unnecessary, but let's save us from the near endless loop in case of a coding error
-                    if ( (id < 0) || (id > 10000) )
-                        break;
-
-                    while (id >= actions.size())
-                    {
-                        actions.push_back(CustomAction());
-                    }
-
-                    actions[id].ApplyStringFromConfig();
-                    break;
-                }
                 case configid_str_state_keyboard_string:
                 {
                     m_InputSim.KeyboardText(copystr.c_str());
@@ -1040,6 +1023,14 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         if (loaded_overlay_profile)
                             ResetOverlays();
                     }
+                    break;
+                }
+                case configid_str_state_action_data:
+                {
+                    Action new_action;
+                    new_action.Deserialize(copystr);
+
+                    ConfigManager::Get().GetActionManager().StoreAction(new_action);
                     break;
                 }
                 default: break;
@@ -1081,28 +1072,22 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 }
                 case ipcact_action_delete:
                 {
-                    std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
-
-                    if (actions.size() > msg.lParam)
-                    {
-                        ActionManager::Get().EraseCustomAction(msg.lParam);
-                    }
-
+                    ConfigManager::Get().GetActionManager().RemoveAction(msg.lParam);
                     break;
                 }
                 case ipcact_action_do:
                 {
-                    DoAction((ActionID)msg.lParam, (overlay_override_id != -1) ? (unsigned int)overlay_override_id : k_ulOverlayID_None); //Pass override ID as source if set
+                    ConfigManager::Get().GetActionManager().DoAction(msg.lParam, (overlay_override_id != -1) ? (unsigned int)overlay_override_id : k_ulOverlayID_None);
                     break;
                 }
                 case ipcact_action_start:
                 {
-                    DoStartAction((ActionID)msg.lParam, (overlay_override_id != -1) ? (unsigned int)overlay_override_id : k_ulOverlayID_None);
+                    ConfigManager::Get().GetActionManager().StartAction(msg.lParam, (overlay_override_id != -1) ? (unsigned int)overlay_override_id : k_ulOverlayID_None);
                     break;
                 }
                 case ipcact_action_stop:
                 {
-                    DoStopAction((ActionID)msg.lParam, (overlay_override_id != -1) ? (unsigned int)overlay_override_id : k_ulOverlayID_None);
+                    ConfigManager::Get().GetActionManager().StopAction(msg.lParam, (overlay_override_id != -1) ? (unsigned int)overlay_override_id : k_ulOverlayID_None);
                     break;
                 }
                 case ipcact_keyboard_vkey:
@@ -1119,6 +1104,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 case ipcact_crop_to_active_window:
                 {
                     CropToActiveWindow();
+                    break;
+                }
+                case ipcact_switch_task:
+                {
+                    ShowWindowSwitcher();
                     break;
                 }
                 case ipcact_overlay_duplicate:
@@ -1716,9 +1706,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_int_input_hotkey01_keycode:
                     case configid_int_input_hotkey02_keycode:
                     case configid_int_input_hotkey03_keycode:
-                    case configid_int_input_hotkey01_action_id:
-                    case configid_int_input_hotkey02_action_id:
-                    case configid_int_input_hotkey03_action_id:
                     {
                         //*_keycode always follows after *_modifiers, so we only catch the keycode ones
                         RegisterHotkeys();
@@ -1745,23 +1732,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_int_browser_max_fps:
                     {
                         DPBrowserAPIClient::Get().DPBrowser_GlobalSetFPS(msg.lParam);
-                        break;
-                    }
-                    case configid_int_state_action_value_int:
-                    {
-                        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
-                        const int id = ConfigManager::GetValue(configid_int_state_action_current);
-
-                        //Unnecessary, but let's save us from the near endless loop in case of a coding error
-                        if (id > 10000)
-                            break;
-
-                        while (id >= actions.size())
-                        {
-                            actions.push_back(CustomAction());
-                        }
-
-                        actions[id].ApplyIntFromConfig();
                         break;
                     }
                     default: break;
@@ -1816,6 +1786,13 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                 switch (handle_id)
                 {
+                    case configid_handle_input_hotkey01_action_uid:
+                    case configid_handle_input_hotkey02_action_uid:
+                    case configid_handle_input_hotkey03_action_uid:
+                    {
+                        RegisterHotkeys();
+                        break;
+                    }
                     case configid_handle_overlay_state_winrt_hwnd:
                     {
                         if (value != previous_value)
@@ -1977,12 +1954,8 @@ void OutputManager::HandleHotkeyMessage(const MSG& msg)
     //m_IsHotkeyDown blocks HandleHotkeys() and the hotkey messages from triggering hotkey actions twice. It's reset in HandleHotkeys when the key is no longer pressed
     if ((msg.wParam <= 2) && (!m_IsHotkeyDown[msg.wParam]))
     {
-        switch (msg.wParam)
-        {
-            case 0: DoAction((ActionID)ConfigManager::GetValue(configid_int_input_hotkey01_action_id)); break;
-            case 1: DoAction((ActionID)ConfigManager::GetValue(configid_int_input_hotkey02_action_id)); break;
-            case 2: DoAction((ActionID)ConfigManager::GetValue(configid_int_input_hotkey03_action_id)); break;
-        }
+        ConfigID_Handle config_id = (ConfigID_Handle)(configid_handle_input_hotkey01_action_uid + msg.wParam);
+        ConfigManager::Get().GetActionManager().DoAction(config_id);
 
         m_IsHotkeyDown[msg.wParam] = true;
     }
@@ -2490,322 +2463,92 @@ bool OutputManager::IsOutputInvalid() const
     return m_OutputInvalid;
 }
 
-void OutputManager::DoAction(ActionID action_id, unsigned int overlay_source_id)
+void OutputManager::SetOverlayEnabled(unsigned int overlay_id, bool is_enabled)
 {
-    if (action_id >= action_custom)
-    {
-        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
+    OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
 
-        if (actions.size() + action_custom > action_id)
-        {
-            //Use focused ID if there is no source ID
-            if ( (overlay_source_id == k_ulOverlayID_None) && (ConfigManager::GetValue(configid_int_state_overlay_focused_id) != -1) )
-            {
-                overlay_source_id = (unsigned int)ConfigManager::GetValue(configid_int_state_overlay_focused_id);
-            }
+    if (data.ConfigBool[configid_bool_overlay_enabled] == is_enabled)
+        return;
 
-            CustomAction& action = actions[action_id - action_custom];
+    data.ConfigBool[configid_bool_overlay_enabled] = is_enabled;
 
-            switch (action.FunctionType)
-            {
-                case caction_press_keys:
-                {
-                    if (OverlayManager::Get().GetConfigData(overlay_source_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
-                    {
-                        if (action.IntID == 1 /*ToggleKeys*/)
-                        {
-                            for (unsigned char keycode : action.KeyCodes)
-                            {
-                                if (keycode != 0)
-                                {
-                                    DPBrowserAPIClient::Get().DPBrowser_KeyboardToggleKey(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), keycode);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            //Press
-                            for (unsigned char keycode : action.KeyCodes)
-                            {
-                                if (keycode != 0)
-                                {
-                                    DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), dpbrowser_ipckbd_keystate_flag_key_down, keycode);
-                                }
-                            }
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    OverlayManager::Get().SetCurrentOverlayID(overlay_id);
+    ApplySettingTransform();
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
-                            //Release
-                            for (unsigned char keycode : action.KeyCodes)
-                            {
-                                if (keycode != 0)
-                                {
-                                    DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), (DPBrowserIPCKeyboardKeystateFlags)0, keycode);
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (action.IntID == 1 /*ToggleKeys*/)
-                        {
-                            m_InputSim.KeyboardToggleState(action.KeyCodes);
-                        }
-                        else
-                        {
-                            m_InputSim.KeyboardSetDown(action.KeyCodes);
-                            m_InputSim.KeyboardSetUp(action.KeyCodes);
-                        }
-                    }
-
-                    break;
-                }
-                case caction_type_string:
-                {
-                    if (OverlayManager::Get().GetConfigData(overlay_source_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
-                    {
-                        DPBrowserAPIClient::Get().DPBrowser_KeyboardTypeString(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), action.StrMain);
-                    }
-                    else
-                    {
-                        m_InputSim.KeyboardText(action.StrMain.c_str(), true);
-                        m_InputSim.KeyboardTextFinish();
-                    }
-                    break;
-                }
-                case caction_launch_application:
-                {
-                    LaunchApplication(action.StrMain.c_str(), action.StrArg.c_str());
-                    break;
-                }
-                case caction_toggle_overlay_enabled_state:
-                {
-                    if (OverlayManager::Get().GetOverlayCount() > (unsigned int)action.IntID)
-                    {
-                        OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)action.IntID);
-                        data.ConfigBool[configid_bool_overlay_enabled] = !data.ConfigBool[configid_bool_overlay_enabled];
-
-                        unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-                        OverlayManager::Get().SetCurrentOverlayID((unsigned int)action.IntID);
-                        ApplySettingTransform();
-                        OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
-
-                        //Sync change
-                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)action.IntID);
-                        IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_enabled, data.ConfigBool[configid_bool_overlay_enabled]);
-                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
-                    }
-                }
-            }
-            return;
-        }
-    }
-    else
-    {
-        switch (action_id)
-        {
-            case action_show_keyboard:
-            {
-                if (ConfigManager::GetValue(configid_bool_state_keyboard_visible))
-                {
-                    //If it's already displayed for an overlay, hide it instead
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, -1);
-                }
-                else
-                {
-                    //Tell UI to show keyboard assigned to overlay
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_keyboard_show, (overlay_source_id != k_ulOverlayID_None) ? (int)overlay_source_id : -2);
-
-                    //Set focused ID to source overlay ID if there is one
-                    if (overlay_source_id != k_ulOverlayID_None)
-                    {
-                        ConfigManager::Get().SetValue(configid_int_state_overlay_focused_id, (int)overlay_source_id);
-                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_focused_id, (int)overlay_source_id);
-                    }
-                }
-                break;
-            }
-            case action_crop_active_window_toggle:
-            {
-                //If the action is used with one of the controller buttons, the events will fire another time if the new cropping values happen to have the laser pointer leave and
-                //re-enter the overlay for a split second while the button is still down during the dimension change. 
-                //This would immediately undo the action, which we want to prevent, so a 100 ms pause between toggles is enforced 
-                static ULONGLONG last_toggle_tick = 0;
-
-                if (::GetTickCount64() <= last_toggle_tick + 100)
-                    break;
-
-                last_toggle_tick = ::GetTickCount64();
-
-                int& crop_x      = ConfigManager::GetRef(configid_int_overlay_crop_x);
-                int& crop_y      = ConfigManager::GetRef(configid_int_overlay_crop_y);
-                int& crop_width  = ConfigManager::GetRef(configid_int_overlay_crop_width);
-                int& crop_height = ConfigManager::GetRef(configid_int_overlay_crop_height);
-
-                //Check if crop is just exactly the current desktop
-                bool crop_equals_current_desktop = false;
-                int desktop_id = ConfigManager::GetValue(configid_int_overlay_desktop_id);
-
-                if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) )
-                {
-                    DPRect crop_rect(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
-
-                    crop_equals_current_desktop = (crop_rect == m_DesktopRects[desktop_id]);
-                }
-
-                //If uncropped, crop to active window
-                if ( (crop_equals_current_desktop) || ((crop_x == 0) && (crop_y == 0) && (crop_width == -1) && (crop_height == -1)) )
-                {
-                    CropToActiveWindow();
-                }
-                else //If cropped in some way, active window or not, reset it
-                {
-                    CropToDisplay(desktop_id);
-                }
-                break;
-            }
-            case action_toggle_overlay_enabled_group_1:
-            case action_toggle_overlay_enabled_group_2:
-            case action_toggle_overlay_enabled_group_3:
-            {
-                ToggleOverlayGroupEnabled(1 + ((int)action_id - action_toggle_overlay_enabled_group_1) );
-                break;
-            }
-            case action_switch_task:
-            {
-                ShowWindowSwitcher();
-                break;
-            }
-            default: break;
-        }
-    }
+    //Sync change
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, overlay_id);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_enabled, data.ConfigBool[configid_bool_overlay_enabled]);
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
 }
 
-//This is like DoAction, but split between start and stop
-//Currently only used for input actions. The UI will send a start message already when pressing down on the button and an stop one only after releasing for these kind of actions.
-//Also used for global shortcuts, where non-input actions simply get forwarded to DoAction()
-void OutputManager::DoStartAction(ActionID action_id, unsigned int overlay_source_id) 
+void OutputManager::CropToActiveWindowToggle(unsigned int overlay_id)
 {
-    if (action_id >= action_custom)
+    //If the action is used with one of the controller buttons, the events will fire another time if the new cropping values happen to have the laser pointer leave and
+    //re-enter the overlay for a split second while the button is still down during the dimension change. 
+    //This would immediately undo the action, which we want to prevent, so a 100 ms pause between toggles is enforced 
+    //-Currently not actually enforcing this with the new action commands to see where this goes-
+    static ULONGLONG last_toggle_tick = 0;
+
+    if ((overlay_id == k_ulOverlayID_None) /*|| (::GetTickCount64() <= last_toggle_tick + 100)*/)
+        return;
+
+    last_toggle_tick = ::GetTickCount64();
+
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    OverlayManager::Get().SetCurrentOverlayID(overlay_id);
+
+    int& crop_x      = ConfigManager::GetRef(configid_int_overlay_crop_x);
+    int& crop_y      = ConfigManager::GetRef(configid_int_overlay_crop_y);
+    int& crop_width  = ConfigManager::GetRef(configid_int_overlay_crop_width);
+    int& crop_height = ConfigManager::GetRef(configid_int_overlay_crop_height);
+
+    //Check if crop is just exactly the current desktop
+    bool crop_equals_current_desktop = false;
+    int desktop_id = ConfigManager::GetValue(configid_int_overlay_desktop_id);
+
+    if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) )
     {
-        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
+        DPRect crop_rect(crop_x, crop_y, crop_x + crop_width, crop_y + crop_height);
 
-        if (actions.size() + action_custom > action_id)
-        {
-            //Use focused ID if there is no source ID
-            if ( (overlay_source_id == k_ulOverlayID_None) && (ConfigManager::GetValue(configid_int_state_overlay_focused_id) != -1) )
-            {
-                overlay_source_id = (unsigned int)ConfigManager::GetValue(configid_int_state_overlay_focused_id);
-            }
-
-            CustomAction& action = actions[action_id - action_custom];
-
-            if (action.FunctionType == caction_press_keys)
-            {
-                if (OverlayManager::Get().GetConfigData(overlay_source_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
-                {
-                    if (action.IntID == 1 /*ToggleKeys*/)
-                    {
-                        for (unsigned char keycode : action.KeyCodes)
-                        {
-                            if (keycode != 0)
-                            {
-                                DPBrowserAPIClient::Get().DPBrowser_KeyboardToggleKey(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), keycode);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        for (unsigned char keycode : action.KeyCodes)
-                        {
-                            if (keycode != 0)
-                            {
-                                DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), dpbrowser_ipckbd_keystate_flag_key_down, keycode);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    (action.IntID == 1 /*ToggleKeys*/) ? m_InputSim.KeyboardToggleState(action.KeyCodes) : m_InputSim.KeyboardSetDown(action.KeyCodes);
-                }
-            }
-            else
-            {
-                DoAction(action_id, overlay_source_id);
-            }
-        }
+        crop_equals_current_desktop = (crop_rect == m_DesktopRects[desktop_id]);
     }
-    else
+
+    //If uncropped, crop to active window
+    if ( (crop_equals_current_desktop) || ((crop_x == 0) && (crop_y == 0) && (crop_width == -1) && (crop_height == -1)) )
     {
-        DoAction(action_id);
+        CropToActiveWindow();
     }
+    else //If cropped in some way, active window or not, reset it
+    {
+        CropToDisplay(desktop_id);
+    }
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
-void OutputManager::DoStopAction(ActionID action_id, unsigned int overlay_source_id)
+void OutputManager::ShowWindowSwitcher()
 {
-    if (action_id >= action_custom)
+    InitComIfNeeded();
+
+    Microsoft::WRL::ComPtr<IShellDispatch5> shell_dispatch;
+    HRESULT sc = ::CoCreateInstance(CLSID_Shell, nullptr, CLSCTX_SERVER, IID_IDispatch, &shell_dispatch);
+
+    if (SUCCEEDED(sc))
     {
-        std::vector<CustomAction>& actions = ConfigManager::Get().GetCustomActions();
-
-        if (actions.size() + action_custom > action_id)
-        {
-            //Use focused ID if there is no source ID
-            if ( (overlay_source_id == k_ulOverlayID_None) && (ConfigManager::GetValue(configid_int_state_overlay_focused_id) != -1) )
-            {
-                overlay_source_id = (unsigned int)ConfigManager::GetValue(configid_int_state_overlay_focused_id);
-            }
-
-            CustomAction& action = actions[action_id - action_custom];
-
-            if (action.FunctionType == caction_press_keys)
-            {
-                if (action.IntID != 1 /*ToggleKeys*/)
-                {
-                    if (OverlayManager::Get().GetConfigData(overlay_source_id).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
-                    {
-                        for (unsigned char keycode : action.KeyCodes)
-                        {
-                            if (keycode != 0)
-                            {
-                                DPBrowserAPIClient::Get().DPBrowser_KeyboardSetKeyState(OverlayManager::Get().GetOverlay(overlay_source_id).GetHandle(), (DPBrowserIPCKeyboardKeystateFlags)0, keycode);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        m_InputSim.KeyboardSetUp(action.KeyCodes);
-                    }
-                }
-            }
-        }
-    }
-}
-
-void OutputManager::ToggleOverlayGroupEnabled(int group_id)
-{
-    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
-    {
-        OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
-
-        if ( (data.ConfigInt[configid_int_overlay_group_id] == group_id) )
-        {
-            data.ConfigBool[configid_bool_overlay_enabled] = !data.ConfigBool[configid_bool_overlay_enabled];
-
-            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-            OverlayManager::Get().SetCurrentOverlayID(i);
-            ApplySettingTransform();
-            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
-
-            //Sync change
-            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, i);
-            IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_enabled, data.ConfigBool[configid_bool_overlay_enabled]);
-            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
-        }
+        shell_dispatch->WindowSwitcher();
     }
 }
 
 VRInput& OutputManager::GetVRInput()
 {
     return m_VRInput;
+}
+
+InputSimulator& OutputManager::GetInputSimulator()
+{
+    return m_InputSim;
 }
 
 void OutputManager::UpdatePerformanceStates()
@@ -4200,11 +3943,11 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     if (vr_event.data.controller.button == Button_Dashboard_GoHome)
                     {
-                        DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id), i);
+                        ConfigManager::Get().GetActionManager().StartAction(ConfigManager::GetValue(configid_handle_input_go_home_action_uid), i);
                     }
                     else if (vr_event.data.controller.button == Button_Dashboard_GoBack)
                     {
-                        DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id), i);
+                        ConfigManager::Get().GetActionManager().StartAction(ConfigManager::GetValue(configid_handle_input_go_back_action_uid), i);
                     }
 
                     break;
@@ -4213,11 +3956,11 @@ bool OutputManager::HandleOpenVREvents()
                 {
                     if (vr_event.data.controller.button == Button_Dashboard_GoHome)
                     {
-                        DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id), i);
+                        ConfigManager::Get().GetActionManager().StopAction(ConfigManager::GetValue(configid_handle_input_go_home_action_uid), i);
                     }
                     else if (vr_event.data.controller.button == Button_Dashboard_GoBack)
                     {
-                        DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id), i);
+                        ConfigManager::Get().GetActionManager().StopAction(ConfigManager::GetValue(configid_handle_input_go_back_action_uid), i);
                     }
 
                     break;
@@ -4347,7 +4090,6 @@ bool OutputManager::HandleOpenVREvents()
     }
 
     m_VRInput.HandleGlobalActionShortcuts(*this);
-    m_VRInput.HandleGlobalOverlayGroupShortcuts(*this);
 
     //Finish up pending keyboard input collected into the queue
     m_InputSim.KeyboardTextFinish();
@@ -4644,6 +4386,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
         }
         case vr::VREvent_MouseButtonDown:
         {
+            ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+
             if (ConfigManager::GetValue(configid_bool_state_overlay_selectmode))
             {
                 if (vr_event.data.mouse.button == vr::VRMouseButton_Left)
@@ -4705,8 +4449,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 {
                     switch (vr_event.data.mouse.button)
                     {
-                        case VRMouseButton_DP_Aux01: DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id), overlay_current.GetID()); break;
-                        case VRMouseButton_DP_Aux02: DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id), overlay_current.GetID()); break;
+                        case VRMouseButton_DP_Aux01: action_manager.StartAction(ConfigManager::GetValue(configid_handle_input_go_back_action_uid), overlay_current.GetID()); break;
+                        case VRMouseButton_DP_Aux02: action_manager.StartAction(ConfigManager::GetValue(configid_handle_input_go_home_action_uid), overlay_current.GetID()); break;
                     }
                 }
                 break;
@@ -4762,14 +4506,16 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(true);   break;
                 case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(true);  break;
                 case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but our own laser pointer supports this
-                case VRMouseButton_DP_Aux01:    DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id), overlay_current.GetID()); break;
-                case VRMouseButton_DP_Aux02:    DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id), overlay_current.GetID()); break;
+                case VRMouseButton_DP_Aux01: action_manager.StartAction(ConfigManager::GetValue(configid_handle_input_go_back_action_uid), overlay_current.GetID()); break;
+                case VRMouseButton_DP_Aux02: action_manager.StartAction(ConfigManager::GetValue(configid_handle_input_go_home_action_uid), overlay_current.GetID()); break;
             }
 
             break;
         }
         case vr::VREvent_MouseButtonUp:
         {
+            ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+
             if (ConfigManager::GetValue(configid_bool_state_overlay_selectmode))
             {
                 break;
@@ -4818,8 +4564,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 {
                     switch (vr_event.data.mouse.button)
                     {
-                        case VRMouseButton_DP_Aux01: DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id), overlay_current.GetID()); break;
-                        case VRMouseButton_DP_Aux02: DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id), overlay_current.GetID()); break;
+                        case VRMouseButton_DP_Aux01: action_manager.StopAction(ConfigManager::GetValue(configid_handle_input_go_back_action_uid), overlay_current.GetID()); break;
+                        case VRMouseButton_DP_Aux02: action_manager.StopAction(ConfigManager::GetValue(configid_handle_input_go_home_action_uid), overlay_current.GetID()); break;
                     }
                 }
                 break;
@@ -4831,11 +4577,11 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
             switch (vr_event.data.mouse.button)
             {
-                case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(false);   break;
-                case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(false);  break;
-                case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(false); break;
-                case VRMouseButton_DP_Aux01:    DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_back_action_id), overlay_current.GetID()); break;
-                case VRMouseButton_DP_Aux02:    DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_go_home_action_id), overlay_current.GetID()); break;
+                case vr::VRMouseButton_Left:   m_InputSim.MouseSetLeftDown(false);   break;
+                case vr::VRMouseButton_Right:  m_InputSim.MouseSetRightDown(false);  break;
+                case vr::VRMouseButton_Middle: m_InputSim.MouseSetMiddleDown(false); break;
+                case VRMouseButton_DP_Aux01:   action_manager.StopAction(ConfigManager::GetValue(configid_handle_input_go_back_action_uid), overlay_current.GetID()); break;
+                case VRMouseButton_DP_Aux02:   action_manager.StopAction(ConfigManager::GetValue(configid_handle_input_go_home_action_uid), overlay_current.GetID()); break;
             }
 
             //If there was a possible WindowManager drag event prepared for, reset the target window
@@ -5077,46 +4823,6 @@ bool OutputManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
     ResetOverlays(); //This does everything relevant
 
     return false;
-}
-
-void OutputManager::LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8)
-{
-    if (ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active))
-    {
-        IPCManager::Get().SendStringToElevatedModeProcess(ipcestrid_launch_application_path, path_utf8, m_WindowHandle);
-
-        if (!arg_utf8.empty())
-        {
-            IPCManager::Get().SendStringToElevatedModeProcess(ipcestrid_launch_application_arg, arg_utf8, m_WindowHandle);
-        }
-
-        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_launch_application);
-        return;
-    }
-
-    //Convert path and arg to utf16
-    std::wstring path_wstr = WStringConvertFromUTF8(path_utf8.c_str());
-    std::wstring arg_wstr  = WStringConvertFromUTF8(arg_utf8.c_str());
-
-    if (!path_wstr.empty())
-    {
-        InitComIfNeeded();
-
-        ::ShellExecute(nullptr, nullptr, path_wstr.c_str(), arg_wstr.c_str(), nullptr, SW_SHOWNORMAL);
-    }
-}
-
-void OutputManager::ShowWindowSwitcher()
-{
-    InitComIfNeeded();
-
-    Microsoft::WRL::ComPtr<IShellDispatch5> shell_dispatch;
-    HRESULT sc = ::CoCreateInstance(CLSID_Shell, nullptr, CLSCTX_SERVER, IID_IDispatch, &shell_dispatch);
-
-    if (SUCCEEDED(sc))
-    {
-        shell_dispatch->WindowSwitcher();
-    }
 }
 
 void OutputManager::ResetMouseLastLaserPointerPos()
@@ -7089,7 +6795,7 @@ void OutputManager::RegisterHotkeys()
     UINT flags   = ConfigManager::GetValue(configid_int_input_hotkey01_modifiers);
     UINT keycode = ConfigManager::GetValue(configid_int_input_hotkey01_keycode);
 
-    if (ConfigManager::GetValue(configid_int_input_hotkey01_action_id) != action_none)
+    if (ConfigManager::GetValue(configid_handle_input_hotkey01_action_uid) != k_ActionUID_Invalid)
     {
         ::RegisterHotKey(nullptr, 0, flags | MOD_NOREPEAT, keycode);
         m_IsAnyHotkeyActive = true;
@@ -7098,7 +6804,7 @@ void OutputManager::RegisterHotkeys()
     flags   = ConfigManager::GetValue(configid_int_input_hotkey02_modifiers);
     keycode = ConfigManager::GetValue(configid_int_input_hotkey02_keycode);
 
-    if (ConfigManager::GetValue(configid_int_input_hotkey02_action_id) != action_none)
+    if (ConfigManager::GetValue(configid_handle_input_hotkey02_action_uid) != k_ActionUID_Invalid)
     {
         ::RegisterHotKey(nullptr, 1, flags | MOD_NOREPEAT, keycode);
         m_IsAnyHotkeyActive = true;
@@ -7107,7 +6813,7 @@ void OutputManager::RegisterHotkeys()
     flags   = ConfigManager::GetValue(configid_int_input_hotkey03_modifiers);
     keycode = ConfigManager::GetValue(configid_int_input_hotkey03_keycode);
 
-    if (ConfigManager::GetValue(configid_int_input_hotkey03_action_id) != action_none)
+    if (ConfigManager::GetValue(configid_handle_input_hotkey03_action_uid) != k_ActionUID_Invalid)
     {
         ::RegisterHotKey(nullptr, 2, flags | MOD_NOREPEAT, keycode);
         m_IsAnyHotkeyActive = true;
@@ -7123,9 +6829,9 @@ void OutputManager::HandleHotkeys()
     if (!m_IsAnyHotkeyActive)
         return;
 
-    const ActionID action_id[3] = {(ActionID)ConfigManager::GetValue(configid_int_input_hotkey01_action_id),
-                                   (ActionID)ConfigManager::GetValue(configid_int_input_hotkey02_action_id),
-                                   (ActionID)ConfigManager::GetValue(configid_int_input_hotkey03_action_id)};
+    const ActionUID action_uid[3] = {ConfigManager::GetValue(configid_handle_input_hotkey01_action_uid),
+                                     ConfigManager::GetValue(configid_handle_input_hotkey02_action_uid),
+                                     ConfigManager::GetValue(configid_handle_input_hotkey03_action_uid)};
 
     const UINT flags[3]         = {(UINT)ConfigManager::GetValue(configid_int_input_hotkey01_modifiers), 
                                    (UINT)ConfigManager::GetValue(configid_int_input_hotkey02_modifiers), 
@@ -7137,7 +6843,7 @@ void OutputManager::HandleHotkeys()
 
     for (int i = 0; i < 3; ++i)
     {
-        if (action_id[i] != action_none)
+        if (action_uid[i] != k_ActionUID_Invalid)
         {
             if ( (::GetAsyncKeyState(keycode[i]) < 0) && 
                  ( ((flags[i] & MOD_SHIFT)   == 0) || (::GetAsyncKeyState(VK_SHIFT)   < 0) ) &&
@@ -7149,7 +6855,7 @@ void OutputManager::HandleHotkeys()
                 {
                     m_IsHotkeyDown[i] = true;
 
-                    DoAction(action_id[i]);
+                    ConfigManager::Get().GetActionManager().DoAction(action_uid[i]);
                 }
             }
             else if (m_IsHotkeyDown[i])

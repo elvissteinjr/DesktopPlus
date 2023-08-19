@@ -33,9 +33,9 @@ class VRInput
         vr::VRActionHandle_t m_HandleActionDoGlobalShortcut01;
         vr::VRActionHandle_t m_HandleActionDoGlobalShortcut02;
         vr::VRActionHandle_t m_HandleActionDoGlobalShortcut03;
-        vr::VRActionHandle_t m_HandleActionToggleOverlayGroupEnabled01;
-        vr::VRActionHandle_t m_HandleActionToggleOverlayGroupEnabled02;
-        vr::VRActionHandle_t m_HandleActionToggleOverlayGroupEnabled03;
+        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut04;
+        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut05;
+        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut06;
 
         vr::VRActionHandle_t m_HandleActionLaserPointerLeftClick;
         vr::VRActionHandle_t m_HandleActionLaserPointerRightClick;
@@ -58,7 +58,6 @@ class VRInput
         void Update();
         void RefreshAnyGlobalActionBound();
         void HandleGlobalActionShortcuts(OutputManager& outmgr);
-        void HandleGlobalOverlayGroupShortcuts(OutputManager& outmgr);
         void TriggerLaserPointerHaptics(vr::VRInputValueHandle_t restrict_to_device = vr::k_ulInvalidInputValueHandle) const;
 
         bool GetSetDetachedInteractiveDown() const;

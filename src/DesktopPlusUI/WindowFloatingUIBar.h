@@ -2,6 +2,7 @@
 
 #include "imgui.h"
 
+struct Action;
 
 //The main bar visible in the floating UI, containing buttons to hide the overlay, toggle drag-mode and show the Action-Bar
 class WindowFloatingUIMainBar
@@ -44,7 +45,7 @@ class WindowFloatingUIActionBar
         void DisplayTooltipIfHovered(const char* text);
         void UpdateDesktopButtons(unsigned int overlay_id);
 
-        void ButtonActionKeyboard(unsigned int overlay_id, ImVec2& b_size_default);
+        void ButtonActionKeyboard(const Action& action, const ImVec2& size, unsigned int overlay_id);
 
     public:
         WindowFloatingUIActionBar();
@@ -60,6 +61,8 @@ class WindowFloatingUIActionBar
         double GetLastDesktopSwitchTime() const;
 
         void UpdateActionButtons(unsigned int overlay_id);  //WindowOverlayBar can piggyback this function with k_ulOverlayID_None to get action buttons in its window
+
+        static bool ButtonAction(const Action& action, const ImVec2& size, bool use_temp_icon = false); //use_temp_icon still needs icon filename set in action
 };
 
 //Extra window currently only showing capture fps of the overlay if enabled

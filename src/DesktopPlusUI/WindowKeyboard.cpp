@@ -412,7 +412,7 @@ void WindowKeyboard::WindowUpdate()
                         }
                         case kbdlayout_key_action:
                         {
-                            vr_keyboard.SetActionDown(key.KeyActionID, false);
+                            vr_keyboard.SetActionDown(key.KeyActionUID, false);
                             break;
                         }
                         default: break;
@@ -755,25 +755,25 @@ void WindowKeyboard::WindowUpdate()
 
                 if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state)) && (use_key_repeat) )
                 {
-                    vr_keyboard.SetActionDown(key.KeyActionID, !button_state.IsDown);
+                    vr_keyboard.SetActionDown(key.KeyActionUID, !button_state.IsDown);
                     button_state.IsDown = !button_state.IsDown;
                 }
 
                 if (button_state.IsActivated)
                 {
-                    vr_keyboard.SetActionDown(key.KeyActionID, true);
+                    vr_keyboard.SetActionDown(key.KeyActionUID, true);
                     button_state.IsDown = true;
                 }
                 else if (button_state.IsDeactivated)
                 {
-                    vr_keyboard.SetActionDown(key.KeyActionID, false);
+                    vr_keyboard.SetActionDown(key.KeyActionUID, false);
                     button_state.IsDown = false;
                 }
 
                 //Right click to toggle key
                 if (button_state.IsRightClicked)
                 {
-                    vr_keyboard.SetActionDown(key.KeyActionID, !button_state.IsDown);
+                    vr_keyboard.SetActionDown(key.KeyActionUID, !button_state.IsDown);
                     button_state.IsDown = !button_state.IsDown;
                 }
 
@@ -1026,7 +1026,7 @@ int WindowKeyboard::FindSameKeyInNewSubLayout(int key_index, KeyboardLayoutSubLa
                     }
                     case kbdlayout_key_action:
                     {
-                        if (key.KeyActionID == key_ptr_current->KeyActionID)
+                        if (key.KeyActionUID == key_ptr_current->KeyActionUID)
                         {
                             return i;
                         }
@@ -1456,11 +1456,12 @@ void WindowKeyboardShortcuts::SetActiveWidget(ImGuiID widget_id)
     }
 }
 
-void WindowKeyboardShortcuts::SetDefaultPositionDirection(ImGuiDir pos_dir)
+void WindowKeyboardShortcuts::SetDefaultPositionDirection(ImGuiDir pos_dir, float y_offset)
 {
     if (!m_IsFadingOut)
     {
         m_PosDirDefault = pos_dir;
+        m_YOffsetDefault = y_offset;
     }
 }
 
@@ -1501,9 +1502,12 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
         default: break;
     }
 
-    const float pos_y      = ImGui::GetItemRectMin().y - ImGui::GetStyle().ItemSpacing.y;
-    const float pos_y_down = ImGui::GetItemRectMax().y + ImGui::GetStyle().ItemInnerSpacing.y;
-    const float pos_y_up   = ImGui::GetItemRectMin().y - ImGui::GetStyle().ItemSpacing.y - m_WindowHeight;
+    const float offset_down = (m_PosDirDefault == ImGuiDir_Down) ? m_YOffsetDefault : 0.0f;
+    const float offset_up   = (m_PosDirDefault == ImGuiDir_Up)   ? m_YOffsetDefault : 0.0f;
+
+    const float pos_y      = ImGui::GetItemRectMin().y - ImGui::GetStyle().ItemSpacing.y + m_YOffsetDefault;
+    const float pos_y_down = ImGui::GetItemRectMax().y + ImGui::GetStyle().ItemInnerSpacing.y + offset_down;
+    const float pos_y_up   = ImGui::GetItemRectMin().y - ImGui::GetStyle().ItemSpacing.y - m_WindowHeight + offset_up;
 
     //Wait for window height to be known and stable before setting pos or animating fade/pos
     if ((m_WindowHeight != FLT_MIN) && (m_WindowHeight == m_WindowHeightPrev))

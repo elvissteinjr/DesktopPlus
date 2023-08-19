@@ -752,7 +752,7 @@ void WindowOverlayBar::Update()
     ImGui::SameLine();
 
     //Action Buttons, if any
-    if (!ActionManager::Get().GetActionOverlayBarOrder().empty())
+    if (!ConfigManager::Get().GetActionManager().GetActionOrderListOverlayBar().empty())
     {
         UIManager::Get()->GetFloatingUI().GetActionBarWindow().UpdateActionButtons(k_ulOverlayID_None);
     }

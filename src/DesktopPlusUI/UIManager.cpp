@@ -889,11 +889,6 @@ WindowDesktopMode& UIManager::GetDesktopModeWindow()
     return m_WindowDesktopMode;
 }
 
-WindowSettingsActionEdit& UIManager::GetSettingsActionEditWindow()
-{
-    return m_WindowSettingsActionEdit;
-}
-
 void UIManager::SetWindowHandle(HWND handle)
 {
     m_WindowHandle = handle;
@@ -1330,6 +1325,18 @@ ImFont* UIManager::GetFontCompact() const
 ImFont* UIManager::GetFontLarge() const
 {
     return m_FontLarge;
+}
+
+void UIManager::AddFontBuilderStringIfAnyUnmappedCharacters(const char* str)
+{
+    if (ImGui::StringContainsUnmappedCharacter(str))
+    {
+        if (TextureManager::Get().AddFontBuilderString(str))
+        {
+            TextureManager::Get().ReloadAllTexturesLater();
+            RepeatFrame();
+        }
+    }
 }
 
 void UIManager::OnDPIChanged(int new_dpi, const RECT& new_window_rect)

@@ -107,6 +107,7 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
     //These need to always reset in case of underlying changes or even just language switching
     m_CropButtonLabel = "";
     m_WinRTSourceButtonLabel = "";
+    m_ActionButtonsLabel = "";
     MarkBrowserURLChanged();
     m_CachedSizes = {};
 
@@ -131,6 +132,10 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
         {
             m_BufferOverlayName[0] = '\0';
         }
+
+        //Update tags buffer
+        size_t copied_length = data.ConfigStr[configid_str_overlay_tags].copy(m_BufferOverlayTags, IM_ARRAYSIZE(m_BufferOverlayTags) - 1);
+        m_BufferOverlayTags[copied_length] = '\0';
 
         bool has_win32_window_icon = false;
         m_WindowIcon = TextureManager::Get().GetOverlayIconTextureID(data, true, &has_win32_window_icon);
@@ -337,6 +342,8 @@ void WindowOverlayProperties::WindowUpdate()
                 case wndovrlprop_page_position_change:         UpdatePagePositionChange();        break;
                 case wndovrlprop_page_crop_change:             UpdatePageCropChange();            break;
                 case wndovrlprop_page_graphics_capture_source: UpdatePageGraphicsCaptureSource(); break;
+                case wndovrlprop_page_actions_order:           UpdatePageActionsOrder();          break;
+                case wndovrlprop_page_actions_order_add:       UpdatePageActionsOrderAdd();       break;
                 default: break;
             }
         }
@@ -1103,11 +1110,7 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
         if (ImGui::IsItemEdited())
         {
             //Add unmapped characters if they appear while typing
-            if (ImGui::StringContainsUnmappedCharacter(buffer_url))
-            {
-                TextureManager::Get().AddFontBuilderString(buffer_url);
-                TextureManager::Get().ReloadAllTexturesLater();
-            }
+            UIManager::Get()->AddFontBuilderStringIfAnyUnmappedCharacters(buffer_url);
 
             can_restore_last_user_input = true;
         }
@@ -1501,23 +1504,24 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
         ImGui::NextColumn();
     }
 
-    //Overlay Group (until this finally gets replaced)
+    //Overlay Tags
     {
+        static FloatingWindowInputOverlayTagsState input_tags_state;
+
         ImGui::AlignTextToFramePadding();
-        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAdvancedOverlayGroup));
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAdvancedOverlayTags));
 
         ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-        HelpMarker(TranslationManager::GetString(tstr_OvrlPropsAdvancedOverlayGroupTip));
+        HelpMarker(TranslationManager::GetString(tstr_OvrlPropsAdvancedOverlayTagsTip));
 
         ImGui::NextColumn();
 
-        int group_id = clamp(ConfigManager::Get().GetRef(configid_int_overlay_group_id), 0, 3);
-
-        ImGui::SetNextItemWidth(-1);
-        if (TranslatedComboAnimated("##ComboGroupID", group_id, tstr_OvrlPropsAdvancedOverlayGroupIDNone, tstr_OvrlPropsAdvancedOverlayGroupID3))
+        if (InputOverlayTags("TargetTags", m_BufferOverlayTags, IM_ARRAYSIZE(m_BufferOverlayTags), input_tags_state))
         {
-            ConfigManager::Get().SetValue(configid_int_overlay_group_id, group_id);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_overlay_group_id), group_id);
+            OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+            data.ConfigStr[configid_str_overlay_tags] = m_BufferOverlayTags;
+            IPCManager::Get().SendStringToDashboardApp(configid_str_overlay_tags, data.ConfigStr[configid_str_overlay_tags], UIManager::Get()->GetWindowHandle());
         }
     }
 
@@ -1559,7 +1563,7 @@ void WindowOverlayProperties::UpdatePageMainCatPerformance()
 
         ImGui::NextColumn();
     }
-    else    //Update limiter for everyhting else
+    else    //Update limiter for everything else
     {
         UpdateLimiterSetting(true);
     }
@@ -1588,6 +1592,17 @@ void WindowOverlayProperties::UpdatePageMainCatInterface()
 {
     OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
+    if (m_PageReturned == wndovrlprop_page_actions_order)
+    {
+        m_ActionButtonsLabel.clear();
+    }
+
+    if (m_ActionButtonsLabel.empty())
+    {
+        m_ActionButtonsLabel = TranslationManager::GetString( (data.ConfigActionBarOrder.size() == 1) ? tstr_SettingsActionsOrderButtonLabelSingular : tstr_SettingsActionsOrderButtonLabel );
+        StringReplaceAll(m_ActionButtonsLabel, "%COUNT%", std::to_string(data.ConfigActionBarOrder.size()));
+    }
 
     ImGui::Spacing();
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatInterface));
@@ -1628,6 +1643,26 @@ void WindowOverlayProperties::UpdatePageMainCatInterface()
         ImGui::Spacing();
         ImGui::NextColumn();
     }
+
+    bool custom_order = !ConfigManager::GetValue(configid_bool_overlay_actionbar_order_use_global);  //Meaning is reversed in config, but just handle it here
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsInterfaceActionOrderCustom), &custom_order))
+    {
+        ConfigManager::SetValue(configid_bool_overlay_actionbar_order_use_global, !custom_order);
+    }
+    ImGui::NextColumn();
+
+    if (!custom_order)
+        ImGui::PushItemDisabled();
+
+    if (ImGui::Button(m_ActionButtonsLabel.c_str()))
+    {
+       PageGoForward(wndovrlprop_page_actions_order);
+    }
+    ImGui::NextColumn();
+
+    if (!custom_order)
+        ImGui::PopItemDisabled();
 
     //Don't show for UI source overlays
     if (data.ConfigInt[configid_int_overlay_capture_source] != ovrl_capsource_ui)
@@ -2879,6 +2914,53 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
     ImGui::SameLine();
 
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel)))
+    {
+        PageGoBack();
+    }
+}
+
+void WindowOverlayProperties::UpdatePageActionsOrder(bool only_restore_settings)
+{
+    static FloatingWindowActionOrderListState page_state;
+
+    OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+    if (only_restore_settings)
+    {
+        if (!page_state.HasSavedChanges)
+        {
+            data.ConfigActionBarOrder = page_state.ActionListOrig;
+        }
+        return;
+    }
+
+    bool go_add_actions = false;
+    bool go_back = ActionOrderList(data.ConfigActionBarOrder, (m_PageAppearing == wndovrlprop_page_actions_order), (m_PageReturned == wndovrlprop_page_actions_order_add), page_state, go_add_actions);
+
+    if (m_PageReturned == wndovrlprop_page_actions_order_add)
+    {
+        m_PageReturned = wndovrlprop_page_none;
+    }
+
+    if (go_add_actions)
+    {
+        PageGoForward(wndovrlprop_page_actions_order_add);
+    }
+    else if (go_back)
+    {
+        PageGoBack();
+    }
+}
+
+void WindowOverlayProperties::UpdatePageActionsOrderAdd()
+{
+    static FloatingWindowActionAddSelectorState page_state;
+
+    OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+    bool go_back = ActionAddSelector(data.ConfigActionBarOrder, (m_PageAppearing == wndovrlprop_page_actions_order_add), page_state);
+
+    if (go_back)
     {
         PageGoBack();
     }

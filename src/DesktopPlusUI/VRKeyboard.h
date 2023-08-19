@@ -56,7 +56,7 @@ struct KeyboardLayoutKey
     unsigned char KeyCode = 0;
     std::string KeyString;
     KeyboardLayoutSubLayout KeySubLayoutToggle = kbdlayout_sub_base;
-    ActionID KeyActionID = action_none;
+    ActionUID KeyActionUID = k_ActionUID_Invalid;
 };
 
 enum KeyboardInputTarget
@@ -85,6 +85,8 @@ class VRKeyboard
         ImGuiID m_ActiveInputText;
         ImGuiID m_InputBeginWidgetID;
         ImGuiDir m_ShortcutWindowDirHint;
+        float m_ShortcutWindowYOffset;
+        bool m_ActiveInputTextIsMultiline;
         bool m_MouseLeftDownPrevCached;
         bool m_MouseLeftClickedPrevCached;
         bool m_KeyboardHiddenLastFrame;
@@ -110,12 +112,12 @@ class VRKeyboard
         bool GetKeyDown(unsigned char keycode) const;
         void SetKeyDown(unsigned char keycode, bool down, bool block_modifiers = false);
         void SetStringDown(const std::string text, bool down);
-        void SetActionDown(ActionID action_id, bool down);
+        void SetActionDown(ActionUID action_uid, bool down);
         bool IsCapsLockToggled() const;
         void ResetState();
 
-        void VRKeyboardInputBegin(const char* str_id);
-        void VRKeyboardInputBegin(ImGuiID widget_id);
+        void VRKeyboardInputBegin(const char* str_id, bool is_multiline = false);
+        void VRKeyboardInputBegin(ImGuiID widget_id, bool is_multiline = false);
         void VRKeyboardInputEnd();
 
         void OnImGuiNewFrame();
@@ -126,8 +128,8 @@ class VRKeyboard
         void UpdateImGuiModifierState() const;
         void RestoreDesktopModifierState() const;
 
-        //Positioning hint used by the shortcut window. Set when the default down direction would cover related widgets. Resets automatically
-        void SetShortcutWindowDirectionHint(ImGuiDir dir_hint);
+        //Positioning hint used by the shortcut window. Set when the default down direction would cover related widgets. Offset only used with hint dir. Resets automatically
+        void SetShortcutWindowDirectionHint(ImGuiDir dir_hint, float y_offset = 0.0f);
 
         static KeyboardLayoutMetadata LoadLayoutMetadataFromFile(const std::string& filename);
 };

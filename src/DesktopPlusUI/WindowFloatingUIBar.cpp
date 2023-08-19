@@ -506,7 +506,7 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
     int& current_desktop = overlay_config.ConfigInt[current_configid];
     int current_desktop_new = current_desktop;
 
-    if (ConfigManager::GetValue(configid_bool_interface_mainbar_desktop_include_all))
+    if (ConfigManager::GetValue(configid_bool_interface_desktop_buttons_include_combined))
     {
         if (disable_combined)
             ImGui::PushItemDisabled();
@@ -540,9 +540,9 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
     if (disable_normal)
         ImGui::PushItemDisabled();
 
-    switch (ConfigManager::GetValue(configid_int_interface_mainbar_desktop_listing))
+    switch (ConfigManager::GetValue(configid_int_interface_desktop_listing_style))
     {
-        case mainbar_desktop_listing_individual:
+        case desktop_listing_style_individual:
         {
             for (int i = 0; i < desktop_count; ++i)
             {
@@ -579,7 +579,7 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
             }
             break;
         }
-        case mainbar_desktop_listing_cycle:
+        case desktop_listing_style_cycle:
         {
             ImGui::PushID(tmtex_icon_desktop_prev);
             TextureManager::Get().GetTextureInfo(tmtex_icon_desktop_prev, b_size, b_uv_min, b_uv_max);
@@ -644,25 +644,21 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
     ImGui::PopID();
 }
 
-void WindowFloatingUIActionBar::ButtonActionKeyboard(unsigned int overlay_id, ImVec2& b_size_default)
+void WindowFloatingUIActionBar::ButtonActionKeyboard(const Action& action, const ImVec2& size, unsigned int overlay_id)
 {
     FloatingWindow& keyboard_window = UIManager::Get()->GetVRKeyboard().GetWindow();
+    const ActionManager& action_manager = ConfigManager::Get().GetActionManager();
     ImGuiIO& io = ImGui::GetIO();
     const bool is_keyboard_visible = keyboard_window.IsVisible();
-    ImVec2 b_size, b_uv_min, b_uv_max;
-
-    TextureManager::Get().GetTextureInfo(tmtex_icon_keyboard, b_size, b_uv_min, b_uv_max);
 
     if (is_keyboard_visible)
         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+    if (ButtonAction(action, size))
     {
         if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 3.0f) //Don't do normal button behavior after reset was just triggered
         {
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, action_show_keyboard);
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+            action_manager.DoAction(action.UID);    //We only support DoAction here since we want holding down the button to not trigger the action already
         }
     }
 
@@ -830,111 +826,122 @@ void WindowFloatingUIActionBar::UpdateActionButtons(unsigned int overlay_id)
     //as well as still providing a way to change the size of text buttons by editing the settings icon's dimensions
     ImVec2 b_size_default = b_size;
 
+    const ActionManager& action_manager = ConfigManager::Get().GetActionManager();
     OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
-    auto& custom_actions = ConfigManager::Get().GetCustomActions();
-
-    auto& action_order = (is_overlay_bar) ? ActionManager::Get().GetActionOverlayBarOrder() :
-                         (data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]) ? ActionManager::Get().GetActionMainBarOrder() : data.ConfigActionBarOrder;
+    const auto& action_order = (is_overlay_bar) ? action_manager.GetActionOrderListOverlayBar() :
+                               (data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]) ? action_manager.GetActionOrderListBarDefault() : data.ConfigActionBarOrder;
 
     int list_id = 0;
-    for (auto& order_data : action_order)
+    for (ActionUID uid : action_order)
     {
-        if (order_data.visible)
+        const Action action = action_manager.GetAction(uid);
+
+        //Detect normal Show Keyboard action by translation ID and provide special behavior
+        if (action.NameTranslationID == tstr_DefActionShowKeyboard)
         {
-            ImGui::PushID(list_id);
-
-            if (order_data.action_id < action_built_in_MAX) //Built-in action
-            {
-                bool has_button_func = false;
-                bool has_icon = false;
-
-                //Some built-in actions use their own button function to adjust to current state, others just their own icon
-                switch (order_data.action_id)
-                {
-                    case action_show_keyboard: ButtonActionKeyboard(overlay_id, b_size_default); has_button_func = true;                                  break;
-                    case action_switch_task:   TextureManager::Get().GetTextureInfo(tmtex_icon_switch_task, b_size, b_uv_min, b_uv_max); has_icon = true; break;
-                    default:                   has_icon = false;
-                }
-
-                if (!has_button_func)
-                {
-                    if (has_icon)
-                    {
-                        if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
-                        {
-                            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
-                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
-                            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
-                        }
-                        DisplayTooltipIfHovered(ActionManager::Get().GetActionName(order_data.action_id));
-                    }
-                    else
-                    {
-                        if (ImGui::ButtonWithWrappedLabel(ActionManager::Get().GetActionButtonLabel(order_data.action_id), b_size_default))
-                        {
-                            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)overlay_id);
-                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
-                            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
-                        }
-                    }
-                }
-            }
-            else if (order_data.action_id >= action_custom) //Custom action
-            {
-                const CustomAction& custom_action = custom_actions[order_data.action_id - action_custom];
-                if (custom_action.IconImGuiRectID != -1)
-                {
-                    TextureManager::Get().GetTextureInfo(custom_action, b_size, b_uv_min, b_uv_max);
-                    if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
-                    {
-                        if (custom_action.FunctionType != caction_press_keys)   //Press and release of action keys is handled below instead
-                        {
-                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
-                        }
-                    }
-                }
-                else
-                {
-                    if (ImGui::ButtonWithWrappedLabel(ActionManager::Get().GetActionName(order_data.action_id), b_size_default))
-                    {
-                        if (custom_action.FunctionType != caction_press_keys)
-                        {
-                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
-                        }
-                    }
-                }
-
-                //Enable press and release of action keys based on button press
-                if (custom_action.FunctionType == caction_press_keys)
-                {
-                    if (ImGui::IsItemActivated())
-                    {
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_start, order_data.action_id);
-                    }
-
-                    if (ImGui::IsItemDeactivated())
-                    {
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_stop, order_data.action_id);
-                    }
-                }
-
-                //Only display tooltip if the label isn't already on the button (is here since we need ImGui::IsItem*() to work on the button)
-                if (custom_action.IconImGuiRectID != -1)
-                {
-                    DisplayTooltipIfHovered(ActionManager::Get().GetActionName(order_data.action_id));
-                }
-            }
-            ImGui::SameLine();
-
-            ImGui::PopID();
+            ButtonActionKeyboard(action, b_size, overlay_id);
         }
-        list_id++;
+        else    //Every other action
+        {
+            ButtonAction(action, b_size);
+
+            if (ImGui::IsItemActivated())
+            {
+                action_manager.StartAction(uid);
+            }
+            else if (ImGui::IsItemDeactivated())
+            {
+                action_manager.StopAction(uid);
+            }
+
+            //Only display tooltip if the label isn't already on the button (is here since we need ImGui::IsItem*() to work on the button)
+            if (action.Label.empty())
+            {
+                DisplayTooltipIfHovered(action_manager.GetTranslatedName(uid));
+            }
+        }
+
+        ImGui::SameLine();
     }
 
     ImGui::PopStyleColor(); //ImGuiCol_ChildBg
     ImGui::PopID();
 
     m_TooltipPositionForOverlayBar = false;
+}
+
+bool WindowFloatingUIActionBar::ButtonAction(const Action& action, const ImVec2& size, bool use_temp_icon)
+{
+    bool ret = false;
+
+    ImGui::PushID((void*)action.UID);
+    ImGui::BeginGroup();
+
+    const ImGuiStyle& style = ImGui::GetStyle();
+
+    if ((action.IconImGuiRectID != -1) || ((use_temp_icon) && (!action.IconFilename.empty())))
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        ImVec2 b_size, b_uv_min, b_uv_max;
+
+        if (use_temp_icon)
+        {
+            TextureManager::Get().GetTextureInfo(tmtex_icon_temp, b_size, b_uv_min, b_uv_max);
+        }
+        else
+        {
+            TextureManager::Get().GetTextureInfo(action, b_size, b_uv_min, b_uv_max);
+        }
+
+        ret = ImGui::ImageButton(io.Fonts->TexID, size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    }
+    else
+    {
+        ret = ImGui::Button("##ActionButton", ImVec2(size.x + (style.FramePadding.x * 2.0f), size.y + (style.FramePadding.y * 2.0f)) );
+    }
+
+    if (!action.Label.empty())
+    {
+        ImGui::SameLine(0.0f, 0.0f);
+
+        const char* label = (action.LabelTranslationID == tstr_NONE) ? action.Label.c_str() : TranslationManager::GetString(action.LabelTranslationID);
+        const char* label_end = label + strlen(label);
+        const char* line_start = label;
+        const char* line_end = nullptr;
+        ImVec2 label_size = ImGui::CalcTextSize(label, label_end);
+    
+        const float pos_x = ImGui::GetCursorPosX() - size.x - style.FramePadding.x;
+        float pos_y = ImGui::GetCursorPosY() + int( (size.y / 2.0f) - (label_size.y / 2.0f) );
+
+        while (line_start < label_end)
+        {
+            line_end = (const char*)memchr(line_start, '\n', label_end - line_start);
+
+            if (line_end == nullptr)
+                line_end = label_end;
+
+            ImVec2 line_size = ImGui::CalcTextSize(line_start, line_end);
+            float line_xscale = (size.x + style.FramePadding.x / 2.0f) / line_size.x;
+
+            if (line_xscale > 1.0f)
+                line_xscale = 1.0f;
+
+            ImGui::SetCursorPosX( pos_x + int( ((size.x / 2.0f) - (line_size.x * line_xscale) / 2.0f) ) );
+            ImGui::SetCursorPosY(pos_y);
+
+            ImGui::BeginStretched();
+            ImGui::TextUnformatted(line_start, line_end);
+            ImGui::EndStretched(line_xscale);
+
+            line_start = line_end + 1;
+            pos_y += ImGui::GetTextLineHeight();
+        }
+    }
+
+    ImGui::EndGroup();
+    ImGui::PopID();
+
+    return ret;
 }
 
 

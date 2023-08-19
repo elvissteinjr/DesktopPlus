@@ -86,7 +86,6 @@
       <Filter>Shared</Filter>
     </ClCompile>
     <ClCompile Include="AuxUI.cpp" />
-    <ClCompile Include="WindowSettingsActionEdit.cpp" />
     <ClCompile Include="..\Shared\DPBrowserAPIClient.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
@@ -185,7 +184,6 @@
       <Filter>Shared</Filter>
     </ClInclude>
     <ClInclude Include="AuxUI.h" />
-    <ClInclude Include="WindowSettingsActionEdit.h" />
     <ClInclude Include="..\Shared\DPBrowserAPI.h">
       <Filter>Shared</Filter>
     </ClInclude>

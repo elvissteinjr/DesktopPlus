@@ -5,6 +5,7 @@
 #include "InterprocessMessaging.h"
 #include "Util.h"
 #include "ImGuiExt.h"
+#include "imgui_internal.h"
 
 FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
                                    m_Alpha(0.0f),
@@ -487,6 +488,807 @@ void FloatingWindow::UpdateLimiterSetting(bool is_override) const
     }
 
     ImGui::NextColumn();
+}
+
+bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, size_t buffer_tags_size, FloatingWindowInputOverlayTagsState& state, int clip_parent_depth)
+{
+    static const int single_tag_buffer_size = IM_ARRAYSIZE(state.TagEditBuffer);
+
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    float widget_width = 0.0f;
+    bool is_widget_hovered = false;
+
+    float child_height = ImGui::GetTextLineHeight() + style.FramePadding.y * 2.0f;
+    child_height += ImGui::GetTextLineHeightWithSpacing() * (state.ChildHeightLines - 1.0f);
+
+    ImGui::PushID(str_id);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, style.FramePadding);
+    if (ImGui::BeginChild("InputOverlayTags", {-style.ChildBorderSize, child_height}, true, ImGuiWindowFlags_NavFlattened))
+    {
+        ImGui::PopStyleVar();
+
+        state.ChildHeightLines = 1.0f;
+        widget_width = ImGui::GetWindowWidth();
+        is_widget_hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+
+        //Split input string into individual tags and show a small button for each
+        const char* str = buffer_tags;
+        const char* str_end = str + strlen(str);
+        const char* tag_start = str;
+        const char* tag_end = nullptr;
+        char buffer_single_tag[single_tag_buffer_size] = "";
+        int tag_id = 0;
+
+        while (tag_start < str_end)
+        {
+            tag_end = (const char*)memchr(tag_start, ' ', str_end - tag_start);
+
+            if (tag_end == nullptr)
+                tag_end = str_end;
+
+            size_t length = tag_end - tag_start;
+
+            //Break if tag doesn't fit (would be comically long though)
+            if (length >= single_tag_buffer_size)
+                break;
+
+            if (length > 0)
+            {
+                memcpy(buffer_single_tag, tag_start, length);
+                buffer_single_tag[length] = '\0';
+
+                if (tag_id != 0)
+                {
+                    ImVec2 text_size = ImGui::CalcTextSize(buffer_single_tag);
+                    text_size.x += style.ItemSpacing.x;
+
+                    if (text_size.x > ImGui::GetContentRegionAvail().x)
+                    {
+                        ImGui::NewLine();
+                        state.ChildHeightLines += 1.0f;
+                    }
+                }
+
+                ImGui::PushID(tag_id);
+
+                if (ImGui::SmallButton(buffer_single_tag))
+                {
+                    //Copy tag into edit buffer
+                    memcpy(state.TagEditBuffer, buffer_single_tag, single_tag_buffer_size);
+
+                    //Also keep a copy to put back when canceling
+                    state.TagEditOrigStr = state.TagEditBuffer;
+
+                    //Remove tag from full string
+                    std::string str_tags = buffer_tags;
+                    str_tags.erase(tag_start - str, length);
+                    StringReplaceAll(str_tags, "  ", " ");               //Clean up double whitespace separators, no matter where they came from
+
+                    //Cleanup stray space at the beginning too
+                    if ((!str_tags.empty()) && (str_tags[0] == ' '))
+                    {
+                        str_tags.erase(0, 1);
+                    }
+
+                    //Copy back to buffer
+                    size_t copied_length = str_tags.copy(buffer_tags, buffer_tags_size - 1);
+                    buffer_tags[copied_length] = '\0';
+
+                    //Open popup to allow editing
+                    state.PopupShow = true;
+                    state.FocusTextInput = true;
+
+                    //We modified the buffer we're looping over, get out of here
+                    UIManager::Get()->RepeatFrame(5);   //Prevent hover flicker from the button that take this one's place
+                    ImGui::PopID();
+                    ImGui::EndChild();
+                    ImGui::PopID();
+
+                    return true;
+                }
+
+                ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+
+                ImGui::PopID();
+                tag_id++;
+            }
+
+            tag_start = tag_end + 1;
+        }
+
+        if (tag_id != 0)
+        {
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+
+            ImVec2 text_size = ImGui::CalcTextSize("+");
+            text_size.x += style.ItemSpacing.x;
+
+            if (text_size.x > ImGui::GetContentRegionAvail().x)
+            {
+                ImGui::NewLine();
+                state.ChildHeightLines += 1.0f;
+            }
+        }
+
+        //There are two plus-shaped buttons on the screen when the popup is up.
+        //This one will just clear the text input then and might be accidentally pressed instead of the bigger one. Disable it to prevent accidents
+        //Similar thing applies to the tag buttons themselves, but that behavior is at least useful for editing there
+        const bool disable_add = state.PopupShow;
+        if (disable_add)
+        {
+            ImGui::PushItemDisabledNoVisual();
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+        }
+    
+        //Add some frame padding in VR mode only to have a more square-ish button that is also easier to hit
+        //Due to how we do style-scaling this isn't necessary in desktop mode
+        if (!UIManager::Get()->IsInDesktopMode())
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {style.FramePadding.x * 1.5f, 0.0f});
+
+        if (ImGui::SmallButton("+##AddTag"))
+        {
+            state.TagEditBuffer[0] = '\0';
+            state.TagEditOrigStr = state.TagEditBuffer;
+
+            state.PopupShow = true;
+            state.FocusTextInput = true;
+        }
+
+        if (!UIManager::Get()->IsInDesktopMode())
+            ImGui::PopStyleVar();
+
+        if (disable_add)
+        {
+            ImGui::PopStyleColor();
+            ImGui::PopItemDisabledNoVisual();
+        }
+    }
+    else
+    {
+        ImGui::PopStyleVar();   //ImGuiStyleVar_WindowPadding
+    }
+
+    //Avoid scrollbar flicker while figuring out child window size
+    if ((ImGui::IsAnyScrollBarVisible()) && (state.ChildHeightLines <= 3.0f))
+    {
+        UIManager::Get()->RepeatFrame();
+    }
+
+    //Show up to 3 lines before adding a scrollbar
+    state.ChildHeightLines = std::min(state.ChildHeightLines, 3.0f);
+
+    ImGui::EndChild();
+
+    //--Popup Window
+    if (!state.PopupShow)
+    {
+        ImGui::PopID();
+        return false;
+    }
+
+    ImGuiIO& io = ImGui::GetIO();
+    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
+    const float pos_y      = ImGui::GetItemRectMin().y - ImGui::GetStyle().ItemSpacing.y;
+    const float pos_y_down = ImGui::GetItemRectMax().y + ImGui::GetStyle().ItemInnerSpacing.y;
+    const float pos_y_up   = ImGui::GetItemRectMin().y - ImGui::GetStyle().ItemSpacing.y - state.PopupHeight;
+
+    bool update_filter = false;
+    bool ret = false;
+
+    //Wait for window height to be known and stable before setting pos or animating fade/pos
+    if ((state.PopupHeight != FLT_MIN) && (state.PopupHeight == state.PopupHeightPrev))
+    {
+        ImGui::SetNextWindowPos(ImVec2(ImGui::GetItemRectMin().x, smoothstep(state.PosAnimationProgress, pos_y_down, pos_y_up) ));
+
+        const float time_step = ImGui::GetIO().DeltaTime * 6.0f;
+
+        state.PopupAlpha += (!state.IsFadingOut) ? time_step : -time_step;
+
+        if (state.PopupAlpha > 1.0f)
+            state.PopupAlpha = 1.0f;
+        else if (state.PopupAlpha < 0.0f)
+            state.PopupAlpha = 0.0f;
+
+        state.PosAnimationProgress += (state.PosDir == ImGuiDir_Up) ? time_step : -time_step;
+
+        if (state.PosAnimationProgress > 1.0f)
+            state.PosAnimationProgress = 1.0f;
+        else if (state.PosAnimationProgress < 0.0f)
+            state.PosAnimationProgress = 0.0f;
+    }
+    else if (state.PopupHeight == FLT_MIN)   //Popup is appearing
+    {
+        state.KnownTagsList = OverlayManager::Get().GetKnownOverlayTagList();
+        update_filter = true;
+    }
+
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, state.PopupAlpha);
+
+    //Look up parent window (optionally digging deeper to avoid child windows) and get its clipping rect
+    ImGuiWindow* window_parent = ImGui::GetCurrentWindow();
+    ImGuiWindow* window_parent_lookup = window_parent;
+
+    while (clip_parent_depth > 0)
+    {
+        window_parent_lookup = window_parent_lookup->ParentWindow;
+        clip_parent_depth--;
+
+        if (window_parent_lookup != nullptr)
+        {
+            window_parent = window_parent_lookup;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    ImRect clip_rect = window_parent->ClipRect;
+    clip_rect.Max.y = window_parent->Size.y + clip_rect.Min.y;   //Set Max.y from window content size as FLT_MAX values break drawlist commands for some reason
+
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | 
+                                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground;
+
+    ImGui::SetNextWindowSize(ImVec2(widget_width, ImGui::GetTextLineHeightWithSpacing() * 11.5f));
+    ImGui::Begin("##WindowAddTags", nullptr, flags);
+
+
+    //Transfer scroll input to parent window (which isn't a real parent window but just the one in the stack), so this window doesn't block scrolling
+    ImGui::ScrollBeginStackParentWindow();
+
+    //Use clipping rect of parent window
+    ImGui::PushClipRect(clip_rect.Min, clip_rect.Max, false);
+
+    //Draw background + border manually so it can be clipped properly
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    ImRect window_rect = window->Rect();
+    window->DrawList->AddRectFilled(window_rect.Min, window_rect.Max, ImGui::GetColorU32(ImGuiCol_PopupBg), window->WindowRounding);
+    window->DrawList->AddRect(window_rect.Min, window_rect.Max, ImGui::GetColorU32(ImGuiCol_Border), window->WindowRounding, 0, window->WindowBorderSize);
+
+    //Disable inputs when fading out
+    const bool disable_items = state.IsFadingOut;
+    if (disable_items)
+        ImGui::PushItemDisabledNoVisual();
+
+    //-Window contents
+    static float buttons_width = 0.0f;
+    bool add_current_input = false;
+
+    if (state.FocusTextInput)
+    {
+        ImGui::SetKeyboardFocusHere();
+    }
+
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - buttons_width - style.ItemInnerSpacing.x);
+
+    //Set up shortcut window so it does not block the tag listing itself either. It's a little bit awkward looking like this, but better than blocking the buttons
+    vr_keyboard.SetShortcutWindowDirectionHint(ImGuiDir_Up, (state.PosDir == ImGuiDir_Down) ? -child_height - style.ItemSpacing.y - style.ItemSpacing.y : -style.ItemInnerSpacing.y);
+    vr_keyboard.VRKeyboardInputBegin("##InputTagEdit");
+    if (ImGui::InputTextWithHint("##InputTagEdit", TranslationManager::GetString(tstr_DialogInputTagsHint), state.TagEditBuffer, single_tag_buffer_size, 
+                                 ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_EnterReturnsTrue))
+    {
+        add_current_input = !state.IsTagAlreadyInBuffer;
+    }
+    vr_keyboard.VRKeyboardInputEnd();
+
+    //Wait until the actually have focus before turning the flag off
+    if (ImGui::IsItemActive())
+    {
+        state.FocusTextInput = false;
+    }
+
+    //Check if tag would be a duplicate and disable adding in that case
+    if (ImGui::IsItemEdited())
+    {
+        state.IsTagAlreadyInBuffer = OverlayManager::MatchOverlayTagSingle(buffer_tags, state.TagEditBuffer);
+        update_filter = true;
+
+        UIManager::Get()->AddFontBuilderStringIfAnyUnmappedCharacters(state.TagEditBuffer);
+    }
+
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+
+    ImGui::BeginGroup();
+
+    ImVec2 b_size, b_uv_min, b_uv_max;
+    ImVec2 b_size_real = ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight());
+    TextureManager::Get().GetTextureInfo(tmtex_icon_add, b_size, b_uv_min, b_uv_max);
+
+    if (state.IsTagAlreadyInBuffer)
+        ImGui::PushItemDisabled();
+
+    ImGui::PushID("AddButton");
+    if (ImGui::ImageButton(io.Fonts->TexID, b_size_real, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+    {
+        add_current_input = true;
+    }
+    ImGui::PopID();
+
+    if (state.IsTagAlreadyInBuffer)
+        ImGui::PopItemDisabled();
+
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+
+    TextureManager::Get().GetTextureInfo(tmtex_icon_small_close, b_size, b_uv_min, b_uv_max);
+    ImGui::PushID("DeleteButton");
+    if (ImGui::ImageButton(io.Fonts->TexID, b_size_real, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+    {
+        state.TagEditBuffer[0] = '\0';
+        state.TagEditOrigStr = "";
+        state.IsTagAlreadyInBuffer = true;
+        update_filter = true;
+    }
+    ImGui::PopID();
+
+    ImGui::EndGroup();
+
+    buttons_width = ImGui::GetItemRectSize().x;
+
+    ImGui::BeginChild("ChildKnownTags", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_NavFlattened);
+
+    for (const auto& list_entry : state.KnownTagsList)
+    {
+        if (state.KnownTagsFilter.PassFilter(list_entry.Tag.c_str()))
+        {
+            if (list_entry.IsAutoTag)
+                ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextNotification);
+
+            if (ImGui::Selectable(list_entry.Tag.c_str()))
+            {
+                size_t copied_length = list_entry.Tag.copy(state.TagEditBuffer, buffer_tags_size - 1);
+                state.TagEditBuffer[copied_length] = '\0';
+
+                add_current_input = true;
+                state.TagEditOrigStr = "";
+            }
+
+            if (list_entry.IsAutoTag)
+                ImGui::PopStyleColor();
+        }
+    }
+
+    ImGui::EndChild();
+
+    if (disable_items)
+        ImGui::PopItemDisabledNoVisual();
+
+    //Abandoned popup while editing existing tag, put it back
+    if ((state.IsFadingOut) && (!state.TagEditOrigStr.empty()))
+    {
+        size_t copied_length = state.TagEditOrigStr.copy(state.TagEditBuffer, buffer_tags_size - 1);
+        state.TagEditBuffer[copied_length] = '\0';
+
+        state.TagEditOrigStr = "";
+        add_current_input = true;
+        update_filter = true;
+    }
+
+    if (add_current_input)
+    {
+        //Check if tag is already in the string first and just don't add it then
+        if (!OverlayManager::MatchOverlayTagSingle(buffer_tags, state.TagEditBuffer))
+        {
+            std::string str_tags = buffer_tags;
+
+            if (!str_tags.empty())
+            {
+                str_tags += " ";
+            }
+
+            str_tags += state.TagEditBuffer;
+
+            size_t copied_length = str_tags.copy(buffer_tags, buffer_tags_size - 1);
+            buffer_tags[copied_length] = '\0';
+        }
+
+        state.TagEditOrigStr = "";
+
+        ret = true;
+        state.IsFadingOut = true;
+        UIManager::Get()->RepeatFrame();
+    }
+
+    if (update_filter)
+    {
+        //Update filter manually (we don't use its buffer directly as its size is fixed to 256)
+        size_t length = strlen(state.TagEditBuffer);
+        if (length < (size_t)IM_ARRAYSIZE(state.KnownTagsFilter.InputBuf))
+        {
+            memcpy(state.KnownTagsFilter.InputBuf, state.TagEditBuffer, length);
+            state.KnownTagsFilter.InputBuf[length] = '\0';
+
+            state.KnownTagsFilter.Build();
+        }
+    }
+
+    //Switch directions if there's no space in the default direction
+    if (state.PosDirDefault == ImGuiDir_Down)
+    {
+        state.PosDir = (pos_y_down + ImGui::GetWindowSize().y > clip_rect.Max.y) ? ImGuiDir_Up : ImGuiDir_Down;
+    }
+    else
+    {
+        //Not using pos_y_up here as it's not valid yet (state.PopupHeight not set) 
+        state.PosDir = (pos_y - ImGui::GetWindowSize().y < clip_rect.Min.y) ? ImGuiDir_Down : ImGuiDir_Up;
+    }
+
+    if (state.PopupAlpha == 0.0f)
+    {
+        state.PosAnimationProgress = (state.PosDir == ImGuiDir_Down) ? 0.0f : 1.0f;
+    }
+
+    //Fade out on focus loss
+    if ((!ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows)) && (!ImGui::IsAnyItemActive()))
+    {
+        state.IsFadingOut = true;
+    }
+
+    //Cache window height so it's available on the next frame before beginning the window
+    state.PopupHeightPrev = state.PopupHeight;
+    state.PopupHeight = ImGui::GetWindowSize().y;
+
+    ImGui::End();
+
+    ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
+
+    //Reset when fade-out is done
+    if ( (state.IsFadingOut) && (state.PopupAlpha == 0.0f) )
+    {
+        state.IsFadingOut = false;
+        state.PopupHeight = FLT_MIN;
+        state.PosDir = state.PosDirDefault;
+        state.PosAnimationProgress = (state.PosDirDefault == ImGuiDir_Down) ? 0.0f : 1.0f;
+        state.PopupShow = false;
+    }
+
+    ImGui::PopID();
+
+    return ret;
+}
+
+bool FloatingWindow::ActionOrderList(ActionManager::ActionList& list_actions_target, bool is_appearing, bool is_returning, FloatingWindowActionOrderListState& state, 
+                                     bool& go_add_actions, float height_offset)
+{
+    static float list_buttons_width = 0.0f;
+    static ImVec2 no_actions_text_size;
+
+    const ImGuiStyle& style = ImGui::GetStyle();
+    ImGuiIO& io = ImGui::GetIO();
+    ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+
+    if ((is_appearing) || (is_returning))
+    {
+        state.HasSavedChanges = false;
+        state.SelectedIndex = -1;
+
+        state.ActionsList.clear();
+        for (ActionUID uid : list_actions_target)
+        {
+            state.ActionsList.push_back({uid, action_manager.GetTranslatedName(uid)});
+        }
+    }
+
+    if (is_appearing)
+    {
+        state.ActionListOrig = list_actions_target;
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsActionsOrderHeader)); 
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    const float item_height = ImGui::GetFrameHeight() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.ItemInnerSpacing.y;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 16.0f : 14.0f;
+
+    ImGui::BeginChild("ActionList", ImVec2(0.0f, (item_height * item_count) + inner_padding + height_offset), true);
+
+    if ((is_appearing) || (is_returning))
+    {
+        ImGui::SetScrollY(0.0f);
+    }
+
+    //Display error if there are no actions
+    if (state.ActionsList.size() == 0)
+    {
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x / 2.0f - (no_actions_text_size.x / 2.0f));
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y / 2.0f - (no_actions_text_size.y / 2.0f));
+
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsOrderNoActions));
+        no_actions_text_size = ImGui::GetItemRectSize();
+    }
+    else
+    {
+        ActionUID hovered_action_prev = state.HoveredAction;
+
+        //List actions
+        int index = 0;
+        for (const auto& entry : state.ActionsList)
+        {
+            ImGui::PushID((void*)entry.UID);
+
+            //Set focus for nav if we previously re-ordered overlays via keyboard
+            if (state.KeyboardSwappedIndex == index)
+            {
+                ImGui::SetKeyboardFocusHere();
+
+                //Nav works against us here, so keep setting focus until ctrl isn't down anymore
+                if ((!io.KeyCtrl) || (!io.NavVisible))
+                {
+                    state.KeyboardSwappedIndex = -1;
+                }
+            }
+
+            if (ImGui::Selectable(entry.Name.c_str(), (index == state.SelectedIndex), ImGuiSelectableFlags_AllowItemOverlap))
+            {
+                state.SelectedIndex = index;
+            }
+            ImGui::SetItemAllowOverlap();
+
+            if (ImGui::IsItemHovered())
+            {
+                state.HoveredAction = entry.UID;
+            }
+
+            if (ImGui::IsItemVisible())
+            {
+                //Drag reordering
+                if ((ImGui::IsItemActive()) && (!ImGui::IsItemHovered()))
+                {
+                    int index_swap = index + ((ImGui::GetMouseDragDelta(ImGuiMouseButton_Left).y < 0.0f) ? -1 : 1);
+                    if ((state.HoveredAction != entry.UID) && (index_swap >= 0) && (index_swap < state.ActionsList.size()))
+                    {
+                        std::iter_swap(state.ActionsList.begin()   + index, state.ActionsList.begin()   + index_swap);
+                        std::iter_swap(list_actions_target.begin() + index, list_actions_target.begin() + index_swap);
+                        state.SelectedIndex = index_swap;
+
+                        ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
+                    }
+                }
+
+                //Keyboard reordering
+                if ((io.NavVisible) && (io.KeyCtrl) && (state.HoveredAction == entry.UID))
+                {
+                    int index_swap = index + ((ImGui::IsNavInputPressed(ImGuiNavInput_DpadDown, true)) ? 1 : (ImGui::IsNavInputPressed(ImGuiNavInput_DpadUp, true)) ? -1 : 0);
+                    if ((index != index_swap) && (index_swap >= 0) && (index_swap < state.ActionsList.size()))
+                    {
+                        std::iter_swap(state.ActionsList.begin()   + index, state.ActionsList.begin()   + index_swap);
+                        std::iter_swap(list_actions_target.begin() + index, list_actions_target.begin() + index_swap);
+
+                        //Skip the rest of this frame to avoid double-swaps
+                        state.KeyboardSwappedIndex = index_swap;
+                        ImGui::PopID();
+                        UIManager::Get()->RepeatFrame();
+                        break;
+                    }
+                }
+            }
+
+            ImGui::PopID();
+
+            index++;
+        }
+
+        //Reduce flicker from dragging and hovering
+        if (state.HoveredAction != hovered_action_prev)
+        {
+            UIManager::Get()->RepeatFrame();
+        }
+    }
+
+    ImGui::EndChild();
+    ImGui::Unindent();
+
+    const bool is_none  = (state.SelectedIndex == -1);
+
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - list_buttons_width);
+
+    ImGui::BeginGroup();
+
+    go_add_actions = ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsOrderAdd));
+
+    ImGui::SameLine();
+
+    if (is_none)
+        ImGui::PushItemDisabled();
+
+    if ((ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsOrderRemove))) || (ImGui::IsKeyPressed(ImGuiKey_Delete)))
+    {
+        if ((state.SelectedIndex >= 0) && (state.SelectedIndex < state.ActionsList.size()))
+        {
+            state.ActionsList.erase(state.ActionsList.begin()     + state.SelectedIndex);
+            list_actions_target.erase(list_actions_target.begin() + state.SelectedIndex);
+
+            if (state.SelectedIndex >= (int)list_actions_target.size())
+            {
+                state.SelectedIndex--;
+            }
+        }
+    }
+
+    if (is_none)
+        ImGui::PopItemDisabled();
+
+    ImGui::EndGroup();
+
+    list_buttons_width = ImGui::GetItemRectSize().x + style.IndentSpacing;
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+
+    //Confirmation buttons
+    ImGui::Separator();
+
+    bool ret = false;
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogOk))) 
+    {
+        ret = true;
+        state.HasSavedChanges = true;
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
+    {
+        ret = true;
+        list_actions_target = state.ActionListOrig;
+    }
+
+    return ret;
+}
+
+bool FloatingWindow::ActionAddSelector(ActionManager::ActionList& list_actions_target, bool is_appearing, FloatingWindowActionAddSelectorState& state, float height_offset)
+{
+    static float list_buttons_width = 0.0f;
+    static ImVec2 no_actions_text_size;
+
+    const ImGuiStyle& style = ImGui::GetStyle();
+    ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+
+    if (is_appearing)
+    {
+        state.ActionsList = action_manager.GetActionNameList();
+
+        //Remove actions already in the existing list
+        auto it = std::remove_if(state.ActionsList.begin(), state.ActionsList.end(), 
+                                 [&](const auto& entry) { return (std::find(list_actions_target.begin(), list_actions_target.end(), entry.UID) != list_actions_target.end()); } );
+
+        state.ActionsList.erase(it, state.ActionsList.end());
+
+        state.ActionsTickedList.resize(state.ActionsList.size(), 0);
+        std::fill(state.ActionsTickedList.begin(), state.ActionsTickedList.end(), 0);
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsActionsAddSelectorHeader)); 
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    const float item_height = ImGui::GetFrameHeight() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.ItemInnerSpacing.y;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 16.0f : 14.0f;
+
+    ImGui::BeginChild("ActionSelector", ImVec2(0.0f, (item_height * item_count) + inner_padding + height_offset), true);
+
+    //Reset scroll when appearing
+    if (is_appearing)
+    {
+        ImGui::SetScrollY(0.0f);
+    }
+
+    //Display error if there are no actions
+    if (state.ActionsList.size() == 0)
+    {
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x / 2.0f - (no_actions_text_size.x / 2.0f));
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y / 2.0f - (no_actions_text_size.y / 2.0f));
+
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_DialogActionPickerEmpty));
+        no_actions_text_size = ImGui::GetItemRectSize();
+    }
+    else
+    {
+        //List actions
+        const float cursor_x_past_checkbox = ImGui::GetCursorPosX() + ImGui::GetFrameHeightWithSpacing();
+        
+        int index = 0;
+        for (const auto& entry : state.ActionsList)
+        {
+            ImGui::PushID(index);
+
+            //We're using a trick here to extend the checkbox interaction space to the end of the child window
+            //Checkbox() uses the item inner spacing if the label is not blank, so we increase that and use a space label
+            //Below we render a custom label after adjusting the cursor position to where it normally would be
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, {ImGui::GetContentRegionAvail().x, style.ItemInnerSpacing.y});
+
+            if (ImGui::Checkbox(" ", (bool*)&state.ActionsTickedList[index]))
+            {
+                //Update any ticked status
+                state.IsAnyActionTicked = false;
+                for (auto is_ticked : state.ActionsTickedList)
+                {
+                    if (is_ticked != 0)
+                    {
+                        state.IsAnyActionTicked = true;
+                        break;
+                    }
+                }
+            }
+
+            ImGui::PopStyleVar();
+
+            if (ImGui::IsItemVisible())
+            {
+                //Adjust cursor position to be after the checkbox
+                ImGui::SameLine();
+                float text_y = ImGui::GetCursorPosY();
+                ImGui::SetCursorPos({cursor_x_past_checkbox, text_y});
+
+                ImGui::TextUnformatted(entry.Name.c_str());
+            }
+
+            ImGui::PopID();
+
+            index++;
+        }
+    }
+
+    ImGui::EndChild();
+    ImGui::Unindent();
+    ImGui::Spacing();
+
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - list_buttons_width);
+
+    ImGui::BeginGroup();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileAddSelectAll)))
+    {
+        std::fill(state.ActionsTickedList.begin(), state.ActionsTickedList.end(), 1);
+        state.IsAnyActionTicked = true;
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileAddSelectNone)))
+    {
+        std::fill(state.ActionsTickedList.begin(), state.ActionsTickedList.end(), 0);
+        state.IsAnyActionTicked = false;
+    }
+    ImGui::EndGroup();
+
+    list_buttons_width = ImGui::GetItemRectSize().x + style.IndentSpacing;
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+
+    //Confirmation buttons
+    ImGui::Separator();
+
+    bool ret = false;
+    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsAddSelectorAdd))) 
+    {
+        //Add ticked actions to the existing list
+        int index = 0;
+        for (const auto& entry : state.ActionsList)
+        {
+            if (state.ActionsTickedList[index])
+            {
+                list_actions_target.push_back(entry.UID);
+            }
+
+            index++;
+        }
+
+        ret = true;
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
+    {
+        ret = true;
+    }
+
+    return ret;
 }
 
 void FloatingWindow::Update()

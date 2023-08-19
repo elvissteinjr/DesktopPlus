@@ -21,10 +21,17 @@ WindowSettings::WindowSettings() :
     m_PageAnimationOffset(0.0f),
     m_PageAppearing(wndsettings_page_none),
     m_PageReturned(wndsettings_page_none),
+    m_PageCurrent(wndsettings_page_none),
     m_Column0Width(0.0f),
     m_WarningHeight(0.0f),
     m_ProfileOverlaySelectIsSaving(false),
-    m_ActionPickerID(action_none)
+    m_ActionSelectionUID(0),
+    m_ActionOrderListEditForOverlayBar(false),
+    m_ActionPickerUID(k_ActionUID_Invalid),
+    m_KeyCodePickerID(0),
+    m_KeyCodePickerHotkeyFlags(0),
+    m_KeyCodePickerNoMouse(false),
+    m_KeyCodePickerHotkeyMode(false)
 {
     m_WindowTitleStrID = tstr_SettingsWindowTitle;
     m_WindowIcon = tmtex_icon_xsmall_settings;
@@ -93,6 +100,8 @@ const char* WindowSettings::DesktopModeGetTitle() const
         return TranslationManager::GetString(tstr_SettingsProfilesOverlays);
     else if (m_PageStack[0] == wndsettings_page_app_profiles)
         return TranslationManager::GetString(tstr_SettingsProfilesApps);
+    else if (m_PageStack[0] == wndsettings_page_actions)
+        return TranslationManager::GetString(tstr_SettingsActionsManage);
     else
         return TranslationManager::GetString(m_WindowTitleStrID);
 }
@@ -120,6 +129,9 @@ void WindowSettings::ClearCachedTranslationStrings()
     m_WarningTextAppProfile.clear();
     m_BrowserMaxFPSValueText.clear();
     m_BrowserBlockListCountText.clear();
+    m_ActionButtonsDefaultLabel.clear();
+    m_ActionButtonsOverlayBarLabel.clear();
+    m_ActionGlobalShortcutLabels[0].clear();    //Only first element is checked for recreation
 }
 
 void WindowSettings::WindowUpdate()
@@ -198,6 +210,8 @@ void WindowSettings::WindowUpdate()
         if (child_id >= IM_ARRAYSIZE(child_str_id))
             break;
 
+        m_PageCurrent = page_id;
+
         //Disable items when the page isn't active
         const bool is_inactive_page = (child_id + 1 < stack_size);
 
@@ -220,9 +234,15 @@ void WindowSettings::WindowUpdate()
                 case wndsettings_page_profiles:                UpdatePageProfiles();                break;
                 case wndsettings_page_profiles_overlay_select: UpdatePageProfilesOverlaySelect();   break;
                 case wndsettings_page_app_profiles:            UpdatePageAppProfiles();             break;
+                case wndsettings_page_actions:                 UpdatePageActions();                 break;
+                case wndsettings_page_actions_edit:            UpdatePageActionsEdit();             break;
                 case wndsettings_page_color_picker:            UpdatePageColorPicker();             break;
                 case wndsettings_page_profile_picker:          UpdatePageProfilePicker();           break;
                 case wndsettings_page_action_picker:           UpdatePageActionPicker();            break;
+                case wndsettings_page_actions_order_add:       UpdatePageActionsOrderAdd();         break;
+                case wndsettings_page_actions_order:           UpdatePageActionsOrder();            break;
+                case wndsettings_page_keycode_picker:          UpdatePageKeyCodePicker();           break;
+                case wndsettings_page_icon_picker:             UpdatePageIconPicker();              break;
                 case wndsettings_page_reset_confirm:           UpdatePageResetConfirm();            break;
                 default: break;
             }
@@ -248,6 +268,7 @@ void WindowSettings::WindowUpdate()
     }
 
     m_PageAppearing = wndsettings_page_none;
+    m_PageCurrent = wndsettings_page_none;
 
     ImGui::PopClipRect();
 }
@@ -431,9 +452,9 @@ void WindowSettings::UpdateWarnings()
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
             if (ImGui::BeginPopup("FocusedElevatedContext", ImGuiWindowFlags_NoMove))
             {
-                if (ImGui::Selectable(TranslationManager::GetString(tstr_ActionSwitchTask)))
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_DefActionSwitchTask)))
                 {
-                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, action_switch_task);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_switch_task);
                     UIManager::Get()->RepeatFrame();
                 }
                 else if ((UIManager::Get()->IsElevatedTaskSetUp()) && ImGui::Selectable(TranslationManager::GetString(tstr_SettingsTroubleshootingElevatedModeEnter)))
@@ -727,6 +748,32 @@ void WindowSettings::UpdatePageMainCatInterface()
 
             ImGui::Columns(1);
         }
+
+        ImGui::Spacing();
+        ImGui::Columns(2, "ColumnInterface3", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text(TranslationManager::GetString(tstr_SettingsInterfaceDesktopButtons));
+        ImGui::NextColumn();
+
+        ImGui::SetNextItemWidth(-1);
+        int button_style = clamp(ConfigManager::GetRef(configid_int_interface_desktop_listing_style), 0, (tstr_SettingsInterfaceDesktopButtonsCycle - tstr_SettingsInterfaceDesktopButtonsNone) - 1);
+        if (TranslatedComboAnimated("##ComboButtonStyle", button_style, tstr_SettingsInterfaceDesktopButtonsNone, tstr_SettingsInterfaceDesktopButtonsCycle))
+        {
+            ConfigManager::SetValue(configid_int_interface_desktop_listing_style, button_style);
+            UIManager::Get()->RepeatFrame();
+        }
+
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+
+        bool& include_all = ConfigManager::GetRef(configid_bool_interface_desktop_buttons_include_combined);
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsInterfaceDesktopButtonsAddCombined), &include_all))
+        {
+            UIManager::Get()->RepeatFrame();
+        }
+
+        ImGui::Columns(1);
     }
 
     //Environment (still Interface, but not really)
@@ -783,25 +830,6 @@ void WindowSettings::UpdatePageMainCatInterface()
     }
 }
 
-void WindowSettings::UpdatePageMainCatActions()
-{
-    //Actions (strings are not translatable here since this is just temp stuff)
-    {
-        ImGui::Spacing();
-
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), "Actions");
-
-        ImGui::Indent();
-
-        if (ImGui::Button("Switch to Action Editor"))
-        {
-            UIManager::Get()->RestartIntoActionEditor();
-        }
-
-        ImGui::Unindent();
-    }
-}
-
 void WindowSettings::UpdatePageMainCatProfiles()
 {
     //Profiles
@@ -835,6 +863,276 @@ void WindowSettings::UpdatePageMainCatProfiles()
             PageGoForward(wndsettings_page_app_profiles);
         }
         ImGui::PopID();
+
+        ImGui::Columns(1);
+    }
+}
+
+void WindowSettings::UpdatePageMainCatActions()
+{
+    //Actions
+    {
+        const ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+        const ImGuiStyle& style = ImGui::GetStyle();
+
+        static ConfigID_Handle action_picker_config_id = configid_handle_MAX;
+        static float button_binding_width = 0.0f;
+
+        if (m_PageReturned == wndsettings_page_actions_order)
+        {
+            m_ActionButtonsDefaultLabel.clear();
+            m_ActionButtonsOverlayBarLabel.clear();
+
+            m_PageReturned = wndsettings_page_none;
+        }
+        else if (m_PageReturned == wndsettings_page_action_picker)
+        {
+            if (action_picker_config_id != configid_handle_MAX)
+            {
+                ConfigManager::SetValue(action_picker_config_id, m_ActionPickerUID);
+                IPCManager::Get().PostConfigMessageToDashboardApp(action_picker_config_id, m_ActionPickerUID);
+                action_picker_config_id = configid_handle_MAX;
+
+                m_PageReturned = wndsettings_page_none;
+            }
+        }
+
+        if (m_ActionButtonsDefaultLabel.empty())
+        {
+            const size_t action_count = ConfigManager::Get().GetActionManager().GetActionOrderListBarDefault().size();
+
+            m_ActionButtonsDefaultLabel = TranslationManager::GetString( (action_count == 1) ? tstr_SettingsActionsOrderButtonLabelSingular : tstr_SettingsActionsOrderButtonLabel );
+            StringReplaceAll(m_ActionButtonsDefaultLabel, "%COUNT%", std::to_string(action_count));
+        }
+
+        if (m_ActionButtonsOverlayBarLabel.empty())
+        {
+            const size_t action_count = ConfigManager::Get().GetActionManager().GetActionOrderListOverlayBar().size();
+
+            m_ActionButtonsOverlayBarLabel = TranslationManager::GetString( (action_count == 1) ? tstr_SettingsActionsOrderButtonLabelSingular : tstr_SettingsActionsOrderButtonLabel );
+            StringReplaceAll(m_ActionButtonsOverlayBarLabel, "%COUNT%", std::to_string(action_count));
+        }
+
+        if (m_ActionGlobalShortcutLabels[0].empty())
+        {
+            for (int i = 0; i < IM_ARRAYSIZE(m_ActionGlobalShortcutLabels); ++i)
+            {
+                m_ActionGlobalShortcutLabels[i] = TranslationManager::GetString(tstr_SettingsActionsGlobalShortcutsEntry);
+                StringReplaceAll(m_ActionGlobalShortcutLabels[i], "%ID%", std::to_string(i + 1));
+            }
+        }
+
+        ImGui::Spacing();
+
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatActions));
+        ImGui::Columns(2, "ColumnActions", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsManage));
+        ImGui::NextColumn();
+
+        ImGui::PushID(tstr_SettingsActionsManage);  //Avoid ID conflict from common "Manage" label
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesManage)))
+        {
+            PageGoForward(wndsettings_page_actions);
+        }
+        ImGui::PopID();
+
+        ImGui::NextColumn();
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsButtonsOrderDefault));
+        ImGui::NextColumn();
+
+        ImGui::PushID(tstr_SettingsActionsButtonsOrderDefault);
+        if (ImGui::Button(m_ActionButtonsDefaultLabel.c_str()))
+        {
+            m_ActionOrderListEditForOverlayBar = false;
+            PageGoForward(wndsettings_page_actions_order);
+        }
+        ImGui::PopID();
+
+        ImGui::NextColumn();
+
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
+        {
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsButtonsOrderOverlayBar));
+            ImGui::NextColumn();
+
+            ImGui::PushID(tstr_SettingsActionsButtonsOrderOverlayBar);
+            if (ImGui::Button(m_ActionButtonsOverlayBarLabel.c_str()))
+            {
+                m_ActionOrderListEditForOverlayBar = true;
+                PageGoForward(wndsettings_page_actions_order);
+            }
+            ImGui::PopID();
+
+            ImGui::NextColumn();
+        }
+        ImGui::Spacing();
+
+        //Active Shortcuts
+        ImGui::Spacing();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsActiveShortcuts));
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_SettingsActionsActiveShortcutsTip));
+        ImGui::NextColumn();
+
+        ImGui::PushID("ActiveButtons");
+
+        if (UIManager::Get()->IsOpenVRLoaded())
+        {
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - button_binding_width);
+            ImGui::AlignTextToFramePadding();
+            if (ImGui::SmallButton(TranslationManager::GetString(tstr_SettingsActionsShowBindings)))
+            {
+                //OpenBindingUI does not use that app key argument it takes, it always opens the bindings of the calling application
+                //To work around this, we pretend to be the app we want to open the bindings for during the call
+                //Works and seems to not break anything
+                vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), "openvr.component.vrcompositor");
+                vr::VRInput()->OpenBindingUI("openvr.component.vrcompositor", vr::k_ulInvalidActionSetHandle, vr::k_ulInvalidInputValueHandle, UIManager::Get()->IsInDesktopMode());
+                vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
+            }
+            button_binding_width = ImGui::GetItemRectSize().x;
+        }
+
+        ImGui::NextColumn();
+
+        ImGui::Indent();
+
+        for (int i = 0; i < 2; ++i)
+        {
+            ConfigID_Handle config_id = (i == 0) ? configid_handle_input_go_home_action_uid : configid_handle_input_go_back_action_uid;
+            ActionUID uid = ConfigManager::GetValue(config_id);
+
+            ImGui::PushID(i);
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(TranslationManager::GetString((i == 0) ? tstr_SettingsActionsActiveShortuctsHome : tstr_SettingsActionsActiveShortuctsBack));
+            ImGui::SameLine();
+
+            ImGui::NextColumn();
+
+            if (ImGui::Button(action_manager.GetTranslatedName(uid)))
+            {
+                m_ActionPickerUID = uid;
+                action_picker_config_id = config_id;
+                PageGoForward(wndsettings_page_action_picker);
+            }
+
+            ImGui::PopID();
+            ImGui::NextColumn();
+        }
+        ImGui::PopID();
+
+        ImGui::Unindent();
+
+        //Global Shortcuts
+        ImGui::Spacing();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsGlobalShortcuts));
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_SettingsActionsGlobalShortcutsTip));
+        ImGui::NextColumn();
+
+        ImGui::PushID("GlobalShortcuts");
+
+        if (UIManager::Get()->IsOpenVRLoaded())
+        {
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - button_binding_width);
+            ImGui::AlignTextToFramePadding();
+            if (ImGui::SmallButton(TranslationManager::GetString(tstr_SettingsActionsShowBindings)))
+            {
+                //See comment on the active shortcuts
+                vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
+                vr::VRInput()->OpenBindingUI(g_AppKeyDashboardApp, vr::k_ulInvalidActionSetHandle, vr::k_ulInvalidInputValueHandle, UIManager::Get()->IsInDesktopMode());
+                vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
+            }
+        }
+
+        ImGui::NextColumn();
+
+        ImGui::Indent();
+
+        for (int i = 0; i < IM_ARRAYSIZE(m_ActionGlobalShortcutLabels); ++i)
+        {
+            ConfigID_Handle config_id = (ConfigID_Handle)(configid_handle_input_shortcut01_action_uid + i);
+            ActionUID uid = ConfigManager::GetValue(config_id);
+
+            ImGui::PushID(i);
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(m_ActionGlobalShortcutLabels[i].c_str());
+            ImGui::SameLine();
+
+            ImGui::NextColumn();
+
+            if (ImGui::Button(action_manager.GetTranslatedName(uid)))
+            {
+                m_ActionPickerUID = uid;
+                action_picker_config_id = config_id;
+                PageGoForward(wndsettings_page_action_picker);
+            }
+
+            ImGui::PopID();
+            ImGui::NextColumn();
+        }
+        ImGui::PopID();
+
+        ImGui::Unindent();
+
+        //Hotkeys
+        static float max_hotkey_column_width = 0.0f;
+
+        ImGui::Spacing();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsHotkeys));
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_SettingsActionsHotkeysTip));
+        ImGui::Columns(1);
+
+        ImGui::Spacing();
+
+        //Extend column if hotkeys need more space
+        ImGui::Columns(2, "ColumnHotkeys", false);
+        ImGui::SetColumnWidth(0, std::max(m_Column0Width, max_hotkey_column_width));
+
+        ImGui::Indent();
+
+        float line_start_x = ImGui::GetCursorPosX() - style.ItemSpacing.x;
+        max_hotkey_column_width = 0.0f;
+
+        ImGui::PushID("Hotkeys");
+        for (int i = 0; i < 3; ++i)
+        {
+            ConfigID_Handle config_id = (ConfigID_Handle)(configid_handle_input_hotkey01_action_uid + i);
+            ActionUID uid = ConfigManager::GetValue(config_id);
+
+            ImGui::PushID(i);
+
+            ButtonHotkey(i);
+            ImGui::SameLine();
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsHotkeysAction));
+            ImGui::SameLine();
+
+            max_hotkey_column_width = std::max(max_hotkey_column_width, ImGui::GetCursorPosX() - line_start_x);
+
+            ImGui::NextColumn();
+
+            if (ImGui::Button(action_manager.GetTranslatedName(uid)))
+            {
+                m_ActionPickerUID = uid;
+                action_picker_config_id = config_id;
+                PageGoForward(wndsettings_page_action_picker);
+            }
+
+            ImGui::PopID();
+            ImGui::NextColumn();
+        }
+        ImGui::PopID();
+
+        ImGui::Unindent();
 
         ImGui::Columns(1);
     }
@@ -1935,8 +2233,8 @@ void WindowSettings::UpdatePageProfiles()
 {
     ImGuiStyle& style = ImGui::GetStyle();
 
-    bool scroll_to_selection = false;
     static int list_id = -1;
+    static bool scroll_to_selection        = false;
     static bool used_profile_save_new_page = false;
     static bool delete_confirm_state       = false;
     static bool has_loading_failed         = false;
@@ -2012,6 +2310,11 @@ void WindowSettings::UpdatePageProfiles()
         if ( (scroll_to_selection) && (index == list_id) )
         {
             ImGui::SetScrollHereY();
+
+            if (ImGui::IsItemVisible())
+            {
+                scroll_to_selection = false;
+            }
         }
 
         index++;
@@ -2274,14 +2577,7 @@ void WindowSettings::UpdatePageProfilesOverlaySelect()
                 //Check overlay list for names with unmapped characters
                 for (const auto& pair : list_overlays)
                 {
-                    if (ImGui::StringContainsUnmappedCharacter(pair.first.c_str()))
-                    {
-                        if (TextureManager::Get().AddFontBuilderString(pair.first))
-                        {
-                            TextureManager::Get().ReloadAllTexturesLater();
-                            UIManager::Get()->RepeatFrame();
-                        }
-                    }
+                    UIManager::Get()->AddFontBuilderStringIfAnyUnmappedCharacters(pair.first.c_str());
                 }
             }
         }
@@ -2362,14 +2658,7 @@ void WindowSettings::UpdatePageProfilesOverlaySelect()
 
             //Check input for unmapped character
             //This isn't ideal as it'll collect builder strings over time, but assuming there won't be too many of those in a session it's alright
-            if (ImGui::StringContainsUnmappedCharacter(buffer_profile_name))
-            {
-                if (TextureManager::Get().AddFontBuilderString(buffer_profile_name))
-                {
-                    TextureManager::Get().ReloadAllTexturesLater();
-                    UIManager::Get()->RepeatFrame();
-                }
-            }
+            UIManager::Get()->AddFontBuilderStringIfAnyUnmappedCharacters(buffer_profile_name);
         }
         vr_keyboard.VRKeyboardInputEnd();
         ImGui::PopID();
@@ -2723,13 +3012,13 @@ void WindowSettings::UpdatePageAppProfiles()
         {
             if (is_action_picker_for_leave)
             {
-                store_profile_changes = (app_profile_selected_edit.ActionIDLeave != m_ActionPickerID);
-                app_profile_selected_edit.ActionIDLeave = m_ActionPickerID;
+                store_profile_changes = (app_profile_selected_edit.ActionUIDLeave != m_ActionPickerUID);
+                app_profile_selected_edit.ActionUIDLeave = m_ActionPickerUID;
             }
             else
             {
-                store_profile_changes = (app_profile_selected_edit.ActionIDEnter != m_ActionPickerID);
-                app_profile_selected_edit.ActionIDEnter = m_ActionPickerID;
+                store_profile_changes = (app_profile_selected_edit.ActionUIDEnter != m_ActionPickerUID);
+                app_profile_selected_edit.ActionUIDEnter = m_ActionPickerUID;
             }
 
             m_PageReturned = wndsettings_page_none;
@@ -2772,14 +3061,16 @@ void WindowSettings::UpdatePageAppProfiles()
 
         ImGui::NextColumn();
 
+        const ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsProfilesAppsProfileActionEnter));
         ImGui::NextColumn();
 
         ImGui::PushID("ButtonActionEnter");
-        if (ImGui::Button(ConfigManager::Get().GetActionManager().GetActionName(app_profile_selected_edit.ActionIDEnter)))
+        if (ImGui::Button(action_manager.GetTranslatedName(app_profile_selected_edit.ActionUIDEnter)))
         {
-            m_ActionPickerID = app_profile_selected_edit.ActionIDEnter;
+            m_ActionPickerUID = app_profile_selected_edit.ActionUIDEnter;
             is_action_picker_for_leave = false;
             PageGoForward(wndsettings_page_action_picker);
         }
@@ -2792,9 +3083,9 @@ void WindowSettings::UpdatePageAppProfiles()
         ImGui::NextColumn();
 
         ImGui::PushID("ButtonActionLeave");
-        if (ImGui::Button(ConfigManager::Get().GetActionManager().GetActionName(app_profile_selected_edit.ActionIDLeave)))
+        if (ImGui::Button(action_manager.GetTranslatedName(app_profile_selected_edit.ActionUIDLeave)))
         {
-            m_ActionPickerID = app_profile_selected_edit.ActionIDLeave;
+            m_ActionPickerUID = app_profile_selected_edit.ActionUIDLeave;
             is_action_picker_for_leave = true;
             PageGoForward(wndsettings_page_action_picker);
         }
@@ -2867,6 +3158,1201 @@ void WindowSettings::UpdatePageAppProfiles()
     }
 }
 
+void WindowSettings::UpdatePageActions()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImGuiIO& io = ImGui::GetIO();
+    ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+
+    static int list_id = -1;
+    static bool delete_confirm_state  = false;
+    static bool scroll_to_selection   = false;
+    static int keyboard_swapped_index = -1;
+    static ActionUID hovered_action   = k_ActionUID_Invalid;
+    static float list_buttons_width   = 0.0f;
+    static ImVec2 no_actions_text_size;
+
+    const bool is_root_page = (m_PageStack[0] == wndsettings_page_actions);
+
+    if (m_PageAppearing == wndsettings_page_actions)
+    {
+        //Load action list
+        m_ActionList = ConfigManager::Get().GetActionManager().GetActionNameList();
+        list_id = -1;
+        delete_confirm_state = false;
+
+        UIManager::Get()->RepeatFrame();
+    }
+    else if (m_PageReturned == wndsettings_page_actions_edit)
+    {
+        m_ActionList = ConfigManager::Get().GetActionManager().GetActionNameList();
+
+        //Find potentially new action in the list and select it
+        auto it = std::find_if(m_ActionList.begin(), m_ActionList.end(), [&](const auto& list_entry) { return (list_entry.UID == m_ActionSelectionUID); } );
+        list_id = (it != m_ActionList.end()) ? (int)std::distance(m_ActionList.begin(), it) : -1;
+
+        m_PageReturned = wndsettings_page_none;
+    }
+
+    if ((m_PageAppearing == wndsettings_page_actions) || (m_CachedSizes.Actions_ButtonDeleteSize.x == 0.0f))
+    {
+        //Figure out size for delete button. We need it to stay the same but also consider the case of the confirm text being longer in some languages
+        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsManageDelete));
+        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsManageDeleteConfirm));
+        m_CachedSizes.Actions_ButtonDeleteSize = (text_size_delete.x > text_size_confirm.x) ? text_size_delete : text_size_confirm;
+
+        m_CachedSizes.Actions_ButtonDeleteSize.x += style.FramePadding.x * 2.0f;
+        m_CachedSizes.Actions_ButtonDeleteSize.y += style.FramePadding.y * 2.0f;
+
+        UIManager::Get()->RepeatFrame();
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsActionsManageHeader)); 
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? ( (is_root_page) ? 22.0f : 20.0f ) : 16.0f;
+    ImGui::BeginChild("ActionList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
+
+    //Display error if there are no actions
+    if (m_ActionList.empty())
+    {
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x / 2.0f - (no_actions_text_size.x / 2.0f));
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y / 2.0f - (no_actions_text_size.y / 2.0f));
+
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_DialogActionPickerEmpty));
+        no_actions_text_size = ImGui::GetItemRectSize();
+    }
+    else
+    {
+        //List actions
+        int index = 0;
+        for (const auto& entry : m_ActionList)
+        {
+            ImGui::PushID((void*)entry.UID);
+
+            //Set focus for nav if we previously re-ordered overlays via keyboard
+            if (keyboard_swapped_index == index)
+            {
+                ImGui::SetKeyboardFocusHere();
+
+                //Nav works against us here, so keep setting focus until ctrl isn't down anymore
+                if ((!io.KeyCtrl) || (!io.NavVisible))
+                {
+                    keyboard_swapped_index = -1;
+                }
+            }
+
+            if (ImGui::Selectable(entry.Name.c_str(), (index == list_id)))
+            {
+                list_id = index;
+                m_ActionSelectionUID = entry.UID;
+
+                delete_confirm_state = false;
+            }
+
+            if ( (scroll_to_selection) && (index == list_id) )
+            {
+                ImGui::SetScrollHereY();
+
+                if (ImGui::IsItemVisible())
+                {
+                    scroll_to_selection = false;
+                }
+            }
+
+            if (ImGui::IsItemHovered())
+            {
+                hovered_action = entry.UID;
+            }
+
+            if (ImGui::IsItemVisible())
+            {
+                //Additional selectable behavior
+                bool selectable_active = ImGui::IsItemActive();
+
+                if ( (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) || ((io.NavVisible) && (ImGui::IsItemFocused())) )
+                {
+                    hovered_action = entry.UID;
+                }
+
+                if ((ImGui::IsItemClicked()) && (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)))
+                {
+                    PageGoForward(wndsettings_page_actions_edit);
+
+                    delete_confirm_state = false;
+                }
+
+                //Drag reordering
+                if ((ImGui::IsItemActive()) && (!ImGui::IsItemHovered()))
+                {
+                    int index_swap = index + ((ImGui::GetMouseDragDelta(ImGuiMouseButton_Left).y < 0.0f) ? -1 : 1);
+                    if ((hovered_action != entry.UID) && (index_swap >= 0) && (index_swap < m_ActionList.size()))
+                    {
+                        std::iter_swap(m_ActionList.begin() + index, m_ActionList.begin() + index_swap);
+
+                        ActionManager::ActionList ui_order = action_manager.GetActionOrderListUI();
+                        std::iter_swap(ui_order.begin() + index, ui_order.begin() + index_swap);
+                        action_manager.SetActionOrderListUI(ui_order);
+
+                        ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
+                    }
+                }
+
+                //Keyboard reordering
+                if ((io.NavVisible) && (io.KeyCtrl) && (hovered_action == entry.UID))
+                {
+                    int index_swap = index + ((ImGui::IsNavInputPressed(ImGuiNavInput_DpadDown, true)) ? 1 : (ImGui::IsNavInputPressed(ImGuiNavInput_DpadUp, true)) ? -1 : 0);
+                    if ((index != index_swap) && (index_swap >= 0) && (index_swap < m_ActionList.size()))
+                    {
+                        std::iter_swap(m_ActionList.begin() + index, m_ActionList.begin() + index_swap);
+
+                        ActionManager::ActionList ui_order = action_manager.GetActionOrderListUI();
+                        std::iter_swap(ui_order.begin() + index, ui_order.begin() + index_swap);
+                        action_manager.SetActionOrderListUI(ui_order);
+
+                        //Skip the rest of this frame to avoid double-swaps
+                        keyboard_swapped_index = index_swap;
+                        ImGui::PopID();
+                        UIManager::Get()->RepeatFrame();
+                        break;
+                    }
+                }
+            }
+
+            ImGui::PopID();
+
+            index++;
+        }
+    }
+
+    ImGui::EndChild();
+    ImGui::Spacing();
+
+    const bool is_none  = (list_id == -1);
+    const bool is_first = (list_id == 0);
+    const bool is_last  = (list_id == m_ProfileList.size() - 1);
+
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - list_buttons_width);
+
+    ImGui::BeginGroup();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsManageNew)))
+    {
+        m_ActionSelectionUID = 0;
+        PageGoForward(wndsettings_page_actions_edit);
+
+        delete_confirm_state = false;
+    }
+
+    ImGui::SameLine();
+
+    if (is_none)
+        ImGui::PushItemDisabled();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsManageEdit)))
+    {
+        PageGoForward(wndsettings_page_actions_edit);
+
+        delete_confirm_state = false;
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsManageDuplicate)))
+    {
+        ActionUID dup_uid = action_manager.DuplicateAction(action_manager.GetAction(m_ActionSelectionUID));
+
+        //Sync with dashboard app
+        IPCManager::Get().SendStringToDashboardApp(configid_str_state_action_data, action_manager.GetAction(dup_uid).Serialize(), UIManager::Get()->GetWindowHandle());
+
+        //Refresh list
+        m_ActionList = action_manager.GetActionNameList();
+        list_id++;
+        m_ActionSelectionUID = m_ActionList[list_id].UID;
+
+        UIManager::Get()->RepeatFrame();
+
+        delete_confirm_state = false;
+    }
+
+    ImGui::SameLine();
+
+    if (delete_confirm_state)
+    {
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsManageDeleteConfirm), m_CachedSizes.Actions_ButtonDeleteSize))
+        {
+            action_manager.RemoveAction(m_ActionSelectionUID);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_delete, m_ActionSelectionUID);
+
+            m_ActionList = action_manager.GetActionNameList();
+            list_id--;
+            m_ActionSelectionUID = (list_id != -1) ? m_ActionList[list_id].UID : k_ActionUID_Invalid;
+
+            UIManager::Get()->RepeatFrame();
+
+            delete_confirm_state = false;
+        }
+    }
+    else
+    {
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsManageDelete), m_CachedSizes.Actions_ButtonDeleteSize))
+        {
+            delete_confirm_state = true;
+        }
+    }
+
+    if (is_none)
+        ImGui::PopItemDisabled();
+
+    ImGui::EndGroup();
+
+    list_buttons_width = ImGui::GetItemRectSize().x + style.IndentSpacing;
+
+    ImGui::Unindent();
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+
+    //Confirmation buttons (don't show when used as root page)
+    if (!is_root_page)
+    {
+        ImGui::Separator();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_DialogDone))) 
+        {
+            PageGoBack();
+        }
+    }
+}
+
+void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
+{
+    struct CommandUIState
+    {
+        float header_animation_progress = 0.0f;
+        float header_2_animation_progress = 0.0f;
+        std::string header_label;
+        char buffer_str_main[1024] = "";
+        char buffer_str_arg[1024]  = "";
+        int temp_int_1 = 0;
+        int temp_int_2 = 0;
+        FloatingWindowInputOverlayTagsState input_tags_state;
+    };
+
+    auto filter_newline_limit = [](ImGuiInputTextCallbackData* data)
+    {
+        static int newline_count = 0;
+        const int newline_max = 2;
+
+        if (data->EventFlag == ImGuiInputTextFlags_CallbackEdit)
+        {
+            //Iterate over buffer and count newlines
+            newline_count = 0;
+            for (char* ibuf = data->Buf, *ibuf_end = data->Buf + data->BufTextLen; ibuf != ibuf_end; ++ibuf)
+            {
+                if (*ibuf == '\n')
+                {
+                    //Replace newlines that occur after counting to max with space character
+                    if (newline_count >= newline_max)
+                    {
+                        *ibuf = ' ';
+                        data->BufDirty = true;
+                    }
+                    else
+                    {
+                        ++newline_count;
+                    }
+                }
+            }
+        }
+        else if (data->EventFlag == ImGuiInputTextFlags_CallbackCharFilter) //Filter newlines during input if over limit
+        {
+            return (int)((data->EventChar == '\n') && (newline_count >= newline_max));
+        }
+
+        return 0;
+    };
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImGuiIO& io = ImGui::GetIO();
+    ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
+    static Action action_edit;                           //Temporary copy of the selected action for editing
+    static FloatingWindowInputOverlayTagsState input_tags_state;
+    static std::vector<CommandUIState> command_ui_states;
+    static char buffer_action_name[256]         = "";
+    static char buffer_action_label[1024]       = "";
+    static char buffer_action_target_tags[1024] = "";
+    static bool label_matches_name              = true;
+    static int appearing_framecount             = 0;
+    static float area_tags_animation_progress   = 0.0f;
+    static float tags_widget_height             = 0.0f;
+    static bool action_test_was_used            = false;
+    static bool delete_confirm_state            = false;
+    static float delete_button_width            = 0.0f;
+
+    if (only_restore_settings)
+    {
+        //Restore action to old state for dashboard app if it was sent over for testing
+        if (action_test_was_used)
+        {
+            if (action_manager.ActionExists(action_edit.UID))
+            {
+                IPCManager::Get().SendStringToDashboardApp(configid_str_state_action_data, action_edit.Serialize(), UIManager::Get()->GetWindowHandle());
+            }
+            else    //It shouldn't exist, so delete it on the other end
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_delete, action_edit.UID);
+            }
+        }
+
+        return;
+    }
+
+    bool reload_icon = false;
+
+    if (m_PageAppearing == wndsettings_page_actions_edit)
+    {
+        appearing_framecount = ImGui::GetFrameCount();
+        command_ui_states.clear();
+        action_test_was_used = false;
+        delete_confirm_state = false;
+        reload_icon = true;
+        input_tags_state.PopupShow = false;
+
+        //Create from scratch if selected UID is 0
+        if (m_ActionSelectionUID == k_ActionUID_Invalid)
+        {
+            action_edit = Action();
+            action_edit.UID = action_manager.GenerateUID();
+            action_edit.Name  = TranslationManager::GetString(tstr_SettingsActionsEditNameNew);
+            action_edit.Label = action_edit.Name;
+
+            m_ActionSelectionUID = action_edit.UID;
+        }
+        else
+        {
+            action_edit = action_manager.GetAction(m_ActionSelectionUID);
+        }
+
+        //Fill buffers from action data
+        size_t copied_length = action_edit.Name.copy(buffer_action_name, IM_ARRAYSIZE(buffer_action_name) - 1);
+        buffer_action_name[copied_length] = '\0';
+        copied_length = action_edit.Label.copy(buffer_action_label, IM_ARRAYSIZE(buffer_action_label) - 1);
+        buffer_action_label[copied_length] = '\0';
+        copied_length = action_edit.TargetTags.copy(buffer_action_target_tags, IM_ARRAYSIZE(buffer_action_target_tags) - 1);
+        buffer_action_target_tags[copied_length] = '\0';
+
+        label_matches_name = (action_edit.Label == action_edit.Name);
+        area_tags_animation_progress = (action_edit.TargetUseTags) ? 1.0f : 0.0f;
+
+        UIManager::Get()->RepeatFrame();
+    }
+
+    if ((m_PageAppearing == wndsettings_page_actions_edit) || (m_CachedSizes.ActionEdit_ButtonDeleteSize.x == 0.0f))
+    {
+        //Figure out size for delete button. We need it to stay the same but also consider the case of the confirm text being longer in some languages
+        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsEditCommandDelete));
+        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsEditCommandDeleteConfirm));
+        m_CachedSizes.ActionEdit_ButtonDeleteSize = (text_size_delete.x > text_size_confirm.x) ? text_size_delete : text_size_confirm;
+
+        m_CachedSizes.ActionEdit_ButtonDeleteSize.x += style.FramePadding.x * 2.0f;
+        m_CachedSizes.ActionEdit_ButtonDeleteSize.y += style.FramePadding.y * 2.0f;
+
+        UIManager::Get()->RepeatFrame();
+    }
+
+    if (m_PageReturned == wndsettings_page_icon_picker)
+    {
+        action_edit.IconFilename = m_IconPickerFile;
+        reload_icon = true;
+
+        m_PageReturned = wndsettings_page_none;
+    }
+
+    if ((reload_icon) && (!action_edit.IconFilename.empty()))
+    {
+        std::string icon_path = "images/icons/" + action_edit.IconFilename;
+        std::wstring icon_path_wstr = WStringConvertFromUTF8(icon_path.c_str());
+
+        //Avoid reloading if the path is already the same
+        if (wcscmp(icon_path_wstr.c_str(), TextureManager::Get().GetTextureFilename(tmtex_icon_temp)) != 0)
+        {
+            TextureManager::Get().SetTextureFilenameIconTemp(icon_path_wstr.c_str());
+            TextureManager::Get().ReloadAllTexturesLater();
+        }
+
+        UIManager::Get()->RepeatFrame();
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsActionsEditHeader)); 
+
+    ImGui::Columns(2, "ColumnActionEditBase", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditName));
+
+    //Add a tooltip when translation ID is used to minimize confusion about the name not matching what's displayed outside this page
+    if (action_edit.NameTranslationID != tstr_NONE)
+    {
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditNameTranslatedTip));
+    }
+
+    ImGui::NextColumn();
+
+    ImGui::PushItemWidth(-1.0f);
+    ImGui::PushID(appearing_framecount);  //The idea is to have ImGui treat this as a new widget every time the page is opened, so the cursor position isn't remembered between page switches
+    vr_keyboard.VRKeyboardInputBegin("##InputActionName");
+    if (ImGui::InputText("##InputActionName", buffer_action_name, IM_ARRAYSIZE(buffer_action_name)))
+    {
+        UIManager::Get()->AddFontBuilderStringIfAnyUnmappedCharacters(buffer_action_name);
+
+        action_edit.Name = buffer_action_name;
+
+        //As long as label matches name, adjust label alongside it
+        if (label_matches_name)
+        {
+            action_edit.Label = action_edit.Name;
+
+            size_t copied_length = action_edit.Label.copy(buffer_action_label, IM_ARRAYSIZE(buffer_action_label) - 1);
+            buffer_action_label[copied_length] = '\0';
+
+            action_edit.LabelTranslationID = action_manager.GetTranslationIDForName(action_edit.Label);
+        }
+
+        //Check for potential translation string
+        action_edit.NameTranslationID = action_manager.GetTranslationIDForName(action_edit.Name);
+    }
+    vr_keyboard.VRKeyboardInputEnd();
+    ImGui::PopID();
+
+    ImGui::NextColumn();
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditTarget));
+    ImGui::NextColumn();
+
+    if (ImGui::RadioButton(TranslationManager::GetString(tstr_SettingsActionsEditTargetDefault), !action_edit.TargetUseTags))
+    {
+        action_edit.TargetUseTags = false;
+    }
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditTargetDefaultTip));
+
+    ImGui::SameLine();
+
+    if (ImGui::RadioButton(TranslationManager::GetString(tstr_SettingsActionsEditTargetUseTags), action_edit.TargetUseTags))
+    {
+        action_edit.TargetUseTags = true;
+    }
+
+    tags_widget_height = ImGui::GetCursorPosY();
+
+
+    ImGui::BeginCollapsingArea("AreaTags", action_edit.TargetUseTags, area_tags_animation_progress);
+
+    if (InputOverlayTags("TargetTags", buffer_action_target_tags, IM_ARRAYSIZE(buffer_action_target_tags), input_tags_state))
+    {
+        action_edit.TargetTags = buffer_action_target_tags;
+    }
+
+    ImGui::EndCollapsingArea();
+
+    ImGui::Columns(1);
+
+    tags_widget_height = ImGui::GetCursorPosY() - tags_widget_height;
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsActionsEditHeaderAppearance));
+
+    //Use settings icon as default button size reference
+    ImVec2 b_size_default, b_uv_min, b_uv_max;
+    TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size_default, b_uv_min, b_uv_max);
+
+    //Adapt to the last known scale used in VR so the text alignment matches what's seen in the headset later
+    if (UIManager::Get()->IsInDesktopMode())
+    {
+        b_size_default.x *= UIManager::Get()->GetUIScale();
+        b_size_default.y *= UIManager::Get()->GetUIScale();
+        b_size_default.x *= ConfigManager::GetValue(configid_float_interface_last_vr_ui_scale);
+        b_size_default.y *= ConfigManager::GetValue(configid_float_interface_last_vr_ui_scale);
+    }
+
+    //It's a bit hacky, but we add the preview button last to avoid it changing line heights and shift the position of widgets around to leave space for it instead
+    ImVec2 button_pos = ImGui::GetCursorPos();
+    const float line_x = ImGui::GetCursorPosX() + b_size_default.x + style.IndentSpacing + style.IndentSpacing + style.ItemSpacing.x + style.ItemSpacing.x;
+
+    ImGui::Columns(2, "ColumnActionEditAppearance", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
+    ImGui::SetCursorPosX(line_x);
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditIcon));
+    ImGui::NextColumn();
+
+    ImGui::PushID("##FileName");
+    if (ImGui::Button((!action_edit.IconFilename.empty()) ? action_edit.IconFilename.c_str() : TranslationManager::GetString(tstr_DialogIconPickerNone)))
+    {
+        PageGoForward(wndsettings_page_icon_picker);
+    }
+    ImGui::PopID();
+
+    ImGui::NextColumn();
+
+    ImGui::SetCursorPosX(line_x);
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditLabel));
+
+    if (action_edit.LabelTranslationID != tstr_NONE)
+    {
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditLabelTranslatedTip));
+    }
+
+    ImGui::NextColumn();
+
+    ImGui::PushItemWidth(-1.0f);
+    ImGui::PushID(appearing_framecount);
+    vr_keyboard.VRKeyboardInputBegin("##InputActionLabel", true);
+    ImVec2 multiline_input_size(-1, (ImGui::GetTextLineHeight() * 3.0f) + (style.FramePadding.y * 2.0f));
+    if (ImGui::InputTextMultiline("##InputActionLabel", buffer_action_label, IM_ARRAYSIZE(buffer_action_label), multiline_input_size, 
+                                  ImGuiInputTextFlags_CallbackCharFilter | ImGuiInputTextFlags_CallbackEdit, filter_newline_limit))
+    {
+        UIManager::Get()->AddFontBuilderStringIfAnyUnmappedCharacters(buffer_action_label);
+
+        action_edit.Label = buffer_action_label;
+        label_matches_name = (action_edit.Label == action_edit.Name);
+
+        //Check for potential translation string
+        action_edit.LabelTranslationID = action_manager.GetTranslationIDForName(action_edit.Label);
+    }
+    vr_keyboard.VRKeyboardInputEnd();
+    ImGui::PopID();
+
+    ImGui::Columns(1);
+
+    const ImVec2 command_header_pos = ImGui::GetCursorPos();
+
+    //Vertically center button
+    button_pos.x += style.IndentSpacing;
+    button_pos.y += (command_header_pos.y - button_pos.y) / 2.0f - (b_size_default.y / 2.0f);
+    ImGui::SetCursorPos(button_pos);
+
+    if (!UIManager::Get()->IsOpenVRLoaded())    //Disable when dashboard app isn't available
+        ImGui::PushItemDisabledNoVisual();
+
+    WindowFloatingUIActionBar::ButtonAction(action_edit, b_size_default, true);
+
+    if (ImGui::IsItemActivated())
+    {
+        //Send action over so it can be used for testing
+        IPCManager::Get().SendStringToDashboardApp(configid_str_state_action_data, action_edit.Serialize(), UIManager::Get()->GetWindowHandle());
+
+        action_manager.StartAction(action_edit.UID);
+
+        //Make sure to either revert or get rid of the action if canceling the edit later
+        action_test_was_used = true;
+    }
+    else if (ImGui::IsItemDeactivated())
+    {
+        action_manager.StopAction(action_edit.UID);
+    }
+
+    if (!UIManager::Get()->IsOpenVRLoaded())
+        ImGui::PopItemDisabledNoVisual();
+
+    ImGui::SetCursorPos(command_header_pos);
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsActionsEditHeaderCommands));
+
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 13.5f : 9.5f;
+
+    ImGui::BeginChild("CommandList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight - tags_widget_height), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+    static int header_open = -1;
+    static float header_new_appearance_progress = 1.0f;     //We animate newly created command headers appearing as pop-in is a bit grating and it's simple, but do nothing for removal
+    static std::vector<int> list_unique_ids;
+    static unsigned int drag_last_hovered_header = 0;
+    static int keyboard_swapped_index            = -1;
+    static bool is_dragging_header = false;
+
+    command_ui_states.resize(action_edit.Commands.size());
+    const float header_text_max_width = ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeightWithSpacing() - style.FramePadding.x;
+
+    //Reset unique IDs when appearing
+    if (m_PageAppearing == wndsettings_page_actions_edit)
+    {
+        list_unique_ids.clear();
+    }
+
+    //Expand unique id lists if commands were added (also does initialization since it's empty then)
+    while (list_unique_ids.size() < action_edit.Commands.size())
+    {
+        list_unique_ids.push_back((int)list_unique_ids.size());
+    }
+
+    int command_id = 0;
+    for (auto& command : action_edit.Commands)
+    {
+        CommandUIState& ui_state = command_ui_states[command_id];
+        const bool animate_appearing = (header_new_appearance_progress < 1.0f) && (command_id == action_edit.Commands.size() - 1);
+
+        if (ui_state.header_label.empty())
+        {
+            ui_state.header_label = ActionManager::GetCommandDescription(command, header_text_max_width) + "###CommandHeader";
+
+            size_t copied_length = command.StrMain.copy(ui_state.buffer_str_main, IM_ARRAYSIZE(ui_state.buffer_str_main) - 1);
+            ui_state.buffer_str_main[copied_length] = '\0';
+            copied_length = command.StrArg.copy(ui_state.buffer_str_arg, IM_ARRAYSIZE(ui_state.buffer_str_arg) - 1);
+            ui_state.buffer_str_arg[copied_length] = '\0';
+
+            //Skip header animation if command has the value set already
+            ui_state.header_2_animation_progress = ((command.Type == ActionCommand::command_show_overlay) && (LOWORD(command.UIntID) == 1)) ? 1.0f : 0.0f;
+        }
+
+        ImGui::PushID(list_unique_ids[command_id]);
+
+        //Set focus for nav if we previously re-ordered overlays via keyboard
+        if (keyboard_swapped_index == command_id)
+        {
+            ImGui::SetKeyboardFocusHere();
+
+            //Nav works against us here, so keep setting focus until ctrl isn't down anymore
+            if ((!io.KeyCtrl) || (!io.NavVisible))
+            {
+                keyboard_swapped_index = -1;
+            }
+        }
+
+        if (animate_appearing)
+            ImGui::BeginCollapsingArea("CollapsingAreaNewAppear", true, header_new_appearance_progress);
+
+        ImGui::SetNextItemOpen((header_open == command_id));
+        if (ImGui::CollapsingHeaderPadded(ui_state.header_label.c_str()))
+        {
+            if (!is_dragging_header)
+            {
+                header_open = command_id;
+            }
+            else if (header_open != command_id)
+            {
+                UIManager::Get()->RepeatFrame();    //Collapsing header's arrow flickers if we deny the change, so skip that frame
+            }
+        }
+        else if (header_open == command_id)
+        {
+            if (!is_dragging_header)
+            {
+                header_open = -1;
+                delete_confirm_state = false;
+            }
+            else
+            {
+                UIManager::Get()->RepeatFrame();
+            }
+        }
+
+        if (animate_appearing)
+        {
+            ImGui::EndCollapsingArea();
+            ui_state.header_animation_progress = header_new_appearance_progress * 0.50f; //The collapsing areas are appearing independently, but slow the lower one down a bit to make it less jarring
+        }
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+        {
+            drag_last_hovered_header = command_id;
+        }
+
+        //Drag reordering
+        if ((ImGui::IsItemActive()) && (!ImGui::IsItemHovered()))
+        {
+            int index_swap = command_id + ((ImGui::GetMouseDragDelta(ImGuiMouseButton_Left).y < 0.0f) ? -1 : 1);
+            if ((drag_last_hovered_header != command_id) && (index_swap >= 0) && (index_swap < action_edit.Commands.size()))
+            {
+                std::iter_swap(action_edit.Commands.begin() + command_id, action_edit.Commands.begin() + index_swap);
+                std::iter_swap(command_ui_states.begin()    + command_id, command_ui_states.begin()    + index_swap);
+                std::iter_swap(list_unique_ids.begin()      + command_id, list_unique_ids.begin()      + index_swap);
+
+                if (header_open == command_id)
+                {
+                    header_open = index_swap;
+                }
+                else if (header_open == index_swap)
+                {
+                    header_open = command_id;
+                }
+
+                ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
+                is_dragging_header = true;
+                UIManager::Get()->RepeatFrame();
+            }
+        }
+
+        //Keyboard reordering
+        if ((io.NavVisible) && (io.KeyCtrl) && (drag_last_hovered_header == command_id))
+        {
+            int index_swap = command_id + ((ImGui::IsNavInputPressed(ImGuiNavInput_DpadDown, true)) ? 1 : (ImGui::IsNavInputPressed(ImGuiNavInput_DpadUp, true)) ? -1 : 0);
+            if ((command_id != index_swap) && (index_swap >= 0) && (index_swap < action_edit.Commands.size()))
+            {
+                std::iter_swap(action_edit.Commands.begin() + command_id, action_edit.Commands.begin() + index_swap);
+                std::iter_swap(command_ui_states.begin()    + command_id, command_ui_states.begin()    + index_swap);
+                std::iter_swap(list_unique_ids.begin()      + command_id, list_unique_ids.begin()      + index_swap);
+
+                if (header_open == command_id)
+                {
+                    header_open = index_swap;
+                }
+                else if (header_open == index_swap)
+                {
+                    header_open = command_id;
+                }
+
+                //Skip the rest of this frame to avoid double-swaps
+                keyboard_swapped_index = index_swap;
+                ImGui::PopID();
+                UIManager::Get()->RepeatFrame();
+                break;
+            }
+        }
+
+        ImGui::BeginCollapsingArea("CollapsingArea", (header_open == command_id), ui_state.header_animation_progress);
+        ImGui::Indent();
+        ImGui::Spacing();
+
+        ImGui::Columns(2, "ColumnCommand", false);
+        ImGui::SetColumnWidth(0, m_Column0Width);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandType));
+        ImGui::NextColumn();
+
+        bool has_value_changed = false;
+
+        int command_type_temp = command.Type;
+        ImGui::SetNextItemWidth(-1);
+        if (TranslatedComboAnimated("##ComboCommandType", command_type_temp, tstr_SettingsActionsEditCommandTypeNone, tstr_SettingsActionsEditCommandTypeSwitchTask))
+        {
+            //Reset command values, then set type
+            command = ActionCommand();
+            command.Type = (ActionCommand::CommandType)command_type_temp;
+
+            ui_state.buffer_str_main[0] = '\0';
+            ui_state.buffer_str_arg[0]  = '\0';
+            ui_state.temp_int_1 = 0;
+            ui_state.temp_int_2 = 0;
+
+            has_value_changed = true;
+        }
+        ImGui::Spacing();
+        ImGui::NextColumn();
+
+        const float cursor_y_prev = ImGui::GetCursorPosY();
+
+        switch (command.Type)
+        {
+            case ActionCommand::command_none: break;
+            case ActionCommand::command_key:
+            {
+                if ((m_PageReturned == wndsettings_page_keycode_picker) && (header_open == command_id))
+                {
+                    command.UIntID = m_KeyCodePickerID;
+                    has_value_changed = true;
+
+                    m_PageReturned = wndsettings_page_none;
+                }
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandKeyCode));
+                ImGui::NextColumn();
+
+                if (ImGui::Button( GetStringForKeyCode((unsigned int)command.UIntID)) )
+                {
+                    m_KeyCodePickerID = (unsigned int)command.UIntID;
+                    PageGoForward(wndsettings_page_keycode_picker);
+                }
+                ImGui::NextColumn();
+
+                bool temp_bool = (command.UIntArg == 1);
+                if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsActionsEditCommandKeyToggle), &temp_bool))
+                {
+                    command.UIntArg = temp_bool;
+                    has_value_changed = true;
+                }
+
+                break;
+            }
+            case ActionCommand::command_mouse_pos:
+            {
+                const float input_width = ImGui::GetFontSize() * 6.0f;
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandMouseX));
+                ImGui::NextColumn();
+
+                ImGui::SetNextItemWidth(input_width);
+                vr_keyboard.VRKeyboardInputBegin("##X");
+                if (ImGui::InputInt("##X", &ui_state.temp_int_1, 1, 25))
+                {
+                    has_value_changed = true;
+                }
+                vr_keyboard.VRKeyboardInputEnd();
+                ImGui::NextColumn();
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandMouseY));
+                ImGui::NextColumn();
+
+                ImGui::SetNextItemWidth(input_width);
+                vr_keyboard.VRKeyboardInputBegin("##Y");
+                if (ImGui::InputInt("##Y", &ui_state.temp_int_2, 1, 25))
+                {
+                    has_value_changed = true;
+                }
+                vr_keyboard.VRKeyboardInputEnd();
+                ImGui::NextColumn();
+                ImGui::NextColumn();
+
+                if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsEditCommandMouseUseCurrent)))
+                {
+                    POINT mouse_pos = {0};
+                    ::GetCursorPos(&mouse_pos); 
+
+                    ui_state.temp_int_1 = mouse_pos.x;
+                    ui_state.temp_int_2 = mouse_pos.y;
+
+                    has_value_changed = true;
+                }
+
+                if (has_value_changed)
+                {
+                    command.UIntID = MAKELPARAM(ui_state.temp_int_1, ui_state.temp_int_2);
+                }
+
+                break;
+            }
+            case ActionCommand::command_string:
+            {
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandString));
+                ImGui::NextColumn();
+
+                vr_keyboard.VRKeyboardInputBegin("##InputCommandString");
+                if (ImGui::InputTextMultiline("##InputCommandString", ui_state.buffer_str_main, IM_ARRAYSIZE(ui_state.buffer_str_main), multiline_input_size))
+                {
+                    //Check input for unmapped characters
+                    if (ImGui::StringContainsUnmappedCharacter(ui_state.buffer_str_main))
+                    {
+                        if (TextureManager::Get().AddFontBuilderString(ui_state.buffer_str_main))
+                        {
+                            TextureManager::Get().ReloadAllTexturesLater();
+                            UIManager::Get()->RepeatFrame();
+                        }
+                    }
+
+                    command.StrMain = ui_state.buffer_str_main;
+                    has_value_changed = true;
+                }
+                vr_keyboard.VRKeyboardInputEnd();
+
+                break;
+            }
+            case ActionCommand::command_launch_app:
+            {
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandPath));
+                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditCommandPathTip));
+
+                ImGui::NextColumn();
+
+                ImGui::SetNextItemWidth(-1.0f);
+                vr_keyboard.VRKeyboardInputBegin("##InputCommandPath");
+                if (ImGui::InputText("##InputCommandPath", ui_state.buffer_str_main, IM_ARRAYSIZE(ui_state.buffer_str_main)))
+                {
+                    UIManager::Get()->AddFontBuilderStringIfAnyUnmappedCharacters(ui_state.buffer_str_main);
+
+                    command.StrMain = ui_state.buffer_str_main;
+                    has_value_changed = true;
+                }
+                vr_keyboard.VRKeyboardInputEnd();
+                ImGui::NextColumn();
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandArgs));
+                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditCommandArgsTip));
+
+                ImGui::NextColumn();
+
+                ImGui::SetNextItemWidth(-1.0f);
+                vr_keyboard.VRKeyboardInputBegin("##InputCommandArg");
+                if (ImGui::InputText("##InputCommandArg", ui_state.buffer_str_arg, IM_ARRAYSIZE(ui_state.buffer_str_arg)))
+                {
+                    UIManager::Get()->AddFontBuilderStringIfAnyUnmappedCharacters(ui_state.buffer_str_arg);
+
+                    command.StrArg = ui_state.buffer_str_arg;
+                    has_value_changed = true;
+                }
+                vr_keyboard.VRKeyboardInputEnd();
+
+                break;
+            }
+            case ActionCommand::command_show_keyboard:
+            {
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandVisibility));
+                ImGui::NextColumn();
+
+                int command_arg_temp = command.UIntArg;
+                ImGui::SetNextItemWidth(-1);
+                if (TranslatedComboAnimated("##ComboCommandToggleArg", command_arg_temp, tstr_SettingsActionsEditCommandVisibilityToggle, tstr_SettingsActionsEditCommandVisibilityHide))
+                {
+                    command.UIntArg = command_arg_temp;
+                    has_value_changed = true;
+                }
+
+                break;
+            }
+            case ActionCommand::command_crop_active_window: break;
+            case ActionCommand::command_show_overlay:
+            {
+                bool use_command_tags = (LOWORD(command.UIntID) == 1);
+                bool do_undo_command  = (HIWORD(command.UIntID) == 1);
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandVisibility));
+                ImGui::NextColumn();
+
+                int command_arg_temp = command.UIntArg;
+                ImGui::SetNextItemWidth(-1);
+                if (TranslatedComboAnimated("##ComboCommandToggleArg", command_arg_temp, tstr_SettingsActionsEditCommandVisibilityToggle, tstr_SettingsActionsEditCommandVisibilityHide))
+                {
+                    command.UIntArg = command_arg_temp;
+                    has_value_changed = true;
+                }
+                ImGui::NextColumn();
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditTarget));
+                ImGui::NextColumn();
+
+                if (ImGui::RadioButton(TranslationManager::GetString(tstr_SettingsActionsEditTargetActionTarget), !use_command_tags))
+                {
+                    command.UIntID = MAKELPARAM(false, do_undo_command);
+                    has_value_changed = true;
+                }
+
+                ImGui::SameLine();
+
+                if (ImGui::RadioButton(TranslationManager::GetString(tstr_SettingsActionsEditTargetUseTags), use_command_tags))
+                {
+                    command.UIntID = MAKELPARAM(true, do_undo_command);
+                    has_value_changed = true;
+                }
+
+                ImGui::BeginCollapsingArea("CommandAreaTags", use_command_tags, ui_state.header_2_animation_progress);
+
+                if (InputOverlayTags("CommandTargetTags", ui_state.buffer_str_main, IM_ARRAYSIZE(ui_state.buffer_str_main), ui_state.input_tags_state, 1))
+                {
+                    command.StrMain = ui_state.buffer_str_main;
+                    has_value_changed = true;
+                }
+
+                ImGui::NextColumn();
+
+                if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsActionsEditCommandUndo), &do_undo_command))
+                {
+                    command.UIntID = MAKELPARAM(use_command_tags, do_undo_command);
+                    has_value_changed = true;
+                }
+
+                ImGui::EndCollapsingArea();
+
+                break;
+            }
+            default: break;
+        }
+
+        if (has_value_changed)
+        {
+            ui_state.header_label = ActionManager::GetCommandDescription(command, header_text_max_width);
+        }
+
+        ImGui::Columns(1);
+
+        //Delete button
+        bool command_was_deleted = false;
+
+        if (cursor_y_prev != ImGui::GetCursorPosY())    //Only add spacing if the command had any settings
+            ImGui::Spacing();
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - delete_button_width);
+
+        if (delete_confirm_state)
+        {
+            if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsEditCommandDeleteConfirm), m_CachedSizes.ActionEdit_ButtonDeleteSize))
+            {
+                delete_confirm_state = false;
+
+                action_edit.Commands.erase(action_edit.Commands.begin() + command_id);
+                command_ui_states.erase(command_ui_states.begin() + command_id);
+
+                header_open = -1;
+                command_was_deleted = true;
+            }
+        }
+        else
+        {
+            if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsEditCommandDelete), m_CachedSizes.ActionEdit_ButtonDeleteSize))
+            {
+                delete_confirm_state = true;
+            }
+        }
+
+        delete_button_width = ImGui::GetItemRectSize().x + style.IndentSpacing;
+
+        ImGui::Spacing();
+        ImGui::Unindent();
+        ImGui::EndCollapsingArea();
+
+        ImGui::PopID();
+
+        if (command_was_deleted)
+        {
+            UIManager::Get()->RepeatFrame();
+            break;
+        }
+
+        ++command_id;
+    }
+
+    if (!action_edit.Commands.empty())
+    {
+        ImGui::Separator();
+    }
+
+    //Use empty label here. Icon and actual label are manually created further down
+    if (ImGui::Selectable("##AddCommand", false))
+    {
+        ActionCommand command;
+
+        action_edit.Commands.push_back(command);
+
+        //Animate appearance of new command and open its header
+        header_new_appearance_progress = 0.0f;
+        header_open = (int)action_edit.Commands.size() - 1;
+        UIManager::Get()->RepeatFrame(3);                           //3 frames to avoid scrollbar flickering from sizing calculations
+    }
+
+    if (ImGui::IsItemVisible())
+    {
+        //Custom render the selectable label with icon
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+        ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
+        ImVec2 img_size, img_uv_min, img_uv_max;
+        TextureManager::Get().GetTextureInfo(tmtex_icon_add, img_size, img_uv_min, img_uv_max);
+        ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+        //Label
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandAdd));
+    }
+
+    ImGui::EndChild();
+
+    ImGui::Unindent();
+
+    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+    {
+        is_dragging_header = false;
+    }
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight()) );
+
+    //Confirmation buttons
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogOk))) 
+    {
+        action_manager.StoreAction(action_edit);
+
+        //Reload texture to apply icon if there is any
+        if (!action_edit.IconFilename.empty())
+        {
+            TextureManager::Get().ReloadAllTexturesLater();
+        }
+
+        //Send action over
+        IPCManager::Get().SendStringToDashboardApp(configid_str_state_action_data, action_edit.Serialize(), UIManager::Get()->GetWindowHandle());
+
+        PageGoBack();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
+    {
+        PageGoBack();
+    }
+}
+
+void WindowSettings::UpdatePageActionsOrder(bool only_restore_settings)
+{
+    static FloatingWindowActionOrderListState page_state;
+
+    ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+    ActionManager::ActionList& action_list = (m_ActionOrderListEditForOverlayBar) ? action_manager.GetActionOrderListOverlayBar() : action_manager.GetActionOrderListBarDefault();
+
+    if (only_restore_settings)
+    {
+        if (!page_state.HasSavedChanges)
+        {
+            action_list = page_state.ActionListOrig;
+        }
+        return;
+    }
+
+    bool go_add_actions = false;
+    bool go_back = ActionOrderList(action_list, (m_PageAppearing == wndsettings_page_actions_order), (m_PageReturned == wndsettings_page_actions_order_add), page_state, go_add_actions, -m_WarningHeight);
+
+    if (m_PageReturned == wndsettings_page_actions_order_add)
+    {
+        m_PageReturned = wndsettings_page_none;
+    }
+
+    if (go_add_actions)
+    {
+        PageGoForward(wndsettings_page_actions_order_add);
+    }
+    else if (go_back)
+    {
+        PageGoBack();
+    }
+}
+
+void WindowSettings::UpdatePageActionsOrderAdd()
+{
+    static FloatingWindowActionAddSelectorState page_state;
+
+    ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+    ActionManager::ActionList& action_list = (m_ActionOrderListEditForOverlayBar) ? action_manager.GetActionOrderListOverlayBar() : action_manager.GetActionOrderListBarDefault();
+
+    bool go_back = ActionAddSelector(action_list, (m_PageAppearing == wndsettings_page_actions_order_add), page_state, -m_WarningHeight);
+
+    if (go_back)
+    {
+        PageGoBack();
+    }
+}
+
 void WindowSettings::UpdatePageColorPicker()
 {
     static ImVec4 color_current;
@@ -2933,8 +4419,8 @@ void WindowSettings::UpdatePageProfilePicker()
 {
     ImGuiStyle& style = ImGui::GetStyle();
 
-    bool scroll_to_selection = false;
     static bool is_nav_focus_entry_pending = false;    //Focus has to be delayed until after the page animation is done
+    static bool scroll_to_selection = false;
     static int list_id = -1;
 
     if (m_PageAppearing == wndsettings_page_profile_picker)
@@ -2999,6 +4485,11 @@ void WindowSettings::UpdatePageProfilePicker()
         if ( (scroll_to_selection) && (index == list_id) )
         {
             ImGui::SetScrollHereY();
+
+            if (ImGui::IsItemVisible())
+            {
+                scroll_to_selection = false;
+            }
         }
 
         index++;
@@ -3020,13 +4511,17 @@ void WindowSettings::UpdatePageActionPicker()
 {
     ImGuiStyle& style = ImGui::GetStyle();
 
-    bool scroll_to_selection = false;
-    static ActionID list_id = action_none;
+    static ActionUID list_uid = k_ActionUID_Invalid;
     static bool is_nav_focus_entry_pending = false;    //Focus has to be delayed until after the page animation is done
+    static bool scroll_to_selection = false;
+    static ImVec2 no_actions_text_size;
 
     if (m_PageAppearing == wndsettings_page_action_picker)
     {
-        list_id = m_ActionPickerID;
+        //Load action list
+        m_ActionList = ConfigManager::Get().GetActionManager().GetActionNameList();
+
+        list_uid = m_ActionPickerUID;
         scroll_to_selection = true;
         is_nav_focus_entry_pending = ImGui::GetIO().NavVisible;
     }
@@ -3040,65 +4535,475 @@ void WindowSettings::UpdatePageActionPicker()
     const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 22.0f : 15.0f;
     ImGui::BeginChild("ActionPickerList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
-    //List default actions
-    for (int i = 0; i < action_built_in_MAX; ++i)
+    //Display error if there are no actions
+    if (m_ActionList.empty())
     {
-        if ( (is_nav_focus_entry_pending) && (m_PageAnimationDir == 0) && ((ActionID)i == list_id) )
-        {
-            ImGui::SetKeyboardFocusHere();
-            is_nav_focus_entry_pending = false;
-        }
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x / 2.0f - (no_actions_text_size.x / 2.0f));
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y / 2.0f - (no_actions_text_size.y / 2.0f));
 
-        if (ImGui::Selectable(ActionManager::Get().GetActionName((ActionID)i), (i == list_id)))
-        {
-            list_id = (ActionID)i;
-            m_ActionPickerID = list_id;
-
-            PageGoBack();
-        }
-
-        if ( (scroll_to_selection) && ((ActionID)i == list_id) )
-        {
-            ImGui::SetScrollHereY();
-        }
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_DialogActionPickerEmpty));
+        no_actions_text_size = ImGui::GetItemRectSize();
     }
-
-    //List custom actions
-    int act_index = 0;
-    for (CustomAction& action : ConfigManager::Get().GetCustomActions())
+    else
     {
-        ActionID action_id = (ActionID)(act_index + action_custom);
-
-        if ( (is_nav_focus_entry_pending) && (m_PageAnimationDir == 0) && (action_id == list_id) )
+        //List actions
+        for (const auto& entry : m_ActionList)
         {
-            ImGui::SetKeyboardFocusHere();
-            is_nav_focus_entry_pending = false;
+            ImGui::PushID((void*)entry.UID);
+
+            if ( (is_nav_focus_entry_pending) && (m_PageAnimationDir == 0) && (entry.UID == list_uid) )
+            {
+                ImGui::SetKeyboardFocusHere();
+                is_nav_focus_entry_pending = false;
+            }
+
+            if (ImGui::Selectable(entry.Name.c_str(), (entry.UID == list_uid) ))
+            {
+                list_uid = entry.UID;
+                m_ActionPickerUID = entry.UID;
+
+                PageGoBack();
+            }
+
+            if ( (scroll_to_selection) && (entry.UID == list_uid) )
+            {
+                ImGui::SetScrollHereY();
+
+                if (ImGui::IsItemVisible())
+                {
+                    scroll_to_selection = false;
+                }
+            }
+
+            ImGui::PopID();
         }
-
-        ImGui::PushID(&action);
-        if (ImGui::Selectable(ActionManager::Get().GetActionName(action_id), (action_id == list_id) ))
-        {
-            list_id = action_id;
-            m_ActionPickerID = action_id;
-
-            PageGoBack();
-        }
-        ImGui::PopID();
-
-        if ( (scroll_to_selection) && (action_id == list_id) )
-        {
-            ImGui::SetScrollHereY();
-        }
-
-        act_index++;
     }
 
     ImGui::EndChild();
     ImGui::Unindent();
 
-    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight()) );
 
     //Cancel button
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
+    {
+        PageGoBack();
+    }
+}
+
+void WindowSettings::UpdatePageKeyCodePicker()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+
+    static ImGuiTextFilter filter;
+    static int list_id = 0;
+    static bool is_nav_focus_entry_pending = false;    //Focus has to be delayed until after the page animation is done
+    static bool scroll_to_selection = false;
+
+    static unsigned char key_code_prev = 0;
+    static bool mod_ctrl  = false;
+    static bool mod_alt   = false;
+    static bool mod_shift = false;
+    static bool mod_win   = false;
+
+    if (m_PageAppearing == wndsettings_page_keycode_picker)
+    {
+        list_id = m_KeyCodePickerID;
+        key_code_prev = m_KeyCodePickerID;
+        scroll_to_selection = true;
+        is_nav_focus_entry_pending = ImGui::GetIO().NavVisible;
+
+        for (int i = 0; i < 256; i++)
+        {
+            //Not the smartest, but most straight forward way
+            if (GetKeyCodeForListID(i) == m_KeyCodePickerID)
+            {
+                list_id = i;
+
+                //Clear filter if it wouldn't show the current selection
+                if (!filter.PassFilter(GetStringForKeyCode(m_KeyCodePickerID)))
+                {
+                    filter.Clear();
+                }
+
+                break;
+            }
+        }
+
+        if (m_KeyCodePickerHotkeyMode)
+        {
+            mod_ctrl  = (m_KeyCodePickerHotkeyFlags & MOD_CONTROL);
+            mod_alt   = (m_KeyCodePickerHotkeyFlags & MOD_ALT);
+            mod_shift = (m_KeyCodePickerHotkeyFlags & MOD_SHIFT);
+            mod_win   = (m_KeyCodePickerHotkeyFlags & MOD_WIN);
+        }
+    }
+
+    //Modifier flags if this displayed to set a hotkey
+    if (m_KeyCodePickerHotkeyMode)
+    {
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogKeyCodePickerHeaderHotkey)); 
+        ImGui::Indent();
+
+        static float checkbox_width = 0.0f;
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_DialogKeyCodePickerModifiers));
+        ImGui::SameLine();
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - checkbox_width);
+
+        ImGui::BeginGroup();
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {style.ItemSpacing.x * 2.0f, style.ItemSpacing.y});
+
+        ImGui::Checkbox("Ctrl",  &mod_ctrl);    //These could be translated, but the whole key list isn't, so no point right now
+        ImGui::SameLine();
+        ImGui::Checkbox("Alt",   &mod_alt);
+        ImGui::SameLine();
+        ImGui::Checkbox("Shift", &mod_shift);
+        ImGui::SameLine();
+        ImGui::Checkbox("Win",   &mod_win);
+
+        ImGui::PopStyleVar();
+        ImGui::EndGroup();
+
+        checkbox_width = ImGui::GetItemRectSize().x + style.ItemSpacing.x;
+
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_DialogKeyCodePickerKeyCode)); 
+        ImGui::Spacing();
+    }
+    else //Normal header
+    {
+        ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogKeyCodePickerHeader)); 
+    }
+    
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    vr_keyboard.VRKeyboardInputBegin("##FilterList");
+    if (ImGui::InputTextWithHint("##FilterList", TranslationManager::GetString(tstr_DialogKeyCodePickerKeyCodeHint), filter.InputBuf, IM_ARRAYSIZE(filter.InputBuf)))
+    {
+        UIManager::Get()->AddFontBuilderStringIfAnyUnmappedCharacters(filter.InputBuf);
+
+        filter.Build();
+    }
+    vr_keyboard.VRKeyboardInputEnd();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
+    const float item_count_offset = (m_KeyCodePickerHotkeyMode) ? -2.5f : 0.0f;
+    const float item_count = ((UIManager::Get()->IsInDesktopMode()) ? 21.0f : 16.0f) + item_count_offset;
+    ImGui::BeginChild("KeyCodePickerList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
+
+    unsigned char list_keycode;
+    for (int i = 0; i < 256; i++)
+    {
+        list_keycode = GetKeyCodeForListID(i);
+        if (filter.PassFilter( GetStringForKeyCode(list_keycode) ))
+        {
+            if ( (m_KeyCodePickerNoMouse) && (list_keycode >= VK_LBUTTON) && (list_keycode <= VK_XBUTTON2) && (list_keycode != VK_CANCEL) )    //Skip mouse buttons if turned off
+                continue;
+
+            if ( (is_nav_focus_entry_pending) && (m_PageAnimationDir == 0) && (i == list_id) )
+            {
+                ImGui::SetKeyboardFocusHere();
+                is_nav_focus_entry_pending = false;
+            }
+
+            if (ImGui::Selectable( GetStringForKeyCode(list_keycode), (i == list_id)))
+            {
+                list_id = i;
+                m_KeyCodePickerID = list_keycode;
+
+                if (!m_KeyCodePickerHotkeyMode)
+                {
+                    PageGoBack();
+                }
+            }
+
+            if ((ImGui::IsItemClicked()) && (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)))
+            {
+                PageGoBack();
+            }
+
+            if ( (scroll_to_selection) && (i == list_id) )
+            {
+                ImGui::SetScrollHereY();
+
+                if (ImGui::IsItemVisible())
+                {
+                    scroll_to_selection = false;
+                }
+            }
+        }
+    }
+
+    ImGui::EndChild();
+    ImGui::Unindent();
+
+    if (m_KeyCodePickerHotkeyMode)
+    {
+        ImGui::Unindent();
+    }
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight()) );
+
+    //Confirmation buttons
+    if (m_KeyCodePickerHotkeyMode)
+    {
+        if (ImGui::Button(TranslationManager::GetString(tstr_DialogOk)))
+        {
+            m_KeyCodePickerHotkeyFlags = 0;
+
+            if (mod_ctrl)
+                m_KeyCodePickerHotkeyFlags |= MOD_CONTROL;
+            if (mod_alt)
+                m_KeyCodePickerHotkeyFlags |= MOD_ALT;
+            if (mod_shift)
+                m_KeyCodePickerHotkeyFlags |= MOD_SHIFT;
+            if (mod_win)
+                m_KeyCodePickerHotkeyFlags |= MOD_WIN;
+
+            PageGoBack();
+        }
+
+        ImGui::SameLine();
+    }
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
+    {
+        //Only really need to reset this in hotkey mode
+        m_KeyCodePickerID = key_code_prev;
+
+        PageGoBack();
+    }
+
+    //"From Input..." button
+    if (UIManager::Get()->IsInDesktopMode())
+    {
+        ImGui::SameLine();
+
+        static float list_buttons_width = 0.0f;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - list_buttons_width);
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_DialogKeyCodePickerFromInput)))
+        {
+            ImGui::OpenPopup("Bind Key");
+        }
+
+        list_buttons_width = ImGui::GetItemRectSize().x;
+
+        ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        if (ImGui::BeginPopupModal("Bind Key", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoNavInputs))
+        {
+            ImGui::Text(TranslationManager::GetString( (m_KeyCodePickerNoMouse) ? tstr_DialogKeyCodePickerFromInputPopupNoMouse : tstr_DialogKeyCodePickerFromInputPopup ));
+
+            ImGuiIO& io = ImGui::GetIO();
+
+            //We can no longer use ImGui's keyboard state to query all possible keyboard keys, so we do it manually via GetAsyncKeyState()
+            //To avoid issues with keys that are already down to begin with, we store the state in the moment of the popup appearing and only act on changes to that
+            static bool keyboard_state_initial[255] = {0};
+            static bool wait_for_key_release = false; 
+
+            if (ImGui::IsWindowAppearing())
+            {
+                for (int i = 0; i < IM_ARRAYSIZE(keyboard_state_initial); ++i)
+                {
+                    keyboard_state_initial[i] = (::GetAsyncKeyState(i) < 0);
+                }
+
+                wait_for_key_release = false;
+            }
+
+            for (int i = 0; i < IM_ARRAYSIZE(keyboard_state_initial); ++i)
+            {
+                if ((::GetAsyncKeyState(i) < 0) != keyboard_state_initial[i])
+                {
+                    //Key was up before, so it's a key press
+                    if (!keyboard_state_initial[i])
+                    {
+                        //Ignore mouse buttons if they're disabled
+                        bool skip_key = false;
+                        if (m_KeyCodePickerNoMouse)
+                        {
+                            switch (i)
+                            {
+                                case VK_LBUTTON:
+                                case VK_RBUTTON:
+                                case VK_MBUTTON:
+                                case VK_XBUTTON1:
+                                case VK_XBUTTON2: skip_key = true;
+                            }
+                        }
+
+                        if (!skip_key)
+                        {
+                            m_KeyCodePickerID = i;
+
+                            for (int i = 0; i < 256; i++)
+                            {
+                                if (GetKeyCodeForListID(i) == m_KeyCodePickerID)
+                                {
+                                    list_id = i;
+                                    break;
+                                }
+                            }
+
+                            scroll_to_selection = true;
+
+                            //Wait for the key to be released to avoid inputs triggering other things
+                            wait_for_key_release = true;
+                            keyboard_state_initial[i] = true;
+                        }
+                        break;
+                    }
+                    else   //Key was down before, so it's a key release. Update the initial state so it can be pressed again and registered as such
+                    {
+                        keyboard_state_initial[i] = false;
+
+                        //Close popup here if we are waiting for this key to be released
+                        if ((wait_for_key_release) && (i == m_KeyCodePickerID))
+                        {
+                            ImGui::CloseCurrentPopup();
+                            io.ClearInputKeys();
+
+                            if (!m_KeyCodePickerHotkeyMode)
+                            {
+                                PageGoBack();
+                            }
+                        }
+                    }
+                }
+            }
+
+            ImGui::EndPopup();
+        }
+    }
+}
+
+void WindowSettings::UpdatePageIconPicker()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    static std::vector<std::string> icon_file_list;
+    static int list_id = 0;
+    static bool is_nav_focus_entry_pending = false;    //Focus has to be delayed until after the page animation is done
+    static bool scroll_to_selection = false;
+
+    if (m_PageAppearing == wndsettings_page_icon_picker)
+    {
+        list_id = 0;
+        scroll_to_selection = true;
+        is_nav_focus_entry_pending = ImGui::GetIO().NavVisible;
+
+        icon_file_list = ActionManager::GetIconFileList();
+        icon_file_list.insert(icon_file_list.begin(), TranslationManager::GetString(tstr_DialogIconPickerNone));
+
+        //Select matching entry
+        auto it = std::find_if(icon_file_list.begin(), icon_file_list.end(), [&](const auto& list_entry){ return (m_IconPickerFile == list_entry); });
+
+        if (it != icon_file_list.end())
+        {
+            list_id = (int)std::distance(icon_file_list.begin(), it);
+        }
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogIconPickerHeader));
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    HelpMarker(TranslationManager::GetString(tstr_DialogIconPickerHeaderTip));
+
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 22.0f : 18.0f;
+    ImGui::BeginChild("IconPickerList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
+
+    int i = 0;
+    for (const auto& file_entry : icon_file_list)
+    {
+        if ( (is_nav_focus_entry_pending) && (m_PageAnimationDir == 0) && (i == list_id) )
+        {
+            ImGui::SetKeyboardFocusHere();
+            is_nav_focus_entry_pending = false;
+        }
+
+        if (ImGui::Selectable( file_entry.c_str(), (i == list_id) ))
+        {
+            list_id = i;
+
+            std::string icon_path = "images/icons/" + file_entry;
+            TextureManager::Get().SetTextureFilenameIconTemp(WStringConvertFromUTF8(icon_path.c_str()).c_str());
+            TextureManager::Get().ReloadAllTexturesLater(); //Reloading everything on changing one icon path? Seems excessive, but works fine for now.
+
+            UIManager::Get()->RepeatFrame();
+        }
+
+        if ((ImGui::IsItemClicked()) && (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)))
+        {
+            m_IconPickerFile = (list_id != 0) ? icon_file_list[list_id] : "";
+
+            PageGoBack();
+        }
+
+        if ( (scroll_to_selection) && (i == list_id) )
+        {
+            ImGui::SetScrollHereY();
+
+            if (ImGui::IsItemVisible())
+            {
+                scroll_to_selection = false;
+            }
+        }
+
+        ++i;
+    }
+
+    const bool has_scrollbar = ImGui::IsAnyScrollBarVisible();
+
+    ImGui::EndChild();
+    ImGui::Unindent();
+
+    //Icon Preview
+    if (list_id != 0)
+    {
+        ImVec2 i_size, i_uv_min, i_uv_max;
+        TextureManager::Get().GetTextureInfo(tmtex_icon_settings, i_size, i_uv_min, i_uv_max);
+        //Default image size for custom actions
+        ImVec2 i_size_default = i_size;
+
+        //Draw at bottom right corner of the child window, but don't cover scroll bar if there is any
+        ImVec2 preview_max = ImGui::GetItemRectMax();
+
+        if (has_scrollbar)
+            preview_max.x -= style.ScrollbarSize;
+
+        preview_max.x -= style.ItemInnerSpacing.x;
+        preview_max.y -= style.ItemInnerSpacing.y;
+
+        ImVec2 preview_pos = preview_max;
+        preview_pos.x -= i_size_default.x;
+        preview_pos.y -= i_size_default.y;
+
+        TextureManager::Get().GetTextureInfo(tmtex_icon_temp, i_size, i_uv_min, i_uv_max);
+        ImGui::GetForegroundDrawList()->AddImage(ImGui::GetIO().Fonts->TexID, preview_pos, preview_max, i_uv_min, i_uv_max);
+    }
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight()) );
+
+    //Confirmation buttons
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogOk))) 
+    {
+        m_IconPickerFile = (list_id != 0) ? icon_file_list[list_id] : "";
+
+        PageGoBack();
+    }
+
+    ImGui::SameLine();
+
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
     {
         PageGoBack();
@@ -3153,6 +5058,7 @@ void WindowSettings::PageGoBack()
 {
     if (m_PageStackPos != 0)
     {
+        OnPageLeaving(m_PageStack[m_PageStackPos]);
         m_PageStackPos--;
         m_PageReturned = m_PageStack.back();
     }
@@ -3176,7 +5082,29 @@ void WindowSettings::PageGoBackInstantly()
 
 void WindowSettings::PageGoHome()
 {
-    m_PageStackPos = 0;
+    while (m_PageStackPos != 0)
+    {
+        OnPageLeaving(m_PageStack[m_PageStackPos]);
+        m_PageStackPos--;
+    }
+}
+
+void WindowSettings::OnPageLeaving(WindowSettingsPage previous_page)
+{
+    switch (previous_page)
+    {
+        case wndsettings_page_actions_edit:
+        {
+            UpdatePageActionsEdit(true); //Call to reset settings
+            break;
+        }
+        case wndsettings_page_actions_order:
+        {
+            UpdatePageActionsOrder(true); //Call to reset settings
+            break;
+        }
+        default: break;
+    }
 }
 
 void WindowSettings::SelectableWarning(const char* selectable_id, const char* popup_id, const char* text, bool show_warning_prefix, const ImVec4* text_color)
@@ -3227,6 +5155,90 @@ void WindowSettings::SelectableWarning(const char* selectable_id, const char* po
     {
         *selectable_height = ImGui::GetItemRectSize().y;
     }
+}
+
+void WindowSettings::ButtonHotkey(unsigned int hotkey_id)
+{
+    static std::string hotkey_names[3];
+    static unsigned int edited_id = UINT_MAX;
+
+    hotkey_id = std::min(hotkey_id, 2u);
+    std::string& hotkey_name = hotkey_names[hotkey_id];
+
+    if ((m_PageReturned == wndsettings_page_keycode_picker) && (edited_id != UINT_MAX))
+    {
+        edited_id = std::min(edited_id, 2u);
+
+        ConfigID_Int config_id_modifier = (ConfigID_Int)(configid_int_input_hotkey01_modifiers + (edited_id * 2));
+        ConfigID_Int config_id_keycode  = (ConfigID_Int)(configid_int_input_hotkey01_keycode   + (edited_id * 2));
+
+        ConfigManager::SetValue(config_id_modifier, (int)m_KeyCodePickerHotkeyFlags);
+        ConfigManager::SetValue(config_id_keycode,  (int)m_KeyCodePickerID);
+        IPCManager::Get().PostConfigMessageToDashboardApp(config_id_modifier, (int)m_KeyCodePickerHotkeyFlags);
+        IPCManager::Get().PostConfigMessageToDashboardApp(config_id_keycode,  (int)m_KeyCodePickerID);
+
+        m_PageReturned = wndsettings_page_none;
+        hotkey_names[edited_id] = "";
+        edited_id = UINT_MAX;
+    }
+
+    unsigned int  flags   = 0;
+    unsigned char keycode = 0;
+
+    switch (hotkey_id)
+    {
+        case 0:
+        {
+            flags   = (unsigned int) ConfigManager::GetValue(configid_int_input_hotkey01_modifiers);
+            keycode = (unsigned char)ConfigManager::GetValue(configid_int_input_hotkey01_keycode);
+            break;
+        }
+        case 1:
+        {
+            flags   = (unsigned int) ConfigManager::GetValue(configid_int_input_hotkey02_modifiers);
+            keycode = (unsigned char)ConfigManager::GetValue(configid_int_input_hotkey02_keycode);
+            break;
+        }
+        case 2:
+        {
+            flags   = (unsigned int) ConfigManager::GetValue(configid_int_input_hotkey03_modifiers);
+            keycode = (unsigned char)ConfigManager::GetValue(configid_int_input_hotkey03_keycode);
+            break;
+        }
+    }
+
+    //Update cached hotkey name if window is just appearing or the name is empty
+    if ( (m_PageAppearing == m_PageCurrent) || (hotkey_name.empty()) )
+    {
+        hotkey_name = "";
+
+        if (keycode != 0)
+        {
+            if (flags & MOD_CONTROL)
+                hotkey_name += "Ctrl+";
+            if (flags & MOD_ALT)
+                hotkey_name += "Alt+";
+            if (flags & MOD_SHIFT)
+                hotkey_name += "Shift+";
+            if (flags & MOD_WIN)
+                hotkey_name += "Win+";
+        }
+
+        hotkey_name += GetStringForKeyCode(keycode);
+    }
+
+    ImGui::PushID(hotkey_id);
+    if (ImGui::Button(hotkey_name.c_str()))
+    {
+        m_KeyCodePickerHotkeyMode = true;
+        m_KeyCodePickerHotkeyFlags = flags;
+        m_KeyCodePickerID = keycode;
+        edited_id = hotkey_id;
+
+        PageGoForward(wndsettings_page_keycode_picker);
+        m_PageReturned = wndsettings_page_none;
+    }
+    ImGui::PopID();
 }
 
 void WindowSettings::RefreshAppList()

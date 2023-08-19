@@ -684,6 +684,27 @@ namespace ImGui
         ImGui::PopStyleColor();
     }
 
+    int g_Stretched_BeginIndex = 0;
+    float g_Stretched_BaseX = 0.0f;
+    void BeginStretched()
+    {
+        g_Stretched_BeginIndex = ImGui::GetWindowDrawList()->VtxBuffer.Size;
+
+        const auto& buffer = ImGui::GetWindowDrawList()->VtxBuffer;
+        g_Stretched_BaseX = (buffer.empty()) ? 0.0f : buffer[g_Stretched_BeginIndex - 1].pos.x;
+    }
+
+    void EndStretched(float scale_x)
+    {
+        auto& buffer = ImGui::GetWindowDrawList()->VtxBuffer;
+
+        g_Stretched_BaseX = (buffer.size() > g_Stretched_BeginIndex) ? buffer[g_Stretched_BeginIndex].pos.x : 0.0f;
+        for (int i = g_Stretched_BeginIndex; i < buffer.Size; ++i)
+        {
+            buffer[i].pos.x = ((buffer[i].pos.x - g_Stretched_BaseX) * scale_x) + g_Stretched_BaseX;
+        }
+    }
+
     //Takes a nicely adjustable function and bolts it down to the options we need after making a few modifications
     bool ColorPicker4Simple(const char* str_id, float col[4], float ref_col[4], const char* label_color_current, const char* label_color_original, float scale)
     {
@@ -785,39 +806,74 @@ namespace ImGui
         return value_changed;
     }
 
-    ImGuiID g_CollapsingArea_LastID = 0;
-    float g_CollapsingArea_WidgetBeginY = 0.0f;
+    bool CollapsingHeaderPadded(const char* label, ImGuiTreeNodeFlags flags)
+    {
+        ImGuiWindow* window = GetCurrentWindow();
+        //Move back a pixel to fix CollapsingHeader()'s position being off by one for some reason
+        window->DC.CursorPos.x -= 1.0f;
+
+        //Temporarily modify window padding to fool CollapsingHeader to size differently
+        const float padding_x = ImGui::GetStyle().ItemInnerSpacing.x / 2.0f;
+        window->WindowPadding.x -= padding_x;
+        bool ret = ImGui::CollapsingHeader(label, flags);
+        window->WindowPadding.x += padding_x;
+
+        return ret;
+    }
+
+    struct CollapsingAreaState
+    {
+        ImGuiID WidgetID    = 0;
+        float WidgetBeginY  = 0.0f;
+        bool PushedClipRect = false;
+    };
+
+    ImVector<CollapsingAreaState> g_CollapsingArea_Stack;
+
     void BeginCollapsingArea(const char* str_id, bool show_content, float& persist_animation_progress)
     {
-        IM_ASSERT(g_CollapsingArea_LastID == 0 && "Called BeginCollapsingArea() before EndCollapsingArea() (nesting is not supported)");
+        g_CollapsingArea_Stack.push_back(CollapsingAreaState());
+        CollapsingAreaState& state = g_CollapsingArea_Stack.back();
 
         //Animate when changing between show_content state
         const float animation_step = ImGui::GetIO().DeltaTime * 3.0f;
         persist_animation_progress = clamp(persist_animation_progress + ((show_content) ? animation_step : -animation_step), 0.0f, 1.0f);
 
         //Set clipping
-        g_CollapsingArea_LastID = ImGui::GetID(str_id);     //Keep last ID in global to not require it in the EndCollapsingArea() call
-        const float content_height = ImGui::GetStateStorage()->GetFloat(g_CollapsingArea_LastID, 0.0f);
-        const float clip_height = smoothstep(persist_animation_progress, 0.0f, content_height);
-        ImVec2 clip_begin = ImGui::GetCursorScreenPos();
-        ImVec2 clip_end(clip_begin.x + ImGui::GetContentRegionAvail().x, clip_begin.y + clip_height);
+        state.WidgetID = ImGui::GetID(str_id);
 
-        ImGui::PushClipRect(clip_begin, clip_end, true);
+        //Don't push clip rect on full progress to allow for popups and such
+        if (persist_animation_progress != 1.0f)
+        {
+            const float content_height = ImGui::GetStateStorage()->GetFloat(state.WidgetID, 0.0f);
+            const float clip_height = smoothstep(persist_animation_progress, 0.0f, content_height);
+            ImVec2 clip_begin = ImGui::GetCursorScreenPos();
+            ImVec2 clip_end(clip_begin.x + ImGui::GetContentRegionAvail().x, clip_begin.y + clip_height);
 
-        //Pull cursor position further up to make widgets scroll down as they animate, keep start Y-pos in global to use in the next EndCollapsingArea() call
-        g_CollapsingArea_WidgetBeginY = (ImGui::GetCursorPosY() - content_height) + clip_height;
-        ImGui::SetCursorPosY(g_CollapsingArea_WidgetBeginY);
+            ImGui::PushClipRect(clip_begin, clip_end, true);
+            state.PushedClipRect = true;
+
+            //Pull cursor position further up to make widgets scroll down as they animate, keep start Y-pos in global to use in the next EndCollapsingArea() call
+            state.WidgetBeginY = (ImGui::GetCursorPosY() - content_height) + clip_height;
+            ImGui::SetCursorPosY(state.WidgetBeginY);
+        }
     }
 
     void EndCollapsingArea()
     {
-        IM_ASSERT(g_CollapsingArea_LastID != 0 && "Called EndCollapsingArea() before BeginCollapsingArea()");
+        IM_ASSERT(!g_CollapsingArea_Stack.empty() && "Called EndCollapsingArea() before BeginCollapsingArea()");
 
-        float& content_height = *ImGui::GetStateStorage()->GetFloatRef(g_CollapsingArea_LastID);
-        content_height = ImGui::GetCursorPosY() - g_CollapsingArea_WidgetBeginY;
+        CollapsingAreaState& state = g_CollapsingArea_Stack.back();
 
-        ImGui::PopClipRect();
-        g_CollapsingArea_LastID = 0;
+        float& content_height = *ImGui::GetStateStorage()->GetFloatRef(state.WidgetID);
+        content_height = ImGui::GetCursorPosY() - state.WidgetBeginY;
+
+        if (state.PushedClipRect)
+        {
+            ImGui::PopClipRect();
+        }
+
+        g_CollapsingArea_Stack.pop_back();
     }
 
     void PushItemDisabled()

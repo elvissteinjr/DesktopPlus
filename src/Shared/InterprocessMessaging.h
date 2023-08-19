@@ -34,13 +34,14 @@ enum IPCActionID
     ipcact_overlays_reset,              //Sent by dashboard application when all overlays were reset. No data in lParam
     ipcact_overlay_position_reset,      //Sent by UI application to reset the detached overlay position. No data in lParam
     ipcact_overlay_position_adjust,     //Sent by UI application to adjust detached overlay position. lParam = IPCActionOverlayPosAdjustValue
-    ipcact_action_delete,               //Sent by UI application to delete an Action. lParam is Custom(!) Action ID
-    ipcact_action_do,                   //Sent by UI application to do an Action. lParam is Action ID
-    ipcact_action_start,                //Sent by UI application to start an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
-    ipcact_action_stop,                 //Sent by UI application to stop an Action. lParam is Action ID. This is currently only used for input actions, other things fall back to *_do
+    ipcact_action_delete,               //Sent by UI application to delete an Action. lParam is Action UID
+    ipcact_action_do,                   //Sent by UI application to do an Action. lParam is Action UID
+    ipcact_action_start,                //Sent by UI application to start an Action. lParam is Action UID. This is currently only used for input actions, other things fall back to *_do
+    ipcact_action_stop,                 //Sent by UI application to stop an Action. lParam is Action UID. This is currently only used for input actions, other things fall back to *_do
     ipcact_overlay_profile_load,        //Sent by UI application when loading a profile. lParam is IPCActionOverlayProfileLoadArg + profile overlay ID (low/high word order). -2 ID is default.
                                         //Profile name is stored in configid_str_state_profile_name_load beforehand. ipcactv_ovrl_profile_multi_add queues profile IDs until called with -1
     ipcact_crop_to_active_window,       //Sent by UI application to adjust crop values to the active window. No data in lParam
+    ipcact_switch_task,                 //Sent by UI application to do the Switch Task action command independent of any action
     ipcact_overlay_duplicate,           //Sent by UI application to duplicate an overlay, also making it the active one. lParam is ID of overlay the config is copied from (typically the active ID)
     ipcact_overlay_new,                 //Sent by UI application to add a new overlay. lParam is desktop ID or -2 for HWND, -3 for UI overlay
                                         //HWND is stored in configid_handle_state_arg_hwnd beforehand

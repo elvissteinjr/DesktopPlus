@@ -16,9 +16,9 @@ VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionDoGlobalShortcut01(vr::k_ulInvalidActionHandle),
                      m_HandleActionDoGlobalShortcut02(vr::k_ulInvalidActionHandle),
                      m_HandleActionDoGlobalShortcut03(vr::k_ulInvalidActionHandle),
-                     m_HandleActionToggleOverlayGroupEnabled01(vr::k_ulInvalidActionHandle),
-                     m_HandleActionToggleOverlayGroupEnabled02(vr::k_ulInvalidActionHandle),
-                     m_HandleActionToggleOverlayGroupEnabled03(vr::k_ulInvalidActionHandle),
+                     m_HandleActionDoGlobalShortcut04(vr::k_ulInvalidActionHandle),
+                     m_HandleActionDoGlobalShortcut05(vr::k_ulInvalidActionHandle),
+                     m_HandleActionDoGlobalShortcut06(vr::k_ulInvalidActionHandle),
                      m_HandleActionLaserPointerLeftClick(vr::k_ulInvalidActionHandle),
                      m_HandleActionLaserPointerRightClick(vr::k_ulInvalidActionHandle),
                      m_HandleActionLaserPointerMiddleClick(vr::k_ulInvalidActionHandle),
@@ -51,9 +51,9 @@ bool VRInput::Init()
         vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut01",            &m_HandleActionDoGlobalShortcut01);
         vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut02",            &m_HandleActionDoGlobalShortcut02);
         vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut03",            &m_HandleActionDoGlobalShortcut03);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/ToggleOverlayGroupEnabled01", &m_HandleActionToggleOverlayGroupEnabled01);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/ToggleOverlayGroupEnabled02", &m_HandleActionToggleOverlayGroupEnabled02);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/ToggleOverlayGroupEnabled03", &m_HandleActionToggleOverlayGroupEnabled03);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut04",            &m_HandleActionDoGlobalShortcut04);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut05",            &m_HandleActionDoGlobalShortcut05);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut06",            &m_HandleActionDoGlobalShortcut06);
 
         vr::VRInput()->GetActionSetHandle("/actions/laserpointer",                &m_HandleActionsetLaserPointer);
         vr::VRInput()->GetActionHandle("/actions/laserpointer/in/LeftClick",      &m_HandleActionLaserPointerLeftClick);
@@ -123,9 +123,9 @@ void VRInput::RefreshAnyGlobalActionBound()
         m_HandleActionDoGlobalShortcut01,
         m_HandleActionDoGlobalShortcut02,
         m_HandleActionDoGlobalShortcut03,
-        m_HandleActionToggleOverlayGroupEnabled01,
-        m_HandleActionToggleOverlayGroupEnabled02,
-        m_HandleActionToggleOverlayGroupEnabled03
+        m_HandleActionDoGlobalShortcut04,
+        m_HandleActionDoGlobalShortcut05,
+        m_HandleActionDoGlobalShortcut06,
     };
 
     vr::VRInputValueHandle_t action_origin = vr::k_ulInvalidInputValueHandle;
@@ -158,76 +158,32 @@ void VRInput::RefreshAnyGlobalActionBound()
 void VRInput::HandleGlobalActionShortcuts(OutputManager& outmgr)
 {
     vr::InputDigitalActionData_t data;
-    vr::EVRInputError input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionDoGlobalShortcut01, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
-
-    if ((input_error == vr::VRInputError_None) && (data.bChanged))
+    const std::pair<vr::VRActionHandle_t, ConfigID_Handle> shortcuts[] = 
     {
-        if (data.bState)
-        {
-            outmgr.DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut01_action_id));
-        }
-        else
-        {
-            outmgr.DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut01_action_id));
-        }
-    }
+        {m_HandleActionDoGlobalShortcut01, configid_handle_input_shortcut01_action_uid}, 
+        {m_HandleActionDoGlobalShortcut02, configid_handle_input_shortcut02_action_uid}, 
+        {m_HandleActionDoGlobalShortcut03, configid_handle_input_shortcut03_action_uid},
+        {m_HandleActionDoGlobalShortcut04, configid_handle_input_shortcut04_action_uid},
+        {m_HandleActionDoGlobalShortcut05, configid_handle_input_shortcut05_action_uid},
+        {m_HandleActionDoGlobalShortcut06, configid_handle_input_shortcut06_action_uid}
+    };
 
-    input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionDoGlobalShortcut02, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
-
-    if ((input_error == vr::VRInputError_None) && (data.bChanged))
+    for (const auto& shortcut_pair : shortcuts)
     {
-        if (data.bState)
-        {
-            outmgr.DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut02_action_id));
-        }
-        else
-        {
-            outmgr.DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut02_action_id));
-        }
-    }
+        vr::EVRInputError input_error = vr::VRInput()->GetDigitalActionData(shortcut_pair.first, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
 
-    input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionDoGlobalShortcut03, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
-
-    if ((input_error == vr::VRInputError_None) && (data.bChanged))
-    {
-        if (data.bState)
+        if ((input_error == vr::VRInputError_None) && (data.bChanged))
         {
-            outmgr.DoStartAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut03_action_id));
-        }
-        else
-        {
-            outmgr.DoStopAction((ActionID)ConfigManager::GetValue(configid_int_input_shortcut03_action_id));
+            if (data.bState)
+            {
+                ConfigManager::Get().GetActionManager().StartAction( ConfigManager::GetValue(shortcut_pair.second) );
+            }
+            else
+            {
+                ConfigManager::Get().GetActionManager().StopAction( ConfigManager::GetValue(shortcut_pair.second) );
+            }
         }
     }
-}
-
-void VRInput::HandleGlobalOverlayGroupShortcuts(OutputManager& outmgr)
-{
-    vr::InputDigitalActionData_t data;
-    vr::EVRInputError input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionToggleOverlayGroupEnabled01, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
-
-    //This only toggles only when it changes to true
-    //Reason behind that is that toggle input actions are not viable for this since SteamVR toggles them off when the dashboard is opened with no way to catch this
-    //And well, the resulting toggle flicker from that is not something anyone wants
-    if ((input_error == vr::VRInputError_None) && (data.bChanged) && (data.bState) )
-    {
-        outmgr.ToggleOverlayGroupEnabled(1);
-    }
-
-    input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionToggleOverlayGroupEnabled02, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
-
-    if ((input_error == vr::VRInputError_None) && (data.bChanged) && (data.bState))
-    {
-        outmgr.ToggleOverlayGroupEnabled(2);
-    }
-
-    input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionToggleOverlayGroupEnabled03, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
-
-    if ((input_error == vr::VRInputError_None) && (data.bChanged) && (data.bState))
-    {
-        outmgr.ToggleOverlayGroupEnabled(3);
-    }
-
 }
 
 void VRInput::TriggerLaserPointerHaptics(vr::VRInputValueHandle_t restrict_to_device) const

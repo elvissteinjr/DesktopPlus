@@ -10,6 +10,8 @@ enum WindowOverlayPropertiesPage
     wndovrlprop_page_position_change,
     wndovrlprop_page_crop_change,
     wndovrlprop_page_graphics_capture_source,
+    wndovrlprop_page_actions_order,
+    wndovrlprop_page_actions_order_add,
 };
 
 class WindowOverlayProperties : public FloatingWindow, public FloatingWindowDesktopModeInterop
@@ -38,7 +40,9 @@ class WindowOverlayProperties : public FloatingWindow, public FloatingWindowDesk
         float m_OriginHMDFloorSettingsAnimationProgress;
         std::string m_CropButtonLabel;
         std::string m_WinRTSourceButtonLabel;
+        std::string m_ActionButtonsLabel;
         char m_BufferOverlayName[1024];
+        char m_BufferOverlayTags[1024];
         bool m_IsBrowserURLChanged;
 
         //Struct of cached sizes which may change at any time on translation or DPI switching (only the ones that aren't updated unconditionally)
@@ -66,6 +70,8 @@ class WindowOverlayProperties : public FloatingWindow, public FloatingWindowDesk
         void UpdatePagePositionChange(bool only_restore_settings = false);
         void UpdatePageCropChange(bool only_restore_settings = false);
         void UpdatePageGraphicsCaptureSource(bool only_restore_settings = false);
+        void UpdatePageActionsOrder(bool only_restore_settings = false);
+        void UpdatePageActionsOrderAdd();
 
         std::string GetStringForWinRTSource(HWND source_window, int source_desktop);
 

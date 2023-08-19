@@ -113,14 +113,18 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     ImVector<ImWchar> ranges;
     ImFontGlyphRangesBuilder builder;
 
-    for (const CustomAction& action : ConfigManager::Get().GetCustomActions())
+    ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+    for (ActionUID uid : action_manager.GetActionOrderListUI())
     {
-        builder.AddText(action.Name.c_str());
+        const Action action = action_manager.GetAction(uid);
 
-        if (action.FunctionType != caction_press_keys)
+        builder.AddText(action.Name.c_str());
+        builder.AddText(action.Label.c_str());
+
+        for (const auto& command : action.Commands)
         {
-            builder.AddText(action.StrMain.c_str());
-            builder.AddText(action.StrArg.c_str());
+            builder.AddText(command.StrMain.c_str());
+            builder.AddText(command.StrArg.c_str());
         }
     }
 
@@ -272,18 +276,30 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     }
 
     //Load custom action icons
-    for (auto& action : ConfigManager::Get().GetCustomActions())
+    struct ActionIconTextureData
     {
-        icon_id++;
+        int IconImGuiRectID  = -1;
+        ImVec2 IconAtlasSize;
+        ImVec4 IconAtlasUV;
+    };
 
-        action.IconImGuiRectID = -1;
+    std::vector<ActionIconTextureData> action_icon_tex_data;
+    action_icon_tex_data.reserve(action_manager.GetActionOrderListUI().size());
+
+    action_manager.ClearIconData();
+    for (ActionUID uid : action_manager.GetActionOrderListUI())
+    {
+        const Action& action = action_manager.GetAction(uid);
+        ActionIconTextureData tex_data;
+
         if (!action.IconFilename.empty())
         {
-            std::unique_ptr<Gdiplus::Bitmap> bmp( new Gdiplus::Bitmap(WStringConvertFromUTF8(action.IconFilename.c_str()).c_str()) );
+            std::string icon_path = "images/icons/" + action.IconFilename;
+            std::unique_ptr<Gdiplus::Bitmap> bmp( new Gdiplus::Bitmap(WStringConvertFromUTF8(icon_path.c_str()).c_str()) );
 
             if (bmp->GetLastStatus() == Gdiplus::Ok)
             {
-                action.IconImGuiRectID = io.Fonts->AddCustomRectRegular(bmp->GetWidth(), bmp->GetHeight());
+                tex_data.IconImGuiRectID = io.Fonts->AddCustomRectRegular(bmp->GetWidth(), bmp->GetHeight());
 
                 if (io.Fonts->TexDesiredWidth <= (int)bmp->GetWidth())
                 {
@@ -294,6 +310,8 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
 
             bitmaps.push_back(std::move(bmp));
         }
+
+        action_icon_tex_data.push_back(tex_data);
     }
 
     //Set up already loaded window icons
@@ -318,7 +336,7 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
 
     //Actually do the copying now
     icon_id = 0;
-    int action_id = 0;
+    auto action_tex_data_it = action_icon_tex_data.begin();
     for (auto& bmp : bitmaps)
     {
         if (bmp->GetLastStatus() == Gdiplus::Ok)
@@ -335,20 +353,20 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
             }
             else
             {
-                //Get the next action, skipping custom actions with no icon
+                //Get the next action, skipping the ones with no icon
                 do
                 {
-                    if (action_id >= ConfigManager::Get().GetCustomActions().size())
+                    if (action_tex_data_it == action_icon_tex_data.end())
                     {
                         break;
                     }
 
-                    CustomAction& action = ConfigManager::Get().GetCustomActions()[action_id];
-                    rect_id    = &action.IconImGuiRectID;
-                    atlas_size = &action.IconAtlasSize;
-                    atlas_uvs  = &action.IconAtlasUV;
+                    ActionIconTextureData& tex_data = *action_tex_data_it;
+                    rect_id    = &tex_data.IconImGuiRectID;
+                    atlas_size = &tex_data.IconAtlasSize;
+                    atlas_uvs  = &tex_data.IconAtlasUV;
 
-                    action_id++;
+                    action_tex_data_it++;
                 }
                 while (*rect_id == -1);
             }
@@ -433,6 +451,25 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         }
     }
 
+    //Store action texture data in actual actions
+    IM_ASSERT(action_icon_tex_data.size() == action_manager.GetActionOrderListUI().size());
+    for (size_t i = 0; i < action_icon_tex_data.size(); ++i)
+    {
+        const ActionIconTextureData& tex_data = action_icon_tex_data[i];
+
+        //We can just skip this when the rect ID is still -1 since we cleared all texture data at beginning
+        if (tex_data.IconImGuiRectID != -1)
+        {
+            Action action = action_manager.GetAction( action_manager.GetActionOrderListUI()[i] );
+
+            action.IconImGuiRectID = tex_data.IconImGuiRectID;
+            action.IconAtlasSize   = tex_data.IconAtlasSize;
+            action.IconAtlasUV     = tex_data.IconAtlasUV;
+
+            action_manager.StoreAction(action);
+        }
+    }
+
     //Delete Bitmaps before shutting down GDI+
     bitmaps.clear();
 
@@ -460,7 +497,7 @@ bool TextureManager::GetReloadLaterFlag()
 
 const wchar_t* TextureManager::GetTextureFilename(TMNGRTexID texid) const
 {
-    return s_TextureFilenames[texid];
+    return (texid != tmtex_icon_temp) ? s_TextureFilenames[texid] : m_TextureFilenameIconTemp.c_str();
 }
 
 void TextureManager::SetTextureFilenameIconTemp(const wchar_t* filename)
@@ -486,7 +523,7 @@ bool TextureManager::GetTextureInfo(TMNGRTexID texid, ImVec2& size, ImVec2& uv_m
     return false;
 }
 
-bool TextureManager::GetTextureInfo(const CustomAction& action, ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const
+bool TextureManager::GetTextureInfo(const Action& action, ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const
 {
     if (action.IconImGuiRectID != -1)
     {

@@ -155,21 +155,21 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigInt[configid_int_overlay_crop_width]                     = config.ReadInt(section.c_str(),  "CroppingWidth", -1);
     data.ConfigInt[configid_int_overlay_crop_height]                    = config.ReadInt(section.c_str(),  "CroppingHeight", -1);
 
-    data.ConfigBool[configid_bool_overlay_3D_enabled]                   = config.ReadBool(section.c_str(), "3DEnabled", false);
-    data.ConfigInt[configid_int_overlay_3D_mode]                        = config.ReadInt(section.c_str(),  "3DMode", ovrl_3Dmode_hsbs);
-    data.ConfigBool[configid_bool_overlay_3D_swapped]                   = config.ReadBool(section.c_str(), "3DSwapped", false);
-    data.ConfigBool[configid_bool_overlay_gazefade_enabled]             = config.ReadBool(section.c_str(), "GazeFade", false);
-    data.ConfigFloat[configid_float_overlay_gazefade_distance]          = config.ReadInt(section.c_str(),  "GazeFadeDistance", 0) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_gazefade_rate]              = config.ReadInt(section.c_str(),  "GazeFadeRate", 100) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_gazefade_opacity]           = config.ReadInt(section.c_str(),  "GazeFadeOpacity", 0) / 100.0f;
-    data.ConfigInt[configid_int_overlay_update_limit_override_mode]     = config.ReadInt(section.c_str(),  "UpdateLimitModeOverride", update_limit_mode_off);
-    data.ConfigFloat[configid_float_overlay_update_limit_override_ms]   = config.ReadInt(section.c_str(),  "UpdateLimitMS", 0) / 100.0f;
-    data.ConfigInt[configid_int_overlay_update_limit_override_fps]      = config.ReadInt(section.c_str(),  "UpdateLimitFPS", update_limit_fps_30);
-    data.ConfigInt[configid_int_overlay_browser_max_fps_override]       = config.ReadInt(section.c_str(),  "BrowserMaxFPSOverride", -1);
-    data.ConfigBool[configid_bool_overlay_input_enabled]                = config.ReadBool(section.c_str(), "InputEnabled", true);
-    data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]       = config.ReadBool(section.c_str(), "InputDPlusLPEnabled", true);
-    data.ConfigInt[configid_int_overlay_group_id]                       = config.ReadInt(section.c_str(),  "GroupID", 0);
-    data.ConfigBool[configid_bool_overlay_update_invisible]             = config.ReadBool(section.c_str(), "UpdateInvisible", false);
+    data.ConfigBool[configid_bool_overlay_3D_enabled]                   = config.ReadBool(section.c_str(),   "3DEnabled", false);
+    data.ConfigInt[configid_int_overlay_3D_mode]                        = config.ReadInt(section.c_str(),    "3DMode", ovrl_3Dmode_hsbs);
+    data.ConfigBool[configid_bool_overlay_3D_swapped]                   = config.ReadBool(section.c_str(),   "3DSwapped", false);
+    data.ConfigBool[configid_bool_overlay_gazefade_enabled]             = config.ReadBool(section.c_str(),   "GazeFade", false);
+    data.ConfigFloat[configid_float_overlay_gazefade_distance]          = config.ReadInt(section.c_str(),    "GazeFadeDistance", 0) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_gazefade_rate]              = config.ReadInt(section.c_str(),    "GazeFadeRate", 100) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_gazefade_opacity]           = config.ReadInt(section.c_str(),    "GazeFadeOpacity", 0) / 100.0f;
+    data.ConfigInt[configid_int_overlay_update_limit_override_mode]     = config.ReadInt(section.c_str(),    "UpdateLimitModeOverride", update_limit_mode_off);
+    data.ConfigFloat[configid_float_overlay_update_limit_override_ms]   = config.ReadInt(section.c_str(),    "UpdateLimitMS", 0) / 100.0f;
+    data.ConfigInt[configid_int_overlay_update_limit_override_fps]      = config.ReadInt(section.c_str(),    "UpdateLimitFPS", update_limit_fps_30);
+    data.ConfigInt[configid_int_overlay_browser_max_fps_override]       = config.ReadInt(section.c_str(),    "BrowserMaxFPSOverride", -1);
+    data.ConfigBool[configid_bool_overlay_input_enabled]                = config.ReadBool(section.c_str(),   "InputEnabled", true);
+    data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]       = config.ReadBool(section.c_str(),   "InputDPlusLPEnabled", true);
+    data.ConfigStr[configid_str_overlay_tags]                           = config.ReadString(section.c_str(), "Tags");
+    data.ConfigBool[configid_bool_overlay_update_invisible]             = config.ReadBool(section.c_str(),   "UpdateInvisible", false);
 
     data.ConfigBool[configid_bool_overlay_floatingui_enabled]           = config.ReadBool(section.c_str(), "ShowFloatingUI", true);
     data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled]  = config.ReadBool(section.c_str(), "ShowDesktopButtons", false);
@@ -216,8 +216,6 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     if (!transform_str.empty())
         data.ConfigTransform = transform_str;
 
-    LoadActionOrderList(data.ConfigActionBarOrder, config.ReadString(section.c_str(), "ActionBarOrderCustom"));
-
     #ifdef DPLUS_UI
     //When loading an UI overlay, send config state over to ensure the correct process has rendering access even if the UI was restarted at some point
     if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
@@ -240,7 +238,8 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     {
         OverlayManager::Get().SetCurrentOverlayNameAuto();
     }
-    #endif
+
+    #endif //DPLUS_UI
 }
 
 void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
@@ -289,21 +288,21 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteInt( section.c_str(), "CroppingWidth",          data.ConfigInt[configid_int_overlay_crop_width]);
     config.WriteInt( section.c_str(), "CroppingHeight",         data.ConfigInt[configid_int_overlay_crop_height]);
 
-    config.WriteBool(section.c_str(), "3DEnabled",              data.ConfigBool[configid_bool_overlay_3D_enabled]);
-    config.WriteInt( section.c_str(), "3DMode",                 data.ConfigInt[configid_int_overlay_3D_mode]);
-    config.WriteBool(section.c_str(), "3DSwapped",              data.ConfigBool[configid_bool_overlay_3D_swapped]);
-    config.WriteBool(section.c_str(), "GazeFade",               data.ConfigBool[configid_bool_overlay_gazefade_enabled]);
-    config.WriteInt( section.c_str(), "GazeFadeDistance",   int(data.ConfigFloat[configid_float_overlay_gazefade_distance] * 100.0f));
-    config.WriteInt( section.c_str(), "GazeFadeRate",       int(data.ConfigFloat[configid_float_overlay_gazefade_rate]     * 100.0f));
-    config.WriteInt( section.c_str(), "GazeFadeOpacity",    int(data.ConfigFloat[configid_float_overlay_gazefade_opacity]  * 100.0f));
-    config.WriteInt( section.c_str(), "UpdateLimitModeOverride",data.ConfigInt[configid_int_overlay_update_limit_override_mode]);
-    config.WriteInt( section.c_str(), "UpdateLimitMS",      int(data.ConfigFloat[configid_float_overlay_update_limit_override_ms] * 100.0f));
-    config.WriteInt( section.c_str(), "UpdateLimitFPS",         data.ConfigInt[configid_int_overlay_update_limit_override_fps]);
-    config.WriteInt( section.c_str(), "BrowserMaxFPSOverride",  data.ConfigInt[configid_int_overlay_browser_max_fps_override]);
-    config.WriteBool(section.c_str(), "InputEnabled",           data.ConfigBool[configid_bool_overlay_input_enabled]);
-    config.WriteBool(section.c_str(), "InputDPlusLPEnabled",    data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]);
-    config.WriteInt( section.c_str(), "GroupID",                data.ConfigInt[configid_int_overlay_group_id]);
-    config.WriteBool(section.c_str(), "UpdateInvisible",        data.ConfigBool[configid_bool_overlay_update_invisible]);
+    config.WriteBool(section.c_str(),   "3DEnabled",              data.ConfigBool[configid_bool_overlay_3D_enabled]);
+    config.WriteInt( section.c_str(),   "3DMode",                 data.ConfigInt[configid_int_overlay_3D_mode]);
+    config.WriteBool(section.c_str(),   "3DSwapped",              data.ConfigBool[configid_bool_overlay_3D_swapped]);
+    config.WriteBool(section.c_str(),   "GazeFade",               data.ConfigBool[configid_bool_overlay_gazefade_enabled]);
+    config.WriteInt( section.c_str(),   "GazeFadeDistance",   int(data.ConfigFloat[configid_float_overlay_gazefade_distance] * 100.0f));
+    config.WriteInt( section.c_str(),   "GazeFadeRate",       int(data.ConfigFloat[configid_float_overlay_gazefade_rate]     * 100.0f));
+    config.WriteInt( section.c_str(),   "GazeFadeOpacity",    int(data.ConfigFloat[configid_float_overlay_gazefade_opacity]  * 100.0f));
+    config.WriteInt( section.c_str(),   "UpdateLimitModeOverride",data.ConfigInt[configid_int_overlay_update_limit_override_mode]);
+    config.WriteInt( section.c_str(),   "UpdateLimitMS",      int(data.ConfigFloat[configid_float_overlay_update_limit_override_ms] * 100.0f));
+    config.WriteInt( section.c_str(),   "UpdateLimitFPS",         data.ConfigInt[configid_int_overlay_update_limit_override_fps]);
+    config.WriteInt( section.c_str(),   "BrowserMaxFPSOverride",  data.ConfigInt[configid_int_overlay_browser_max_fps_override]);
+    config.WriteBool(section.c_str(),   "InputEnabled",           data.ConfigBool[configid_bool_overlay_input_enabled]);
+    config.WriteBool(section.c_str(),   "InputDPlusLPEnabled",    data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]);
+    config.WriteString(section.c_str(), "Tags",                   data.ConfigStr[configid_str_overlay_tags].c_str());
+    config.WriteBool(section.c_str(),   "UpdateInvisible",        data.ConfigBool[configid_bool_overlay_update_invisible]);
 
     config.WriteBool(section.c_str(), "ShowFloatingUI",          data.ConfigBool[configid_bool_overlay_floatingui_enabled]);
     config.WriteBool(section.c_str(), "ShowDesktopButtons",      data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled]);
@@ -343,7 +342,7 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteString(section.c_str(), "BrowserTitle",             data.ConfigStr[configid_str_overlay_browser_title].c_str());
     config.WriteBool(  section.c_str(), "BrowserAllowTransparency", data.ConfigBool[configid_bool_overlay_browser_allow_transparency]);
 
-    config.WriteString(section.c_str(), "ActionBarOrderCustom", GetActionOrderListString(data.ConfigActionBarOrder).c_str() );
+    config.WriteString(section.c_str(), "ActionBarOrderCustom",     ActionManager::ActionOrderListToString(data.ConfigActionBarOrder).c_str());
 }
 
 bool ConfigManager::LoadConfigFromFile()
@@ -368,8 +367,8 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_interface_show_advanced_settings]             = config.ReadBool(  "Interface", "ShowAdvancedSettings", true);
     m_ConfigBool[configid_bool_interface_large_style]                        = config.ReadBool(  "Interface", "DisplaySizeLarge", false);
     m_ConfigInt[configid_int_interface_overlay_current_id]                   = config.ReadInt(   "Interface", "OverlayCurrentID", 0);
-    m_ConfigInt[configid_int_interface_mainbar_desktop_listing]              = config.ReadInt(   "Interface", "DesktopButtonCyclingMode", mainbar_desktop_listing_individual);
-    m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]        = config.ReadBool(  "Interface", "DesktopButtonIncludeAll", false);
+    m_ConfigInt[configid_int_interface_desktop_listing_style]                = config.ReadInt(   "Interface", "DesktopButtonCyclingMode", desktop_listing_style_individual);
+    m_ConfigBool[configid_bool_interface_desktop_buttons_include_combined]   = config.ReadBool(  "Interface", "DesktopButtonIncludeAll", false);
 
     //Read color string as unsigned int but store it as signed
     m_ConfigInt[configid_int_interface_background_color] = pun_cast<unsigned int, int>( std::stoul(config.ReadString("Interface", "EnvironmentBackgroundColor", "00000080"), nullptr, 16) );
@@ -392,29 +391,29 @@ bool ConfigManager::LoadConfigFromFile()
 
     OverlayManager::Get().SetCurrentOverlayID(m_ConfigInt[configid_int_interface_overlay_current_id]);
 
-    LoadActionOrderList(m_ActionManager.GetActionMainBarOrder(),    config.ReadString("Interface", "ActionOrder"));
-    LoadActionOrderList(m_ActionManager.GetActionOverlayBarOrder(), config.ReadString("Interface", "ActionOrderOverlayBar"));
-
     #ifdef DPLUS_UI
         TranslationManager::Get().LoadTranslationFromFile( m_ConfigString[configid_str_interface_language_file].c_str() );
         LoadConfigPersistentWindowState(config);
     #endif
 
-    m_ConfigInt[configid_int_input_go_home_action_id]                       = config.ReadInt( "Input", "GoHomeButtonActionID", 0);
-    m_ConfigInt[configid_int_input_go_back_action_id]                       = config.ReadInt( "Input", "GoBackButtonActionID", 0);
-    m_ConfigInt[configid_int_input_shortcut01_action_id]                    = config.ReadInt( "Input", "GlobalShortcut01ActionID", 0);
-    m_ConfigInt[configid_int_input_shortcut02_action_id]                    = config.ReadInt( "Input", "GlobalShortcut02ActionID", 0);
-    m_ConfigInt[configid_int_input_shortcut03_action_id]                    = config.ReadInt( "Input", "GlobalShortcut03ActionID", 0);
+    m_ConfigHandle[configid_handle_input_go_home_action_uid]                = std::strtoull(config.ReadString("Input", "GoHomeButtonActionUID",     "0").c_str(), nullptr, 10);
+    m_ConfigHandle[configid_handle_input_go_back_action_uid]                = std::strtoull(config.ReadString("Input", "GoBackButtonActionUID",     "0").c_str(), nullptr, 10);
+    m_ConfigHandle[configid_handle_input_shortcut01_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut01ActionUID", "0").c_str(), nullptr, 10);
+    m_ConfigHandle[configid_handle_input_shortcut02_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut02ActionUID", "0").c_str(), nullptr, 10);
+    m_ConfigHandle[configid_handle_input_shortcut03_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut03ActionUID", "0").c_str(), nullptr, 10);
+    m_ConfigHandle[configid_handle_input_shortcut04_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut04ActionUID", "0").c_str(), nullptr, 10);
+    m_ConfigHandle[configid_handle_input_shortcut05_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut05ActionUID", "0").c_str(), nullptr, 10);
+    m_ConfigHandle[configid_handle_input_shortcut06_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut06ActionUID", "0").c_str(), nullptr, 10);
 
     m_ConfigInt[configid_int_input_hotkey01_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey01Modifiers", 0);
     m_ConfigInt[configid_int_input_hotkey01_keycode]                        = config.ReadInt( "Input", "GlobalHotkey01KeyCode",   0);
-    m_ConfigInt[configid_int_input_hotkey01_action_id]                      = config.ReadInt( "Input", "GlobalHotkey01ActionID",  0);
+    m_ConfigHandle[configid_handle_input_hotkey01_action_uid]               = std::strtoull(config.ReadString("Input", "GlobalHotkey01ActionUID", "0").c_str(), nullptr, 10);
     m_ConfigInt[configid_int_input_hotkey02_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey02Modifiers", 0);
     m_ConfigInt[configid_int_input_hotkey02_keycode]                        = config.ReadInt( "Input", "GlobalHotkey02KeyCode",   0);
-    m_ConfigInt[configid_int_input_hotkey02_action_id]                      = config.ReadInt( "Input", "GlobalHotkey02ActionID",  0);
+    m_ConfigHandle[configid_handle_input_hotkey02_action_uid]               = std::strtoull(config.ReadString("Input", "GlobalHotkey02ActionUID", "0").c_str(), nullptr, 10);
     m_ConfigInt[configid_int_input_hotkey03_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey03Modifiers", 0);
     m_ConfigInt[configid_int_input_hotkey03_keycode]                        = config.ReadInt( "Input", "GlobalHotkey03KeyCode",   0);
-    m_ConfigInt[configid_int_input_hotkey03_action_id]                      = config.ReadInt( "Input", "GlobalHotkey03ActionID",  0);
+    m_ConfigHandle[configid_handle_input_hotkey03_action_uid]               = std::strtoull(config.ReadString("Input", "GlobalHotkey03ActionUID", "0").c_str(), nullptr, 10);
 
     m_ConfigFloat[configid_float_input_detached_interaction_max_distance]   = config.ReadInt( "Input", "DetachedInteractionMaxDistance", 200) / 100.0f;
     m_ConfigBool[configid_bool_input_global_hmd_pointer]                    = config.ReadBool("Input", "GlobalHMDPointer", false);
@@ -476,129 +475,54 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_performance_monitor_show_vive_wireless]      = config.ReadBool("Performance", "PerformanceMonitorShowViveWireless", false);
     m_ConfigBool[configid_bool_performance_monitor_disable_gpu_counters]    = config.ReadBool("Performance", "PerformanceMonitorDisableGPUCounters", false);
 
-
     m_ConfigBool[configid_bool_misc_no_steam]             = config.ReadBool("Misc", "NoSteam", false);
     m_ConfigBool[configid_bool_misc_uiaccess_was_enabled] = config.ReadBool("Misc", "UIAccessWasEnabled", false);
 
-    //Load custom actions (this is where using ini feels dumb, but it still kinda works)
-    auto& custom_actions = m_ActionManager.GetCustomActions();
-    custom_actions.clear();
-    int custom_action_count = config.ReadInt("CustomActions", "Count", 0);
-
-    for (int i = 0; i < custom_action_count; ++i)
+    //Load actions
+    if (!m_ActionManager.LoadActionsFromFile())
     {
-        std::string action_ini_name = "Action" + std::to_string(i);
-        CustomAction action;
-        action.Name = config.ReadString("CustomActions", (action_ini_name + "Name").c_str(), action_ini_name.c_str());
-        action.FunctionType = ActionManager::ParseCustomActionFunctionString( config.ReadString("CustomActions", (action_ini_name + "FunctionType").c_str()) );
-
-        switch (action.FunctionType)
-        {
-            case caction_press_keys:
-            {
-                action.KeyCodes[0] = config.ReadInt( "CustomActions", (action_ini_name + "KeyCode1").c_str(),   0);
-                action.KeyCodes[1] = config.ReadInt( "CustomActions", (action_ini_name + "KeyCode2").c_str(),   0);
-                action.KeyCodes[2] = config.ReadInt( "CustomActions", (action_ini_name + "KeyCode3").c_str(),   0);
-                action.IntID       = config.ReadBool("CustomActions", (action_ini_name + "ToggleKeys").c_str(), false);
-                break;
-            }
-            case caction_type_string:
-            {
-                action.StrMain = config.ReadString("CustomActions", (action_ini_name + "TypeString").c_str());
-                break;
-            }
-            case caction_launch_application:
-            {
-                action.StrMain = config.ReadString("CustomActions", (action_ini_name + "ExecutablePath").c_str());
-                action.StrArg  = config.ReadString("CustomActions", (action_ini_name + "ExecutableArg").c_str());
-                break;
-            }
-            case caction_toggle_overlay_enabled_state:
-            {
-                action.IntID = config.ReadInt("CustomActions", (action_ini_name + "OverlayID").c_str(), 0);
-                break;
-            }
-        }
-
-        #ifdef DPLUS_UI
-            action.IconFilename = config.ReadString("CustomActions", (action_ini_name + "IconFilename").c_str());
-            action.UpdateNameTranslationID();
-        #endif
-
-        custom_actions.push_back(action);
+        MigrateLegacyActionsFromConfig(config);
     }
 
-    //Provide default for empty order list
-    auto& action_order = ActionManager::Get().GetActionMainBarOrder();
-    if (action_order.empty()) 
-    {
-        for (int i = action_show_keyboard; i < action_built_in_MAX; ++i)
-        {
-            action_order.push_back({(ActionID)i, false});
-        }
-
-        for (int i = action_custom; i < action_custom + custom_actions.size(); ++i)
-        {
-            action_order.push_back({(ActionID)i, false});
-        }
-    }
-    else
-    {
-        //Validate order list in case some manual editing was made
-        action_order.erase(std::remove_if(action_order.begin(),
-                                          action_order.end(),
-                                          [](const ActionOrderData& data) { return !ActionManager::Get().IsActionIDValid(data.action_id); }),
-                                          action_order.end());
-
-        //Automatically add actions if they're missing
-        bool is_action_present;
-
-        for (int i = action_show_keyboard; i < action_custom + custom_actions.size(); ++i)
-        {
-            is_action_present = false;
-
-            for (const auto& order_data : action_order)
-            {
-                if (order_data.action_id == i)
-                {
-                    is_action_present = true;
-                    break;
-                }
-            }
-
-            if (!is_action_present)
-            {
-                action_order.push_back({(ActionID)i, false});
-            }
-
-            //After built-in actions are checked, jump to custom range
-            if (i == action_built_in_MAX - 1)
-            {
-                i = action_custom - 1;
-            }
-        }
-    }
+    //Load action order lists (needs to happen after load as the UIDs are validated for existence)
+    #ifdef DPLUS_UI
+        m_ActionManager.SetActionOrderListUI(         m_ActionManager.ActionOrderListFromString( config.ReadString("Interface", "ActionOrder") ));
+        m_ActionManager.SetActionOrderListBarDefault( m_ActionManager.ActionOrderListFromString( config.ReadString("Interface", "ActionOrderBarDefault") ));
+        m_ActionManager.SetActionOrderListOverlayBar( m_ActionManager.ActionOrderListFromString( config.ReadString("Interface", "ActionOrderOverlayBar") ));
+    #endif
 
     //Validate action IDs for controller bindings too
-    if (!ActionManager::Get().IsActionIDValid((ActionID)m_ConfigInt[configid_int_input_go_home_action_id]))
+    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_go_home_action_uid]))
     {
-        m_ConfigInt[configid_int_input_go_home_action_id] = action_none;
+        m_ConfigHandle[configid_handle_input_go_home_action_uid] = k_ActionUID_Invalid;
     }
-    if (!ActionManager::Get().IsActionIDValid((ActionID)m_ConfigInt[configid_int_input_go_back_action_id]))
+    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_go_back_action_uid]))
     {
-        m_ConfigInt[configid_int_input_go_back_action_id] = action_none;
+        m_ConfigHandle[configid_handle_input_go_back_action_uid] = k_ActionUID_Invalid;
     }
-    if (!ActionManager::Get().IsActionIDValid((ActionID)m_ConfigInt[configid_int_input_shortcut01_action_id]))
+    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut01_action_uid]))
     {
-        m_ConfigInt[configid_int_input_shortcut01_action_id] = action_none;
+        m_ConfigHandle[configid_handle_input_shortcut01_action_uid] = k_ActionUID_Invalid;
     }
-    if (!ActionManager::Get().IsActionIDValid((ActionID)m_ConfigInt[configid_int_input_shortcut02_action_id]))
+    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut02_action_uid]))
     {
-        m_ConfigInt[configid_int_input_shortcut02_action_id] = action_none;
+        m_ConfigHandle[configid_handle_input_shortcut02_action_uid] = k_ActionUID_Invalid;
     }
-    if (!ActionManager::Get().IsActionIDValid((ActionID)m_ConfigInt[configid_int_input_shortcut03_action_id]))
+    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut03_action_uid]))
     {
-        m_ConfigInt[configid_int_input_shortcut03_action_id] = action_none;
+        m_ConfigHandle[configid_handle_input_shortcut03_action_uid] = k_ActionUID_Invalid;
+    }
+    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut04_action_uid]))
+    {
+        m_ConfigHandle[configid_handle_input_shortcut04_action_uid] = k_ActionUID_Invalid;
+    }
+    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut05_action_uid]))
+    {
+        m_ConfigHandle[configid_handle_input_shortcut05_action_uid] = k_ActionUID_Invalid;
+    }
+    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut06_action_uid]))
+    {
+        m_ConfigHandle[configid_handle_input_shortcut06_action_uid] = k_ActionUID_Invalid;
     }
 
     #ifndef DPLUS_UI
@@ -810,6 +734,119 @@ void ConfigManager::SaveConfigPersistentWindowState(Ini& config)
 
 #endif //ifdef DPLUS_UI
 
+void ConfigManager::MigrateLegacyActionsFromConfig(const Ini& config)
+{
+    //Add new defaults first
+    m_ActionManager.RestoreActionsFromDefault();
+
+    //Skip rest if CustomActions section doesn't exist (nothing to migrate)
+    if (!config.SectionExists("CustomActions"))
+        return;
+
+    LOG_F(INFO, "Migrating legacy actions...");
+
+    //Read legacy custom actions and create actions with equivalent comands
+    std::unordered_map<int, ActionUID> legacy_id_to_uid;
+
+    //There's no surefire way to detect old default custom actions, but we at least match the old names and ignore them during migration to avoid double entries
+    const char* default_names[] = 
+    {
+        "Middle Mouse Button",
+        "Back Mouse Button",
+        "\xE2\x80\x89\xE2\x80\x89Open ReadMe",  //Used two "thin space" characters for alignment
+        "tstr_DefActionMiddleMouse",
+        "tstr_DefActionBackMouse",
+        "tstr_DefActionReadMe"
+    };
+
+    int custom_action_count = config.ReadInt("CustomActions", "Count", 0);
+
+    for (int i = 0; i < custom_action_count; ++i)
+    {
+        std::string action_ini_name = "Action" + std::to_string(i);
+
+        Action action;
+        action.Name = config.ReadString("CustomActions", (action_ini_name + "Name").c_str(), action_ini_name.c_str());
+
+        //Skip if name matches legacy default ones
+        if (std::find(std::begin(default_names), std::end(default_names), action.Name) != std::end(default_names))
+        {
+            continue;
+        }
+
+        action.UID = m_ActionManager.GenerateUID();
+        legacy_id_to_uid.insert({i, action.UID});
+
+        const std::string function_type_str = config.ReadString("CustomActions", (action_ini_name + "FunctionType").c_str());
+        if (function_type_str == "PressKeys")
+        {
+            ActionCommand command;
+            command.Type = ActionCommand::command_key;
+            command.UIntArg = config.ReadBool("CustomActions", (action_ini_name + "ToggleKeys").c_str(), false);
+
+            command.UIntID = config.ReadInt( "CustomActions", (action_ini_name + "KeyCode1").c_str(), 0);
+            action.Commands.push_back(command);
+            command.UIntID = config.ReadInt( "CustomActions", (action_ini_name + "KeyCode2").c_str(), 0);
+            action.Commands.push_back(command);
+            command.UIntID = config.ReadInt( "CustomActions", (action_ini_name + "KeyCode3").c_str(), 0);
+            action.Commands.push_back(command);
+        }
+        else if (function_type_str == "TypeString")
+        {
+            ActionCommand command;
+            command.Type = ActionCommand::command_string;
+            command.StrMain = config.ReadString("CustomActions", (action_ini_name + "TypeString").c_str());
+            
+            action.Commands.push_back(command);
+        }
+        else if (function_type_str == "LaunchApplication")
+        {
+            ActionCommand command;
+            command.Type = ActionCommand::command_launch_app;
+            command.StrMain = config.ReadString("CustomActions", (action_ini_name + "ExecutablePath").c_str());
+            command.StrArg  = config.ReadString("CustomActions", (action_ini_name + "ExecutableArg").c_str());
+
+            action.Commands.push_back(command);
+        }
+        else if (function_type_str == "ToggleOverlayEnabledState")
+        {
+            //This function can't be migrated 1:1, but we leave a tag with original intent at least
+            ActionCommand command;
+            command.Type = ActionCommand::command_show_overlay;
+            command.StrMain = std::string("Overlay_") + std::to_string( config.ReadInt("CustomActions", (action_ini_name + "OverlayID").c_str(), 0) );
+            command.UIntArg = ActionCommand::command_arg_toggle;
+            command.UIntID  = MAKELPARAM(true, false);
+
+            action.Commands.push_back(command);
+        }
+
+        #ifdef DPLUS_UI
+            action.IconFilename = config.ReadString("CustomActions", (action_ini_name + "IconFilename").c_str());
+
+            //Remove folder from path as it's no longer part of the string
+            if (action.IconFilename.find("images/icons/") == 0)
+            {
+                action.IconFilename = action.IconFilename.substr(sizeof("images/icons/") - 1);
+            }
+
+            action.NameTranslationID  = ActionManager::GetTranslationIDForName(action.Name);
+            action.LabelTranslationID = ActionManager::GetTranslationIDForName(action.Label);
+        #endif
+
+        m_ActionManager.StoreAction(action);
+    }
+
+    //Adapt references to legacy actions if possible (this will fail for the default ones though)
+    m_ConfigHandle[configid_handle_input_go_home_action_uid]    = legacy_id_to_uid[config.ReadInt("Input", "GoHomeButtonActionID",     0)];
+    m_ConfigHandle[configid_handle_input_go_back_action_uid]    = legacy_id_to_uid[config.ReadInt("Input", "GoBackButtonActionID",     0)];
+    m_ConfigHandle[configid_handle_input_shortcut01_action_uid] = legacy_id_to_uid[config.ReadInt("Input", "GlobalShortcut01ActionID", 0)];
+    m_ConfigHandle[configid_handle_input_shortcut02_action_uid] = legacy_id_to_uid[config.ReadInt("Input", "GlobalShortcut02ActionID", 0)];
+    m_ConfigHandle[configid_handle_input_shortcut03_action_uid] = legacy_id_to_uid[config.ReadInt("Input", "GlobalShortcut03ActionID", 0)];
+    m_ConfigHandle[configid_handle_input_hotkey01_action_uid]   = legacy_id_to_uid[config.ReadInt("Input", "GlobalHotkey01ActionID",   0)];
+    m_ConfigHandle[configid_handle_input_hotkey02_action_uid]   = legacy_id_to_uid[config.ReadInt("Input", "GlobalHotkey02ActionID",   0)];
+    m_ConfigHandle[configid_handle_input_hotkey03_action_uid]   = legacy_id_to_uid[config.ReadInt("Input", "GlobalHotkey03ActionID",   0)];
+}
+
 bool ConfigManager::IsUIAccessEnabled()
 {
     std::ifstream file_manifest("DesktopPlus.exe.manifest");
@@ -853,56 +890,6 @@ void ConfigManager::RemoveScaleFromTransform(Matrix4& transform, float* width)
         *width *= scale_x;
 }
 
-void ConfigManager::LoadActionOrderList(ActionOrderList& action_order, const std::string& order_str)
-{
-    //Load action order
-    action_order.clear();
-
-    std::stringstream ss(order_str);
-    int id;
-    bool visible;
-    char sep;
-
-    for (;;)
-    {
-        ss >> id >> visible >> sep;
-
-        if (ss.fail())
-            break;
-
-        action_order.push_back({ (ActionID)id, visible });
-    }
-
-    //If there is a mismatch or it's fully missing, reset to global
-    auto& action_order_global = ActionManager::Get().GetActionMainBarOrder();
-
-    if (action_order.size() != action_order_global.size())
-    {
-        action_order = action_order_global;
-
-        //If overlay bar order, reset to all invisible
-        if (&action_order == &ActionManager::Get().GetActionOverlayBarOrder())
-        {
-            for (ActionOrderData& data : action_order)
-            {
-                data.visible = false;
-            }
-        }
-    }
-}
-
-std::string ConfigManager::GetActionOrderListString(const ActionOrderList& action_order)
-{
-    std::stringstream ss;
-
-    for (const auto& data : action_order)
-    {
-        ss << data.action_id << ' ' << data.visible << ";";
-    }
-
-    return ss.str();
-}
-
 #ifdef DPLUS_UI
 
 void ConfigManager::SaveConfigToFile()
@@ -918,10 +905,10 @@ void ConfigManager::SaveConfigToFile()
 
     config.WriteString("Interface", "LanguageFile",             m_ConfigString[configid_str_interface_language_file].c_str());
     config.WriteInt(   "Interface", "OverlayCurrentID",         m_ConfigInt[configid_int_interface_overlay_current_id]);
-    config.WriteInt(   "Interface", "DesktopButtonCyclingMode", m_ConfigInt[configid_int_interface_mainbar_desktop_listing]);
+    config.WriteInt(   "Interface", "DesktopButtonCyclingMode", m_ConfigInt[configid_int_interface_desktop_listing_style]);
     config.WriteBool(  "Interface", "ShowAdvancedSettings",     m_ConfigBool[configid_bool_interface_show_advanced_settings]);
     config.WriteBool(  "Interface", "DisplaySizeLarge",         m_ConfigBool[configid_bool_interface_large_style]);
-    config.WriteBool(  "Interface", "DesktopButtonIncludeAll",  m_ConfigBool[configid_bool_interface_mainbar_desktop_include_all]);
+    config.WriteBool(  "Interface", "DesktopButtonIncludeAll",  m_ConfigBool[configid_bool_interface_desktop_buttons_include_combined]);
 
     //Write color string
     std::stringstream ss;
@@ -949,24 +936,28 @@ void ConfigManager::SaveConfigToFile()
 
     SaveConfigPersistentWindowState(config);
 
-    config.WriteString("Interface", "ActionOrder",           GetActionOrderListString(m_ActionManager.GetActionMainBarOrder()).c_str() );
-    config.WriteString("Interface", "ActionOrderOverlayBar", GetActionOrderListString(m_ActionManager.GetActionOverlayBarOrder()).c_str() );
+    config.WriteString("Interface", "ActionOrder",           m_ActionManager.ActionOrderListToString(m_ActionManager.GetActionOrderListUI()).c_str() );
+    config.WriteString("Interface", "ActionOrderBarDefault", m_ActionManager.ActionOrderListToString(m_ActionManager.GetActionOrderListBarDefault()).c_str() );
+    config.WriteString("Interface", "ActionOrderOverlayBar", m_ActionManager.ActionOrderListToString(m_ActionManager.GetActionOrderListOverlayBar()).c_str() );
 
-    config.WriteInt( "Input",  "GoHomeButtonActionID",               m_ConfigInt[configid_int_input_go_home_action_id]);
-    config.WriteInt( "Input",  "GoBackButtonActionID",               m_ConfigInt[configid_int_input_go_back_action_id]);
-    config.WriteInt( "Input",  "GlobalShortcut01ActionID",           m_ConfigInt[configid_int_input_shortcut01_action_id]);
-    config.WriteInt( "Input",  "GlobalShortcut02ActionID",           m_ConfigInt[configid_int_input_shortcut02_action_id]);
-    config.WriteInt( "Input",  "GlobalShortcut03ActionID",           m_ConfigInt[configid_int_input_shortcut03_action_id]);
+    config.WriteString("Input", "GoHomeButtonActionUID",             std::to_string(m_ConfigHandle[configid_handle_input_go_home_action_uid]).c_str());
+    config.WriteString("Input", "GoBackButtonActionUID",             std::to_string(m_ConfigHandle[configid_handle_input_go_back_action_uid]).c_str());
+    config.WriteString("Input", "GlobalShortcut01ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut01_action_uid]).c_str());
+    config.WriteString("Input", "GlobalShortcut02ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut02_action_uid]).c_str());
+    config.WriteString("Input", "GlobalShortcut03ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut03_action_uid]).c_str());
+    config.WriteString("Input", "GlobalShortcut04ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut04_action_uid]).c_str());
+    config.WriteString("Input", "GlobalShortcut05ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut05_action_uid]).c_str());
+    config.WriteString("Input", "GlobalShortcut06ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut06_action_uid]).c_str());
 
-    config.WriteInt( "Input",  "GlobalHotkey01Modifiers",            m_ConfigInt[configid_int_input_hotkey01_modifiers]);
-    config.WriteInt( "Input",  "GlobalHotkey01KeyCode",              m_ConfigInt[configid_int_input_hotkey01_keycode]);
-    config.WriteInt( "Input",  "GlobalHotkey01ActionID",             m_ConfigInt[configid_int_input_hotkey01_action_id]);
-    config.WriteInt( "Input",  "GlobalHotkey02Modifiers",            m_ConfigInt[configid_int_input_hotkey02_modifiers]);
-    config.WriteInt( "Input",  "GlobalHotkey02KeyCode",              m_ConfigInt[configid_int_input_hotkey02_keycode]);
-    config.WriteInt( "Input",  "GlobalHotkey02ActionID",             m_ConfigInt[configid_int_input_hotkey02_action_id]);
-    config.WriteInt( "Input",  "GlobalHotkey03Modifiers",            m_ConfigInt[configid_int_input_hotkey03_modifiers]);
-    config.WriteInt( "Input",  "GlobalHotkey03KeyCode",              m_ConfigInt[configid_int_input_hotkey03_keycode]);
-    config.WriteInt( "Input",  "GlobalHotkey03ActionID",             m_ConfigInt[configid_int_input_hotkey03_action_id]);
+    config.WriteInt(   "Input",  "GlobalHotkey01Modifiers",          m_ConfigInt[configid_int_input_hotkey01_modifiers]);
+    config.WriteInt(   "Input",  "GlobalHotkey01KeyCode",            m_ConfigInt[configid_int_input_hotkey01_keycode]);
+    config.WriteString("Input",  "GlobalHotkey01ActionUID",          std::to_string(m_ConfigHandle[configid_handle_input_hotkey01_action_uid]).c_str());
+    config.WriteInt(   "Input",  "GlobalHotkey02Modifiers",          m_ConfigInt[configid_int_input_hotkey02_modifiers]);
+    config.WriteInt(   "Input",  "GlobalHotkey02KeyCode",            m_ConfigInt[configid_int_input_hotkey02_keycode]);
+    config.WriteString("Input",  "GlobalHotkey02ActionUID",          std::to_string(m_ConfigHandle[configid_handle_input_hotkey02_action_uid]).c_str());
+    config.WriteInt(   "Input",  "GlobalHotkey03Modifiers",          m_ConfigInt[configid_int_input_hotkey03_modifiers]);
+    config.WriteInt(   "Input",  "GlobalHotkey03KeyCode",            m_ConfigInt[configid_int_input_hotkey03_keycode]);
+    config.WriteString("Input",  "GlobalHotkey03ActionUID",          std::to_string(m_ConfigHandle[configid_handle_input_hotkey03_action_uid]).c_str());
 
     config.WriteInt( "Input",  "DetachedInteractionMaxDistance", int(m_ConfigFloat[configid_float_input_detached_interaction_max_distance] * 100.0f));
     config.WriteBool("Input",  "GlobalHMDPointer",                   m_ConfigBool[configid_bool_input_global_hmd_pointer]);
@@ -1005,7 +996,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Windows", "WinRTAutoSizeOverlay",         m_ConfigBool[configid_bool_windows_winrt_auto_size_overlay]);
     config.WriteBool("Windows", "WinRTAutoFocusSceneApp",       m_ConfigBool[configid_bool_windows_winrt_auto_focus_scene_app]);
     config.WriteBool("Windows", "WinRTWindowMatchingStrict",    m_ConfigBool[configid_bool_windows_winrt_window_matching_strict]);
-    config.WriteInt( "Windows",  "WinRTOnCaptureLost",           m_ConfigInt[configid_int_windows_winrt_capture_lost_behavior]);
+    config.WriteInt( "Windows", "WinRTOnCaptureLost",           m_ConfigInt[configid_int_windows_winrt_capture_lost_behavior]);
 
     config.WriteInt( "Browser", "BrowserMaxFPS",                m_ConfigInt[configid_int_browser_max_fps]);
     config.WriteBool("Browser", "BrowserContentBlocker",        m_ConfigBool[configid_bool_browser_content_blocker]);
@@ -1030,56 +1021,12 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Misc", "NoSteam",            m_ConfigBool[configid_bool_misc_no_steam]);
     config.WriteBool("Misc", "UIAccessWasEnabled", (m_ConfigBool[configid_bool_misc_uiaccess_was_enabled] || m_ConfigBool[configid_bool_state_misc_uiaccess_enabled]));
 
-    //Save custom actions
-    config.RemoveSection("CustomActions"); //Remove old section first to avoid any leftovers
-
-    auto& custom_actions = m_ActionManager.GetCustomActions();
-    int custom_action_count = (int)custom_actions.size();
-    config.WriteInt("CustomActions", "Count", custom_action_count);
-
-    for (int i = 0; i < custom_action_count; ++i)
-    {
-        const CustomAction& action = custom_actions[i];
-        std::string action_ini_name = "Action" + std::to_string(i);
-        
-        config.WriteString("CustomActions", (action_ini_name + "Name").c_str(), action.Name.c_str());
-        config.WriteString("CustomActions", (action_ini_name + "FunctionType").c_str(), ActionManager::CustomActionFunctionToString(action.FunctionType));
-
-        switch (action.FunctionType)
-        {
-            case caction_press_keys:
-            {
-                config.WriteInt( "CustomActions", (action_ini_name + "KeyCode1").c_str(),    action.KeyCodes[0]);
-                config.WriteInt( "CustomActions", (action_ini_name + "KeyCode2").c_str(),    action.KeyCodes[1]);
-                config.WriteInt( "CustomActions", (action_ini_name + "KeyCode3").c_str(),    action.KeyCodes[2]);
-                config.WriteBool("CustomActions", (action_ini_name + "ToggleKeys").c_str(), (action.IntID == 1));
-                break;
-            }
-            case caction_type_string:
-            {
-                config.WriteString("CustomActions", (action_ini_name + "TypeString").c_str(), action.StrMain.c_str());
-                break;
-            }
-            case caction_launch_application:
-            {
-                config.WriteString("CustomActions", (action_ini_name + "ExecutablePath").c_str(), action.StrMain.c_str());
-                config.WriteString("CustomActions", (action_ini_name + "ExecutableArg").c_str(),  action.StrArg.c_str());
-                break;
-            }
-            case caction_toggle_overlay_enabled_state:
-            {
-                config.WriteInt("CustomActions", (action_ini_name + "OverlayID").c_str(), action.IntID);
-                break;
-            }
-        }
-
-        #ifdef DPLUS_UI
-            config.WriteString("CustomActions", (action_ini_name + "IconFilename").c_str(), action.IconFilename.c_str());
-        #endif
-    }
+    //Remove old CustomSection section (actions are now saved separately)
+    config.RemoveSection("CustomActions");
 
     config.Save();
 
+    m_ActionManager.SaveActionsToFile();
     m_AppProfileManager.SaveProfilesToFile();
 }
 
@@ -1091,6 +1038,7 @@ void ConfigManager::RestoreConfigFromDefault()
     std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
     ::DeleteFileW(wpath.c_str());
 
+    m_ActionManager.RestoreActionsFromDefault();
     LoadConfigFromFile();
 }
 
@@ -1331,16 +1279,6 @@ void ConfigManager::ResetConfigStateValues()
 ActionManager& ConfigManager::GetActionManager()
 {
     return m_ActionManager;
-}
-
-std::vector<CustomAction>& ConfigManager::GetCustomActions()
-{
-    return m_ActionManager.GetCustomActions();
-}
-
-ActionOrderList& ConfigManager::GetActionMainBarOrder()
-{
-    return m_ActionManager.GetActionMainBarOrder();
 }
 
 AppProfileManager& ConfigManager::GetAppProfileManager()

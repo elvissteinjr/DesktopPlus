@@ -11,11 +11,20 @@
 static const unsigned int k_ulOverlayID_None = UINT_MAX;      //Most functions return this on error, which will fall back to m_OverlayNull when requested
 static const int k_lOverlayOutputErrorTextureWidth  = 960;    //Unfortunately the best option is to just hardcode the size in some places
 static const int k_lOverlayOutputErrorTextureHeight = 540;
+typedef std::vector<unsigned int> OverlayIDList;
 
 class WindowInfo;
 
 class OverlayManager
 {
+    public:
+
+        struct TagListEntry
+        {
+            std::string Tag;
+            bool IsAutoTag = false;
+        };
+
     private:
         #ifndef DPLUS_UI
             std::vector<Overlay> m_Overlays;
@@ -57,15 +66,19 @@ class OverlayManager
 
         #ifndef DPLUS_UI
             //Returns list of inactive (not current capturing) overlay IDs with winrt_last_* strings matching the given window
-            std::vector<unsigned int> FindInactiveOverlaysForWindow(const WindowInfo& window_info) const;
+            OverlayIDList FindInactiveOverlaysForWindow(const WindowInfo& window_info) const;
         #endif
 
         //Returns list of overlay IDs using source_id as duplication ID
-        std::vector<unsigned int> FindDuplicatedOverlaysForOverlay(unsigned int source_id) const;
+        OverlayIDList FindDuplicatedOverlaysForOverlay(unsigned int source_id) const;
+        //Returns list of overlay IDs that contain the given tags
+        OverlayIDList FindOverlaysWithTags(const char* str_tags) const;
 
         void ConvertDuplicatedOverlayToStandalone(unsigned int id, bool no_reset = false);
 
         #ifdef DPLUS_UI
+            std::vector<TagListEntry> GetKnownOverlayTagList();
+
             void SetCurrentOverlayNameAuto(const WindowInfo* window_info = nullptr);
             void SetOverlayNameAuto(unsigned int id, const WindowInfo* window_info = nullptr); //window_info is optional, can be passed as override for when the handle isn't stored
             void SetOverlayNamesAutoForWindow(const WindowInfo& window_info);                  //Calls SetOverlayNameAuto() for all overlays currently using window_handle as source
@@ -73,4 +86,9 @@ class OverlayManager
 
         Matrix4 GetOverlayMiddleTransform(unsigned int id, vr::VROverlayHandle_t ovrl_handle = vr::k_ulOverlayHandleInvalid) const;
         Matrix4 GetOverlayCenterBottomTransform(unsigned int id, vr::VROverlayHandle_t ovrl_handle = vr::k_ulOverlayHandleInvalid) const;
+
+        static bool MatchOverlayTagSingle(const char* str_tags, const char* str_single_tag);
+        static bool MatchOverlayTagSingle(const char* str_tags, const char* str_tags_end, const char* str_single_tag, size_t str_single_tag_length);
+        //Returns if any tags in str a match with any in str b, optionally uses data b to match built-in auto tags from str a
+        static bool MatchOverlayTags(const char* str_tags_a, const char* str_tags_b, const OverlayConfigData* data_b = nullptr);
 };

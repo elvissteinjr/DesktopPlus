@@ -3,6 +3,7 @@
 #include "OverlayDragger.h"
 #include "TextureManager.h"
 #include "TranslationManager.h"
+#include "OverlayManager.h"
 #include <string>
 
 enum FloatingWindowOverlayStateID
@@ -18,6 +19,44 @@ struct FloatingWindowOverlayState
     float Size = 1.0f;
     Matrix4 Transform;
     Matrix4 TransformAbs;
+};
+
+struct FloatingWindowInputOverlayTagsState
+{
+    std::string TagEditOrigStr;
+    char TagEditBuffer[1024]   = "";
+    float ChildHeightLines     = 1.0f;
+
+    std::vector<OverlayManager::TagListEntry> KnownTagsList;
+    ImGuiTextFilter KnownTagsFilter;
+    bool IsTagAlreadyInBuffer  = false;
+    bool FocusTextInput        = false;
+
+    bool PopupShow             = false;
+    float PopupAlpha           = 0.0f;
+    float PopupHeight          = FLT_MIN;
+    float PopupHeightPrev      = FLT_MIN;
+    ImGuiDir PosDir            = ImGuiDir_Down;
+    ImGuiDir PosDirDefault     = ImGuiDir_Down;
+    float PosAnimationProgress = 0.0f;
+    bool IsFadingOut           = false;
+};
+
+struct FloatingWindowActionOrderListState
+{
+    std::vector<ActionManager::ActionNameListEntry> ActionsList;
+    ActionManager::ActionList ActionListOrig;
+    bool HasSavedChanges       = false;
+    int KeyboardSwappedIndex   = -1;
+    int SelectedIndex          = -1;
+    ActionUID HoveredAction    = k_ActionUID_Invalid;    
+};
+
+struct FloatingWindowActionAddSelectorState
+{
+    std::vector<ActionManager::ActionNameListEntry> ActionsList;
+    std::vector<char> ActionsTickedList;
+    bool IsAnyActionTicked = false;
 };
 
 //Base class for drag-able floating overlay windows, such as the Settings, Overlay Properties and Keyboard windows
@@ -70,6 +109,14 @@ class FloatingWindow
         void HelpMarker(const char* desc, const char* marker_str = "(?)") const;    //Help marker, but tooltip is fixed to top or bottom of the window
         static bool TranslatedComboAnimated(const char* label, int& value, TRMGRStrID trstr_min, TRMGRStrID trstr_max);
         void UpdateLimiterSetting(bool is_override) const;
+
+        //Input widget for a collection of overlay tags. clip_parent_depth is the depth of parent window look up for popup's clipping rect, change when used in nested child windows
+        static bool InputOverlayTags(const char* str_id, char* buffer_tags, size_t buffer_tags_size, FloatingWindowInputOverlayTagsState& state, int clip_parent_depth = 0);
+
+        //Almost entire pages but implemented here to be shared between multiple windows
+        bool ActionOrderList(ActionManager::ActionList& list_actions_target, bool is_appearing, bool is_returning, FloatingWindowActionOrderListState& state, 
+                             bool& go_add_actions, float height_offset = 0.0f);
+        bool ActionAddSelector(ActionManager::ActionList& list_actions_target, bool is_appearing, FloatingWindowActionAddSelectorState& state, float height_offset = 0.0f);
 
     public:
         FloatingWindow();

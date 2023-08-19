@@ -46,6 +46,7 @@ void WindowDesktopMode::UpdateTitleBar()
         case wnddesktopmode_page_settings:
         case wnddesktopmode_page_profiles:
         case wnddesktopmode_page_app_profiles:
+        case wnddesktopmode_page_actions:
         {
             const WindowSettings& window_settings = UIManager::Get()->GetSettingsWindow();
             title_str = window_settings.DesktopModeGetTitle();
@@ -106,21 +107,25 @@ void WindowDesktopMode::UpdateTitleBar()
     if ( (ImGui::ImageButton(io.Fonts->TexID, img_size_line_height_back, img_uv_min, img_uv_max, 1)) || 
          (ImGui::IsMouseClicked(3 /* MouseX1 / Back */)) || ( (ImGui::IsKeyPressed(ImGuiKey_Backspace)) && (!ImGui::IsAnyInputTextActive()) ) )
     {
-        bool did_go_back = false;
-
-        switch (m_PageStack[m_PageStackPos])
+        if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup))
         {
-            case wnddesktopmode_page_settings:     /*fallthrough*/
-            case wnddesktopmode_page_profiles:     /*fallthrough*/
-            case wnddesktopmode_page_app_profiles: did_go_back = UIManager::Get()->GetSettingsWindow().DesktopModeGoBack();          break;
-            case wnddesktopmode_page_properties:   did_go_back = UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGoBack(); break;
-            default: break;
-        }
+            bool did_go_back = false;
 
-        //If embedded page didn't go back, go back on our own pagination
-        if (!did_go_back)
-        {
-            PageGoBack();
+            switch (m_PageStack[m_PageStackPos])
+            {
+                case wnddesktopmode_page_settings:     /*fallthrough*/
+                case wnddesktopmode_page_profiles:     /*fallthrough*/
+                case wnddesktopmode_page_app_profiles: /*fallthrough*/
+                case wnddesktopmode_page_actions:      did_go_back = UIManager::Get()->GetSettingsWindow().DesktopModeGoBack();          break;
+                case wnddesktopmode_page_properties:   did_go_back = UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeGoBack(); break;
+                default: break;
+            }
+
+            //If embedded page didn't go back, go back on our own pagination
+            if (!did_go_back)
+            {
+                PageGoBack();
+            }
         }
     }
     ImGui::PopID();
@@ -167,11 +172,6 @@ void WindowDesktopMode::UpdatePageMain()
         PageGoForward(wnddesktopmode_page_settings);
     }
 
-    if (ImGui::Selectable("Switch to Action Editor")) 
-    {
-        UIManager::Get()->RestartIntoActionEditor();
-    }
-
     //Focus nav if we came back from profiles
     if ( (io.NavVisible) && (m_PageReturned == wnddesktopmode_page_profiles) )
     {
@@ -196,6 +196,19 @@ void WindowDesktopMode::UpdatePageMain()
     {
         UIManager::Get()->GetSettingsWindow().DesktopModeSetRootPage(wndsettings_page_app_profiles);
         PageGoForward(wnddesktopmode_page_app_profiles);
+    }
+
+    //Focus nav if we came back from actions
+    if ( (io.NavVisible) && (m_PageReturned == wnddesktopmode_page_actions) )
+    {
+        ImGui::SetKeyboardFocusHere();
+        m_PageReturned = wnddesktopmode_page_none;
+    }
+
+    if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsActionsManage))) 
+    {
+        UIManager::Get()->GetSettingsWindow().DesktopModeSetRootPage(wndsettings_page_actions);
+        PageGoForward(wnddesktopmode_page_actions);
     }
 
     ImGui::EndChild();
@@ -847,7 +860,8 @@ void WindowDesktopMode::Update()
                 case wnddesktopmode_page_main:               UpdatePageMain();                                                   break;
                 case wnddesktopmode_page_settings:           /*fallthrough*/
                 case wnddesktopmode_page_profiles:           /*fallthrough*/
-                case wnddesktopmode_page_app_profiles:       UIManager::Get()->GetSettingsWindow().UpdateDesktopMode();          break;
+                case wnddesktopmode_page_app_profiles:       /*fallthrough*/
+                case wnddesktopmode_page_actions:            UIManager::Get()->GetSettingsWindow().UpdateDesktopMode();          break;
                 case wnddesktopmode_page_properties:         UIManager::Get()->GetOverlayPropertiesWindow().UpdateDesktopMode(); break;
                 case wnddesktopmode_page_add_window_overlay: UpdatePageAddWindowOverlay();                                       break;
                 default: break;

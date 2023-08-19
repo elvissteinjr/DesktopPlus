@@ -51,11 +51,11 @@ bool AppProfileManager::LoadProfilesFromFile()
             continue;
 
         AppProfile profile;
-        profile.IsEnabled =               pfile.ReadBool(  section_name.c_str(), "Enabled");
-        profile.LastApplicationName    =  pfile.ReadString(section_name.c_str(), "LastApplicationName");
-        profile.OverlayProfileFileName =  pfile.ReadString(section_name.c_str(), "OverlayProfile");
-        profile.ActionIDEnter = (ActionID)pfile.ReadInt(   section_name.c_str(), "ActionEnter");
-        profile.ActionIDLeave = (ActionID)pfile.ReadInt(   section_name.c_str(), "ActionLeave");
+        profile.IsEnabled =                    pfile.ReadBool(  section_name.c_str(), "Enabled");
+        profile.LastApplicationName    =       pfile.ReadString(section_name.c_str(), "LastApplicationName");
+        profile.OverlayProfileFileName =       pfile.ReadString(section_name.c_str(), "OverlayProfile");
+        profile.ActionUIDEnter = std::strtoull(pfile.ReadString(section_name.c_str(), "ActionEnter", "0").c_str(), nullptr, 10);
+        profile.ActionUIDLeave = std::strtoull(pfile.ReadString(section_name.c_str(), "ActionLeave", "0").c_str(), nullptr, 10);
 
         StoreProfile(section_name, profile);
     }
@@ -111,8 +111,8 @@ void AppProfileManager::SaveProfilesToFile()
         }
 
         pfile.WriteString(app_key.c_str(), "OverlayProfile", profile.OverlayProfileFileName.c_str());
-        pfile.WriteInt(   app_key.c_str(), "ActionEnter",    profile.ActionIDEnter);
-        pfile.WriteInt(   app_key.c_str(), "ActionLeave",    profile.ActionIDLeave);
+        pfile.WriteString(app_key.c_str(), "ActionEnter",    std::to_string(profile.ActionUIDEnter).c_str());
+        pfile.WriteString(app_key.c_str(), "ActionLeave",    std::to_string(profile.ActionUIDLeave).c_str());
     }
 
     pfile.Save();
@@ -188,12 +188,13 @@ bool AppProfileManager::ActivateProfile(const std::string& app_key)
         {
             const AppProfile& profile_prev = GetProfile(m_AppKeyActiveProfile);
 
-            if ((profile_prev.IsEnabled) && (profile_prev.ActionIDLeave != action_none))
+            if ((profile_prev.IsEnabled) && (profile_prev.ActionUIDLeave != k_ActionUID_Invalid))
             {
                 if (OutputManager* outmgr = OutputManager::Get())
                 {
-                    VLOG_F(1, "Executing profile exit action ID %d for app profile \"%s\"...", profile_prev.ActionIDLeave, m_AppKeyActiveProfile.c_str());
-                    outmgr->DoAction(profile_prev.ActionIDLeave);
+                    VLOG_F(1, "Executing profile exit action %llu for app profile \"%s\"...", profile_prev.ActionUIDLeave, m_AppKeyActiveProfile.c_str());
+
+                    ConfigManager::Get().GetActionManager().DoAction(profile_prev.ActionUIDLeave);
                 }
             }
         }
@@ -259,12 +260,12 @@ bool AppProfileManager::ActivateProfile(const std::string& app_key)
 
     //Execute profile enter action
     #ifndef DPLUS_UI
-        if ((!is_reloading_profile) && (profile.IsEnabled) && (profile.ActionIDEnter != action_none))
+        if ((!is_reloading_profile) && (profile.IsEnabled) && (profile.ActionUIDEnter != k_ActionUID_Invalid))
         {
             if (OutputManager* outmgr = OutputManager::Get())
             {
-                VLOG_F(1, "Executing profile enter action ID %d for app profile \"%s\"...", profile.ActionIDEnter, m_AppKeyActiveProfile.c_str());
-                outmgr->DoAction(profile.ActionIDEnter);
+                VLOG_F(1, "Executing profile enter action %llu for app profile \"%s\"...", profile.ActionUIDEnter, m_AppKeyActiveProfile.c_str());
+                ConfigManager::Get().GetActionManager().DoAction(profile.ActionUIDEnter);
             }
         }
     #endif
@@ -324,8 +325,8 @@ std::string AppProfile::Serialize() const
     ss.write((const char*)&str_size,        sizeof(str_size));
     ss.write(OverlayProfileFileName.data(), str_size);
 
-    ss.write((const char*)&ActionIDEnter, sizeof(ActionIDEnter));
-    ss.write((const char*)&ActionIDLeave, sizeof(ActionIDLeave));
+    ss.write((const char*)&ActionUIDEnter, sizeof(ActionUIDEnter));
+    ss.write((const char*)&ActionUIDLeave, sizeof(ActionUIDLeave));
 
     return ss.str();
 }
@@ -349,8 +350,8 @@ void AppProfile::Deserialize(const std::string& str)
     new_profile.OverlayProfileFileName.resize(str_length);
     ss.read(&new_profile.OverlayProfileFileName[0], str_length);
 
-    ss.read((char*)&new_profile.ActionIDEnter, sizeof(ActionIDEnter));
-    ss.read((char*)&new_profile.ActionIDLeave, sizeof(ActionIDLeave));
+    ss.read((char*)&new_profile.ActionUIDEnter, sizeof(ActionUIDEnter));
+    ss.read((char*)&new_profile.ActionUIDLeave, sizeof(ActionUIDLeave));
 
     //Replace all data with the read profile if there were no stream errors
     if (ss.good())

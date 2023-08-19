@@ -69,27 +69,29 @@ void ini_property_value_set( ini_t* ini, int section, int property, char const* 
 #endif
 
 
-Ini::Ini(const std::wstring& wfilename) : m_WFileName(wfilename), m_IniPtr(nullptr)
+Ini::Ini(const std::wstring& wfilename, bool replace_contents) : m_WFileName(wfilename), m_IniPtr(nullptr)
 {
-    std::string contents;
-    FILE* fp = _wfopen(m_WFileName.c_str(), L"rt");
-    if (fp != nullptr)
+    if (!replace_contents)
     {
-        //Read entire file into string
-        fseek(fp, 0, SEEK_END);
-        contents.resize(ftell(fp));
-        rewind(fp);
-        size_t bytes_read = fread(&contents[0], 1, contents.size(), fp);
-        fclose(fp);
+        FILE* fp = _wfopen(m_WFileName.c_str(), L"rt");
+        if (fp != nullptr)
+        {
+            //Read entire file into string
+            std::string contents;
+            fseek(fp, 0, SEEK_END);
+            contents.resize(ftell(fp));
+            rewind(fp);
+            size_t bytes_read = fread(&contents[0], 1, contents.size(), fp);
+            fclose(fp);
 
-        contents.resize(bytes_read);
+            contents.resize(bytes_read);
 
-        m_IniPtr = ini_load(contents.data(), nullptr);
+            m_IniPtr = ini_load(contents.data(), nullptr);
+            return;
+        }
     }
-    else
-    {
-        m_IniPtr = ini_create(nullptr);
-    }
+
+    m_IniPtr = ini_create(nullptr);
 }
 
 Ini::~Ini()

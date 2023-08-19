@@ -1,92 +1,154 @@
 #pragma once
 
-#define NOMINMAX
-#include <windows.h>
-
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #ifdef DPLUS_UI
-    #include "imgui.h" //Don't include ImGui stuff for dashboard application
+    #include "imgui.h"
     #include "TranslationManager.h"
 #endif
 
-enum ActionID: int
+struct ActionCommand
 {
-    action_none,
-    action_show_keyboard,
-    action_crop_active_window_toggle,
-    action_toggle_overlay_enabled_group_1,
-    action_toggle_overlay_enabled_group_2,
-    action_toggle_overlay_enabled_group_3,
-    action_switch_task,
-    action_built_in_MAX,
-    //Leaving some room here, as we don't want to mess with user order later
-    action_custom = 1000          //+ Custom Action ID
-};
+    enum CommandType
+    {
+        command_none,
+        command_key,
+        command_mouse_pos,
+        command_string,
+        command_launch_app,
+        command_show_keyboard,
+        command_crop_active_window,
+        command_show_overlay,
+        command_switch_task,
+        command_unknown,                                //Set when loading unrecognized command
+        command_MAX
+    };
 
-enum CustomActionFunctionID
-{
-    caction_press_keys,
-    caction_type_string,
-    caction_launch_application,
-    caction_toggle_overlay_enabled_state
-};
+    enum CommandToggleArg : unsigned int
+    {
+        command_arg_toggle,
+        command_arg_always_show,
+        command_arg_always_hide,
+    };
 
-struct ActionOrderData
-{
-    ActionID action_id = action_none;
-    bool visible = true;
-};
+    static const char* s_CommandTypeNames[command_MAX]; //Type names used when loading/saving config
 
-typedef std::vector<ActionOrderData> ActionOrderList;
+    CommandType Type = command_none;
 
-struct CustomAction
-{
-    std::string Name;
-    CustomActionFunctionID FunctionType = caction_press_keys;
-    unsigned char KeyCodes[3] = { 0 };
-    std::string StrMain;     //Type String / Executable Path
+    unsigned int UIntID  = 0;
+    unsigned int UIntArg = 0;
+    std::string StrMain;
     std::string StrArg;
-    int IntID = 0;           //Overlay ID / Key Toggle bool
+
+    std::string Serialize() const;              //Serializes into binary data stored as string (contains NUL bytes), not suitable for storage
+    void Deserialize(const std::string& str);   //Deserializes from strings created by above function
+};
+
+typedef uint64_t ActionUID;
+static const ActionUID k_ActionUID_Invalid = 0;
+typedef std::vector<unsigned int> OverlayIDList;
+
+struct Action
+{
+    ActionUID UID = 0;
+    std::string Name;
+    std::string Label;
+    std::vector<ActionCommand> Commands;
+    bool TargetUseTags = false;
+    std::string TargetTags;
+    std::string IconFilename;
 
     #ifdef DPLUS_UI
-        std::string IconFilename;
-        int IconImGuiRectID          = -1; //-1 when no icon loaded (ID on ImGui end is not valid after building the font)
-        ImVec2 IconAtlasSize         = {0.0f, 0.0f};
-        ImVec4 IconAtlasUV           = {0.0f, 0.0f, 0.0f, 0.0f};
-        TRMGRStrID NameTranslationID = tstr_NONE;
+        int IconImGuiRectID           = -1; //-1 when no icon loaded (ID on ImGui end is not valid after building the font)
+        ImVec2 IconAtlasSize;
+        ImVec4 IconAtlasUV;
+        TRMGRStrID NameTranslationID  = tstr_NONE;
+        TRMGRStrID LabelTranslationID = tstr_NONE;
     #endif
 
-    void ApplyIntFromConfig();
-    void ApplyStringFromConfig();
-    #ifdef DPLUS_UI
-        void UpdateNameTranslationID();
-    #endif
-    void SendUpdateToDashboardApp(int id, HWND window_handle) const;
+    std::string Serialize() const;              //Serializes into binary data stored as string (contains NUL bytes), not suitable for storage
+    void Deserialize(const std::string& str);   //Deserializes from strings created by above function
 };
 
 class ActionManager
 {
+    public:
+        typedef std::vector<ActionUID> ActionList;
+
+        struct ActionNameListEntry
+        {
+            ActionUID UID;
+            std::string Name;
+        };
+
     private:
-        std::vector<CustomAction> m_CustomActions;
-        ActionOrderList m_ActionMainBarOrder;
-        ActionOrderList m_ActionOverlayBarOrder;
+        std::unordered_map<ActionUID, Action> m_Actions;
+        Action m_NullAction;
+
+        #ifdef DPLUS_UI
+            ActionList m_ActionOrderUI;
+            ActionList m_ActionOrderBarDefault;
+            ActionList m_ActionOrderOverlayBar;
+        #endif
+
+        #ifndef DPLUS_UI
+            void DoKeyCommand(             const ActionCommand& command, OverlayIDList& overlay_targets, bool down) const;
+            void DoMousePosCommand(        const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoStringCommand(          const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoLaunchAppCommand(       const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoShowKeyboardCommand(    const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoCropActiveWindowCommand(const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoShowOverlayCommand(     const ActionCommand& command, OverlayIDList& overlay_targets, bool undo) const;
+            void DoSwitchTaskCommand(      const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+        #endif
+
+        #ifdef DPLUS_UI
+            void UpdateActionOrderListUI();
+            void ValidateActionOrderList(ActionList& ui_order) const;
+        #endif
 
     public:
-        static ActionManager& Get();
+        ActionManager();
 
-        std::vector<CustomAction>& GetCustomActions();
-        ActionOrderList& GetActionMainBarOrder();
-        ActionOrderList& GetActionOverlayBarOrder();
+        bool LoadActionsFromFile(const char* filename = nullptr);
+        void SaveActionsToFile();
+        void RestoreActionsFromDefault();
 
-        bool IsActionIDValid(ActionID action_id) const;
+        const Action& GetAction(ActionUID action_uid) const;
+        bool ActionExists(ActionUID action_uid) const;
+        void StoreAction(const Action& action);
+        void RemoveAction(ActionUID action_uid);
+
+        //Start/StopAction forward to the dashboard app if called from UI app, but other functions like Store/RemoveAction do *not* and have to be synced manually
+        void StartAction(ActionUID action_uid, unsigned int overlay_source_id = UINT_MAX) const;
+        void StopAction( ActionUID action_uid, unsigned int overlay_source_id = UINT_MAX) const;     //Releases keys pressed down in StartAction()
+        void DoAction(   ActionUID action_uid, unsigned int overlay_source_id = UINT_MAX) const;     //Just calls Start() and Stop() together
+
+        uint64_t GenerateUID() const;
+
+        static std::string ActionOrderListToString(const ActionList& action_order);
+        static ActionList ActionOrderListFromString(const std::string& str);
+
         #ifdef DPLUS_UI
-            const char* GetActionName(ActionID action_id) const;
-            const char* GetActionButtonLabel(ActionID action_id) const;
-        #endif
-        void EraseCustomAction(int custom_action_id);
+            ActionUID DuplicateAction(const Action& action);        //Returns UID of new action
+            void ClearIconData();                                   //Resets icon-related values of all actions, used when reloading textures
 
-        static CustomActionFunctionID ParseCustomActionFunctionString(const std::string& str);
-        static const char* CustomActionFunctionToString(CustomActionFunctionID function_id);
+            const ActionList& GetActionOrderListUI() const;
+            void SetActionOrderListUI(const ActionList& ui_order);
+            ActionList&       GetActionOrderListBarDefault();
+            const ActionList& GetActionOrderListBarDefault() const;
+            void              SetActionOrderListBarDefault(const ActionList& ui_order);
+            ActionList&       GetActionOrderListOverlayBar();
+            const ActionList& GetActionOrderListOverlayBar() const;
+            void              SetActionOrderListOverlayBar(const ActionList& ui_order);
+
+            const char* GetTranslatedName(ActionUID action_uid) const;
+            const char* GetTranslatedLabel(ActionUID action_uid) const;
+            std::vector<ActionNameListEntry> GetActionNameList();
+            static std::vector<std::string> GetIconFileList();
+            static TRMGRStrID GetTranslationIDForName(const std::string& str);
+            static std::string GetCommandDescription(const ActionCommand& command, float max_width = -1.0f);
+        #endif
 };

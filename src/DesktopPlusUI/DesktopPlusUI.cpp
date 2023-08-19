@@ -47,8 +47,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void InitImGui(HWND hwnd, bool desktop_mode);
 void ProcessCmdline(bool& force_desktop_mode);
 
-static bool g_ActionEditMode = false;
-
 // Main code
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ INT nCmdShow)
 {
@@ -58,7 +56,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     ProcessCmdline(force_desktop_mode);
 
     //Automatically use desktop mode if dashboard app isn't running
-    bool desktop_mode = ( (force_desktop_mode) || (!IPCManager::IsDashboardAppRunning()) || (g_ActionEditMode) );
+    bool desktop_mode = ( (force_desktop_mode) || (!IPCManager::IsDashboardAppRunning()) );
     LOG_F(INFO, "Desktop+ UI running in %s", (desktop_mode) ? "desktop mode" : "VR mode");
 
     //Make sure only one instance is running
@@ -458,14 +456,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
         else
         {
-            if (g_ActionEditMode)  //Temporary action edit mode
-            {
-                ui_manager.GetSettingsActionEditWindow().Update();
-            }
-            else
-            {
-                ui_manager.GetDesktopModeWindow().Update();
-            }
+            ui_manager.GetDesktopModeWindow().Update();
         }
 
         //Haptic feedback for hovered items, like the rest of the SteamVR UI
@@ -819,12 +810,6 @@ void ProcessCmdline(bool& force_desktop_mode)
             (strcmp(__argv[i], "/DesktopMode") == 0))
         {
             force_desktop_mode = true;
-        }
-
-        if ((strcmp(__argv[i], "-ActionEditor") == 0) ||
-            (strcmp(__argv[i], "/ActionEditor") == 0))
-        {
-            g_ActionEditMode = true;
         }
     }
 }

@@ -106,6 +106,7 @@ class WindowKeyboardShortcuts
         float m_WindowHeightPrev          = FLT_MIN;
         ImGuiDir m_PosDir                 = ImGuiDir_Down;
         ImGuiDir m_PosDirDefault          = ImGuiDir_Down;
+        float m_YOffsetDefault            = 0.0f;
         float m_PosAnimationProgress      = 0.0f;
 
         ButtonAction m_ActiveButtonAction = btn_act_none;
@@ -113,7 +114,7 @@ class WindowKeyboardShortcuts
 
     public:
         void SetActiveWidget(ImGuiID widget_id);
-        void SetDefaultPositionDirection(ImGuiDir pos_dir);
+        void SetDefaultPositionDirection(ImGuiDir pos_dir, float y_offset = 0.0f);
         void Update(ImGuiID window_id);
 
         bool IsHovered() const;

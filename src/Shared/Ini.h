@@ -14,7 +14,7 @@ class Ini
         ini_t* m_IniPtr;
 
     public:
-        Ini(const std::wstring& filename);
+        Ini(const std::wstring& filename, bool replace_contents = false);
         Ini(const Ini&) = delete;
         ~Ini();
 

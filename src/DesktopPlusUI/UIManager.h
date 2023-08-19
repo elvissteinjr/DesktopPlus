@@ -25,7 +25,6 @@
 #include "WindowSettings.h"
 #include "WindowOverlayProperties.h"
 #include "WindowPerformance.h"
-#include "WindowSettingsActionEdit.h"
 
 //Overlay width definitions
 #define OVERLAY_WIDTH_METERS_DASHBOARD_UI 2.75f
@@ -74,7 +73,6 @@ class UIManager
         WindowOverlayProperties m_WindowOverlayProperties;
         WindowPerformance m_WindowPerformance;
         WindowDesktopMode m_WindowDesktopMode;
-        WindowSettingsActionEdit m_WindowSettingsActionEdit;
 
         HWND m_WindowHandle;
         NotificationIcon m_NotificationIcon;
@@ -147,7 +145,6 @@ class UIManager
         WindowOverlayProperties& GetOverlayPropertiesWindow();
         WindowPerformance& GetPerformanceWindow();
         WindowDesktopMode& GetDesktopModeWindow();
-        WindowSettingsActionEdit& GetSettingsActionEditWindow();
 
         void SetWindowHandle(HWND handle);
         HWND GetWindowHandle() const;
@@ -190,6 +187,7 @@ class UIManager
         void SetFonts(ImFont* font_compact, ImFont* font_large);
         ImFont* GetFontCompact() const;
         ImFont* GetFontLarge() const;               //May return nullptr
+        void AddFontBuilderStringIfAnyUnmappedCharacters(const char* str);  //Checks if string has unmapped characters and schedules a texture refresh to load them on the next frame
         void OnDPIChanged(int new_dpi, const RECT& new_window_rect);
         void OnTranslationChanged();                //Calls functions in several classes to reset translation-dependent cached strings. Called when translation is changed
         void OnOverlayNameChanged();                //Calls functions in several classes to reset overlay-name-dependent cached strings. Called when overlay names changed

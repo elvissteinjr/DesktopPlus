@@ -74,13 +74,12 @@ class OutputManager
         void SetOutputInvalid(); //Handles state when there's no valid output
         bool IsOutputInvalid() const;
 
-        void DoAction(ActionID action_id,      unsigned int overlay_source_id = k_ulOverlayID_None);
-        void DoStartAction(ActionID action_id, unsigned int overlay_source_id = k_ulOverlayID_None);
-        void DoStopAction(ActionID action_id,  unsigned int overlay_source_id = k_ulOverlayID_None);
-
-        void ToggleOverlayGroupEnabled(int group_id);
+        void SetOverlayEnabled(unsigned int overlay_id, bool is_enabled);
+        void CropToActiveWindowToggle(unsigned int overlay_id);
+        void ShowWindowSwitcher();
 
         VRInput& GetVRInput();
+        InputSimulator& GetInputSimulator();
 
         void UpdatePerformanceStates();
         const LARGE_INTEGER& GetUpdateLimiterDelay();
@@ -108,8 +107,6 @@ class OutputManager
         void HandleKeyboardMessage(IPCActionID ipc_action_id, LPARAM lparam);
         bool HandleOverlayProfileLoadMessage(LPARAM lparam);
 
-        void LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8);
-        void ShowWindowSwitcher();
         void ResetMouseLastLaserPointerPos();
         void CropToActiveWindow();
         void CropToDisplay(int display_id, bool do_not_apply_setting = false);

@@ -51,8 +51,15 @@ namespace ImGui
     //Shortcut for unformatted colored text
     void TextColoredUnformatted(const ImVec4& col, const char* text, const char* text_end = nullptr);
 
+    //Stretches content added to drawlist between calls to BeginStretched() & EndStretched. Mostly for text.
+    void BeginStretched();
+    void EndStretched(float scale_x);
+
     //ColorPicker simplified for embedded widget use instead having of popups + translation support
     bool ColorPicker4Simple(const char* str_id, float col[4], float ref_col[4], const char* label_color_current = nullptr, const char* label_color_original = nullptr, float scale = 1.0f);
+
+    //CollapsingHeader() with padding hack applied for adjusted appearance within child windows
+    bool CollapsingHeaderPadded(const char* label, ImGuiTreeNodeFlags flags = 0);
 
     //Collapsing area which animates the content sliding downwards. Always call content widget functions (for content height calculations)
     //Uses external animation progress variable to allow overriding when needed

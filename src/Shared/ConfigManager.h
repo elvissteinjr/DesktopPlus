@@ -49,7 +49,7 @@ enum ConfigID_Bool
     configid_bool_interface_large_style,
     configid_bool_interface_dim_ui,
     configid_bool_interface_blank_space_drag_enabled,
-    configid_bool_interface_mainbar_desktop_include_all,
+    configid_bool_interface_desktop_buttons_include_combined,
     configid_bool_interface_warning_compositor_res_hidden,
     configid_bool_interface_warning_compositor_quality_hidden,
     configid_bool_interface_warning_process_elevation_hidden,
@@ -137,30 +137,21 @@ enum ConfigID_Int
     configid_int_overlay_update_limit_override_mode,
     configid_int_overlay_update_limit_override_fps,
     configid_int_overlay_browser_max_fps_override,
-    configid_int_overlay_group_id,
     configid_int_overlay_state_content_width,
     configid_int_overlay_state_content_height,
     configid_int_overlay_state_fps,
     configid_int_overlay_MAX,
     configid_int_interface_overlay_current_id,
-    configid_int_interface_mainbar_desktop_listing,
+    configid_int_interface_desktop_listing_style,
     configid_int_interface_background_color,
     configid_int_interface_background_color_display_mode,
     configid_int_interface_wmr_ignore_vscreens,             //-1 means auto/unset which is the value non-WMR users get
-    configid_int_input_go_home_action_id,
-    configid_int_input_go_back_action_id,
-    configid_int_input_shortcut01_action_id,
-    configid_int_input_shortcut02_action_id,
-    configid_int_input_shortcut03_action_id,
     configid_int_input_hotkey01_modifiers,
     configid_int_input_hotkey01_keycode,
-    configid_int_input_hotkey01_action_id,
     configid_int_input_hotkey02_modifiers,
     configid_int_input_hotkey02_keycode,
-    configid_int_input_hotkey02_action_id,
     configid_int_input_hotkey03_modifiers,
     configid_int_input_hotkey03_keycode,
-    configid_int_input_hotkey03_action_id,
     configid_int_input_mouse_dbl_click_assist_duration_ms,
     configid_int_input_drag_fixed_distance_shape,           //0 = Sphere, 1 = Cylinder
     configid_int_windows_winrt_dragging_mode,
@@ -171,9 +162,6 @@ enum ConfigID_Int
     configid_int_state_overlay_current_id_override,         //This is used to send config changes to overlays which aren't the current, mainly to avoid the UI switching around (-1 is disabled)
     configid_int_state_overlay_transform_sync_target_id,    //Target overlay ID for transform sync. -1 = None
     configid_int_state_overlay_focused_id,                  //Focused overlay ID (set by last click) for keyboard overlay target if applicable. -1 = None
-    configid_int_state_action_current,                      //Action changes are synced through a series of individually sent state settings. This one sets the target custom action (ID start 0)
-    configid_int_state_action_current_sub,                  //Target variable. 0 = Name, 1 = Function Type. Remaining values depend on the function. Not the cleanest way but easier
-    configid_int_state_action_value_int,                    //to set up with existing IPC stuff
     configid_int_state_mouse_dbl_click_assist_duration_ms,  //Internally used value, which will replace -1 with the current double-click delay automatically
     configid_int_state_performance_duplication_fps,
     configid_int_state_interface_desktop_count,             //Count of desktops after optionally filtering virtual WMR displays
@@ -218,8 +206,20 @@ enum ConfigID_Handle
     configid_handle_overlay_state_winrt_hwnd,                 //HWNDs are technically always in 32-bit range, but avoiding truncation warnings and perhaps some other issues here
     configid_handle_overlay_state_winrt_last_hicon,           //HICON kept around for when window goes missing but the icon itself is still cached in UI app
     configid_handle_overlay_MAX,
+    configid_handle_input_go_home_action_uid,
+    configid_handle_input_go_back_action_uid,
+    configid_handle_input_shortcut01_action_uid,
+    configid_handle_input_shortcut02_action_uid,
+    configid_handle_input_shortcut03_action_uid,
+    configid_handle_input_shortcut04_action_uid,
+    configid_handle_input_shortcut05_action_uid,
+    configid_handle_input_shortcut06_action_uid,
+    configid_handle_input_hotkey01_action_uid,
+    configid_handle_input_hotkey02_action_uid,
+    configid_handle_input_hotkey03_action_uid,
     configid_handle_state_arg_hwnd,                           //Used when a HWND is needed as an ipcact message argument
     configid_handle_state_dplus_laser_pointer_target_overlay, //Overlay handle for active Desktop+ laser pointer
+    configid_handle_state_action_uid,                         //Used when an action UID is needed as an ipcact message argument and message space is needed for something else
     configid_handle_MAX
 };
 
@@ -231,17 +231,18 @@ enum ConfigID_String
     configid_str_overlay_browser_url,                       //Current URL
     configid_str_overlay_browser_url_user_last,             //Last manually entered URL
     configid_str_overlay_browser_title,
+    configid_str_overlay_tags,
     configid_str_overlay_MAX,
     configid_str_interface_language_file,
     configid_str_input_keyboard_layout_file,
     configid_str_browser_extra_arguments,                   //Extra command-line arguments passed to DPBrowser executable
-    configid_str_state_action_value_string,
     configid_str_state_ui_keyboard_string,                  //SteamVR keyboard input for the UI application
     configid_str_state_keyboard_string,                     //VR keyboard input for the dashboard application
     configid_str_state_dashboard_error_string,              //Error messages are displayed in VR through the UI app
     configid_str_state_profile_name_load,                   //Name of the profile to load 
     configid_str_state_app_profile_key,                     //Target app key for app profile synching
     configid_str_state_app_profile_data,                    //Serialized data string of app profile for synching
+    configid_str_state_action_data,                         //Serialized data string of action for synching
     configid_str_MAX
 };
 
@@ -292,11 +293,11 @@ struct OverlayOriginConfig
     bool HMDFloorUseTurning = false;
 };
 
-enum MainbarDesktopListing
+enum DesktopListingStyle
 {
-    mainbar_desktop_listing_none,
-    mainbar_desktop_listing_individual,
-    mainbar_desktop_listing_cycle
+    desktop_listing_style_none,
+    desktop_listing_style_individual,
+    desktop_listing_style_cycle
 };
 
 enum InterfaceBGColorDisplayMode
@@ -353,7 +354,7 @@ class OverlayConfigData
         uint64_t ConfigHandle[configid_handle_overlay_MAX];
         std::string ConfigStr[configid_str_overlay_MAX];
         Matrix4 ConfigTransform;
-        ActionOrderList ConfigActionBarOrder;
+        ActionManager::ActionList ConfigActionBarOrder;
 
         OverlayConfigData();
 };
@@ -386,11 +387,10 @@ class ConfigManager
             void SaveConfigPersistentWindowState(Ini& config);
         #endif
 
+        void MigrateLegacyActionsFromConfig(const Ini& config);
+
         static bool IsUIAccessEnabled();
         static void RemoveScaleFromTransform(Matrix4& transform, float* width);
-
-        static void LoadActionOrderList(ActionOrderList& action_order, const std::string& order_str);
-        static std::string GetActionOrderListString(const ActionOrderList& action_order);
 
     public:
         ConfigManager();
@@ -435,8 +435,6 @@ class ConfigManager
         void ResetConfigStateValues();  //Reset all configid_*_state_* settings. Used when restarting a Desktop+ process
 
         ActionManager& GetActionManager();
-        std::vector<CustomAction>& GetCustomActions();
-        ActionOrderList& GetActionMainBarOrder();
         AppProfileManager& GetAppProfileManager();
         Matrix4& GetOverlayDetachedTransform();
 

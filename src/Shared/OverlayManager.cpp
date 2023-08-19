@@ -13,6 +13,7 @@
 #include "Util.h"
 
 #include <sstream>
+#include <unordered_set>
 
 static OverlayManager g_OverlayManager;
 
@@ -562,10 +563,10 @@ void OverlayManager::RemoveAllOverlays()
 
 #ifndef DPLUS_UI
 
-std::vector<unsigned int> OverlayManager::FindInactiveOverlaysForWindow(const WindowInfo& window_info) const
+OverlayIDList OverlayManager::FindInactiveOverlaysForWindow(const WindowInfo& window_info) const
 {
-    std::vector<unsigned int> matching_overlay_ids;
-    std::vector<unsigned int> candidate_overlay_ids;
+    OverlayIDList matching_overlay_ids;
+    OverlayIDList candidate_overlay_ids;
 
     //Check if there are any candidates before comparing anything
     for (unsigned int i = 0; i < m_OverlayConfigData.size(); ++i)
@@ -670,15 +671,33 @@ std::vector<unsigned int> OverlayManager::FindInactiveOverlaysForWindow(const Wi
 
 #endif //ifndef DPLUS_UI
 
-std::vector<unsigned int> OverlayManager::FindDuplicatedOverlaysForOverlay(unsigned int source_id) const
+OverlayIDList OverlayManager::FindDuplicatedOverlaysForOverlay(unsigned int source_id) const
 {
-    std::vector<unsigned int> matching_overlay_ids;
+    OverlayIDList matching_overlay_ids;
 
     for (unsigned int i = 0; i < m_OverlayConfigData.size(); ++i)
     {
         const OverlayConfigData& data = m_OverlayConfigData[i];
 
         if (data.ConfigInt[configid_int_overlay_duplication_id] == source_id)
+        {
+            matching_overlay_ids.push_back(i);
+        }
+    }
+
+    return matching_overlay_ids;
+}
+
+OverlayIDList OverlayManager::FindOverlaysWithTags(const char* str_tags) const
+{
+    OverlayIDList matching_overlay_ids;
+
+    for (unsigned int i = 0; i < m_OverlayConfigData.size(); ++i)
+    {
+        const OverlayConfigData& data = m_OverlayConfigData[i];
+
+        //This isn't exactly the fastest way to do it, but this is called rarely and saves us from keeping a cache up to date and stuff
+        if (MatchOverlayTags(str_tags, data.ConfigStr[configid_str_overlay_tags].c_str(), &data))
         {
             matching_overlay_ids.push_back(i);
         }
@@ -725,7 +744,7 @@ void OverlayManager::ConvertDuplicatedOverlayToStandalone(unsigned int id, bool 
                     m_CurrentOverlayID = id;
 
                     GetOverlay(id).SetTextureSource(ovrl_texsource_invalid);    //Invalidate capture source so browser source is re-initialized with a new context
-                    
+
                     outmgr->ResetCurrentOverlay();
 
                     m_CurrentOverlayID = current_overlay_old;
@@ -736,6 +755,63 @@ void OverlayManager::ConvertDuplicatedOverlayToStandalone(unsigned int id, bool 
 }
 
 #ifdef DPLUS_UI
+
+std::vector<OverlayManager::TagListEntry> OverlayManager::GetKnownOverlayTagList()
+{
+    auto add_tags_from_tags_string = [](const std::string& str, std::vector<OverlayManager::TagListEntry>& list, std::unordered_set<std::string>& list_unique_tags)
+    {
+        std::string single_tag_str;
+        std::stringstream ss(str);
+        while (std::getline(ss, single_tag_str, ' '))
+        {
+            //Only add if not already in list
+            if ((!single_tag_str.empty()) && (list_unique_tags.find(single_tag_str) == list_unique_tags.end()))
+            {
+                list.push_back({single_tag_str, false});
+                list_unique_tags.insert(single_tag_str);
+            }
+        }
+    };
+
+    //List of built-in, automatically matched tags
+    const char* auto_tags[] = {"Ovrl_All", "Ovrl_Visible", "Ovrl_Hidden", "Ovrl_Desktop", "Ovrl_Window", "Ovrl_Browser", "Ovrl_PerfMon"};
+
+    std::vector<OverlayManager::TagListEntry> list;
+    std::unordered_set<std::string> list_unique_tags;
+
+    //Add auto tags
+    for (const auto& tag_str : auto_tags)
+    {
+        list.push_back({tag_str, true});
+        list_unique_tags.insert(tag_str);
+    }
+
+    //Add tags referenced by actions
+    ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+    for (ActionUID uid : action_manager.GetActionOrderListUI())
+    {
+        const Action& action = action_manager.GetAction(uid);
+
+        add_tags_from_tags_string(action.TargetTags, list, list_unique_tags);
+
+        for (const auto& command : action.Commands)
+        {
+            //For Show Overlay, StrMain contains overlay tags
+            if (command.Type == ActionCommand::command_show_overlay)
+            {
+                add_tags_from_tags_string(command.StrMain, list, list_unique_tags);
+            }
+        }
+    }
+
+    //Add tags referenced by overlays
+    for (const auto& data : m_OverlayConfigData)
+    {
+        add_tags_from_tags_string(data.ConfigStr[configid_str_overlay_tags], list, list_unique_tags);
+    }
+
+    return list;
+}
 
 void OverlayManager::SetCurrentOverlayNameAuto(const WindowInfo* window_info)
 {
@@ -865,4 +941,116 @@ Matrix4 OverlayManager::GetOverlayCenterBottomTransform(unsigned int id, vr::VRO
     }
 
     return GetOverlayTransformBase(ovrl_handle, id, true);
+}
+
+bool OverlayManager::MatchOverlayTagSingle(const char* str_tags, const char* str_single_tag)
+{
+    return MatchOverlayTagSingle(str_tags, str_tags + strlen(str_tags), str_single_tag, strlen(str_single_tag));
+}
+
+bool OverlayManager::MatchOverlayTagSingle(const char* str_tags, const char* str_tags_end, const char* str_single_tag, size_t str_single_tag_length)
+{
+    //Split input string into individual tags and compare each to the single tag
+    const char* tag_start = str_tags;
+    const char* tag_end   = nullptr;
+
+    while (tag_start < str_tags_end)
+    {
+        tag_end = (const char*)memchr(tag_start, ' ', str_tags_end - tag_start);
+
+        if (tag_end == nullptr)
+            tag_end = str_tags_end;
+
+        size_t tag_length = tag_end - tag_start;
+
+        if ((tag_length == str_single_tag_length) && (memcmp(tag_start, str_single_tag, tag_length) == 0))
+        {
+            return true;
+        }
+
+        tag_start = tag_end + 1;
+    }
+
+    return false;
+}
+
+bool OverlayManager::MatchOverlayTags(const char* str_tags_a, const char* str_tags_b, const OverlayConfigData* data_b)
+{
+    //Split string a into individual tags and compare each to string b
+    const char* str_tags_a_end = str_tags_a + strlen(str_tags_a);
+    const char* tag_a_start    = str_tags_a;
+    const char* tag_a_end      = nullptr;
+    const char* str_tags_b_end = str_tags_b + strlen(str_tags_b);
+
+    while (tag_a_start < str_tags_a_end)
+    {
+        tag_a_end = (const char*)memchr(tag_a_start, ' ', str_tags_a_end - tag_a_start);
+
+        if (tag_a_end == nullptr)
+            tag_a_end = str_tags_a_end;
+
+        size_t tag_a_length = tag_a_end - tag_a_start;
+
+        //Handle built-in auto tags
+        if (data_b != nullptr)
+        {
+            //tag_a_length doesn't count the NUL terminator, but sizeof does, so we add 1 when comparing lengths but only compare actual tag length
+            if ((tag_a_length + 1 == sizeof("Ovrl_All")) && (memcmp(tag_a_start, "Ovrl_All", tag_a_length) == 0))
+            {
+                return true;
+            }
+            else if ((tag_a_length + 1 == sizeof("Ovrl_Visible")) && (memcmp(tag_a_start, "Ovrl_Visible", tag_a_length) == 0))
+            {
+                if (data_b->ConfigBool[configid_bool_overlay_enabled])
+                {
+                    return true;
+                }
+            }
+            else if ((tag_a_length + 1 == sizeof("Ovrl_Hidden")) && (memcmp(tag_a_start, "Ovrl_Hidden", tag_a_length) == 0))
+            {
+                if (!data_b->ConfigBool[configid_bool_overlay_enabled])
+                {
+                    return true;
+                }
+            }
+            else if ((tag_a_length + 1 == sizeof("Ovrl_Desktop")) && (memcmp(tag_a_start, "Ovrl_Desktop", tag_a_length) == 0))
+            {
+                if (  (data_b->ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) || 
+                    ( (data_b->ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (data_b->ConfigInt[configid_int_overlay_winrt_desktop_id] != -2)) )
+                {
+                    return true;
+                }
+            }
+            else if ((tag_a_length + 1 == sizeof("Ovrl_Window")) && (memcmp(tag_a_start, "Ovrl_Window", tag_a_length) == 0))
+            {
+                if ( (data_b->ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (data_b->ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) )
+                {
+                    return true;
+                }
+            }
+            else if ((tag_a_length + 1 == sizeof("Ovrl_Browser")) && (memcmp(tag_a_start, "Ovrl_Browser", tag_a_length) == 0))
+            {
+                if (data_b->ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
+                {
+                    return true;
+                }
+            }
+            else if ((tag_a_length + 1 == sizeof("Ovrl_PerfMon")) && (memcmp(tag_a_start, "Ovrl_PerfMon", tag_a_length) == 0))
+            {
+                if (data_b->ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui)
+                {
+                    return true;
+                }
+            }
+        }
+
+        if (MatchOverlayTagSingle(str_tags_b, str_tags_b_end, tag_a_start, tag_a_length))
+        {
+            return true;
+        }
+
+        tag_a_start = tag_a_end + 1;
+    }
+
+    return false;
 }

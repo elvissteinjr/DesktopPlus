@@ -142,7 +142,6 @@
     <ClCompile Include="WindowOverlayProperties.cpp" />
     <ClCompile Include="WindowPerformance.cpp" />
     <ClCompile Include="WindowSettings.cpp" />
-    <ClCompile Include="WindowSettingsActionEdit.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Shared\Actions.h" />
@@ -190,7 +189,6 @@
     <ClInclude Include="WindowOverlayProperties.h" />
     <ClInclude Include="WindowPerformance.h" />
     <ClInclude Include="WindowSettings.h" />
-    <ClInclude Include="WindowSettingsActionEdit.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="imgui_win32_dx11_openvr\PixelShaderImGui.hlsl">

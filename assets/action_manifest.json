@@ -21,17 +21,17 @@
       "type": "boolean"
     },
     {
-      "name": "/actions/shortcuts/in/ToggleOverlayGroupEnabled01",
+      "name": "/actions/shortcuts/in/GlobalShortcut04",
       "requirement": "optional",
       "type": "boolean"
     },
     {
-      "name": "/actions/shortcuts/in/ToggleOverlayGroupEnabled02",
+      "name": "/actions/shortcuts/in/GlobalShortcut05",
       "requirement": "optional",
       "type": "boolean"
     },
     {
-      "name": "/actions/shortcuts/in/ToggleOverlayGroupEnabled03",
+      "name": "/actions/shortcuts/in/GlobalShortcut06",
       "requirement": "optional",
       "type": "boolean"
     },
@@ -138,6 +138,6 @@
       "binding_url": "input/action_bindings_generic.json"
     }
   ],
-  "version": 2,
+  "version": 3,
   "minimum_required_version": 2
 }

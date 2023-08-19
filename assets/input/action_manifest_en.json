@@ -4,12 +4,12 @@
     "/actions/shortcuts" : "Global Shortcuts",
 
     "/actions/shortcuts/in/EnableGlobalLaserPointer" : "Enable Global Laser Pointer",
-    "/actions/shortcuts/in/GlobalShortcut01" : "Do Global Shortcut 1",
-    "/actions/shortcuts/in/GlobalShortcut02" : "Do Global Shortcut 2",
-    "/actions/shortcuts/in/GlobalShortcut03" : "Do Global Shortcut 3",
-    "/actions/shortcuts/in/ToggleOverlayGroupEnabled01" : "Toggle Overlay Group 1 Enabled State",
-    "/actions/shortcuts/in/ToggleOverlayGroupEnabled02" : "Toggle Overlay Group 2 Enabled State",
-    "/actions/shortcuts/in/ToggleOverlayGroupEnabled03" : "Toggle Overlay Group 3 Enabled State",
+    "/actions/shortcuts/in/GlobalShortcut01" : "Do Global Shortcut #1",
+    "/actions/shortcuts/in/GlobalShortcut02" : "Do Global Shortcut #2",
+    "/actions/shortcuts/in/GlobalShortcut03" : "Do Global Shortcut #3",
+    "/actions/shortcuts/in/GlobalShortcut04" : "Do Global Shortcut #4",
+    "/actions/shortcuts/in/GlobalShortcut05" : "Do Global Shortcut #5",
+    "/actions/shortcuts/in/GlobalShortcut06" : "Do Global Shortcut #6",
 
     "/actions/laserpointer" : "Laser Pointer",
 

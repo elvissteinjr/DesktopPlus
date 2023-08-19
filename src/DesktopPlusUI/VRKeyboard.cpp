@@ -17,6 +17,7 @@ VRKeyboard::VRKeyboard() :
     m_ActiveInputText(0),
     m_InputBeginWidgetID(0),
     m_ShortcutWindowDirHint(ImGuiDir_Down),
+    m_ShortcutWindowYOffset(0.0f),
     m_MouseLeftDownPrevCached(false),
     m_MouseLeftClickedPrevCached(false),
     m_KeyboardHiddenLastFrame(false)
@@ -170,7 +171,7 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
                 else if (key_type_str == "Action")
                 {
                     key.KeyType = kbdlayout_key_action;
-                    key.KeyActionID = (ActionID)layout_file.ReadInt(key_section.str().c_str(), "ActionID", action_none);
+                    key.KeyActionUID = std::strtoull(layout_file.ReadString(key_section.str().c_str(), "ActionID", "0").c_str(), nullptr, 10);
                 }
 
                 //General
@@ -436,9 +437,9 @@ void VRKeyboard::SetStringDown(const std::string text, bool down)
     }
 }
 
-void VRKeyboard::SetActionDown(ActionID action_id, bool down)
+void VRKeyboard::SetActionDown(ActionUID action_uid, bool down)
 {
-    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, (down) ? ipcact_action_start : ipcact_action_stop, action_id); //_action_start will fall back to _action_do for non input actions
+    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, (down) ? ipcact_action_start : ipcact_action_stop, action_uid);
 }
 
 bool VRKeyboard::IsCapsLockToggled() const
@@ -468,12 +469,12 @@ void VRKeyboard::ResetState()
     m_WindowKeyboard.ResetButtonState();
 }
 
-void VRKeyboard::VRKeyboardInputBegin(const char* str_id)
+void VRKeyboard::VRKeyboardInputBegin(const char* str_id, bool is_multiline)
 {
-    VRKeyboardInputBegin(ImGui::GetID(str_id));
+    VRKeyboardInputBegin(ImGui::GetID(str_id), is_multiline);
 }
 
-void VRKeyboard::VRKeyboardInputBegin(ImGuiID widget_id)
+void VRKeyboard::VRKeyboardInputBegin(ImGuiID widget_id, bool is_multiline)
 {
     ImGuiContext& g = *GImGui;
     ImGuiIO& io = ImGui::GetIO();
@@ -485,6 +486,8 @@ void VRKeyboard::VRKeyboardInputBegin(ImGuiID widget_id)
             io.AddInputCharactersUTF8(m_StringQueue.front().c_str());
             m_StringQueue.pop();
         }
+
+        m_ActiveInputTextIsMultiline = is_multiline;
     }
 
     m_MouseLeftDownPrevCached    = io.MouseDown[ImGuiMouseButton_Left];
@@ -521,7 +524,7 @@ void VRKeyboard::VRKeyboardInputEnd()
     }
 
     if ( (m_ActiveInputText == widget_id) && 
-         ( (ImGui::IsKeyPressed(ImGuiKey_Tab)) || (ImGui::IsKeyPressed(ImGuiKey_Escape)) || (ImGui::IsKeyPressed(ImGuiKey_Enter)) ) )
+         ( (ImGui::IsKeyPressed(ImGuiKey_Tab)) || (ImGui::IsKeyPressed(ImGuiKey_Escape)) || ((!m_ActiveInputTextIsMultiline) && (ImGui::IsKeyPressed(ImGuiKey_Enter))) ) )
     {
         ImGui::ClearActiveID();
         m_ActiveInputText = 0;
@@ -547,7 +550,7 @@ void VRKeyboard::VRKeyboardInputEnd()
         if ((m_ActiveInputText == widget_id) && (io.WantTextInput))
         {
             m_WindowKeyboardShortcuts.SetActiveWidget(m_ActiveInputText);
-            m_WindowKeyboardShortcuts.SetDefaultPositionDirection(m_ShortcutWindowDirHint);
+            m_WindowKeyboardShortcuts.SetDefaultPositionDirection(m_ShortcutWindowDirHint, m_ShortcutWindowYOffset);
         }
         else if (m_ActiveInputText == 0)
         {
@@ -559,6 +562,7 @@ void VRKeyboard::VRKeyboardInputEnd()
 
     m_InputBeginWidgetID = 0;
     m_ShortcutWindowDirHint = ImGuiDir_Down;
+    m_ShortcutWindowYOffset = 0.0f;
 }
 
 void VRKeyboard::OnImGuiNewFrame()
@@ -688,9 +692,10 @@ void VRKeyboard::RestoreDesktopModifierState() const
     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_keyboard_vkey, MAKELPARAM(GetModifierFlags(), 0));
 }
 
-void VRKeyboard::SetShortcutWindowDirectionHint(ImGuiDir dir_hint)
+void VRKeyboard::SetShortcutWindowDirectionHint(ImGuiDir dir_hint, float y_offset)
 {
     m_ShortcutWindowDirHint = dir_hint;
+    m_ShortcutWindowYOffset = y_offset;
 }
 
 KeyboardLayoutMetadata VRKeyboard::LoadLayoutMetadataFromFile(const std::string& filename)

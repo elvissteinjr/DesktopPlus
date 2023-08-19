@@ -9,8 +9,8 @@ struct AppProfile
     bool IsEnabled = false;
     std::string LastApplicationName;            //Used when SteamVR isn't running or can't find the application from the app key
     std::string OverlayProfileFileName;
-    ActionID ActionIDEnter = action_none;
-    ActionID ActionIDLeave = action_none;
+    ActionUID ActionUIDEnter = k_ActionUID_Invalid;
+    ActionUID ActionUIDLeave = k_ActionUID_Invalid;
 
     std::string Serialize() const;              //Serializes into binary data stored as string (contains NUL bytes), not suitable for storage
     void Deserialize(const std::string& str);   //Deserializes from strings created by above function
