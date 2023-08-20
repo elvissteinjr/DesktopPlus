@@ -377,6 +377,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_interface_dim_ui]                                  = config.ReadBool("Interface", "DimUI", false);
     m_ConfigBool[configid_bool_interface_blank_space_drag_enabled]                = config.ReadBool("Interface", "BlankSpaceDragEnabled", true);
     m_ConfigFloat[configid_float_interface_last_vr_ui_scale]                      = config.ReadInt( "Interface", "LastVRUIScale", 100) / 100.0f;
+    m_ConfigFloat[configid_float_interface_desktop_ui_scale_override]             = config.ReadInt( "Interface", "DesktopUIScaleOverride", 0) / 100.0f;
     m_ConfigBool[configid_bool_interface_warning_compositor_res_hidden]           = config.ReadBool("Interface", "WarningCompositorResolutionHidden",   false);
     m_ConfigBool[configid_bool_interface_warning_compositor_quality_hidden]       = config.ReadBool("Interface", "WarningCompositorQualityHidden",      false);
     m_ConfigBool[configid_bool_interface_warning_process_elevation_hidden]        = config.ReadBool("Interface", "WarningProcessElevationHidden",       false);

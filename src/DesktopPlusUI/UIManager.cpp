@@ -1260,6 +1260,15 @@ void UIManager::UpdateStyle()
     if (UIManager::Get()->IsInDesktopMode())
     {
         float dpi_scale = ImGui_ImplWin32_GetDpiScaleForHwnd(m_WindowHandle);
+
+        //Allow overriding the UI scale
+        float scale_override = ConfigManager::GetValue(configid_float_interface_desktop_ui_scale_override);
+
+        if (scale_override != 0.0f)
+        {
+            dpi_scale = clamp(scale_override, 0.10f, 5.0f);
+        }
+
         ui_scale = dpi_scale * 0.625f;      //Scaling based on 100% being the VR font at 32pt and desktop 100% DPI font being at 20pt
 
         style.ScaleAllSizes(dpi_scale);     //Scale based on DPI scale, not UI scale (basically only go larger)

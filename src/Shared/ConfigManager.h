@@ -194,6 +194,7 @@ enum ConfigID_Float
     configid_float_input_global_hmd_pointer_max_distance,
     configid_float_input_drag_fixed_distance_m,
     configid_float_input_drag_snap_position_size,
+    configid_float_interface_desktop_ui_scale_override,
     configid_float_interface_last_vr_ui_scale,
     configid_float_performance_update_limit_ms,
     configid_float_state_overlay_transform_sync_value,      //Used for sending overlay transforms asynchronously. This is done by sending 16 of these after setting the target id
