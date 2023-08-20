@@ -6289,74 +6289,79 @@ void OutputManager::DetachedInteractionAutoToggleAll()
 
 void OutputManager::DetachedOverlayGazeFade()
 {
-    if (  (ConfigManager::GetValue(configid_bool_overlay_gazefade_enabled)) && (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) && 
-         (!ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) )
+    if (ConfigManager::GetValue(configid_bool_overlay_gazefade_enabled))
     {
-        vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
-        vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+        Overlay& current_overlay = OverlayManager::Get().GetCurrentOverlay();
 
-        if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+        //When drag/select mode are active or HMD pose not available, default to most visible alpha setting
+        const float max_alpha = ConfigManager::GetValue(configid_float_overlay_opacity);
+        const float min_alpha = ConfigManager::GetValue(configid_float_overlay_gazefade_opacity);
+        float alpha = std::max(min_alpha, max_alpha);
+
+        if ((!ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) && (!ConfigManager::GetValue(configid_bool_state_overlay_selectmode)))
         {
-            //Distance the gaze point is offset from HMD (useful range 0.25 - 1.0)
-            float gaze_distance = ConfigManager::GetValue(configid_float_overlay_gazefade_distance);
-            //Rate the fading gets applied when looking off the gaze point (useful range 4.0 - 30, depends on overlay size) 
-            float fade_rate = ConfigManager::GetValue(configid_float_overlay_gazefade_rate) * 10.0f; 
+            vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
+            vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+            vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
 
-            Matrix4 mat_pose = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
-
-            Matrix4 mat_overlay = m_OverlayDragger.GetBaseOffsetMatrix();
-            mat_overlay *= ConfigManager::Get().GetOverlayDetachedTransform();
-
-            //Infinite/Auto distance mode
-            if (gaze_distance == 0.0f) 
+            if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
             {
-                gaze_distance = mat_overlay.getTranslation().distance(mat_pose.getTranslation()); //Match gaze distance to distance between HMD and overlay
-            }
-            else
-            {
-                gaze_distance += 0.20f; //Useful range starts at ~0.20 - 0.25 (lower is in HMD or culled away), so offset the settings value
-            }
+                //Distance the gaze point is offset from HMD (useful range 0.25 - 1.0)
+                float gaze_distance = ConfigManager::GetValue(configid_float_overlay_gazefade_distance);
+                //Rate the fading gets applied when looking off the gaze point (useful range 4.0 - 30, depends on overlay size) 
+                float fade_rate = ConfigManager::GetValue(configid_float_overlay_gazefade_rate) * 10.0f; 
 
-            mat_pose.translate_relative(0.0f, 0.0f, -gaze_distance);
+                Matrix4 mat_pose = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
 
-            Vector3 pos_gaze = mat_pose.getTranslation();
-            float distance = mat_overlay.getTranslation().distance(pos_gaze);
+                Matrix4 mat_overlay = m_OverlayDragger.GetBaseOffsetMatrix();
+                mat_overlay *= ConfigManager::Get().GetOverlayDetachedTransform();
 
-            gaze_distance = std::min(gaze_distance, 1.0f); //To get useful fading past 1m distance we'll have to limit the value to 1m here for the math below
-
-            float alpha = clamp((distance * -fade_rate) + ((gaze_distance - 0.1f) * 10.0f), 0.0f, 1.0f); //There's nothing smart behind this, just trial and error
-
-            const float max_alpha = ConfigManager::GetValue(configid_float_overlay_opacity);
-            const float min_alpha = ConfigManager::GetValue(configid_float_overlay_gazefade_opacity);
-            Overlay& current_overlay = OverlayManager::Get().GetCurrentOverlay();
-
-            //Use max alpha when the overlay or the Floating UI targeting the overlay is being pointed at
-            if ((ConfigManager::Get().IsLaserPointerTargetOverlay(current_overlay.GetHandle())) || 
-                ((unsigned int)ConfigManager::GetValue(configid_int_state_interface_floating_ui_hovered_id) == current_overlay.GetID()))
-            {
-                alpha = std::max(min_alpha, max_alpha); //Take whatever's more visible as the user probably wants to be able to see the overlay
-            }
-            else //Adapt alpha result from a 0.0 - 1.0 range to gazefade_opacity - overlay_opacity and invert if necessary
-            {
-                const float range_length = max_alpha - min_alpha;
-
-                if (range_length >= 0.0f)
+                //Infinite/Auto distance mode
+                if (gaze_distance == 0.0f) 
                 {
-                    alpha = (alpha * range_length) + min_alpha;
+                    gaze_distance = mat_overlay.getTranslation().distance(mat_pose.getTranslation()); //Match gaze distance to distance between HMD and overlay
                 }
-                else //Gaze Fade target opacity higher than overlay opcacity, invert behavior
+                else
                 {
-                    alpha = ((alpha - 1.0f) * range_length) + max_alpha;
+                    gaze_distance += 0.20f; //Useful range starts at ~0.20 - 0.25 (lower is in HMD or culled away), so offset the settings value
+                }
+
+                mat_pose.translate_relative(0.0f, 0.0f, -gaze_distance);
+
+                Vector3 pos_gaze = mat_pose.getTranslation();
+                float distance = mat_overlay.getTranslation().distance(pos_gaze);
+
+                gaze_distance = std::min(gaze_distance, 1.0f); //To get useful fading past 1m distance we'll have to limit the value to 1m here for the math below
+
+                alpha = clamp((distance * -fade_rate) + ((gaze_distance - 0.1f) * 10.0f), 0.0f, 1.0f); //There's nothing smart behind this, just trial and error
+
+                //Use max alpha when the overlay or the Floating UI targeting the overlay is being pointed at
+                if ((ConfigManager::Get().IsLaserPointerTargetOverlay(current_overlay.GetHandle())) || 
+                    ((unsigned int)ConfigManager::GetValue(configid_int_state_interface_floating_ui_hovered_id) == current_overlay.GetID()))
+                {
+                    alpha = std::max(min_alpha, max_alpha); //Take whatever's more visible as the user probably wants to be able to see the overlay
+                }
+                else //Adapt alpha result from a 0.0 - 1.0 range to gazefade_opacity - overlay_opacity and invert if necessary
+                {
+                    const float range_length = max_alpha - min_alpha;
+
+                    if (range_length >= 0.0f)
+                    {
+                        alpha = (alpha * range_length) + min_alpha;
+                    }
+                    else //Gaze Fade target opacity higher than overlay opcacity, invert behavior
+                    {
+                        alpha = ((alpha - 1.0f) * range_length) + max_alpha;
+                    }
                 }
             }
-
-            //Limit alpha change per frame to smooth out things when abrupt changes happen (i.e. overlay capture took a bit to re-enable or laser pointer forces full alpha)
-            const float prev_alpha = current_overlay.GetOpacity();
-            const float diff = alpha - prev_alpha;
-
-            current_overlay.SetOpacity(prev_alpha + clamp(diff, -0.1f, 0.1f));
         }
+
+        //Limit alpha change per frame to smooth out things when abrupt changes happen (i.e. overlay capture took a bit to re-enable or laser pointer forces full alpha)
+        const float prev_alpha = current_overlay.GetOpacity();
+        const float diff = alpha - prev_alpha;
+
+        current_overlay.SetOpacity(prev_alpha + clamp(diff, -0.1f, 0.1f));
     }
 }
 
