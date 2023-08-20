@@ -105,6 +105,16 @@ WindowInfo::WindowInfo(HWND window_handle)
     if (::GetClassNameW(m_WindowHandle, class_buffer, 256) != 0)
     {
         m_ClassName = class_buffer;
+
+        //WPF heuristics:
+        //WPF apps randomize parts their class names in the pattern of "HwndWrapper[{appName};{threadName};{randomName}]"
+        //This is bad for our purposes since we expect the class names to be a static property
+        //Here we try to detect these cases and cut them off at the first semicolon (keeping thread name might work, but windows might switch threads perhaps)
+        //This is not ideal, but better than never matching the window again and the class name didn't offer any unique info in the first place
+        if (m_ClassName.find(L"HwndWrapper[") != std::wstring::npos)
+        {
+            m_ClassName = m_ClassName.substr(0, m_ClassName.find(L';'));
+        }
     }
 }
 
@@ -177,8 +187,8 @@ std::string WindowInfo::GetExeName(HWND window_handle)
         return exe_name;
 
     DWORD proc_id;
-    GetWindowThreadProcessId(window_handle, &proc_id);
-    HANDLE proc_handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, proc_id);
+    ::GetWindowThreadProcessId(window_handle, &proc_id);
+    HANDLE proc_handle = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, proc_id);
     if (proc_handle)
     {
         WCHAR exe_buffer[MAX_PATH];
@@ -195,7 +205,7 @@ std::string WindowInfo::GetExeName(HWND window_handle)
             }
         }
 
-        CloseHandle(proc_handle);
+        ::CloseHandle(proc_handle);
     }
 
     return exe_name;
