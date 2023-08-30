@@ -1,15 +1,15 @@
 {
     "language_tag": "de_DE",
 
-    "/actions/shortcuts" : "Globale Kürzel",
+    "/actions/shortcuts" : "Globale KÃ¼rzel",
 
     "/actions/shortcuts/in/EnableGlobalLaserPointer" : "Aktiviere globalen Laser-Pointer",
-    "/actions/shortcuts/in/GlobalShortcut01" : "Globales Kürzel #1 ausführen",
-    "/actions/shortcuts/in/GlobalShortcut02" : "Globales Kürzel #2 ausführen",
-    "/actions/shortcuts/in/GlobalShortcut03" : "Globales Kürzel #3 ausführen",
-    "/actions/shortcuts/in/GlobalShortcut04" : "Globales Kürzel #4 ausführen",
-    "/actions/shortcuts/in/GlobalShortcut05" : "Globales Kürzel #5 ausführen",
-    "/actions/shortcuts/in/GlobalShortcut06" : "Globales Kürzel #6 ausführen",
+    "/actions/shortcuts/in/GlobalShortcut01" : "Globales KÃ¼rzel #1 ausfÃ¼hren",
+    "/actions/shortcuts/in/GlobalShortcut02" : "Globales KÃ¼rzel #2 ausfÃ¼hren",
+    "/actions/shortcuts/in/GlobalShortcut03" : "Globales KÃ¼rzel #3 ausfÃ¼hren",
+    "/actions/shortcuts/in/GlobalShortcut04" : "Globales KÃ¼rzel #4 ausfÃ¼hren",
+    "/actions/shortcuts/in/GlobalShortcut05" : "Globales KÃ¼rzel #5 ausfÃ¼hren",
+    "/actions/shortcuts/in/GlobalShortcut06" : "Globales KÃ¼rzel #6 ausfÃ¼hren",
 
     "/actions/laserpointer" : "Laserpointer",
 
