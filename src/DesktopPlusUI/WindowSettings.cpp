@@ -4524,6 +4524,12 @@ void WindowSettings::UpdatePageActionPicker()
         list_uid = m_ActionPickerUID;
         scroll_to_selection = true;
         is_nav_focus_entry_pending = ImGui::GetIO().NavVisible;
+
+        //Set to invalid if selection doesn't exist
+        if (!ConfigManager::Get().GetActionManager().ActionExists(list_uid))
+        {
+            list_uid = k_ActionUID_Invalid;
+        }
     }
 
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogActionPickerHeader)); 
@@ -4535,48 +4541,67 @@ void WindowSettings::UpdatePageActionPicker()
     const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 22.0f : 15.0f;
     ImGui::BeginChild("ActionPickerList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
-    //Display error if there are no actions
-    if (m_ActionList.empty())
+    //No Action entry
     {
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x / 2.0f - (no_actions_text_size.x / 2.0f));
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y / 2.0f - (no_actions_text_size.y / 2.0f));
+        ImGui::PushID(0);
 
-        ImGui::TextUnformatted(TranslationManager::GetString(tstr_DialogActionPickerEmpty));
-        no_actions_text_size = ImGui::GetItemRectSize();
-    }
-    else
-    {
-        //List actions
-        for (const auto& entry : m_ActionList)
+        if ( (is_nav_focus_entry_pending) && (m_PageAnimationDir == 0) && (list_uid == k_ActionUID_Invalid) )
         {
-            ImGui::PushID((void*)entry.UID);
-
-            if ( (is_nav_focus_entry_pending) && (m_PageAnimationDir == 0) && (entry.UID == list_uid) )
-            {
-                ImGui::SetKeyboardFocusHere();
-                is_nav_focus_entry_pending = false;
-            }
-
-            if (ImGui::Selectable(entry.Name.c_str(), (entry.UID == list_uid) ))
-            {
-                list_uid = entry.UID;
-                m_ActionPickerUID = entry.UID;
-
-                PageGoBack();
-            }
-
-            if ( (scroll_to_selection) && (entry.UID == list_uid) )
-            {
-                ImGui::SetScrollHereY();
-
-                if (ImGui::IsItemVisible())
-                {
-                    scroll_to_selection = false;
-                }
-            }
-
-            ImGui::PopID();
+            ImGui::SetKeyboardFocusHere();
+            is_nav_focus_entry_pending = false;
         }
+
+        if (ImGui::Selectable(TranslationManager::GetString(tstr_ActionNone), (list_uid == k_ActionUID_Invalid) ))
+        {
+            list_uid = k_ActionUID_Invalid;
+            m_ActionPickerUID = k_ActionUID_Invalid;
+
+            PageGoBack();
+        }
+
+        if ( (scroll_to_selection) && (list_uid == k_ActionUID_Invalid) )
+        {
+            ImGui::SetScrollHereY();
+
+            if (ImGui::IsItemVisible())
+            {
+                scroll_to_selection = false;
+            }
+        }
+
+        ImGui::PopID();
+    }
+
+    //List actions
+    for (const auto& entry : m_ActionList)
+    {
+        ImGui::PushID((void*)entry.UID);
+
+        if ( (is_nav_focus_entry_pending) && (m_PageAnimationDir == 0) && (entry.UID == list_uid) )
+        {
+            ImGui::SetKeyboardFocusHere();
+            is_nav_focus_entry_pending = false;
+        }
+
+        if (ImGui::Selectable(entry.Name.c_str(), (entry.UID == list_uid) ))
+        {
+            list_uid = entry.UID;
+            m_ActionPickerUID = entry.UID;
+
+            PageGoBack();
+        }
+
+        if ( (scroll_to_selection) && (entry.UID == list_uid) )
+        {
+            ImGui::SetScrollHereY();
+
+            if (ImGui::IsItemVisible())
+            {
+                scroll_to_selection = false;
+            }
+        }
+
+        ImGui::PopID();
     }
 
     ImGui::EndChild();
