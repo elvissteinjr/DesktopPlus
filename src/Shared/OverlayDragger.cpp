@@ -279,12 +279,30 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
                 }
             }
 
+            //Adjust behavior if GamepadUI (SteamVR 2 dashboard) exists
+            vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
+            vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
+
             matrix = m_DashboardMatLast;
+
+            //Matrix will be tilted in new dashboard, so force it upright again
+            if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+            {
+                //This doesn't follow the dashboard rotation when moved up- or downwards, but the old behavior didn't do it properly either, so this is good enough for now
+                TransformForceUpright(matrix);
+                ApplyDashboardScale(matrix);
+            }
 
             Vector3 pos_offset = matrix.getTranslation();
             pos_offset.y = m_DashboardHMD_Y;
             pos_offset.y -= 0.44f;              //Move 0.44m down for better dashboard overlay default pos (needs to fit Floating UI though)
             matrix.setTranslation(pos_offset);
+
+            //Move matrix towards normal dashboard overlay position
+            if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+            {
+                matrix.translate_relative(0.0f, 0.0f, -0.8f);
+            }
 
             break;
         }
@@ -330,6 +348,15 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
                 vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_dplus, origin, {0.5f, 0.0f}, &matrix_dplus_tab);
 
                 matrix = matrix_dplus_tab;
+
+                //Additional offset if GamepadUI (SteamVR 2 dashboard) exists
+                vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
+                vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
+
+                if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+                {
+                    matrix.translate(0.0f, -0.05f, 0.0f);
+                }
             }
             break;
         }
@@ -873,11 +900,17 @@ void OverlayDragger::UpdateDashboardHMD_Y()
     //Use dashboard dummy if available and visible. It provides a way more reliable reference point
     if ( (ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsOverlayVisible(ovrl_handle_dplus)) )
     {
+        //Adjust offset if GamepadUI (SteamVR 2 dashboard) exists
+        vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
+        vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
+
         vr::HmdMatrix34_t matrix_dplus_tab;
         vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
         vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_dplus, origin, {0.5f, 0.0f}, &matrix_dplus_tab);
 
-        m_DashboardHMD_Y = matrix_dplus_tab.m[1][3] + 0.575283f; //Rough height difference between dashboard dummy reference point and SystemUI reference point
+        //Rough height difference between dashboard dummy reference point and SystemUI reference point (slightly different with GamepadUI active)
+        const float height_diff = (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid) ? 0.505283f : 0.575283f;
+        m_DashboardHMD_Y = matrix_dplus_tab.m[1][3] + height_diff;
     }
     else //Otherwise use current headset pose. This works decently when looking straight, but drifts sligthly when not
     {

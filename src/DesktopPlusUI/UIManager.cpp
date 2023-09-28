@@ -346,7 +346,8 @@ vr::EVRInitError UIManager::InitOverlay()
         }
     }
 
-    //Cache systemui handle as it won't change during the session anyways
+    //Cache SystemUI handle as it won't change during the session anyways
+    //We do not cache the GamepadUI handle as it may disappear during the session when Steam closes and make SteamVR switch to the previous dashboard
     vr::VROverlay()->FindOverlay("system.systemui", &m_OvrlHandleSystemUI);
 
     m_OpenVRLoaded = true;
@@ -1680,6 +1681,10 @@ void UIManager::PositionOverlay()
 
     if (m_OvrlHandleDPlusDashboard != vr::k_ulOverlayHandleInvalid)
     {
+        //Adjust behavior if gamepad ui (SteamVR 2 dashboard) exists
+        vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
+        vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
+
         //Imagine if SetOverlayTransformOverlayRelative() actually worked
         vr::HmdMatrix34_t matrix_ovr;
         vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
@@ -1688,24 +1693,47 @@ void UIManager::PositionOverlay()
 
         //Adjust curve for dashboard position
         float curve = 0.145f;
-        int32_t dashboard_pos = vr::VRSettings()->GetInt32(vr::k_pch_Dashboard_Section, "position_2");
 
-        switch (dashboard_pos)
+        if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
         {
-            case 0: curve = 0.17f; break; //Near
-            case 1: curve = 0.16f; break; //Middle
-            case 2: curve = 0.15f; break; //Far
-        }
-
-        //Offset the overlay
-        //It's offset in so it's as close to the dashboard as possible while not messing up pointer input. Most problematic dashboard element is the current application button.
-        if (m_WindowOverlayBar.IsScrollBarVisible())
-        {
-            TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.272f, 0.195f);
+            curve = 0.19f;  //SteamVR 2 removed dashboard distance setting
         }
         else
         {
-            TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.225f, 0.185f);
+            int32_t dashboard_pos = vr::VRSettings()->GetInt32(vr::k_pch_Dashboard_Section, "position_2");
+
+            switch (dashboard_pos)
+            {
+                case 0: curve = 0.17f; break; //Near
+                case 1: curve = 0.16f; break; //Middle
+                case 2: curve = 0.15f; break; //Far
+            }
+        }
+
+        //Offset the overlay
+        //It's offset in so it's as close to the dashboard as possible while not messing up pointer input. 
+        //Most problematic dashboard element is the current application button (SystemUI) and dashboard reposition bar (GamepadUI).
+        if (m_WindowOverlayBar.IsScrollBarVisible())
+        {
+            if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+            {
+                TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.247f, 0.390f);
+            }
+            else
+            {
+                TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.272f, 0.195f);
+            }
+        }
+        else
+        {
+            if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+            {
+                TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.200f, 0.380f);
+            }
+            else
+            {
+                TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.225f, 0.185f);
+            }
         }
 
         //Rotate slightly forward (local rotation)
@@ -1750,6 +1778,12 @@ void UIManager::PositionOverlay()
         if (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleDPlusDashboard))
         {
             bool is_systemui_hovered = vr::VROverlay()->IsHoverTargetOverlay(m_OvrlHandleSystemUI);
+
+            //Check for GamepadUI as well if it exists
+            if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+            {
+                is_systemui_hovered = (is_systemui_hovered || vr::VROverlay()->IsHoverTargetOverlay(handle_gamepad_ui));
+            }
 
             if (!m_OvrlVisible)
             {
