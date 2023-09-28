@@ -647,7 +647,12 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
 
             //ResetOverlays() is called later
 
-            vr::VROverlay()->SetOverlayFromFile(m_OvrlHandleIcon, (ConfigManager::Get().GetApplicationPath() + "images/icon_dashboard.png").c_str());
+            //Use different icon if GamepadUI (SteamVR 2 dashboard) exists
+            vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
+            vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
+            const char* icon_file = (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid) ? "images/icon_dashboard_gamepadui.png" : "images/icon_dashboard.png";
+
+            vr::VROverlay()->SetOverlayFromFile(m_OvrlHandleIcon, (ConfigManager::Get().GetApplicationPath() + icon_file).c_str());
         }
     }
 
