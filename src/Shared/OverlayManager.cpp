@@ -588,23 +588,25 @@ OverlayIDList OverlayManager::FindInactiveOverlaysForWindow(const WindowInfo& wi
     const std::string title_str = StringConvertFromUTF16(window_info.GetTitle().c_str());
     const std::string class_str = StringConvertFromUTF16(window_info.GetWindowClassName().c_str());
 
-    //Just straight look for a complete match when strict matching is enabled
+    //Look for a complete match first 
+    for (auto i : candidate_overlay_ids)
+    {
+        const OverlayConfigData& data = m_OverlayConfigData[i];
+
+        if ( (data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] == class_str) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) && 
+             (data.ConfigStr[configid_str_overlay_winrt_last_window_title] == title_str) )
+        {
+            matching_overlay_ids.push_back(i);
+        }
+    }
+
+    //Stop here if strict matching is enabled
     if (ConfigManager::GetValue(configid_bool_windows_winrt_window_matching_strict))
     {
-        for (auto i : candidate_overlay_ids)
-        {
-            const OverlayConfigData& data = m_OverlayConfigData[i];
-
-            if ( (data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] == class_str) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) && 
-                 (data.ConfigStr[configid_str_overlay_winrt_last_window_title] == title_str) )
-            {
-                matching_overlay_ids.push_back(i);
-            }
-        }
-
         return matching_overlay_ids;
     }
 
+    //Cut off document part of title if it there is one
     std::string title_search = title_str;
     std::string app_name;
     size_t search_pos = title_str.rfind(" - ");

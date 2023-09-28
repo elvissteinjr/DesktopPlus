@@ -244,15 +244,20 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string& title_str, const s
     std::wstring title_wstr = WStringConvertFromUTF8(title_str.c_str());
     std::wstring class_wstr = WStringConvertFromUTF8(class_str.c_str());
 
-    //Just straight look for a complete match when strict matching is enabled
-    if (ConfigManager::GetValue(configid_bool_windows_winrt_window_matching_strict))
-    {
-        auto it = std::find_if(window_list.begin(), window_list.end(), 
-                               [&](const auto& info){ return ( (info.GetWindowClassName() == class_wstr) && (info.GetExeName() == exe_str) && (info.GetTitle() == title_wstr) ); });
+    //Look for a complete match first
+    auto it = std::find_if(window_list.begin(), window_list.end(), 
+                           [&](const auto& info){ return ( (info.GetWindowClassName() == class_wstr) && (info.GetExeName() == exe_str) && (info.GetTitle() == title_wstr) ); });
 
-        return (it != window_list.end()) ? it->GetWindowHandle() : nullptr;
+    if (it != window_list.end())
+    {
+        return it->GetWindowHandle();
+    }
+    else if (ConfigManager::GetValue(configid_bool_windows_winrt_window_matching_strict))   //Stop here if strict matching is enabled
+    {
+        return nullptr;
     }
 
+    //Cut off document part of title if it there is one
     std::wstring title_search = title_wstr;
     std::wstring app_name;
     size_t search_pos = title_wstr.rfind(L" - ");
@@ -291,7 +296,7 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string& title_str, const s
     }
 
     //Nothing found, try to get a window from the same class and exe name at least
-    auto it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& info){ return (info.GetWindowClassName() == class_wstr) && (info.GetExeName() == exe_str); });
+    it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& info){ return (info.GetWindowClassName() == class_wstr) && (info.GetExeName() == exe_str); });
 
     if (it != window_list.end())
     {
