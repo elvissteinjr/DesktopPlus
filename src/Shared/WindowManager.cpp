@@ -259,7 +259,7 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string& title_str, const s
 
     if (search_pos != std::wstring::npos)
     {
-        app_name = title_wstr.substr(search_pos - 2);
+        app_name = title_wstr.substr(search_pos);
     }
 
     //Try to find a partial match by removing the last word from the title string and appending the application name

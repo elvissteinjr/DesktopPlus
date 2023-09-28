@@ -611,7 +611,7 @@ OverlayIDList OverlayManager::FindInactiveOverlaysForWindow(const WindowInfo& wi
 
     if (search_pos != std::string::npos)
     {
-        app_name = title_str.substr(search_pos - 2);
+        app_name = title_str.substr(search_pos);
     }
 
     //Try to find a partial match by removing the last word from the title string and appending the application name
