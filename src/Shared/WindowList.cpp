@@ -194,8 +194,16 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string title_str, const st
     //As a last resort we just match up the first window with the same executable name
 
     std::vector<WindowInfo> window_list = CreateCapturableWindowList();
-
     std::wstring title_wstr = WStringConvertFromUTF8(title_str.c_str());
+
+    //Look for a complete match first
+    auto it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& info){ return ( (info.ExeName == exe_str) && (info.Title == title_wstr) ); });
+    if (it != window_list.end())
+    {
+        return it->WindowHandle;
+    }
+
+    //Cut off document part of title if it there is one
     std::wstring title_search = title_wstr;
     std::wstring app_name;
     size_t search_pos = title_wstr.rfind(L" - ");
@@ -235,7 +243,7 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string title_str, const st
     }
 
     //Nothing found, try to get a window from the same exe name at least
-    auto it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& info){ return (info.ExeName == exe_str); });
+    it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& info){ return (info.ExeName == exe_str); });
 
     if (it != window_list.end())
     {
