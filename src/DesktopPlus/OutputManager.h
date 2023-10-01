@@ -93,10 +93,12 @@ class OutputManager
 
         bool HandleOpenVREvents();  //Returns true if quit event happened
         void OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned int& current_overlay_old);
+        void OnKeyboardClosed();
         void HandleKeyboardHelperMessage(LPARAM lparam);
         bool HandleOverlayProfileLoadMessage(LPARAM lparam);
 
         void InitComIfNeeded();
+        void ShowKeyboardForOverlay(unsigned int overlay_id, bool show = true);
         void LaunchApplication(const std::string& path_utf8, const std::string& arg_utf8);
         void ShowWindowSwitcher();
         void ResetMouseLastLaserPointerPos();
@@ -110,7 +112,7 @@ class OutputManager
         void ApplySettingCrop();
         void ApplySettingInputMode();
         void ApplySettingMouseInput();
-        void ApplySettingKeyboardScale(float last_used_scale);
+        void ApplySettingKeyboardScale();
         void ApplySettingUpdateLimiter();
 
         void DragStart(bool is_gesture_drag = false);

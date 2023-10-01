@@ -1394,8 +1394,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
             else if (msg.wParam < configid_bool_MAX + configid_int_MAX + configid_float_MAX)
             {
                 ConfigID_Float float_id = (ConfigID_Float)(msg.wParam - configid_bool_MAX - configid_int_MAX);
-
-                float previous_value = ConfigManager::Get().GetConfigFloat(float_id);
                 ConfigManager::Get().SetConfigFloat(float_id, *(float*)&msg.lParam);    //Interpret lParam as a float variable
 
                 switch (float_id)
@@ -1413,7 +1411,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
                     case configid_float_input_keyboard_detached_size:
                     {
-                        ApplySettingKeyboardScale(previous_value);
+                        ApplySettingKeyboardScale();
                         break;
                     }
                     case configid_float_performance_update_limit_ms:
@@ -2096,47 +2094,7 @@ void OutputManager::DoAction(ActionID action_id)
         {
             case action_show_keyboard:
             {
-                const Overlay& ovrl_current = OverlayManager::Get().GetCurrentOverlay();
-
-                if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1)
-                {
-                    //If it's already displayed for an overlay, hide it instead
-                    vr::VROverlay()->HideKeyboard();
-
-                    //Config state is set from the event
-                }
-                else
-                {
-                    vr::VROverlayHandle_t ovrl_keyboard_target = ovrl_current.GetHandle();
-                    int ovrl_keyboard_id = ovrl_current.GetID();
-
-                    //If dashboard overlay or using dashboard origin, show it for the dummy so it gets treated like a dashboard keyboard
-                    if ( (ovrl_current.GetID() == k_ulOverlayID_Dashboard) || (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_dashboard) )
-                    {
-                        ovrl_keyboard_target = m_OvrlHandleDashboardDummy;
-                        ovrl_keyboard_id = 0;
-                    }
-
-                    vr::EVROverlayError keyboard_error = vr::VROverlay()->ShowKeyboardForOverlay(ovrl_keyboard_target, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
-                                                                                                 vr::KeyboardFlag_Minimal, "Desktop+", 1024, "", m_OvrlHandleMain);
-
-                    if (keyboard_error == vr::VROverlayError_None)
-                    {
-                        //Covers whole overlay
-                        vr::HmdRect2_t keyrect;
-                        keyrect.vTopLeft     = {0.0f, 1.0f};
-                        keyrect.vBottomRight = {1.0f, 0.0f};
-
-                        vr::VROverlay()->SetKeyboardPositionForOverlay(ovrl_keyboard_target, keyrect);  //Avoid covering the overlay with the keyboard
-
-                        ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, ovrl_keyboard_id);
-
-                        ApplySettingKeyboardScale(1.0f);    //Apply detached keyboard scale if necessary
-
-                        //Tell UI that the keyboard helper can be displayed
-                        IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), ovrl_keyboard_id);
-                    }
-                }
+                ShowKeyboardForOverlay(OverlayManager::Get().GetCurrentOverlayID(), (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) == -1));
                 break;
             }
             case action_crop_active_window_toggle:
@@ -3488,9 +3446,7 @@ bool OutputManager::HandleOpenVREvents()
             }
             case vr::VREvent_KeyboardClosed:
             {
-                //Tell UI that the keyboard helper should no longer be displayed
-                ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -1);
-                IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -1);
+                OnKeyboardClosed();
                 break;
             }
             case vr::VREvent_SeatedZeroPoseReset:
@@ -3572,10 +3528,7 @@ bool OutputManager::HandleOpenVREvents()
                 }
                 case vr::VREvent_KeyboardClosed:
                 {
-                    //Tell UI that the keyboard helper should no longer be displayed
-                    ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -1);
-                    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -1);
-
+                    OnKeyboardClosed();
                     break;
                 }
                 case vr::VREvent_FocusEnter:
@@ -4103,6 +4056,27 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
     }
 }
 
+void OutputManager::OnKeyboardClosed()
+{
+    //Tell UI that the keyboard helper should no longer be displayed
+    IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), -1);
+
+    //The keyboard may have been hidden by interacting with something that isn't the keyboard... that includes our keyboard helper
+    //Check if the keyboard helper was just used and force the keyboard back on in that case. This flickers but seems the best we can do for now
+    vr::VROverlayHandle_t ovrl_handle_keyboard_helper;
+    vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusKeyboardHelper", &ovrl_handle_keyboard_helper);
+
+    if (vr::VROverlay()->IsHoverTargetOverlay(ovrl_handle_keyboard_helper))
+    {
+        int keyboard_target_overlay = ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id);
+        ShowKeyboardForOverlay( (keyboard_target_overlay != -1) ? (unsigned int)keyboard_target_overlay : k_ulOverlayID_None);
+    }
+    else
+    {
+        ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, -1);
+    }
+}
+
 void OutputManager::HandleKeyboardHelperMessage(LPARAM lparam)
 {
     switch (lparam)
@@ -4170,6 +4144,48 @@ void OutputManager::InitComIfNeeded()
         if (::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) != RPC_E_CHANGED_MODE)
         {
             m_ComInitDone = true;
+        }
+    }
+}
+
+void OutputManager::ShowKeyboardForOverlay(unsigned int overlay_id, bool show)
+{
+    if (!show)
+    {
+        vr::VROverlay()->HideKeyboard();
+
+        //Config state is set from the event
+    }
+    else
+    {
+        vr::VROverlayHandle_t ovrl_keyboard_target = OverlayManager::Get().GetOverlay(overlay_id).GetHandle();
+        int ovrl_keyboard_id = overlay_id;
+
+        //If dashboard overlay or using dashboard origin, show it for the dummy so it gets treated like a dashboard keyboard
+        if ( (overlay_id == k_ulOverlayID_Dashboard) || (ConfigManager::Get().GetConfigInt(configid_int_overlay_detached_origin) == ovrl_origin_dashboard) )
+        {
+            ovrl_keyboard_target = m_OvrlHandleDashboardDummy;
+            ovrl_keyboard_id = 0;
+        }
+
+        vr::EVROverlayError keyboard_error = vr::VROverlay()->ShowKeyboardForOverlay(ovrl_keyboard_target, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
+                                                                                     vr::KeyboardFlag_Minimal, "Desktop+", 1024, "", m_OvrlHandleMain);
+
+        if (keyboard_error == vr::VROverlayError_None)
+        {
+            //Covers whole overlay
+            vr::HmdRect2_t keyrect;
+            keyrect.vTopLeft     = {0.0f, 1.0f};
+            keyrect.vBottomRight = {1.0f, 0.0f};
+
+            vr::VROverlay()->SetKeyboardPositionForOverlay(ovrl_keyboard_target, keyrect);  //Avoid covering the overlay with the keyboard
+
+            ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, ovrl_keyboard_id);
+
+            ApplySettingKeyboardScale();    //Apply detached keyboard scale if necessary
+
+            //Tell UI that the keyboard helper can be displayed
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), ovrl_keyboard_id);
         }
     }
 }
@@ -4972,10 +4988,16 @@ void OutputManager::ApplySettingMouseInput()
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
-void OutputManager::ApplySettingKeyboardScale(float last_used_scale)
+void OutputManager::ApplySettingKeyboardScale()
 {
-    vr::VROverlayHandle_t ovrl_handle_keyboard = vr::k_ulOverlayHandleInvalid;
-    vr::VROverlay()->FindOverlay("system.keyboard", &ovrl_handle_keyboard);
+    //Check for SteamVR 2 keyboard first, then fall back to system keyboard if necessary
+    vr::VROverlayHandle_t ovrl_handle_keyboard = vr::k_ulOverlayHandleInvalid;;
+    vr::VROverlay()->FindOverlay("valve.steam.gamepadui.keyboard", &ovrl_handle_keyboard);
+
+    if (ovrl_handle_keyboard == vr::k_ulOverlayHandleInvalid)
+    {
+        vr::VROverlay()->FindOverlay("system.keyboard", &ovrl_handle_keyboard);
+    }
 
     if (ovrl_handle_keyboard != vr::k_ulOverlayHandleInvalid)
     {
@@ -4990,7 +5012,13 @@ void OutputManager::ApplySettingKeyboardScale(float last_used_scale)
             Vector3 translation = mat.getTranslation();
 
             mat.setTranslation(Vector3(0.0f, 0.0f, 0.0f));
-            mat.scale(1.0 / last_used_scale);               //Undo last scale (not ideal, but this is a stopgap solution anyways)
+
+            //Get last scale from the HMD transform
+            Vector3 row_1(hmd_mat.m[0][0], hmd_mat.m[1][0], hmd_mat.m[2][0]);
+            float last_used_scale = row_1.length();
+
+            //Undo last scale
+            mat.scale(1.0 / last_used_scale);
             mat.scale(ConfigManager::Get().GetConfigFloat(configid_float_input_keyboard_detached_size));
             mat.setTranslation(translation);
 

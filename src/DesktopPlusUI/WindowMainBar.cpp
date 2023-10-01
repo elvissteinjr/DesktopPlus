@@ -247,12 +247,28 @@ void WindowMainBar::UpdateActionButtons(unsigned int overlay_id)
 
                 if (has_icon)
                 {
+                    static bool was_keyboard_visible = false;
+
                     if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
                     {
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+                        //Don't send keyboard message if the keyboard is visible since it'll be hidden from interacting with the UI already
+                        if ((order_data.action_id != action_show_keyboard) || (!was_keyboard_visible))
+                        {
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), (int)overlay_id);
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, order_data.action_id);
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_overlay_current_id_override), -1);
+
+                            was_keyboard_visible = false;
+                        }
                     }
+
+                    //The keyboard is hidden from interacting with the UI on mouse release, which creates a race with the button firing, 
+                    //so we check in advance while the button is pressed down
+                    if (ImGui::IsItemActive())
+                    {
+                        was_keyboard_visible = (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) != -1);
+                    }
+
                     DisplayTooltipIfHovered(ActionManager::Get().GetActionName(order_data.action_id));
                 }
                 else
