@@ -16,16 +16,34 @@ void WindowKeyboardHelper::Update()
 
     ImGuiIO& io = ImGui::GetIO();
 
-    //Style to blend in with SteamVR keyboard (this will probably be wrong once the keyboard finally updated to something else)
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(2.0f, 2.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,      ImVec2(2.0f, 2.0f));
-    ImGui::PushStyleColor(ImGuiCol_WindowBg,      ImVec4(0.098f, 0.157f, 0.239f, 0.000f));
-    ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(0.631f, 0.635f, 0.639f, 1.000f));
-    ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.137f, 0.153f, 0.176f, 1.000f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.216f, 0.231f, 0.255f, 1.000f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.091f, 0.102f, 0.118f, 1.000f));
+    vr::VROverlayHandle_t ovrl_handle_keyboard_gamepadui;
+    vr::VROverlay()->FindOverlay("valve.steam.gamepadui.keyboard", &ovrl_handle_keyboard_gamepadui);
+
+    //Style to blend in with SteamVR keyboard
+    if (ovrl_handle_keyboard_gamepadui != vr::k_ulOverlayHandleInvalid) //SteamVR 2 Keyboard style
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(3.0f, 3.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,      ImVec2(3.0f, 3.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg,      ImVec4(0.137f, 0.149f, 0.180f, 1.000f));
+        ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(1.000f, 1.000f, 1.000f, 1.000f));
+        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.055f, 0.078f, 0.106f, 1.000f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.427f, 0.459f, 0.502f, 1.000f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.102f, 0.624f, 1.000f, 1.000f));
+    }
+    else //System Keyboard style
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(2.0f, 2.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,      ImVec2(2.0f, 2.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg,      ImVec4(0.098f, 0.157f, 0.239f, 0.000f));
+        ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(0.631f, 0.635f, 0.639f, 1.000f));
+        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.137f, 0.153f, 0.176f, 1.000f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.216f, 0.231f, 0.255f, 1.000f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.091f, 0.102f, 0.118f, 1.000f));
+    }
 
     ImGui::SetNextWindowSize(ImVec2(TEXSPACE_TOTAL_WIDTH * TEXSPACE_KEYBOARD_HELPER_SCALE, 0.0f));
     ImGui::SetNextWindowPos(ImVec2(0.0f, io.DisplaySize.y - TEXSPACE_KEYBOARD_HELPER_HEIGHT), 0, ImVec2(0.0f, 0.0f));  //Center window at bottom of the overlay

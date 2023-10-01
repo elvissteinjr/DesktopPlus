@@ -911,8 +911,16 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
     if ( (ConfigManager::Get().GetConfigBool(configid_bool_input_keyboard_helper_enabled)) &&
          (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) >= (int)k_ulOverlayID_Dashboard) )
     {
-        vr::VROverlayHandle_t ovrl_handle_keyboard;
-        vr::VROverlay()->FindOverlay("system.keyboard", &ovrl_handle_keyboard);
+        //Check for SteamVR 2 keyboard first, then fall back to system keyboard if necessary
+        bool keyboard_is_gamepadui = true;
+        vr::VROverlayHandle_t ovrl_handle_keyboard = vr::k_ulOverlayHandleInvalid;
+        vr::VROverlay()->FindOverlay("valve.steam.gamepadui.keyboard", &ovrl_handle_keyboard);
+
+        if (ovrl_handle_keyboard == vr::k_ulOverlayHandleInvalid)
+        {
+            keyboard_is_gamepadui = false;
+            vr::VROverlay()->FindOverlay("system.keyboard", &ovrl_handle_keyboard);
+        }
 
         if (ovrl_handle_keyboard != vr::k_ulOverlayHandleInvalid)
         {
@@ -921,10 +929,20 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
                 vr::HmdMatrix34_t matrix;
                 vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
 
-                //This anchors it on the bottom end of the used minimal mode SteamVR keyboard space
-                vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_keyboard, origin, {960.0f, 29.0f}, &matrix);
+                if (keyboard_is_gamepadui)
+                {
+                    //This anchors it on the bottom end below the drag handle of the keyboard
+                    vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_keyboard, origin, {640.5f, -100.0f}, &matrix);
+                }
+                else
+                {
+                    //This anchors it on the bottom end of the used minimal mode SteamVR keyboard space
+                    vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_keyboard, origin, {960.0f, 29.0f}, &matrix);
+                }
+
                 //Slighty lift it so input goes here (minimal mode SteamVR keyboard has a larger overlay than used for the keys)
                 OffsetTransformFromSelf(matrix, 0.0f, 0.0f, 0.00001f); 
+
                 vr::VROverlay()->SetOverlayTransformAbsolute(m_OvrlHandleKeyboardHelper, origin, &matrix);
 
                 vr::VROverlay()->ShowOverlay(m_OvrlHandleKeyboardHelper);
