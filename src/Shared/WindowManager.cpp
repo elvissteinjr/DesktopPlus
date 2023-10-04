@@ -234,7 +234,8 @@ HICON WindowInfo::GetIcon(HWND window_handle)
     return icon_handle;
 }
 
-HWND WindowInfo::FindClosestWindowForTitle(const std::string& title_str, const std::string& class_str, const std::string& exe_str, const std::vector<WindowInfo>& window_list)
+HWND WindowInfo::FindClosestWindowForTitle(const std::string& title_str, const std::string& class_str, const std::string& exe_str, const std::vector<WindowInfo>& window_list,
+                                           bool use_strict_matching)
 {
     //The idea is that most applications with changing titles keep their name at the end after a dash, so we separate that part if we can find it
     //Apart from that, we try to find matches by removing one space-separated chunk in each iteration (first one is 1:1 match, last just the app-name)
@@ -252,7 +253,7 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string& title_str, const s
     {
         return it->GetWindowHandle();
     }
-    else if (ConfigManager::GetValue(configid_bool_windows_winrt_window_matching_strict))   //Stop here if strict matching is enabled
+    else if (use_strict_matching)   //Stop here if strict matching is enabled
     {
         return nullptr;
     }

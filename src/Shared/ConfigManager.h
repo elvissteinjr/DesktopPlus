@@ -32,6 +32,7 @@ enum ConfigID_Bool
     configid_bool_overlay_gazefade_enabled,
     configid_bool_overlay_input_enabled,
     configid_bool_overlay_input_dplus_lp_enabled,
+    configid_bool_overlay_winrt_window_matching_strict,
     configid_bool_overlay_update_invisible,
     configid_bool_overlay_floatingui_enabled,
     configid_bool_overlay_floatingui_desktops_enabled,
@@ -99,7 +100,6 @@ enum ConfigID_Bool
     configid_bool_windows_winrt_keep_on_screen,
     configid_bool_windows_winrt_auto_size_overlay,
     configid_bool_windows_winrt_auto_focus_scene_app,
-    configid_bool_windows_winrt_window_matching_strict,
     configid_bool_browser_content_blocker,
     configid_bool_misc_no_steam,                              //Restarts without Steam when it detects to have been launched by Steam
     configid_bool_misc_uiaccess_was_enabled,                  //Tracks if UIAccess was enabled to show a warning after it isn't anymore due to updates or modified executable

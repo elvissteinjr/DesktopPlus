@@ -1419,17 +1419,6 @@ void WindowSettings::UpdatePageMainCatWindows()
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_windows_winrt_auto_focus_scene_app, focus_scene_app);
         }
 
-        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
-        {
-            bool& strict_matching = ConfigManager::GetRef(configid_bool_windows_winrt_window_matching_strict);
-            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysStrictMatching), &strict_matching))
-            {
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_windows_winrt_window_matching_strict, strict_matching);
-            }
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-            HelpMarker(TranslationManager::GetString(tstr_SettingsWindowOverlaysStrictMatchingTip));
-        }
-
         ImGui::Unindent();
 
         if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))

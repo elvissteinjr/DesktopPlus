@@ -32,7 +32,8 @@ class WindowInfo
 
         static std::string GetExeName(HWND window_handle);
         static HICON GetIcon(HWND window_handle);
-        static HWND FindClosestWindowForTitle(const std::string& title_str, const std::string& class_str, const std::string& exe_str, const std::vector<WindowInfo>& window_list);
+        static HWND FindClosestWindowForTitle(const std::string& title_str, const std::string& class_str, const std::string& exe_str, const std::vector<WindowInfo>& window_list, 
+                                              bool use_strict_matching = false);
 };
 
 struct WindowManagerThreadData

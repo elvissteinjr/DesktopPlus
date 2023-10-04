@@ -600,8 +600,8 @@ OverlayIDList OverlayManager::FindInactiveOverlaysForWindow(const WindowInfo& wi
         }
     }
 
-    //Stop here if strict matching is enabled
-    if (ConfigManager::GetValue(configid_bool_windows_winrt_window_matching_strict))
+    //Stop here if we already had at least a single match
+    if (!matching_overlay_ids.empty())
     {
         return matching_overlay_ids;
     }
@@ -639,9 +639,10 @@ OverlayIDList OverlayManager::FindInactiveOverlaysForWindow(const WindowInfo& wi
         {
             const OverlayConfigData& data = m_OverlayConfigData[i];
 
-            //Check if class/exe name matches and search title can be found in the last stored window title
-            if ( (data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] == class_str) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) &&
-                 (data.ConfigStr[configid_str_overlay_winrt_last_window_title].find(title_search) != std::string::npos) )
+            //Check if class/exe name matches and search title can be found in the last stored window title (but just skip if overlay uses strict matching)
+            if ( (!data.ConfigBool[configid_bool_overlay_winrt_window_matching_strict]) &&
+                  (data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] == class_str) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) &&
+                  (data.ConfigStr[configid_str_overlay_winrt_last_window_title].find(title_search) != std::string::npos) )
             {
                 matching_overlay_ids.push_back(i);
             }
@@ -661,7 +662,8 @@ OverlayIDList OverlayManager::FindInactiveOverlaysForWindow(const WindowInfo& wi
         {
             const OverlayConfigData& data = m_OverlayConfigData[i];
 
-            if ( (data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] == class_str) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) )
+            if ( (!data.ConfigBool[configid_bool_overlay_winrt_window_matching_strict]) &&
+                  (data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] == class_str) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) )
             {
                 matching_overlay_ids.push_back(i);
             }

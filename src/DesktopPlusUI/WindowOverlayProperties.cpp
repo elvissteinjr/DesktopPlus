@@ -816,6 +816,14 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
         {
             PageGoForward(wndovrlprop_page_graphics_capture_source);
         }
+
+        bool& strict_matching = ConfigManager::GetRef(configid_bool_overlay_winrt_window_matching_strict);
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsCaptureGCStrictMatching), &strict_matching))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_winrt_window_matching_strict, strict_matching);
+        }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_OvrlPropsCaptureGCStrictMatchingTip));
     }
 
     ImGui::Columns(1);

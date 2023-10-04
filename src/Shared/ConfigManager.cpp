@@ -127,6 +127,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigInt[configid_int_overlay_capture_source]                 = config.ReadInt(section.c_str(),    "CaptureSource", ovrl_capsource_desktop_duplication);
     data.ConfigInt[configid_int_overlay_duplication_id]                 = config.ReadInt(section.c_str(),    "DuplicationID", -1);
     data.ConfigInt[configid_int_overlay_winrt_desktop_id]               = config.ReadInt(section.c_str(),    "WinRTDesktopID", -2);
+    data.ConfigBool[configid_bool_overlay_winrt_window_matching_strict] = config.ReadBool(section.c_str(),   "WinRTWindowMatchingStrict", false);
     data.ConfigStr[configid_str_overlay_winrt_last_window_title]        = config.ReadString(section.c_str(), "WinRTLastWindowTitle");
     data.ConfigStr[configid_str_overlay_winrt_last_window_class_name]   = config.ReadString(section.c_str(), "WinRTLastWindowClassName");
     data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name]     = config.ReadString(section.c_str(), "WinRTLastWindowExeName");
@@ -182,7 +183,8 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     if ( (data.ConfigInt[configid_int_overlay_winrt_desktop_id] == -2) && (!data.ConfigStr[configid_str_overlay_winrt_last_window_title].empty()) )
     {
         HWND window = WindowInfo::FindClosestWindowForTitle(data.ConfigStr[configid_str_overlay_winrt_last_window_title], data.ConfigStr[configid_str_overlay_winrt_last_window_class_name],
-                                                            data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name], WindowManager::Get().WindowListGet());
+                                                            data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name], WindowManager::Get().WindowListGet(),
+                                                            data.ConfigBool[configid_bool_overlay_winrt_window_matching_strict]);
 
         data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = (uint64_t)window;
 
@@ -331,10 +333,11 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
         last_window_exe_name   = data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name];
     }
 
-    config.WriteString(section.c_str(), "WinRTLastWindowTitle",     last_window_title.c_str());
-    config.WriteString(section.c_str(), "WinRTLastWindowClassName", last_window_class_name.c_str());
-    config.WriteString(section.c_str(), "WinRTLastWindowExeName",   last_window_exe_name.c_str());
-    config.WriteInt(   section.c_str(), "WinRTDesktopID",           data.ConfigInt[configid_int_overlay_winrt_desktop_id]);
+    config.WriteString(section.c_str(), "WinRTLastWindowTitle",      last_window_title.c_str());
+    config.WriteString(section.c_str(), "WinRTLastWindowClassName",  last_window_class_name.c_str());
+    config.WriteString(section.c_str(), "WinRTLastWindowExeName",    last_window_exe_name.c_str());
+    config.WriteInt(   section.c_str(), "WinRTDesktopID",            data.ConfigInt[configid_int_overlay_winrt_desktop_id]);
+    config.WriteBool(  section.c_str(), "WinRTWindowMatchingStrict", data.ConfigBool[configid_bool_overlay_winrt_window_matching_strict]);
 
     //Browser
     config.WriteString(section.c_str(), "BrowserURL",               data.ConfigStr[configid_str_overlay_browser_url].c_str());
@@ -452,7 +455,6 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_windows_winrt_dragging_mode]                   = config.ReadInt( "Windows", "WinRTDraggingMode", window_dragging_overlay);
     m_ConfigBool[configid_bool_windows_winrt_auto_size_overlay]             = config.ReadBool("Windows", "WinRTAutoSizeOverlay", false);
     m_ConfigBool[configid_bool_windows_winrt_auto_focus_scene_app]          = config.ReadBool("Windows", "WinRTAutoFocusSceneApp", false);
-    m_ConfigBool[configid_bool_windows_winrt_window_matching_strict]        = config.ReadBool("Windows", "WinRTWindowMatchingStrict", false);
     m_ConfigInt[configid_int_windows_winrt_capture_lost_behavior]           = config.ReadInt( "Windows", "WinRTOnCaptureLost", window_caplost_hide_overlay);
 
     m_ConfigString[configid_str_browser_extra_arguments]                    = config.ReadString("Browser", "CommandLineArguments");
@@ -996,7 +998,6 @@ void ConfigManager::SaveConfigToFile()
     config.WriteInt( "Windows", "WinRTDraggingMode",            m_ConfigInt[configid_int_windows_winrt_dragging_mode]);
     config.WriteBool("Windows", "WinRTAutoSizeOverlay",         m_ConfigBool[configid_bool_windows_winrt_auto_size_overlay]);
     config.WriteBool("Windows", "WinRTAutoFocusSceneApp",       m_ConfigBool[configid_bool_windows_winrt_auto_focus_scene_app]);
-    config.WriteBool("Windows", "WinRTWindowMatchingStrict",    m_ConfigBool[configid_bool_windows_winrt_window_matching_strict]);
     config.WriteInt( "Windows", "WinRTOnCaptureLost",           m_ConfigInt[configid_int_windows_winrt_capture_lost_behavior]);
 
     config.WriteInt( "Browser", "BrowserMaxFPS",                m_ConfigInt[configid_int_browser_max_fps]);
