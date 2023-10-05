@@ -543,6 +543,10 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     std::wstring last_title_w = WindowManager::Get().WindowListRemove((HWND)msg.lParam);
                     std::string last_title = StringConvertFromUTF16(last_title_w.c_str());
 
+                    //Some windows clear their title entirely before ceasing to exist, skip those
+                    if (last_title.empty())
+                        break;
+
                     //Set last known title for overlays that captured this window
                     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                     {
