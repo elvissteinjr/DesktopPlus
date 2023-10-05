@@ -757,6 +757,14 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                         }
 
                         OverlayManager::Get().SetCurrentOverlayNameAuto();
+
+                        //Refresh Overlay Properties window if it's currently active for this overlay
+                        unsigned int overlay_props_active_id = m_WindowOverlayProperties.GetActiveOverlayID();
+
+                        if (OverlayManager::Get().GetCurrentOverlayID() == overlay_props_active_id)
+                        {
+                            m_WindowOverlayProperties.SetActiveOverlayID(overlay_props_active_id, true);
+                        }
                     }
                     default: break;
                 }
