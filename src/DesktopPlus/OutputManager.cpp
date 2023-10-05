@@ -1469,6 +1469,39 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         ApplySettingMouseScale();
                         break;
                     }
+                    case configid_bool_overlay_winrt_window_matching_strict:
+                    {
+                        OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+                        //Check if new matching setting finds an existing window
+                        if ((OverlayManager::Get().GetCurrentOverlay().GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0))
+                            break;
+
+                        HWND window = WindowInfo::FindClosestWindowForTitle(data.ConfigStr[configid_str_overlay_winrt_last_window_title], data.ConfigStr[configid_str_overlay_winrt_last_window_class_name],
+                                                                            data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name], WindowManager::Get().WindowListGet(),
+                                                                            data.ConfigBool[configid_bool_overlay_winrt_window_matching_strict]);
+
+                        if (window != nullptr)
+                        {
+                            data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = (uint64_t)window;
+
+                            if (ConfigManager::GetValue(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay)
+                            {
+                                data.ConfigBool[configid_bool_overlay_enabled] = true;
+                            }
+
+                            OnSetOverlayWinRTCaptureWindow(OverlayManager::Get().GetCurrentOverlayID());
+
+                            //Send to UI
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_winrt_hwnd, (LPARAM)window);
+
+                            if (ConfigManager::GetValue(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay)
+                            {
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_enabled, true);
+                            }
+                        }
+                        break;
+                    }
                     case configid_bool_overlay_input_enabled:
                     case configid_bool_input_mouse_render_intersection_blob:
                     {
