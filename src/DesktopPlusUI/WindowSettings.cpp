@@ -5033,8 +5033,19 @@ void WindowSettings::UpdatePageResetConfirm()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsResetConfirmDescription));
     ImGui::PopTextWrapPos();
 
+    static bool reset_settings = true, reset_current_profile = true, reset_profile_overlays = false, reset_profile_apps = false, reset_actions = false;
+
+    //This uses existing translation strings to avoid duplication of strings that should reasonably stay the same for this context
+    //Might come back to bite for some language but we'll see about that
+    ImGui::Indent();
+    ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsSettings), &reset_settings);
+    ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsResetConfirmElementOverlays), &reset_current_profile);
+    ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsProfilesOverlays), &reset_profile_overlays);
+    ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsProfilesApps), &reset_profile_apps);
+    ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsCatActions), &reset_actions);
     ImGui::Unindent();
 
+    ImGui::Unindent();
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
 
     //Confirmation buttons
@@ -5043,9 +5054,39 @@ void WindowSettings::UpdatePageResetConfirm()
     if (ImGui::Button(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsResetConfirmButton))) 
     {
         //Do the reset
-        ConfigManager::Get().RestoreConfigFromDefault();
+        if (reset_settings)
+        {
+            //If resetting current profile isn't on, store it separately for a moment so we can get it back after resetting the whole config file
+            if (!reset_current_profile)
+            {
+                ConfigManager::Get().SaveMultiOverlayProfileToFile("../overlays_temp.ini");
+            }
 
-        UIManager::Get()->Restart(UIManager::Get()->IsInDesktopMode()); //This shouldn't be necessary, but let's still do it to really ensure clean state
+            ConfigManager::Get().RestoreConfigFromDefault();
+
+            if (!reset_current_profile)
+            {
+                ConfigManager::Get().LoadMultiOverlayProfileFromFile("../overlays_temp.ini");
+                ConfigManager::Get().DeleteOverlayProfile("../overlays_temp.ini");
+            }
+        }
+
+        if (reset_profile_overlays)
+        {
+            ConfigManager::Get().DeleteAllOverlayProfiles();
+        }
+
+        if (reset_profile_apps)
+        {
+            ConfigManager::Get().GetAppProfileManager().RemoveAllProfiles();
+        }
+
+        if (reset_actions)
+        {
+            ConfigManager::Get().GetActionManager().RestoreActionsFromDefault();
+        }
+
+        UIManager::Get()->Restart(UIManager::Get()->IsInDesktopMode());
 
         //We restart this after the UI since the new UI process needs to detect the dashboard app running first so it doesn't launch in desktop mode
         if (IPCManager::IsDashboardAppRunning())

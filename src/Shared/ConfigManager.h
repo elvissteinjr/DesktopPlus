@@ -405,6 +405,7 @@ class ConfigManager
         bool LoadMultiOverlayProfileFromFile(const std::string& filename, bool clear_existing_overlays = true, std::vector<char>* ovrl_inclusion_list = nullptr);
         bool SaveMultiOverlayProfileToFile(const std::string& filename, std::vector<char>* ovrl_inclusion_list = nullptr);
         bool DeleteOverlayProfile(const std::string& filename);
+        void DeleteAllOverlayProfiles();
 
         #ifdef DPLUS_UI
             std::vector<std::string> GetOverlayProfileList();

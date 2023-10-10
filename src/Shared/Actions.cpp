@@ -631,6 +631,11 @@ void ActionManager::SaveActionsToFile()
 
 void ActionManager::RestoreActionsFromDefault()
 {
+    #ifdef DPLUS_UI
+        m_ActionOrderUI.clear();
+        m_ActionOrderBarDefault.clear();
+        m_ActionOrderOverlayBar.clear();
+    #endif
     LoadActionsFromFile("actions_default.ini");
 }
 

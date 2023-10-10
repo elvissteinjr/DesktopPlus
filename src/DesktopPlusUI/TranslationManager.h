@@ -271,6 +271,7 @@ enum TRMGRStrID
     tstr_SettingsTroubleshootingSettingsReset,
     tstr_SettingsTroubleshootingSettingsResetConfirmDescription,
     tstr_SettingsTroubleshootingSettingsResetConfirmButton,
+    tstr_SettingsTroubleshootingSettingsResetConfirmElementOverlays,
     tstr_KeyboardWindowTitle,
     tstr_KeyboardWindowTitleSettings,
     tstr_KeyboardWindowTitleOverlay,                      //%OVERLAYNAME% == input target overlay name

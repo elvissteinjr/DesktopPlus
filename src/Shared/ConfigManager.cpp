@@ -1040,7 +1040,6 @@ void ConfigManager::RestoreConfigFromDefault()
     std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
     ::DeleteFileW(wpath.c_str());
 
-    m_ActionManager.RestoreActionsFromDefault();
     LoadConfigFromFile();
 }
 
@@ -1092,6 +1091,30 @@ bool ConfigManager::DeleteOverlayProfile(const std::string& filename)
 
     std::string path = m_ApplicationPath + "profiles/" + filename;
     return (::DeleteFileW(WStringConvertFromUTF8(path.c_str()).c_str()) != 0);
+}
+
+void ConfigManager::DeleteAllOverlayProfiles()
+{
+    LOG_F(INFO, "Deleting all overlay profiles...");
+
+    const std::wstring wpath = WStringConvertFromUTF8(std::string(m_ApplicationPath + "profiles/*.ini").c_str());
+    WIN32_FIND_DATA find_data;
+    HANDLE handle_find = ::FindFirstFileW(wpath.c_str(), &find_data);
+
+    if (handle_find != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            {
+                std::wstring wpath = WStringConvertFromUTF8(std::string(m_ApplicationPath + "profiles/").c_str()) + find_data.cFileName;
+                ::DeleteFileW(wpath.c_str());
+            }
+        }
+        while (::FindNextFileW(handle_find, &find_data) != 0);
+
+        ::FindClose(handle_find);
+    }
 }
 
 #ifdef DPLUS_UI

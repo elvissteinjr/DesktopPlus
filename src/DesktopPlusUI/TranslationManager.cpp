@@ -272,6 +272,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsTroubleshootingSettingsReset",
     "tstr_SettingsTroubleshootingSettingsResetConfirmDescription",
     "tstr_SettingsTroubleshootingSettingsResetConfirmButton",
+    "tstr_SettingsTroubleshootingSettingsResetConfirmElementOverlays",
     "tstr_KeyboardWindowTitle",
     "tstr_KeyboardWindowTitleSettings",
     "tstr_KeyboardWindowTitleOverlay",

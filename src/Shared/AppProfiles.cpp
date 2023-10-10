@@ -166,6 +166,8 @@ bool AppProfileManager::StoreProfile(const std::string& app_key, const AppProfil
 
 bool AppProfileManager::RemoveProfile(const std::string& app_key)
 {
+    LOG_F(INFO, "Removing app profile \"%s\"...", app_key.c_str());
+
     m_Profiles.erase(app_key);
 
     //If deleting active profile, activate blank app profile
@@ -175,6 +177,19 @@ bool AppProfileManager::RemoveProfile(const std::string& app_key)
     }
 
     return false;
+}
+
+void AppProfileManager::RemoveAllProfiles()
+{
+    LOG_F(INFO, "Removing all app profiles...");
+
+    m_Profiles.clear();
+
+    //If a profile was active, activate blank app profile
+    if (!m_AppKeyActiveProfile.empty())
+    {
+        ActivateProfile("");
+    }
 }
 
 bool AppProfileManager::ActivateProfile(const std::string& app_key)

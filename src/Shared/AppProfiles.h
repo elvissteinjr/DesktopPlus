@@ -37,6 +37,7 @@ class AppProfileManager
         bool ProfileExists(const std::string& app_key) const;
         bool StoreProfile(const std::string& app_key, const AppProfile& profile);   //Returns true if a new overlay profile was loaded after change of active profile
         bool RemoveProfile(const std::string& app_key);                             //Returns true if a new overlay profile was loaded after removal of active profile
+        void RemoveAllProfiles();
 
         bool ActivateProfile(const std::string& app_key);                           //Returns true if a new overlay profile was loaded
         bool ActivateProfileForCurrentSceneApp();                                   //^
