@@ -67,6 +67,7 @@ enum ConfigID_Bool
     configid_bool_windows_winrt_auto_focus_scene_app,
     configid_bool_misc_no_steam,                              //Restarts without Steam when it detects to have been launched by Steam
     configid_bool_misc_uiaccess_was_enabled,                  //Tracks if UIAccess was enabled to show a warning after it isn't anymore due to updates or modified executable
+    configid_bool_misc_apply_steamvr2_dashboard_offset,       //Applies backward compatibility offset transform when the SteamVR 2 dashboard is detected
     configid_bool_state_overlay_dragmode,
     configid_bool_state_overlay_selectmode,
     configid_bool_state_overlay_dragselectmode_show_hidden,   //True if mode is from a popup

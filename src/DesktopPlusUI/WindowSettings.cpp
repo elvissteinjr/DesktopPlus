@@ -953,6 +953,20 @@ void WindowSettings::UpdateCatOverlayTabGeneral()
 
         ImGui::Columns(1);
 
+        if (mode_origin == ovrl_origin_dashboard)
+        {
+            ImGui::Columns(2, "ColumnPositionWide", false);
+            ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
+
+            bool& apply_steamvr2_offset = ConfigManager::Get().GetConfigBoolRef(configid_bool_misc_apply_steamvr2_dashboard_offset);
+            if (ImGui::Checkbox("Apply SteamVR 2 Dashboard Offset", &apply_steamvr2_offset))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_misc_apply_steamvr2_dashboard_offset), apply_steamvr2_offset);
+            }
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::FixedHelpMarker("Applies backward compatibility offset to dashboard origin overlays when the SteamVR 2 dashboard is detected.\nThis setting applies to all overlays.");
+        }
+
         PopupOverlayDetachedPositionChange();
     }
 
@@ -3091,7 +3105,7 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.8.3");
+        ImGui::Text("Desktop+ Version 2.8.4");
 
         ImGui::Columns(1);
     }

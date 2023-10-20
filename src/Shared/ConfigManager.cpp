@@ -555,8 +555,9 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_performance_monitor_show_vive_wireless]   = config.ReadBool("Performance", "PerformanceMonitorShowViveWireless", false);
     m_ConfigBool[configid_bool_performance_monitor_disable_gpu_counters] = config.ReadBool("Performance", "PerformanceMonitorDisableGPUCounters", false);
 
-    m_ConfigBool[configid_bool_misc_no_steam]             = config.ReadBool("Misc", "NoSteam", false);
-    m_ConfigBool[configid_bool_misc_uiaccess_was_enabled] = config.ReadBool("Misc", "UIAccessWasEnabled", false);
+    m_ConfigBool[configid_bool_misc_no_steam]                        = config.ReadBool("Misc", "NoSteam", false);
+    m_ConfigBool[configid_bool_misc_uiaccess_was_enabled]            = config.ReadBool("Misc", "UIAccessWasEnabled", false);
+    m_ConfigBool[configid_bool_misc_apply_steamvr2_dashboard_offset] = config.ReadBool("Misc", "ApplySteamVR2DashboardOffset", true);
 
     //Load custom actions (this is where using ini feels dumb, but it still kinda works)
     auto& custom_actions = m_ActionManager.GetCustomActions();
@@ -927,6 +928,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Performance", "PerformanceMonitorDisableGPUCounters", m_ConfigBool[configid_bool_performance_monitor_disable_gpu_counters]);
 
     config.WriteBool("Misc", "NoSteam",            m_ConfigBool[configid_bool_misc_no_steam]);
+    config.WriteBool("Misc", "ApplySteamVR2DashboardOffset",            m_ConfigBool[configid_bool_misc_apply_steamvr2_dashboard_offset]);
     config.WriteBool("Misc", "UIAccessWasEnabled", (m_ConfigBool[configid_bool_misc_uiaccess_was_enabled] || m_ConfigBool[configid_bool_state_misc_uiaccess_enabled]));
 
     //Save custom actions

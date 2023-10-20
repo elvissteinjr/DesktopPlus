@@ -1207,6 +1207,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_bool_overlay_enabled:
                     case configid_bool_overlay_gazefade_enabled:
                     case configid_bool_overlay_update_invisible:
+                    case configid_bool_misc_apply_steamvr2_dashboard_offset:
                     {
                         ApplySettingTransform();
                         break;
@@ -5394,6 +5395,25 @@ Matrix4 OutputManager::DragGetBaseOffsetMatrix()
                 if (m_DashboardHMD_Y == -100.0f)    //If Desktop+ was started with the dashboard open, the value will still be default, so set it now
                 {
                     UpdateDashboardHMD_Y();
+                }
+
+                //Adjust origin if GamepadUI (SteamVR 2 dashboard) exists
+                if (ConfigManager::Get().GetConfigBool(configid_bool_misc_apply_steamvr2_dashboard_offset))
+                {
+                    vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
+                    vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
+
+                    if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+                    {
+                        //Magic number, from taking the difference of both version's dashboard origins at the same HMD position
+                        const Matrix4 matrix_to_old_dash( 1.14634132f,      3.725290300e-09f, -3.725290300e-09f, 0.00000000f, 
+                                                          0.00000000f,      0.878148496f,      0.736854136f,     0.00000000f, 
+                                                          7.45058060e-09f, -0.736854076f,      0.878148496f,     0.00000000f,
+                                                         -5.96046448e-08f,  2.174717430f,      0.123533726f,     1.00000000f);
+
+                        //Move origin point roughly back to where it was in the old dashboard
+                        matrix = matrix * matrix_to_old_dash;
+                    }
                 }
 
                 Vector3 pos_offset = matrix.getTranslation();
