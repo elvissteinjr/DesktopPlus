@@ -2254,6 +2254,7 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
     int output_id_adapter = target_desktop_id;           //Output ID on the adapter actually used. Only different from initial SingleOutput if there's desktops across multiple GPUs
 
     m_DesktopRects.clear();
+    m_DesktopRectTotal = DPRect();   //Figure out right dimensions for full size desktop rect (this is also done in CreateTextures() but for Desktop Duplication only)
 
     HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
     if (!FAILED(hr))
@@ -2311,6 +2312,8 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
                 output_ptr->GetDesc(&output_desc);
                 m_DesktopRects.emplace_back(output_desc.DesktopCoordinates.left,  output_desc.DesktopCoordinates.top, 
                                             output_desc.DesktopCoordinates.right, output_desc.DesktopCoordinates.bottom);
+
+                (m_DesktopRectTotal.GetWidth() == 0) ? m_DesktopRectTotal = m_DesktopRects.back() : m_DesktopRectTotal.Add(m_DesktopRects.back());
 
                 ++output_count;
                 ++output_index;
@@ -3772,10 +3775,16 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
                 if (desktop_id != -2) //Desktop capture through WinRT
                 {
-                    if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) ) //Combined desktop is at 0,0 so nothing has to be done in that case
+                    if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) )
                     {
                         offset_x = m_DesktopRects[desktop_id].GetTL().x;
                         offset_y = m_DesktopRects[desktop_id].GetTL().y;
+                    }
+                    else if (desktop_id == -1) //Combined desktop
+                    {
+                        content_height = m_DesktopRectTotal.GetHeight();
+                        offset_x = m_DesktopRectTotal.GetTL().x;
+                        offset_y = m_DesktopRectTotal.GetTL().y;
                     }
                 }
                 else //Window capture

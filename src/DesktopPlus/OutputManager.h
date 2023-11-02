@@ -172,11 +172,12 @@ class OutputManager
         HANDLE m_PauseDuplicationEvent;
         HANDLE m_ResumeDuplicationEvent;
 
-        int m_DesktopX;
+        int m_DesktopX;                         //These are the desktop coordinates/size valid for Desktop Duplication and may be different from the m_DesktopRectTotal
         int m_DesktopY;
         int m_DesktopWidth;
         int m_DesktopHeight;
         std::vector<DPRect> m_DesktopRects;     //Cached position and size of available desktops
+        DPRect m_DesktopRectTotal;              //Total rect of all available desktops (may not be the same as above Desktop Duplication rect if that's not using the combined desktop)
         DWORD m_MaxActiveRefreshDelay;
         bool m_OutputInvalid;
         bool m_OutputPendingSkippedFrame;
