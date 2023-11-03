@@ -353,23 +353,24 @@ DEVMODE GetDevmodeForDisplayID(int display_id, bool wmr_ignore_vscreens, HMONITO
 
         while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
         {
+            //Check if this a WMR virtual display adapter and skip it when the option is enabled
+            if (wmr_ignore_vscreens)
+            {
+                DXGI_ADAPTER_DESC adapter_desc;
+                adapter_ptr->GetDesc(&adapter_desc);
+
+                if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
+                {
+                    ++i;
+                    continue;
+                }
+            }
+
             //Enum the available outputs
             Microsoft::WRL::ComPtr<IDXGIOutput> output_ptr;
-            while (adapter_ptr->EnumOutputs(output_count, &output_ptr) != DXGI_ERROR_NOT_FOUND)
+            UINT output_index = 0;
+            while (adapter_ptr->EnumOutputs(output_index, &output_ptr) != DXGI_ERROR_NOT_FOUND)
             {
-                //Check if this a WMR virtual display adapter and skip it when the option is enabled
-                if (wmr_ignore_vscreens)
-                {
-                    DXGI_ADAPTER_DESC adapter_desc;
-                    adapter_ptr->GetDesc(&adapter_desc);
-
-                    if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
-                    {
-                        ++i;
-                        continue;
-                    }
-                }
-
                 //Check if this happens to be the output we're looking for
                 if (display_id == output_count)
                 {
@@ -390,10 +391,11 @@ DEVMODE GetDevmodeForDisplayID(int display_id, bool wmr_ignore_vscreens, HMONITO
                         //Get out early
                         return mode;
                     }
-                    
+
                     mode.dmSize = 0;    //Reset dmSize to 0 if the call failed
                 }
 
+                ++output_index;
                 ++output_count;
             }
 
