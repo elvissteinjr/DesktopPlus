@@ -545,6 +545,15 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
                     {
                         capture_manager->StartCaptureFromMonitorHandle(monitor_handle);
                     }
+                    else
+                    {
+                        //Failed to get monitor handle, drop the capture
+                        for (const auto& overlay : data.Overlays)
+                        {
+                            ::PostThreadMessage(g_MainThreadID, WM_DPLUSWINRT_CAPTURE_LOST, overlay.Handle, 0);
+                            //Thread will be quit by the response to the capture lost message
+                        }
+                    }
                 }
                 else if (DPWinRT_IsCaptureFromCombinedDesktopSupported())
                 {
