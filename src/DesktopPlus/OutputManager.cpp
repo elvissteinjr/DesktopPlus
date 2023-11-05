@@ -4369,14 +4369,47 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 }
             }
 
-            //Check coordinates if HMDPointerOverride is enabled
-            if (ConfigManager::GetValue(configid_bool_input_mouse_allow_pointer_override))
+            //Check coordinates if laser pointer override is enabled, unless left mouse is held down by the laser pointer
+            if ( (m_MouseLeftDownOverlayID == k_ulOverlayID_None) && (ConfigManager::GetValue(configid_bool_input_mouse_allow_pointer_override)) )
             {
                 POINT pt;
                 ::GetCursorPos(&pt);
 
+                //Only check for override if the last laser pointer position was inside a desktop (outside coordinates are possible via extended laser drag and combined desktop edge cases)
+                bool do_check_for_override = false;
+                const Vector2Int laser_pos(m_MouseLastLaserPointerX, m_MouseLastLaserPointerY);
+                for (const DPRect& rect : m_DesktopRects)
+                {
+                    if (rect.Contains(laser_pos))
+                    {
+                        do_check_for_override = true;
+                        break;
+                    }
+                }
+
+                //Check if the cursor is near the corner of one of the desktops and opt out of the pointer override to avoid sticky mouse corners triggering it
+                //It can still happen sometimes, but this catches most cases
+                if (do_check_for_override)
+                {
+                    //Only do for combined desktops though
+                    if ( ((data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) && (data.ConfigInt[configid_int_overlay_desktop_id] == -1)) ||
+                         ((data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (data.ConfigInt[configid_int_overlay_winrt_desktop_id] == -1)) )
+                    {
+                        const Vector2Int cursor_pos(pt.x, pt.y);
+                        for (const DPRect& rect : m_DesktopRects)
+                        {
+                            if ((fabs(cursor_pos.distance(rect.GetTL())) < 64.0f) || (fabs(cursor_pos.distance(rect.GetTR())) < 64.0f) ||
+                                (fabs(cursor_pos.distance(rect.GetBL())) < 64.0f) || (fabs(cursor_pos.distance(rect.GetBR())) < 64.0f))
+                            {
+                                do_check_for_override = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 //If mouse coordinates are not what the last laser pointer was (with tolerance), meaning some other source moved it
-                if ((abs(pt.x - m_MouseLastLaserPointerX) > 32) || (abs(pt.y - m_MouseLastLaserPointerY) > 32))
+                if ((do_check_for_override) && ((abs(pt.x - m_MouseLastLaserPointerX) > 32) || (abs(pt.y - m_MouseLastLaserPointerY) > 32)))
                 {
                     m_MouseIgnoreMoveEventMissCount++; //GetCursorPos() may lag behind or other jumps may occasionally happen. We count up a few misses first before acting on them
 
@@ -4392,16 +4425,13 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                         m_MouseIgnoreMoveEvent = true;
 
                         //Set flag for all overlays
-                        if (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode))
+                        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
                         {
-                            for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
-                            {
-                                const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
+                            const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
 
-                                if ( (overlay.GetTextureSource() != ovrl_texsource_none) && (overlay.GetTextureSource() != ovrl_texsource_ui) && (overlay.GetTextureSource() != ovrl_texsource_browser) )
-                                {
-                                    vr::VROverlay()->SetOverlayFlag(overlay.GetHandle(), vr::VROverlayFlags_HideLaserIntersection, true);
-                                }
+                            if ( (overlay.GetTextureSource() != ovrl_texsource_none) && (overlay.GetTextureSource() != ovrl_texsource_ui) && (overlay.GetTextureSource() != ovrl_texsource_browser) )
+                            {
+                                vr::VROverlay()->SetOverlayFlag(overlay.GetHandle(), vr::VROverlayFlags_HideLaserIntersection, true);
                             }
                         }
                     }
