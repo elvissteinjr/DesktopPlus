@@ -6831,6 +6831,21 @@ void OutputManager::DimDashboard(bool do_dim)
             vr::VROverlay()->SetOverlayColor(system_dashboard, 1.0f, 1.0f, 1.0f);
         }
     }
+
+    vr::VROverlayHandle_t gamepadui;
+    vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &gamepadui);
+
+    if (gamepadui != vr::k_ulOverlayHandleInvalid)
+    {
+        if (do_dim)
+        {
+            vr::VROverlay()->SetOverlayColor(gamepadui, 0.05f, 0.05f, 0.05f);
+        }
+        else
+        {
+            vr::VROverlay()->SetOverlayColor(gamepadui, 1.0f, 1.0f, 1.0f);
+        }
+    }
 }
 
 void OutputManager::UpdatePendingDashboardDummyHeight()
