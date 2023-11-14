@@ -389,6 +389,8 @@ class ConfigManager
         #endif
 
         void MigrateLegacyActionsFromConfig(const Ini& config);
+        OverlayOrigin GetOverlayOriginFromConfigString(const std::string& str);
+        const char* GetConfigStringForOverlayOrigin(OverlayOrigin origin);
 
         static bool IsUIAccessEnabled();
         static void RemoveScaleFromTransform(Matrix4& transform, float* width);

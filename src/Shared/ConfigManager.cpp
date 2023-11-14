@@ -23,6 +23,27 @@
 static ConfigManager g_ConfigManager;
 static const std::string g_EmptyString;       //This way we can still return a const reference. Worth it? iunno
 
+static const std::pair<OverlayOrigin, const char*> g_OvrlOriginConfigFileStrings[] = 
+{
+    {ovrl_origin_room,            "Room"}, 
+    {ovrl_origin_hmd_floor,       "HMDFloor"}, 
+    {ovrl_origin_seated_universe, "SeatedUniverse"}, 
+    {ovrl_origin_dashboard,       "Dashboard"}, 
+    {ovrl_origin_hmd,             "HMD"},
+    {ovrl_origin_left_hand,       "LeftHand"}, 
+    {ovrl_origin_right_hand,      "RightHand"}, 
+    {ovrl_origin_aux,             "Aux"},
+    //Legacy config compatibility names (old enum IDs)
+    {ovrl_origin_room,            "0"},
+    {ovrl_origin_hmd_floor,       "1"}, 
+    {ovrl_origin_seated_universe, "2"}, 
+    {ovrl_origin_dashboard,       "3"}, 
+    {ovrl_origin_hmd,             "4"},
+    {ovrl_origin_left_hand,       "5"}, 
+    {ovrl_origin_right_hand,      "6"}, 
+    {ovrl_origin_aux,             "7"},
+};
+
 OverlayConfigData::OverlayConfigData()
 {
     std::fill(std::begin(ConfigBool),   std::end(ConfigBool),   false);
@@ -146,7 +167,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigInt[configid_int_overlay_user_width]                     = config.ReadInt(section.c_str(),    "UserWidth", 1280);
     data.ConfigInt[configid_int_overlay_user_height]                    = config.ReadInt(section.c_str(),    "UserHeight", 720);
     data.ConfigInt[configid_int_overlay_display_mode]                   = config.ReadInt(section.c_str(),    "DisplayMode", ovrl_dispmode_always);
-    data.ConfigInt[configid_int_overlay_origin]                         = config.ReadInt(section.c_str(),    "Origin", ovrl_origin_room);
+    data.ConfigInt[configid_int_overlay_origin]                         = GetOverlayOriginFromConfigString(config.ReadString(section.c_str(), "Origin"));
     data.ConfigBool[configid_bool_overlay_origin_hmd_floor_use_turning] = config.ReadBool(section.c_str(),   "OriginHMDFloorTurning", false);
     data.ConfigBool[configid_bool_overlay_transform_locked]             = config.ReadBool(section.c_str(),   "TransformLocked", false);
 
@@ -264,25 +285,25 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
 
     config.WriteString(section.c_str(), "Name", data.ConfigNameStr.c_str());
 
-    config.WriteBool(section.c_str(), "NameIsCustom",           data.ConfigBool[configid_bool_overlay_name_custom]);
-    config.WriteBool(section.c_str(), "Enabled",                data.ConfigBool[configid_bool_overlay_enabled]);
-    config.WriteInt( section.c_str(), "DesktopID",              data.ConfigInt[configid_int_overlay_desktop_id]);
-    config.WriteInt( section.c_str(), "CaptureSource",          data.ConfigInt[configid_int_overlay_capture_source]);
-    config.WriteInt( section.c_str(), "DuplicationID",          data.ConfigInt[configid_int_overlay_duplication_id]);
-    config.WriteInt( section.c_str(), "Width",              int(data.ConfigFloat[configid_float_overlay_width]           * 100.0f));
-    config.WriteInt( section.c_str(), "Curvature",          int(data.ConfigFloat[configid_float_overlay_curvature]       * 100.0f));
-    config.WriteInt( section.c_str(), "Opacity",            int(data.ConfigFloat[configid_float_overlay_opacity]         * 100.0f));
-    config.WriteInt( section.c_str(), "Brightness",         int(data.ConfigFloat[configid_float_overlay_brightness]      * 100.0f));
-    config.WriteInt( section.c_str(), "BrowserZoom",        int(data.ConfigFloat[configid_float_overlay_browser_zoom]    * 100.0f));
-    config.WriteInt( section.c_str(), "OffsetRight",        int(data.ConfigFloat[configid_float_overlay_offset_right]    * 100.0f));
-    config.WriteInt( section.c_str(), "OffsetUp",           int(data.ConfigFloat[configid_float_overlay_offset_up]       * 100.0f));
-    config.WriteInt( section.c_str(), "OffsetForward",      int(data.ConfigFloat[configid_float_overlay_offset_forward]  * 100.0f));
-    config.WriteInt( section.c_str(), "UserWidth",              data.ConfigInt[configid_int_overlay_user_width]);
-    config.WriteInt( section.c_str(), "UserHeight",             data.ConfigInt[configid_int_overlay_user_height]);
-    config.WriteInt( section.c_str(), "DisplayMode",            data.ConfigInt[configid_int_overlay_display_mode]);
-    config.WriteInt( section.c_str(), "Origin",                 data.ConfigInt[configid_int_overlay_origin]);
-    config.WriteBool(section.c_str(), "OriginHMDFloorTurning",  data.ConfigBool[configid_bool_overlay_origin_hmd_floor_use_turning]);
-    config.WriteBool(section.c_str(), "TransformLocked",        data.ConfigBool[configid_bool_overlay_transform_locked]);
+    config.WriteBool(section.c_str(),   "NameIsCustom",           data.ConfigBool[configid_bool_overlay_name_custom]);
+    config.WriteBool(section.c_str(),   "Enabled",                data.ConfigBool[configid_bool_overlay_enabled]);
+    config.WriteInt( section.c_str(),   "DesktopID",              data.ConfigInt[configid_int_overlay_desktop_id]);
+    config.WriteInt( section.c_str(),   "CaptureSource",          data.ConfigInt[configid_int_overlay_capture_source]);
+    config.WriteInt( section.c_str(),   "DuplicationID",          data.ConfigInt[configid_int_overlay_duplication_id]);
+    config.WriteInt( section.c_str(),   "Width",              int(data.ConfigFloat[configid_float_overlay_width]           * 100.0f));
+    config.WriteInt( section.c_str(),   "Curvature",          int(data.ConfigFloat[configid_float_overlay_curvature]       * 100.0f));
+    config.WriteInt( section.c_str(),   "Opacity",            int(data.ConfigFloat[configid_float_overlay_opacity]         * 100.0f));
+    config.WriteInt( section.c_str(),   "Brightness",         int(data.ConfigFloat[configid_float_overlay_brightness]      * 100.0f));
+    config.WriteInt( section.c_str(),   "BrowserZoom",        int(data.ConfigFloat[configid_float_overlay_browser_zoom]    * 100.0f));
+    config.WriteInt( section.c_str(),   "OffsetRight",        int(data.ConfigFloat[configid_float_overlay_offset_right]    * 100.0f));
+    config.WriteInt( section.c_str(),   "OffsetUp",           int(data.ConfigFloat[configid_float_overlay_offset_up]       * 100.0f));
+    config.WriteInt( section.c_str(),   "OffsetForward",      int(data.ConfigFloat[configid_float_overlay_offset_forward]  * 100.0f));
+    config.WriteInt( section.c_str(),   "UserWidth",              data.ConfigInt[configid_int_overlay_user_width]);
+    config.WriteInt( section.c_str(),   "UserHeight",             data.ConfigInt[configid_int_overlay_user_height]);
+    config.WriteInt( section.c_str(),   "DisplayMode",            data.ConfigInt[configid_int_overlay_display_mode]);
+    config.WriteString(section.c_str(), "Origin",                 GetConfigStringForOverlayOrigin((OverlayOrigin)data.ConfigInt[configid_int_overlay_origin]));
+    config.WriteBool(section.c_str(),   "OriginHMDFloorTurning",  data.ConfigBool[configid_bool_overlay_origin_hmd_floor_use_turning]);
+    config.WriteBool(section.c_str(),   "TransformLocked",        data.ConfigBool[configid_bool_overlay_transform_locked]);
 
     config.WriteBool(section.c_str(), "CroppingEnabled",        data.ConfigBool[configid_bool_overlay_crop_enabled]);
     config.WriteInt( section.c_str(), "CroppingX",              data.ConfigInt[configid_int_overlay_crop_x]);
@@ -850,6 +871,34 @@ void ConfigManager::MigrateLegacyActionsFromConfig(const Ini& config)
     m_ConfigHandle[configid_handle_input_hotkey03_action_uid]   = legacy_id_to_uid[config.ReadInt("Input", "GlobalHotkey03ActionID",   0)];
 }
 
+OverlayOrigin ConfigManager::GetOverlayOriginFromConfigString(const std::string& str)
+{
+    const auto it = std::find_if(std::begin(g_OvrlOriginConfigFileStrings), std::end(g_OvrlOriginConfigFileStrings), [&](const auto& pair){ return (pair.second == str); });
+
+    if (it != std::end(g_OvrlOriginConfigFileStrings))
+    {
+        return it->first;
+    }
+
+    LOG_F(WARNING, "Overlay has origin with unknown config string \"%s\"", str.c_str());
+
+    return ovrl_origin_room;    //Fallback to Room instead of throwing invalid values around
+}
+
+const char* ConfigManager::GetConfigStringForOverlayOrigin(OverlayOrigin origin)
+{
+    const auto it = std::find_if(std::begin(g_OvrlOriginConfigFileStrings), std::end(g_OvrlOriginConfigFileStrings), [&](const auto& pair){ return (pair.first == origin); });
+
+    if (it != std::end(g_OvrlOriginConfigFileStrings))
+    {
+        return it->second;
+    }
+
+    LOG_F(WARNING, "Overlay has origin with unknown ID %d", (int)origin);
+
+    return "UnknownOrigin";
+}
+
 bool ConfigManager::IsUIAccessEnabled()
 {
     std::ifstream file_manifest("DesktopPlus.exe.manifest");
@@ -1167,7 +1216,7 @@ std::vector< std::pair<std::string, OverlayOrigin> > ConfigManager::GetOverlayPr
             overlay_id++;
 
             std::string name(config.ReadString(ss.str().c_str(), "Name"));
-            OverlayOrigin origin = (OverlayOrigin)config.ReadInt(ss.str().c_str(), "Origin", ovrl_origin_room);
+            OverlayOrigin origin = GetOverlayOriginFromConfigString(config.ReadString(ss.str().c_str(), "Origin"));
 
             list.push_back( std::make_pair(name.empty() ? ss.str() : name, origin) );   //Name should never be blank with compatible profiles, but offer alternative just in case
 
