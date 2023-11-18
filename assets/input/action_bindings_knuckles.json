@@ -59,7 +59,25 @@
                "mode" : "button",
                "path" : "/user/hand/right/input/trackpad"
             },
-			{
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/lasermouse/in/MiddleClick"
+                  }
+               },
+               "mode" : "joystick",
+               "path" : "/user/hand/left/input/thumbstick"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/lasermouse/in/MiddleClick"
+                  }
+               },
+               "mode" : "joystick",
+               "path" : "/user/hand/right/input/thumbstick"
+            },
+            {
                "inputs" : {
                   "click" : {
                      "output" : "/actions/laserpointer/in/Aux01Click"
@@ -68,7 +86,7 @@
                "mode" : "button",
                "path" : "/user/hand/left/input/b"
             },
-			{
+            {
                "inputs" : {
                   "click" : {
                      "output" : "/actions/laserpointer/in/Aux01Click"
@@ -97,7 +115,7 @@
             }
          ]
       },
-	  "/actions/scroll_discrete" : {
+      "/actions/scroll_discrete" : {
          "sources" : [
             {
                "inputs" : {
