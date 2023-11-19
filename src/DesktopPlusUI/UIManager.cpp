@@ -279,7 +279,7 @@ vr::EVRInitError UIManager::InitOverlay()
             vr::VROverlay()->SetOverlayAlpha(m_OvrlHandleFloatingUI, 0.0f);
 
             //Set input parameters
-            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleOverlayBar,       vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleOverlayBar,        vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
             vr::VROverlay()->SetOverlayFlag(m_OvrlHandleSettings,          vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
             vr::VROverlay()->SetOverlayFlag(m_OvrlHandleOverlayProperties, vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
             vr::VROverlay()->SetOverlayFlag(m_OvrlHandleKeyboard,          vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
@@ -676,7 +676,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                         if (msg.lParam != 0)
                         {
                             //We don't use this config value for auto-docking hints since their display is handled alongside the docking state
-                            const WindowDragHint::HintType hint_type = WindowDragHint::hint_ovrl_locked;
+                            const WindowDragHint::HintType hint_type = (msg.lParam == 1) ? WindowDragHint::hint_ovrl_locked : WindowDragHint::hint_ovrl_theater_screen_blocked;
 
                             m_AuxUI.GetDragHintWindow().SetHintType(ConfigManager::GetValue(configid_int_state_drag_hint_device), hint_type);
                             m_AuxUI.GetDragHintWindow().Show();

@@ -21,7 +21,6 @@
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <cc:license
            rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
-        <dc:title></dc:title>
       </cc:Work>
       <cc:License
          rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
@@ -36,18 +35,18 @@
   </metadata>
   <path
      style="fill:none;fill-opacity:0;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none"
-     d="M 22.499999,8.5 H 9.4999996 v 8 H 22.499999 Z"
+     d="M 22.499999,9.5 H 9.4999996 v 8 H 22.499999 Z"
      id="path854" />
   <path
      style="fill:none;fill-opacity:0;stroke:#ffffff;stroke-width:0.999997;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"
-     d="m 7.4999985,8.499969 -6,3.000031 v 9.999969 l 6,-2.888889 z"
+     d="m 7.4999985,9.499969 -6,3.000031 v 9.999969 l 6,-2.888889 z"
      id="path856" />
   <path
      style="fill:none;fill-opacity:0;stroke:#ffffff;stroke-width:0.999997;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"
-     d="m 24.499999,8.499969 6,3.000031 v 9.999969 l -6,-2.999969 z"
+     d="m 24.499999,9.499969 6,3.000031 v 9.999969 l -6,-2.999969 z"
      id="path856-0" />
   <path
      style="fill:none;fill-opacity:0.310484;stroke:#ffffff;stroke-width:0.999992;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"
-     d="m 10.499997,19.5 h 11.000008 v 3 H 10.499997 Z"
+     d="m 10.499997,20.5 h 11.000008 v 3 H 10.499997 Z"
      id="path878" />
 </svg>

@@ -249,9 +249,10 @@ void WindowDragHint::Update()
 
     switch (m_HintType)
     {
-        case WindowDragHint::hint_docking:     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintDocking));    break;
-        case WindowDragHint::hint_undocking:   ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintUndocking));  break;
-        case WindowDragHint::hint_ovrl_locked: ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintOvrlLocked)); break;
+        case WindowDragHint::hint_docking:                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintDocking));                  break;
+        case WindowDragHint::hint_undocking:                   ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintUndocking));                break;
+        case WindowDragHint::hint_ovrl_locked:                 ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintOvrlLocked));               break;
+        case WindowDragHint::hint_ovrl_theater_screen_blocked: ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintOvrlTheaterScreenBlocked)); break;
     }
 
     m_Size = ImGui::GetWindowSize();

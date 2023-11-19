@@ -53,7 +53,8 @@ class WindowDragHint : public AuxUIWindow
             hint_none,
             hint_docking,
             hint_undocking,
-            hint_ovrl_locked
+            hint_ovrl_locked,
+            hint_ovrl_theater_screen_blocked
         };
 
     private:

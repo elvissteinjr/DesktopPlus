@@ -12,7 +12,8 @@ FloatingUI::FloatingUI() : m_OvrlHandleCurrentUITarget(vr::k_ulOverlayHandleInva
                            m_Visible(false),
                            m_IsSwitchingTarget(false),
                            m_FadeOutDelayCount(0.0f),
-                           m_AutoFitFrames(0)
+                           m_AutoFitFrames(0),
+                           m_TheaterOffsetAnimationProgress(0.0f)
 {
 
 }
@@ -219,6 +220,7 @@ void FloatingUI::UpdateUITargetState()
     //If there is an active hover target overlay, position the floating UI
     if (m_OvrlHandleCurrentUITarget != vr::k_ulOverlayHandleInvalid)
     {
+        OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
         Matrix4 matrix = OverlayManager::Get().GetOverlayCenterBottomTransform(m_OvrlIDCurrentUITarget, m_OvrlHandleCurrentUITarget);
 
         //If the Floating UI is just appearing, adjust overlay size based on the distance between HMD and overlay
@@ -230,13 +232,15 @@ void FloatingUI::UpdateUITargetState()
             if (ovrl_handle_primary_dashboard == m_OvrlHandleCurrentUITarget)
             {
                 //Use relative transform data here as dashboard transform can be unreliable during launch
-                const float distance = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget).ConfigTransform.getTranslation().distance({0.0f, 0.0f, 0.0f});
+                const float distance = overlay_data.ConfigTransform.getTranslation().distance({0.0f, 0.0f, 0.0f});
                 use_fixed_size = (distance < 0.25f);
-            }
 
-            if (use_fixed_size)
-            {
                 m_Width = 1.2f;
+                vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle_floating_ui, m_Width);
+            }
+            else if (overlay_data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen) //Fixed size for theater screen too
+            {
+                m_Width = 3.0f;
                 vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle_floating_ui, m_Width);
             }
             else
@@ -261,6 +265,30 @@ void FloatingUI::UpdateUITargetState()
 
         matrix.translate_relative(0.0f, -floating_ui_height_m / 3.0f, 0.0f);
 
+        //Additional offset for theater screen
+        if (overlay_data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen) 
+        {
+            //SteamVR's control bar is only shown while system laser pointer is active, so only add offset if that's the case
+            const bool add_offset = (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid);
+
+            if (is_newly_visible)
+            {
+                m_TheaterOffsetAnimationProgress = (add_offset) ? 1.0f : 0.0f;
+            }
+            else //Also animate this
+            {
+                const float time_step = ImGui::GetIO().DeltaTime * 6.0f;
+                m_TheaterOffsetAnimationProgress += (add_offset) ? time_step : -time_step;
+
+                if (m_TheaterOffsetAnimationProgress > 1.0f)
+                    m_TheaterOffsetAnimationProgress = 1.0f;
+                else if (m_TheaterOffsetAnimationProgress < 0.0f)
+                    m_TheaterOffsetAnimationProgress = 0.0f;
+            }
+
+            matrix.translate_relative(0.0f, smoothstep(m_TheaterOffsetAnimationProgress, 0.0f, -0.19f), 0.0f);
+        }
+
         //Don't update position if dummy transform is unstable unless it's target is not primary dashboard overlay or we're newly appearing
         if ( (is_newly_visible) || (!UIManager::Get()->IsDummyOverlayTransformUnstable()) || (ovrl_id_hover_target != ovrl_id_primary_dashboard) )
         {
@@ -269,25 +297,54 @@ void FloatingUI::UpdateUITargetState()
         }
 
         //Set floating UI curvature based on target overlay curvature
-        float curvature;
-        vr::VROverlay()->GetOverlayCurvature(m_OvrlHandleCurrentUITarget, &curvature);
-        float overlay_width = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget).ConfigFloat[configid_float_overlay_width];
+        if (overlay_data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen)
+        {
+            //Set curvature to 0 in this case, as theater screen curve is controlled by SteamVR and not query-able)
+            vr::VROverlay()->SetOverlayCurvature(ovrl_handle_floating_ui, 0.0f);
+        }
+        else
+        {
+            float curvature = 0.0f;
+            vr::VROverlay()->GetOverlayCurvature(m_OvrlHandleCurrentUITarget, &curvature);
+            float overlay_width = overlay_data.ConfigFloat[configid_float_overlay_width];
 
-        vr::VROverlay()->SetOverlayCurvature(ovrl_handle_floating_ui, curvature * (m_Width / overlay_width) );
+            vr::VROverlay()->SetOverlayCurvature(ovrl_handle_floating_ui, curvature * (m_Width / overlay_width) );
+        }
     }
 
     if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) || (m_OvrlHandleCurrentUITarget == vr::k_ulOverlayHandleInvalid) ) //If not even the UI itself is being hovered, fade out
     {
         if (m_Visible)
         {
-            m_FadeOutDelayCount += ImGui::GetIO().DeltaTime;
-
-            //Delay normal fade in order to not flicker when switching hover target between mirror overlay and floating UI (or don't while reordering overlays)
-            if ( (m_FadeOutDelayCount > 0.8f) || (UIManager::Get()->GetOverlayBarWindow().IsDraggingOverlayButtons()) )
+            //Don't fade out if this is the theater screen overlay and the systemui is hovered
+            //This does have false positives when really trying (systemui is used for many things), but it's better not to fade out when SteamVR's overlay controls are hovered
+            bool blocked_by_systemui = false;
+            if (m_OvrlHandleCurrentUITarget != vr::k_ulOverlayHandleInvalid)
             {
-                //Hide
-                m_Visible = false;
-                m_FadeOutDelayCount = 0.0f;
+                vr::VROverlayHandle_t ovrl_handle_systemui;
+                vr::VROverlay()->FindOverlay("system.systemui", &ovrl_handle_systemui);
+
+                if (ovrl_handle_systemui != vr::k_ulOverlayHandleInvalid)
+                {
+                    const OverlayConfigData& overlay_data = OverlayManager::Get().GetConfigData(m_OvrlIDCurrentUITarget);
+                    if (overlay_data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen)
+                    {
+                        blocked_by_systemui = ConfigManager::Get().IsLaserPointerTargetOverlay(ovrl_handle_systemui);
+                    }
+                }
+            }
+
+            if (!blocked_by_systemui)
+            {
+                m_FadeOutDelayCount += ImGui::GetIO().DeltaTime;
+
+                //Delay normal fade in order to not flicker when switching hover target between mirror overlay and floating UI (or don't while reordering overlays)
+                if ((m_FadeOutDelayCount > 0.8f) || (UIManager::Get()->GetOverlayBarWindow().IsDraggingOverlayButtons()))
+                {
+                    //Hide
+                    m_Visible = false;
+                    m_FadeOutDelayCount = 0.0f;
+                }
             }
         }
         else if (m_Alpha == 0.0f)

@@ -222,6 +222,7 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
     switch (overlay_origin)
     {
         case ovrl_origin_room:
+        case ovrl_origin_theater_screen:
         {
             break;
         }

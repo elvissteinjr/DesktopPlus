@@ -670,16 +670,14 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
         LOG_F(INFO, "Process was not launched by Steam, setting SteamVR application identity");
 
         vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
+        m_IsFirstLaunch = (!vr::VRApplications()->IsApplicationInstalled(g_AppKeyDashboardApp));
+    }
 
-        if (!vr::VRApplications()->IsApplicationInstalled(g_AppKeyDashboardApp))
-        {
-            vr::VRApplications()->AddApplicationManifest((ConfigManager::Get().GetApplicationPath() + "manifest.vrmanifest").c_str());
-            m_IsFirstLaunch = true;
-        }
-        else
-        {
-            m_IsFirstLaunch = false;
-        }
+    //Even if not first launch, make sure the Theater Screen dummy app is installed
+    //The Theater Screen needs a separate app entry as on Steam we don't control the contents of the app manifest for our appid, yet need to have "starts_theater_mode" in it somewhere
+    if ((m_IsFirstLaunch) || (!vr::VRApplications()->IsApplicationInstalled(g_AppKeyTheaterScreen)))
+    {
+        vr::VRApplications()->AddApplicationManifest((ConfigManager::Get().GetApplicationPath() + "manifest.vrmanifest").c_str());
     }
 
     //Set application auto-launch to true if it's the first launch
@@ -1215,14 +1213,22 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                             m_InputSim.MouseSetLeftDown(false);
                             WindowManager::Get().SetTargetWindow(nullptr);
 
-                            if (!ConfigManager::GetValue(configid_bool_overlay_transform_locked))
+                            if (ConfigManager::GetValue(configid_int_overlay_origin) != ovrl_origin_theater_screen)
                             {
-                                m_OverlayDragger.DragStart(overlay_id);
+                                if (!ConfigManager::GetValue(configid_bool_overlay_transform_locked))
+                                {
+                                    m_OverlayDragger.DragStart(overlay_id);
+                                }
+                                else
+                                {
+                                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
+                                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                                }
                             }
                             else
                             {
                                 IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
-                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 2);
                             }
                         }
 
@@ -2274,6 +2280,32 @@ void OutputManager::ShowOverlay(unsigned int id)
         RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
     }
 
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+}
+
+void OutputManager::ShowTheaterOverlay(unsigned int id)
+{
+    if (OverlayManager::Get().GetTheaterOverlayID() == id)
+        return;
+
+    OverlayManager::Get().SetTheaterOverlayID(id);
+
+    //Check every other existing overlay for theater origin and disable them (only one theater overlay can be active)
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        Overlay& overlay = OverlayManager::Get().GetOverlay(i);
+        OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+        if ((data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen) && (i != id))
+        {
+            SetOverlayEnabled(i, false);
+        }
+    }
+
+    //Reset overlay so the theater overlay has every property applied
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+    OverlayManager::Get().SetCurrentOverlayID(id);
+    ResetCurrentOverlay();
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
@@ -4083,6 +4115,18 @@ bool OutputManager::HandleOpenVREvents()
 
                     break;
                 }
+                case vr::VREvent_OverlayClosed:
+                case vr::VREvent_OverlayHidden:
+                {
+                    //Theater overlay was hidden by something (close button, other overlay taking over, etc.), disable it
+                    //There may be cases where the overlay doesn't send the hidden event for this (varies between SteamVR builds), for that we also have a hack further below,
+                    //though it's mostly harmless if this doesn't work (phantom dashboard tab)
+                    if (OverlayManager::Get().GetTheaterOverlayID() == i)
+                    {
+                        SetOverlayEnabled(i, false);
+                    }
+                    break;
+                }
                 case vr::VREvent_ChaperoneUniverseHasChanged:
                 {
                     //We also get this when tracking is lost, which ends up updating the dashboard position
@@ -4193,6 +4237,36 @@ bool OutputManager::HandleOpenVREvents()
     DetachedOverlayAutoDockingAll();
 
     m_LaserPointer.Update();
+
+    //Hack:
+    //We don't get an event when the Theater Screen close button is being used, which puts it in the dashboard (we don't want this), 
+    //but IsActiveDashboardOverlay() is true if it's visible on the screen so it doesn't help either to detected this.
+    //So we instead check if its middle transform gets too close to the dashboard (transform is based on Theater Screen if it's on there, otherwise the dashboard tab). 
+    //The case of this happening in normal use is fairly low, so it'll have to do for now
+    if (OverlayManager::Get().GetTheaterOverlayID() != k_ulOverlayID_None)
+    {
+        if (vr::VROverlay()->IsDashboardVisible())
+        {
+            vr::VROverlayHandle_t system_dashboard;
+            vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
+
+            const Matrix4 mat_dashboard = m_OverlayDragger.GetBaseOffsetMatrix(ovrl_origin_dashboard);
+            const Matrix4 mat_theater   = OverlayManager::Get().GetOverlayMiddleTransform(OverlayManager::Get().GetTheaterOverlayID());
+
+            Vector3 pos_dashboard = mat_dashboard.getTranslation();
+            Vector3 pos_theater   = mat_theater.getTranslation();
+            pos_dashboard.y = pos_theater.y;
+
+            float distance = pos_dashboard.distance(pos_theater);
+
+            //Distance should be between 0.009f and 0.019f (SteamVR 2 dashboard) in practice so this hopefully has a big enough tolerance
+            if (distance < 0.05f)
+            {
+                vr::VROverlay()->ShowDashboard("elvissteinjr.DesktopPlusDashboard");    //Defaults to Steam tab so try to get it to display ours instead
+                SetOverlayEnabled(OverlayManager::Get().GetTheaterOverlayID(), false);
+            }
+        }
+    }
 
     //Handle delayed dashboard dummy updates
     if ( (m_PendingDashboardDummyHeight != 0.0f) && (m_LastApplyTransformTick + 100 < ::GetTickCount64()) )
@@ -4354,14 +4428,22 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                     //Start overlay drag if setting enabled
                     if (ConfigManager::GetValue(configid_int_windows_winrt_dragging_mode) == window_dragging_overlay)
                     {
-                        if (!data.ConfigBool[configid_bool_overlay_transform_locked])
+                        if (data.ConfigInt[configid_int_overlay_origin] != ovrl_origin_theater_screen)
                         {
-                            m_OverlayDragger.DragStart(OverlayManager::Get().GetCurrentOverlayID());
+                            if (!data.ConfigBool[configid_bool_overlay_transform_locked])
+                            {
+                                m_OverlayDragger.DragStart(OverlayManager::Get().GetCurrentOverlayID());
+                            }
+                            else
+                            {
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                            }
                         }
                         else
                         {
                             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
-                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 2);
                         }
                     }
 
@@ -4485,14 +4567,22 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 {
                     if (m_OverlayDragger.GetDragDeviceID() == -1)
                     {
-                        if (!data.ConfigBool[configid_bool_overlay_transform_locked])
+                        if (data.ConfigInt[configid_int_overlay_origin] != ovrl_origin_theater_screen)
                         {
-                            m_OverlayDragger.DragStart(OverlayManager::Get().GetCurrentOverlayID());
+                            if (!data.ConfigBool[configid_bool_overlay_transform_locked])
+                            {
+                                m_OverlayDragger.DragStart(OverlayManager::Get().GetCurrentOverlayID());
+                            }
+                            else
+                            {
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                            }
                         }
                         else
                         {
                             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
-                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 2);
                         }
                     }
                 }
@@ -4500,14 +4590,22 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 {
                     if (!m_OverlayDragger.IsDragGestureActive())
                     {
-                        if (!data.ConfigBool[configid_bool_overlay_transform_locked])
+                        if (data.ConfigInt[configid_int_overlay_origin] != ovrl_origin_theater_screen)
                         {
-                            m_OverlayDragger.DragGestureStart(OverlayManager::Get().GetCurrentOverlayID());
+                            if (!data.ConfigBool[configid_bool_overlay_transform_locked])
+                            {
+                                m_OverlayDragger.DragGestureStart(OverlayManager::Get().GetCurrentOverlayID());
+                            }
+                            else
+                            {
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
+                                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                            }
                         }
                         else
                         {
                             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
-                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 2);
                         }
                     }
                 }
@@ -5353,6 +5451,20 @@ void OutputManager::ApplySettingTransform()
         //Dashboard uses differently scaled transform depending on the current setting. We counteract that scaling to ensure the config value actually matches world scale
         dummy_height = height / GetDashboardScale();
     }
+    else
+    {
+        //Clear theater mode if this overlay is used as source and being disabled or no longer set to theater origin
+        if ((OverlayManager::Get().GetTheaterOverlayID() == overlay.GetID()) && ((!ConfigManager::GetValue(configid_bool_overlay_enabled)) || (overlay_origin != ovrl_origin_theater_screen)) )
+        {
+            OverlayManager::Get().ClearTheaterOverlay();
+            ResetCurrentOverlay();  //Reset overlay so all changes made to the theater one get reflected on the normal one
+            return;
+        }
+        else if ((ConfigManager::GetValue(configid_bool_overlay_enabled) && (overlay_origin == ovrl_origin_theater_screen)))   //Enable theater mode if needed
+        {
+            ShowTheaterOverlay(overlay.GetID());
+        }
+    }
 
     //Dashboard dummy still needs correct width/height set for the top dashboard bar above it to be visible
     if ( (is_primary_dashboard_overlay) || (primary_dashboard_overlay_id == k_ulOverlayID_None) )           //When no dashboard overlay exists we set this on every overlay, not ideal.
@@ -5701,8 +5813,13 @@ void OutputManager::ApplySettingMouseInput()
 
         //Set intersection blob state
         bool hide_intersection = false;
-        if ( (overlay.GetTextureSource() != ovrl_texsource_none) && (overlay.GetTextureSource() != ovrl_texsource_ui) && (overlay.GetTextureSource() != ovrl_texsource_browser) && 
-             (!drag_mode_enabled) && (!select_mode_enabled) )
+
+        if (OverlayManager::Get().GetTheaterOverlayID() == i) //Always hide if theater overlay
+        {
+            hide_intersection = true;
+        }
+        else if ( (overlay.GetTextureSource() != ovrl_texsource_none) && (overlay.GetTextureSource() != ovrl_texsource_ui) && (overlay.GetTextureSource() != ovrl_texsource_browser) && 
+                  (!drag_mode_enabled) && (!select_mode_enabled) )
         {
             hide_intersection = !ConfigManager::GetValue(configid_bool_input_mouse_render_intersection_blob);
         }

@@ -296,7 +296,11 @@ enum TRMGRStrID
     tstr_OvrlPropsPositionOriginControllerL,
     tstr_OvrlPropsPositionOriginControllerR,
     tstr_OvrlPropsPositionOriginTracker1,
+    tstr_OvrlPropsPositionOriginTheaterScreen,
     tstr_OvrlPropsPositionOriginConfigHMDXYTurning,
+    tstr_OvrlPropsPositionOriginConfigTheaterScreenEnter,
+    tstr_OvrlPropsPositionOriginConfigTheaterScreenLeave,
+    tstr_OvrlPropsPositionOriginTheaterScreenTip,
     tstr_OvrlPropsPositionDispMode,
     tstr_OvrlPropsPositionDispModeAlways,
     tstr_OvrlPropsPositionDispModeDashboard,
@@ -486,6 +490,7 @@ enum TRMGRStrID
     tstr_AuxUIDragHintDocking,
     tstr_AuxUIDragHintUndocking,
     tstr_AuxUIDragHintOvrlLocked,
+    tstr_AuxUIDragHintOvrlTheaterScreenBlocked,
     tstr_AuxUIGazeFadeAutoHint,           //%SECONDS% == Countdown seconds
     tstr_AuxUIGazeFadeAutoHintSingular,   //^
     tstr_DesktopModeCatTools,

@@ -1,6 +1,7 @@
 {
-	"source" : "builtin",
-	"applications": [{
+	"source": "builtin",
+	"applications": [
+	{
 		"app_key": "steam.overlay.1494460",
 		
 		"launch_type": "binary",
@@ -13,6 +14,22 @@
 			"en_us": {
 				"name": "Desktop+",
 				"description": "Desktop+ Overlay"
+			}
+		}
+	}, 
+	{
+		"app_key": "elvissteinjr.DesktopPlusTheaterScreen",
+		
+		"launch_type": "binary",
+		"binary_path_windows": "DesktopPlus.exe",
+		"starts_theater_mode": true,
+		"is_hidden": true,
+		"is_internal": true,
+
+		"strings": {
+			"en_us": {
+				"name": "Desktop+ Theater Screen",
+				"description": "Desktop+ Theater Screen"
 			}
 		}
 	}]

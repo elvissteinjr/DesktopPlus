@@ -33,6 +33,7 @@ static const std::pair<OverlayOrigin, const char*> g_OvrlOriginConfigFileStrings
     {ovrl_origin_left_hand,       "LeftHand"}, 
     {ovrl_origin_right_hand,      "RightHand"}, 
     {ovrl_origin_aux,             "Aux"},
+    {ovrl_origin_theater_screen,  "TheaterScreen"},
     //Legacy config compatibility names (old enum IDs)
     {ovrl_origin_room,            "0"},
     {ovrl_origin_hmd_floor,       "1"}, 

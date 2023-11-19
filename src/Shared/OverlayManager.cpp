@@ -9,8 +9,10 @@
     #include "TranslationManager.h"
 #endif
 
+#include "InterprocessMessaging.h"
 #include "WindowManager.h"
 #include "Util.h"
+#include "Logging.h"
 
 #include <sstream>
 #include <unordered_set>
@@ -23,7 +25,9 @@ OverlayManager& OverlayManager::Get()
 }
 
 #ifndef DPLUS_UI
-    OverlayManager::OverlayManager() : m_CurrentOverlayID(0), m_OverlayNull(k_ulOverlayID_None)
+    OverlayManager::OverlayManager() : m_CurrentOverlayID(0), m_OverlayNull(k_ulOverlayID_None), m_TheaterOverlayHandle(vr::k_ulOverlayHandleInvalid),
+                                       m_TheaterOverlayReferenceHandle(vr::k_ulOverlayHandleInvalid), m_CurrentTheaterOverlayOrigHandle(vr::k_ulOverlayHandleInvalid), 
+                                       m_CurrentTheaterOverlayID(k_ulOverlayID_None)
 #else
     OverlayManager::OverlayManager() : m_CurrentOverlayID(0)
 #endif
@@ -108,6 +112,31 @@ Matrix4 OverlayManager::GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handl
         float height = (aspect_ratio_orig * width);
         float offset_to_bottom =  -( (aspect_ratio_new * width) - (aspect_ratio_orig * width) ) / 2.0f;
         offset_to_bottom -= height / 2.0f;
+
+        //Theater Screen's width can't be queried, so we use a cursor overlay and use it as reference point instead
+        if (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen)
+        {
+            #ifdef DPLUS_UI
+                vr::VROverlayHandle_t ovrl_handle_reference = vr::k_ulOverlayHandleInvalid;
+                vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusTheaterReference", &ovrl_handle_reference);
+            #else
+                vr::VROverlayHandle_t ovrl_handle_reference = m_TheaterOverlayReferenceHandle;
+            #endif
+
+            if (ovrl_handle_reference != vr::k_ulOverlayHandleInvalid)
+            {
+                //Put reference cursor overlay to bottom center of theater overlay
+                vr::HmdVector2_t pos{ovrl_pixel_width/2.0f, 0.0f};
+                vr::VROverlay()->SetOverlayCursorPositionOverride(ovrl_handle, &pos);
+
+                vr::VROverlay()->SetOverlayAlpha(ovrl_handle_reference, 0.25f);
+
+                //Grab its middle spot and return that
+                vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_reference, vr::TrackingUniverseStanding, {0.5f, 0.5f}, &matrix);
+
+                return matrix;
+            }
+        }
 
         //When Performance Monitor, apply additional offset of the unused overlay space
         #ifdef DPLUS_UI
@@ -322,6 +351,136 @@ Overlay& OverlayManager::GetPrimaryDashboardOverlay()
     return (it != m_Overlays.end()) ? *it : m_OverlayNull;
 }
 
+vr::VROverlayHandle_t OverlayManager::GetTheaterOverlayHandle() const
+{
+    return m_TheaterOverlayHandle;
+}
+
+unsigned int OverlayManager::GetTheaterOverlayID() const
+{
+    return m_CurrentTheaterOverlayID;
+}
+
+void OverlayManager::SetTheaterOverlayID(unsigned int id)
+{
+    if (id >= m_OverlayConfigData.size())
+    {
+        ClearTheaterOverlay();
+        return;
+    }
+
+    Overlay& ovrl_source = m_Overlays[id];
+
+    if (m_CurrentTheaterOverlayID == k_ulOverlayID_None)
+    {
+        vr::VROverlayError ovrl_error = vr::VROverlayError_None;
+        vr::VROverlayHandle_t ovrl_handle;
+        vr::VROverlayHandle_t icon_unused;
+
+        ovrl_error = vr::VROverlay()->CreateDashboardOverlay(g_AppKeyTheaterScreen, "Desktop+ Theater Screen", &ovrl_handle, &icon_unused);
+
+        if (ovrl_error == vr::VROverlayError_None)
+        {
+            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_NoDashboardTab,        true);
+            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_EnableControlBar,      true);
+            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_EnableControlBarClose, true);
+
+            m_TheaterOverlayHandle = ovrl_handle;
+
+            //Since the Theater Screen's width can't be queried, getting anything except the middle transform is difficult
+            //We work around this restriction by using a cursor overlay as transform reference as it can be placed relative on the overlay and still be queried for its transform
+            ovrl_error = vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusTheaterReference", "Desktop+ Theater Screen Reference", &ovrl_handle);
+
+            if (ovrl_error == vr::VROverlayError_None)
+            {
+                //Empty overlay is probably fine, but give it something to work with just to be sure
+                unsigned char bytes[2 * 2 * 4] = {0}; //2x2 transparent RGBA
+                vr::VROverlay()->SetOverlayRaw(ovrl_handle, bytes, 2, 2, 4);
+
+                //Apply initial cursor state, though position gets adjusted for every query as it needs to match overlay mouse scale
+                vr::HmdVector2_t hotspot{0.5f, 0.5f};
+                vr::HmdVector2_t pos{0.0f, 0.0f};
+                vr::VROverlay()->SetOverlayCursor(m_TheaterOverlayHandle, ovrl_handle);
+                vr::VROverlay()->SetOverlayTransformCursor(ovrl_handle, &hotspot);
+                vr::VROverlay()->SetOverlayCursorPositionOverride(m_TheaterOverlayHandle, &pos);
+
+                m_TheaterOverlayReferenceHandle = ovrl_handle;
+            }
+            else
+            {
+                LOG_F(WARNING, "Failed to create Theater Mode reference overlay: %s", vr::VROverlay()->GetOverlayErrorNameFromEnum(ovrl_error));
+            }
+        }
+        else
+        {
+            LOG_F(WARNING, "Failed to create Theater Mode overlay: %s", vr::VROverlay()->GetOverlayErrorNameFromEnum(ovrl_error));
+        }
+    }
+    else if (m_CurrentTheaterOverlayID < m_OverlayConfigData.size())
+    {
+        //Return previous source overlay to its own handle
+        Overlay& ovrl_source_prev = m_Overlays[m_CurrentTheaterOverlayID];
+        ovrl_source_prev.SetHandle(m_CurrentTheaterOverlayOrigHandle);
+        vr::VROverlay()->SetOverlayAlpha(m_CurrentTheaterOverlayOrigHandle, ovrl_source.GetOpacity());  //Match opacity as its only set on changes
+        ovrl_source_prev.SetVisible(false);                                                             //Mark it as invisible and have OutputManager reset it later
+
+        m_OverlayConfigData[m_CurrentTheaterOverlayID].ConfigHandle[configid_handle_overlay_state_overlay_handle] = m_CurrentTheaterOverlayOrigHandle;
+
+        //Send handle change over to UI
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_CurrentTheaterOverlayID);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, m_CurrentTheaterOverlayOrigHandle);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+    }
+
+    m_CurrentTheaterOverlayOrigHandle = ovrl_source.GetHandle();
+    vr::VROverlay()->HideOverlay(m_CurrentTheaterOverlayOrigHandle);                     //Hide original overlay
+    vr::VROverlay()->SetOverlayAlpha(m_TheaterOverlayHandle, ovrl_source.GetOpacity());  //Match opacity as its only set on changes
+    ovrl_source.SetHandle(m_TheaterOverlayHandle);
+
+    m_CurrentTheaterOverlayID = id;
+
+    if (m_CurrentTheaterOverlayID < m_OverlayConfigData.size())
+    {
+        m_OverlayConfigData[m_CurrentTheaterOverlayID].ConfigHandle[configid_handle_overlay_state_overlay_handle] = m_TheaterOverlayHandle;
+
+        //Send handle change over to UI
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_CurrentTheaterOverlayID);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, m_TheaterOverlayHandle);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+    }
+}
+
+void OverlayManager::ClearTheaterOverlay()
+{
+    if (m_CurrentTheaterOverlayID < m_OverlayConfigData.size())
+    {
+        //Return previous source overlay to its own handle
+        Overlay& ovrl_source_prev = m_Overlays[m_CurrentTheaterOverlayID];
+        ovrl_source_prev.SetHandle(m_CurrentTheaterOverlayOrigHandle);
+        vr::VROverlay()->SetOverlayAlpha(m_CurrentTheaterOverlayOrigHandle, ovrl_source_prev.GetOpacity());  //Match opacity as its only set on changes
+        ovrl_source_prev.SetVisible(false);                                                                  //Mark it as invisible and have OutputManager reset it later
+
+        m_OverlayConfigData[m_CurrentTheaterOverlayID].ConfigHandle[configid_handle_overlay_state_overlay_handle] = m_CurrentTheaterOverlayOrigHandle;
+
+        //Send handle change over to UI
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_CurrentTheaterOverlayID);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, m_CurrentTheaterOverlayOrigHandle);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+    }
+
+    if (m_TheaterOverlayHandle != vr::k_ulOverlayHandleInvalid)
+    {
+        vr::VROverlay()->DestroyOverlay(m_TheaterOverlayHandle);
+
+        if (m_TheaterOverlayReferenceHandle != vr::k_ulOverlayHandleInvalid)
+        {
+            vr::VROverlay()->DestroyOverlay(m_TheaterOverlayReferenceHandle);
+        }
+    }
+
+    m_CurrentTheaterOverlayID = k_ulOverlayID_None;
+}
+
 #endif
 
 OverlayConfigData& OverlayManager::GetConfigData(unsigned int id)
@@ -408,6 +567,9 @@ void OverlayManager::SwapOverlays(unsigned int id, unsigned int id2)
         std::iter_swap(m_Overlays.begin() + id, m_Overlays.begin() + id2);
         m_Overlays[id].SetID(id);
         m_Overlays[id2].SetID(id2);
+
+        //Fixup theater overlay ID if needed
+        m_CurrentTheaterOverlayID = (m_CurrentTheaterOverlayID == id) ? id2 : (m_CurrentTheaterOverlayID == id2) ? id : m_CurrentTheaterOverlayID;
     #endif
 
     #ifdef DPLUS_UI
@@ -483,6 +645,11 @@ void OverlayManager::RemoveOverlay(unsigned int id)
                         overlay.SetID(overlay.GetID() - 1);
                     }
                 }
+            }
+
+            if (m_CurrentTheaterOverlayID > id)
+            {
+                m_CurrentTheaterOverlayID--;
             }
 
             //Keep active count correct

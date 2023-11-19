@@ -61,6 +61,7 @@ class OutputManager
         const std::vector<DPRect>& GetDesktopRects() const;
 
         void ShowOverlay(unsigned int id);
+        void ShowTheaterOverlay(unsigned int id);
         void HideOverlay(unsigned int id);
         void ResetOverlayActiveCount();     //Called by OverlayManager after removing all overlays, makes sure the active counts are correct
 

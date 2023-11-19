@@ -168,7 +168,7 @@ enum ConfigID_Int
     configid_int_state_interface_floating_ui_hovered_id,    //Floating UI target overlay ID set only while the laser pointer is pointing at the Floating UI overlay. -1 = None
     configid_int_state_auto_docking_state,                  //0 = Off, 1 = Left Hand, 2 = Right Hand (matches ETrackedControllerRole). +2 for detaching
     configid_int_state_drag_hint_device,                    //Value is tracked device index. Set before changing configid_int_state_drag_hint_type
-    configid_int_state_drag_hint_type,                      //0 = Off, 1 = Overlay Position Locked
+    configid_int_state_drag_hint_type,                      //0 = Off, 1 = Overlay Position Locked, 2 = Theater Screen Overlay Drag Block
     configid_int_state_laser_pointer_device_hint,           //Used by dragging functions when laser pointer device can't be determined via other means (value is tracked device index)
     configid_int_state_dplus_laser_pointer_device,          //Tracked device index for active Desktop+ laser pointer
     configid_int_state_browser_content_blocker_list_count,
@@ -283,8 +283,9 @@ enum OverlayOrigin
     ovrl_origin_hmd,
     ovrl_origin_left_hand,
     ovrl_origin_right_hand,
-    ovrl_origin_aux,        //Tracker or whatever. No proper autodetection of additional devices yet, maybe in the future
-    ovrl_origin_dplus_tab,  //Desktop+ dashboard dummy overlay, more reliable than dashboard origin. Not used by user overlays
+    ovrl_origin_aux,            //Tracker or whatever. No proper autodetection of additional devices yet, maybe in the future
+    ovrl_origin_theater_screen,
+    ovrl_origin_dplus_tab,      //Desktop+ dashboard dummy overlay, more reliable than dashboard origin. Not used by user overlays
     ovrl_origin_MAX
 };
 

@@ -26,6 +26,7 @@ WindowOverlayProperties::WindowOverlayProperties() :
     m_Column0Width(0.0f),
     m_IsConfigDataModified(false),
     m_OriginHMDFloorSettingsAnimationProgress(0.0f),
+    m_OriginTheaterScreenSettingsAnimationProgress(0.0f),
     m_BufferOverlayName{0},
     m_IsBrowserURLChanged(false)
 {
@@ -150,7 +151,8 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
             m_WindowIconWin32IconCacheID = -1;
         }
 
-        m_OriginHMDFloorSettingsAnimationProgress = (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_hmd_floor) ? 1.0f : 0.0f;
+        m_OriginHMDFloorSettingsAnimationProgress      = (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_hmd_floor)      ? 1.0f : 0.0f;
+        m_OriginTheaterScreenSettingsAnimationProgress = (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen) ? 1.0f : 0.0f;
     }
 
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_interface_overlay_current_id, (int)overlay_id);
@@ -415,11 +417,19 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
     ImGui::SetColumnWidth(0, m_Column0Width);
 
     //Origin
+    int& mode_origin = ConfigManager::GetRef(configid_int_overlay_origin);
+    bool& is_enabled = ConfigManager::GetRef(configid_bool_overlay_enabled);
+
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionOrigin));
-    ImGui::NextColumn();
 
-    int& mode_origin = ConfigManager::GetRef(configid_int_overlay_origin);
+    if (mode_origin == ovrl_origin_theater_screen)
+    {
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        HelpMarker(TranslationManager::GetString(tstr_OvrlPropsPositionOriginTheaterScreenTip));
+    }
+
+    ImGui::NextColumn();
 
     const ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
     ImVec2 img_size, img_uv_min, img_uv_max;
@@ -435,16 +445,33 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
             is_generic_tracker_connected = (GetFirstVRTracker() != vr::k_unTrackedDeviceIndexInvalid);
         }
 
-        const int loop_max = (is_generic_tracker_connected) ? ovrl_origin_dplus_tab : ovrl_origin_aux;
-
         //Make use of the fact origin, icon and translation string IDs are laid out sequentially and shorten this to a nice loop
-        for (int i = ovrl_origin_room; i < loop_max; ++i)
+        for (int i = ovrl_origin_room; i < ovrl_origin_dplus_tab; ++i)
         {
+            //Skip over some entries if they're not available
+            if ((i == ovrl_origin_aux) && (!is_generic_tracker_connected))
+                continue;
+
             ImGui::PushID(i);
 
-            if (ImGui::Selectable("", (mode_origin == i)))
+            if ((ImGui::Selectable("", (mode_origin == i))) && (mode_origin != i))
             {
                 mode_origin = i;
+
+                //If overlay is switched to theater screen origin, disable the overlay so it doesn't enter theater mode right away and has the properties window disappear
+                if (mode_origin == ovrl_origin_theater_screen)
+                {
+                    if (is_enabled)
+                    {
+                        is_enabled = false;
+                        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_enabled, false);
+                    }
+
+                    //Also disable Gaze Fade if it's on
+                    ConfigManager::SetValue(configid_bool_overlay_gazefade_enabled, false);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_gazefade_enabled, false);
+                }
+
                 IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_origin, mode_origin);
             }
 
@@ -498,7 +525,27 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
     ImGui::Spacing();
     ImGui::EndCollapsingArea();
 
+    if (UIManager::Get()->IsOpenVRLoaded())
+    {
+        ImGui::BeginCollapsingArea("OriginTheaterScreenSettings", (mode_origin == ovrl_origin_theater_screen), m_OriginTheaterScreenSettingsAnimationProgress);
+
+        if (ImGui::Button(TranslationManager::GetString( (is_enabled) ? tstr_OvrlPropsPositionOriginConfigTheaterScreenLeave : tstr_OvrlPropsPositionOriginConfigTheaterScreenEnter )))
+        {
+            //Entering and leaving theater mode is nothing special but rather just a side effect of enabling the overlay. This is only for better UX
+            is_enabled = !is_enabled;
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_enabled, is_enabled);
+        }
+
+        ImGui::Spacing();
+        ImGui::EndCollapsingArea();
+    }
+
     ImGui::NextColumn();
+
+    if (mode_origin == ovrl_origin_theater_screen)
+    {
+        ImGui::PushItemDisabled();
+    }
 
     //Display Mode
     ImGui::AlignTextToFramePadding();
@@ -554,6 +601,9 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_transform_locked, transform_locked);
     }
 
+    if (mode_origin == ovrl_origin_theater_screen)
+        ImGui::PopItemDisabled();
+
     ImGui::Columns(1);
 }
 
@@ -562,18 +612,23 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     ImGuiStyle& style = ImGui::GetStyle();
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
+    const int& mode_origin = ConfigManager::GetRef(configid_int_overlay_origin);
+
     ImGui::Spacing();
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatAppearance));
     ImGui::Columns(2, "ColumnAppearance", false);
     ImGui::SetColumnWidth(0, m_Column0Width);
 
     //Width
+    if (mode_origin == ovrl_origin_theater_screen)
+        ImGui::PushItemDisabled();
+
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAppearanceWidth));
     ImGui::NextColumn();
 
     float& width = ConfigManager::GetRef(configid_float_overlay_width);
-    const float width_slider_max = (ConfigManager::GetRef(configid_int_overlay_origin) >= ovrl_origin_right_hand) ? 1.5f : 5.0f;
+    const float width_slider_max = (mode_origin >= ovrl_origin_right_hand) ? 1.5f : 5.0f;
 
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayWidth") );
     if (ImGui::SliderWithButtonsFloat("OverlayWidth", width, 0.1f, 0.01f, 0.05f, width_slider_max, "%.2f m", ImGuiSliderFlags_Logarithmic))
@@ -604,6 +659,9 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     vr_keyboard.VRKeyboardInputEnd();
 
     ImGui::NextColumn();
+
+    if (mode_origin == ovrl_origin_theater_screen)
+        ImGui::PopItemDisabled();
 
     //Opacity
     ImGui::AlignTextToFramePadding();
@@ -1324,6 +1382,8 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
     ImGuiStyle& style = ImGui::GetStyle();
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
+    const int& mode_origin = ConfigManager::GetRef(configid_int_overlay_origin);
+
     ImGui::Spacing();
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCatAdvanced));
     ImGui::Columns(2, "ColumnAdvanced", false);
@@ -1377,6 +1437,9 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
     //Gaze Fade
     {
+        if (mode_origin == ovrl_origin_theater_screen)
+            ImGui::PushItemDisabled();
+
         bool& gazefade_enabled = ConfigManager::GetRef(configid_bool_overlay_gazefade_enabled);
 
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFade), &gazefade_enabled))
@@ -1468,6 +1531,9 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
             ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
         }
+
+        if (mode_origin == ovrl_origin_theater_screen)
+            ImGui::PopItemDisabled();
     }
 
     //Laser Pointer Input

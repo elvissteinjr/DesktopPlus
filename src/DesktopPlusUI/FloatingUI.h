@@ -21,6 +21,8 @@ class FloatingUI
         float m_FadeOutDelayCount;
         int m_AutoFitFrames;
 
+        float m_TheaterOffsetAnimationProgress;
+
     public:
         FloatingUI();
         void Update();

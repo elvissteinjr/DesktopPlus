@@ -67,6 +67,7 @@ enum TMNGRTexID
     tmtex_icon_xsmall_origin_left_hand,
     tmtex_icon_xsmall_origin_right_hand,
     tmtex_icon_xsmall_origin_aux,
+    tmtex_icon_xsmall_origin_theater_screen,
     tmtex_icon_xxsmall_close,
     tmtex_icon_xxsmall_pin,
     tmtex_icon_xxsmall_unpin,

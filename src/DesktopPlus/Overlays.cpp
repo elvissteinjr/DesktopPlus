@@ -229,6 +229,10 @@ bool Overlay::ShouldBeVisible() const
     if (!data.ConfigBool[configid_bool_overlay_enabled])
         return false;
 
+    //Enabled theater mode is always visible
+    if (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen)
+        return true;
+
     OutputManager* outmgr = OutputManager::Get();
     if (outmgr == nullptr)
         return false;

@@ -15,8 +15,9 @@
 LPCWSTR const g_WindowClassNameDashboardApp = L"elvdesktop";
 LPCWSTR const g_WindowClassNameUIApp        = L"elvdesktopUI";
 LPCWSTR const g_WindowClassNameElevatedMode = L"elvdesktopelevated";
-const char* const g_AppKeyDashboardApp      = "steam.overlay.1494460";      //1494460 is the appid on Steam, but we just use this for all builds
+const char* const g_AppKeyDashboardApp      = "steam.overlay.1494460";                  //1494460 is the appid on Steam, but we just use this for all builds
 const char* const g_AppKeyUIApp             = "elvissteinjr.DesktopPlusUI";
+const char* const g_AppKeyTheaterScreen     = "elvissteinjr.DesktopPlusTheaterScreen";  //We need an app with "starts_theater_mode", but we can't add that to the app manifest written by Steam
 
 enum IPCMsgID
 {

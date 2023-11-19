@@ -29,6 +29,11 @@ class OverlayManager
         #ifndef DPLUS_UI
             std::vector<Overlay> m_Overlays;
             Overlay m_OverlayNull;
+
+            vr::VROverlayHandle_t m_TheaterOverlayHandle;               //Handle of the dashboard overlay used for Theater Mode display
+            vr::VROverlayHandle_t m_TheaterOverlayReferenceHandle;      //Handle of the cursor overlay used as theater overlay reference transform
+            vr::VROverlayHandle_t m_CurrentTheaterOverlayOrigHandle;    //Handle of the overlay originally held by current theater overlay
+            unsigned int m_CurrentTheaterOverlayID;                     //ID of overlay the theater overlay duplicates
         #endif
         std::vector<OverlayConfigData> m_OverlayConfigData;
 
@@ -49,6 +54,11 @@ class OverlayManager
             const Overlay& GetOverlay(unsigned int id) const;           //Returns m_OverlayNull on error
             Overlay& GetCurrentOverlay();
             Overlay& GetPrimaryDashboardOverlay();                      //Returns first visible overlay with dashboard origin, or m_OverlayNull if none exists
+
+            vr::VROverlayHandle_t GetTheaterOverlayHandle() const;      //Returns theater overlay handle (may be invalid if no overlay ID is assinged)
+            unsigned int GetTheaterOverlayID() const;
+            void SetTheaterOverlayID(unsigned int id);
+            void ClearTheaterOverlay();
         #endif
         OverlayConfigData& GetConfigData(unsigned int id);
         const OverlayConfigData& GetConfigData(unsigned int id) const;
@@ -65,7 +75,7 @@ class OverlayManager
         void RemoveAllOverlays();
 
         #ifndef DPLUS_UI
-            //Returns list of inactive (not current capturing) overlay IDs with winrt_last_* strings matching the given window
+            //Returns list of inactive (not currently capturing) overlay IDs with winrt_last_* strings matching the given window
             OverlayIDList FindInactiveOverlaysForWindow(const WindowInfo& window_info) const;
         #endif
 

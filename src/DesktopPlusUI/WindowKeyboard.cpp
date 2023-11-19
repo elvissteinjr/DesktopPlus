@@ -71,10 +71,13 @@ void WindowKeyboard::UpdateVisibility()
         vr::VROverlayHandle_t overlay_handle = GetOverlayHandle();
 
         int assigned_overlay_id = GetAssignedOverlayID();
+        bool assigned_overlay_use_fallback_origin = false;
 
         if ( (m_OverlayStateCurrentID == floating_window_ovrl_state_room) && (assigned_overlay_id >= 0) )
         {
-            ovrl_handle_assigned = OverlayManager::Get().GetConfigData((unsigned int)assigned_overlay_id).ConfigHandle[configid_handle_overlay_state_overlay_handle];
+            const OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)assigned_overlay_id);
+            ovrl_handle_assigned = data.ConfigHandle[configid_handle_overlay_state_overlay_handle];
+            assigned_overlay_use_fallback_origin = (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen); //Theater Screen uses fallback origin if not pinned
 
             if (ovrl_handle_assigned != vr::k_ulOverlayHandleInvalid)
             {
@@ -110,7 +113,7 @@ void WindowKeyboard::UpdateVisibility()
         //Set position
         if ( (m_OverlayStateCurrent->IsVisible) && (!m_IsTransitionFading) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {
-            if (ovrl_handle_assigned != vr::k_ulOverlayHandleInvalid)                       //Based on assigned overlay
+            if ( (ovrl_handle_assigned != vr::k_ulOverlayHandleInvalid) && (!assigned_overlay_use_fallback_origin) )    //Based on assigned overlay
             {
                 if (!m_OverlayStateCurrent->IsPinned)
                 {
@@ -1238,8 +1241,15 @@ void WindowKeyboard::RebaseTransform()
         Matrix4 mat_origin_inverse;
 
         int assigned_id = GetAssignedOverlayID();
+        bool assigned_overlay_use_fallback_origin = false;
 
         if (assigned_id >= 0)
+        {
+            const OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)assigned_id);
+            assigned_overlay_use_fallback_origin = (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen); //Theater Screen uses fallback origin if not pinned
+        }
+
+        if ((!assigned_overlay_use_fallback_origin) && (assigned_id >= 0))
         {
             mat_origin_inverse = OverlayManager::Get().GetOverlayCenterBottomTransform((unsigned int)assigned_id);
             UIManager::Get()->GetOverlayDragger().ApplyDashboardScale(mat_origin_inverse);
