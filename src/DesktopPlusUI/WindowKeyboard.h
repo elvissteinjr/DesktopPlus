@@ -7,6 +7,7 @@
 struct LaserInputState
 {
     vr::TrackedDeviceIndex_t DeviceIndex = vr::k_unTrackedDeviceIndexInvalid;
+    uint32_t CursorIndexLast = 0;
     ImGui::ImGuiMouseState MouseState;
 };
 
@@ -36,6 +37,7 @@ class WindowKeyboard : public FloatingWindow
         int m_AssignedOverlayIDDashboardTab;    //^
 
         bool m_IsIsoEnterDown;
+        bool m_IsDashboardPointerActiveLast;
         bool m_UnstickModifiersLater;
         KeyboardLayoutSubLayout m_SubLayoutOverride;
         KeyboardLayoutSubLayout m_LastSubLayout;

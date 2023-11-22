@@ -34,6 +34,7 @@ bool IsOverlayIntersectionHitFrontFacing(const vr::VROverlayIntersectionParams_t
 Matrix4 ComputeHMDFacingTransform(float distance);
 
 vr::TrackedDeviceIndex_t FindPointerDeviceForOverlay(vr::VROverlayHandle_t overlay_handle);
+vr::TrackedDeviceIndex_t FindPointerDeviceForOverlay(vr::VROverlayHandle_t overlay_handle, Vector2 pos_uv); //Returns the device pointing closest to the given position if there are multiple
 vr::TrackedDeviceIndex_t GetFirstVRTracker();
 Matrix4 GetControllerTipMatrix(bool right_hand = true);
 float GetTimeNowToPhotons();

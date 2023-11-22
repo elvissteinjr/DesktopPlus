@@ -21,6 +21,7 @@ WindowKeyboard::WindowKeyboard() :
     m_AssignedOverlayIDRoom(-1),
     m_AssignedOverlayIDDashboardTab(-1),
     m_IsIsoEnterDown(false),
+    m_IsDashboardPointerActiveLast(false),
     m_UnstickModifiersLater(false),
     m_SubLayoutOverride(kbdlayout_sub_base),
     m_LastSubLayout(kbdlayout_sub_base)
@@ -279,12 +280,29 @@ void WindowKeyboard::WindowUpdate()
     //--
     */
 
-    //Render pointer blobs for any input that isn't already controller the mouse
     if (!UIManager::Get()->IsInDesktopMode())
     {
         vr::TrackedDeviceIndex_t primary_device = ConfigManager::Get().GetPrimaryLaserPointerDevice();
         bool dashboard_device_exists = (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid);
 
+        //Overlay leave events are not processed when a dashboard pointer exists changes active state, so make sure to get the pointers out of the way anyways
+        if (dashboard_device_exists != m_IsDashboardPointerActiveLast)
+        {
+            for (auto& state : m_LaserInputStates)
+            {
+                //Pointer left the overlay
+                state.MouseState.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+
+                //Release mouse buttons if they're held down
+                std::fill(std::begin(state.MouseState.MouseDown), std::end(state.MouseState.MouseDown), false);
+            }
+
+            state_real.MouseState.ApplyToGlobalState();
+
+            m_IsDashboardPointerActiveLast = dashboard_device_exists;
+        }
+
+        //Render pointer blobs for any input that isn't already controlled by the mouse
         //Use pos/size from ImGui since our stored members describe center pivoted max window space
         const ImVec2 cur_pos  = ImGui::GetWindowPos();
         const ImVec2 cur_size = ImGui::GetWindowSize();
@@ -294,18 +312,8 @@ void WindowKeyboard::WindowUpdate()
         {
             if ( (state.DeviceIndex != vr::k_unTrackedDeviceIndexOther) && (state.DeviceIndex != primary_device) )
             {
-                //Overlay leave events are not processed when a dashboard device exists (dashboard pointer doesn't set device index), so make sure to get the pointers out of the way anyways
-                if (dashboard_device_exists)
-                {
-                    //Pointer left the overlay
-                    state.MouseState.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
-
-                    //Release mouse buttons if they're still down (not the case in most situations)
-                    std::fill(std::begin(state.MouseState.MouseDown), std::end(state.MouseState.MouseDown), false);
-                }
-
                 //Only render if inside window
-                if (window_bb.Contains(state.MouseState.MousePos))
+                if ((!dashboard_device_exists) && (window_bb.Contains(state.MouseState.MousePos)))
                 {
                     ImGui::GetForegroundDrawList()->AddCircleFilled(state.MouseState.MousePos, 7.0f, ImGui::GetColorU32(Style_ImGuiCol_SteamVRCursorBorder));
                     ImGui::GetForegroundDrawList()->AddCircleFilled(state.MouseState.MousePos, 5.0f, ImGui::GetColorU32(Style_ImGuiCol_SteamVRCursor));
@@ -1358,10 +1366,47 @@ bool WindowKeyboard::HandleOverlayEvent(const vr::VREvent_t& vr_event)
     if (ImGui::GetCurrentContext() == nullptr)
         return false;
 
-    const vr::TrackedDeviceIndex_t device_index = vr_event.trackedDeviceIndex;
+    vr::TrackedDeviceIndex_t device_index = vr_event.trackedDeviceIndex;
+
+    //System laser pointer expresses a secondary pointer device as a cursor index instead of providing the device index as our custom laser pointer does
+    uint32_t cursor_index = 0;
+    switch (vr_event.eventType)
+    {
+        case vr::VREvent_MouseMove:
+        case vr::VREvent_MouseButtonDown:
+        case vr::VREvent_MouseButtonUp:
+        {
+            cursor_index = vr_event.data.mouse.cursorIndex;
+            break;
+        }
+        case vr::VREvent_FocusEnter:
+        case vr::VREvent_FocusLeave:
+        {
+            cursor_index = vr_event.data.overlay.cursorIndex;
+            break;
+        }
+        case vr::VREvent_ScrollDiscrete:
+        case vr::VREvent_ScrollSmooth:
+        {
+            cursor_index = vr_event.data.scroll.cursorIndex;
+            break;
+        }
+        default: break;
+    }
+
+    //See if we already identified the device index for this cursor index if it's not the primary laser pointer
+    if (cursor_index != 0)
+    {
+        auto it = std::find_if(m_LaserInputStates.begin(), m_LaserInputStates.end(), [&](const auto& state){ return (state.CursorIndexLast == cursor_index); });
+
+        if (it != m_LaserInputStates.end())
+        {
+            device_index = it->DeviceIndex;
+        }
+    }
 
     //Patch up mouse and button state when device is primary device and there's still a separate input state
-    if (device_index == ConfigManager::Get().GetPrimaryLaserPointerDevice())
+    if ((device_index == ConfigManager::Get().GetPrimaryLaserPointerDevice()) && (device_index != vr::k_unTrackedDeviceIndexInvalid))
     {
         auto it = std::find_if(m_LaserInputStates.begin(), m_LaserInputStates.end(), [&](const auto& state){ return (state.DeviceIndex == device_index); });
 
@@ -1383,16 +1428,32 @@ bool WindowKeyboard::HandleOverlayEvent(const vr::VREvent_t& vr_event)
         return false;
     }
 
-    //Skip if no valid device index or it's the system pointer (sends as device 0, HMD)
-    if ( (device_index >= vr::k_unMaxTrackedDeviceCount) || (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid) )
-        return false;
+    //Skip if no valid device index or it's the system pointer (sends as device 0 (HMD) or invalid)
+    //For mouse move events with cursor indices above 0 we allow invalid devices as they're used to guess the correct one
+    if ( ( (device_index >= vr::k_unMaxTrackedDeviceCount) || (device_index == vr::k_unTrackedDeviceIndex_Hmd) || 
+          ((cursor_index == 0) && (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid)) ) && ((cursor_index == 0) || (vr_event.eventType != vr::VREvent_MouseMove)) )
+    {
+        return (cursor_index != 0); //Still return true for non-0 index as we don't want it to be treated as ImGui mouse input
+    }
 
     switch (vr_event.eventType)
     {
         case vr::VREvent_MouseMove:
         {
-            LaserInputState& state = GetLaserInputState(device_index);
-            state.MouseState.MousePos = ImVec2(vr_event.data.mouse.x, -vr_event.data.mouse.y + ImGui::GetIO().DisplaySize.y);
+            //If we haven't seen this device on this cursor index before (or device index is invalid), guess which one it likely is based on the cursor position
+            if (GetLaserInputState(device_index).CursorIndexLast != cursor_index)
+            {
+                Vector2 uv_pos(vr_event.data.mouse.x / ImGui::GetIO().DisplaySize.x, vr_event.data.mouse.y / ImGui::GetIO().DisplaySize.y);
+                device_index = FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleKeyboard(), uv_pos);
+            }
+
+            if (device_index != vr::k_unTrackedDeviceIndexInvalid)
+            {
+                LaserInputState& state = GetLaserInputState(device_index);
+                state.MouseState.MousePos = ImVec2(vr_event.data.mouse.x, -vr_event.data.mouse.y + ImGui::GetIO().DisplaySize.y);
+                state.CursorIndexLast = cursor_index;
+            }
+
             return true;
         }
         case vr::VREvent_FocusEnter:
@@ -1405,6 +1466,7 @@ bool WindowKeyboard::HandleOverlayEvent(const vr::VREvent_t& vr_event)
 
             //Pointer left the overlay
             state.MouseState.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+            state.CursorIndexLast = 0;
 
             //Release mouse buttons if they're still down (not the case in most situations)
             std::fill(std::begin(state.MouseState.MouseDown), std::end(state.MouseState.MouseDown), false);
@@ -1434,7 +1496,7 @@ bool WindowKeyboard::HandleOverlayEvent(const vr::VREvent_t& vr_event)
         }
     }
 
-    return false;
+    return (cursor_index != 0);
 }
 
 void WindowKeyboard::LaserSetMousePos(vr::TrackedDeviceIndex_t device_index, ImVec2 pos)

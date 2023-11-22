@@ -212,6 +212,33 @@ vr::TrackedDeviceIndex_t FindPointerDeviceForOverlay(vr::VROverlayHandle_t overl
     return device_index;
 }
 
+vr::TrackedDeviceIndex_t FindPointerDeviceForOverlay(vr::VROverlayHandle_t overlay_handle, Vector2 pos_uv)
+{
+    vr::TrackedDeviceIndex_t device_index = vr::k_unTrackedDeviceIndexInvalid;
+    float nearest_uv_distance = FLT_MAX;
+
+    //Check left and right hand controller
+    for (int controller_role = vr::TrackedControllerRole_LeftHand; controller_role <= vr::TrackedControllerRole_RightHand; ++controller_role)
+    {
+        vr::TrackedDeviceIndex_t device_index_intersection = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole((vr::ETrackedControllerRole)controller_role);
+        vr::VROverlayIntersectionResults_t results;
+
+        if (ComputeOverlayIntersectionForDevice(overlay_handle, device_index_intersection, vr::TrackingUniverseStanding, &results))
+        {
+            const Vector2 uv_intesection(results.vUVs.v[0], results.vUVs.v[1]);
+            const float distance = pos_uv.distance(uv_intesection);
+
+            if (distance < nearest_uv_distance)
+            {
+                device_index = device_index_intersection;
+                nearest_uv_distance = distance;
+            }
+        }
+    }
+
+    return device_index;
+}
+
 vr::TrackedDeviceIndex_t GetFirstVRTracker()
 {
     //Get the first generic tracker

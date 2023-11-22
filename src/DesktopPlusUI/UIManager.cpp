@@ -283,6 +283,7 @@ vr::EVRInitError UIManager::InitOverlay()
             vr::VROverlay()->SetOverlayFlag(m_OvrlHandleSettings,          vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
             vr::VROverlay()->SetOverlayFlag(m_OvrlHandleOverlayProperties, vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
             vr::VROverlay()->SetOverlayFlag(m_OvrlHandleKeyboard,          vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleKeyboard,          vr::VROverlayFlags_MultiCursor,              true);
             vr::VROverlay()->SetOverlayFlag(m_OvrlHandleAuxUI,             vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
 
             vr::HmdVector2_t mouse_scale;
