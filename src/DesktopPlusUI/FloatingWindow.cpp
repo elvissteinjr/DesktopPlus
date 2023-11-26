@@ -24,7 +24,8 @@ FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
                                    m_TitleBarTitleIconAlpha(1.0f),
                                    m_IsTitleBarHovered(false),
                                    m_HasAppearedOnce(false),
-                                   m_IsWindowAppearing(false)
+                                   m_IsWindowAppearing(false),
+                                   m_CompactTableHeaderHeight(0.0f)
 {
     m_Pos.x = FLT_MIN;
     m_WindowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
@@ -1289,6 +1290,53 @@ bool FloatingWindow::ActionAddSelector(ActionManager::ActionList& list_actions_t
     }
 
     return ret;
+}
+
+bool FloatingWindow::BeginCompactTable(const char* str_id, int column, ImGuiTableFlags flags, const ImVec2& outer_size, float inner_width)
+{
+    const ImGuiStyle style = ImGui::GetStyle();
+
+    //There's minor breakage at certain fractional scales, but the ones we care about (100%, 160% (VR), 200%) work fine with this
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,      {style.CellPadding.x,     -1.0f});
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, {style.ItemInnerSpacing.x, 0.0f});
+
+    flags = flags & (~ImGuiTableFlags_BordersOuter);    //Remove border flag, we draw our own later
+    flags |= ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_PadOuterX;
+    bool ret = ImGui::BeginTable(str_id, column, flags, outer_size, inner_width);
+
+    if (ret)
+    {
+        m_CompactTableHeaderHeight = ImGui::GetCursorPosY();
+    }
+    else
+    {
+        ImGui::PopStyleVar(2);
+    }
+
+    return ret;
+}
+
+void FloatingWindow::CompactTableHeadersRow()
+{
+    ImGui::PushItemDisabledNoVisual();
+    ImGui::TableHeadersRow();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 1.0f);
+    ImGui::PopItemDisabledNoVisual();
+
+    m_CompactTableHeaderHeight = ImGui::GetCursorPosY() - m_CompactTableHeaderHeight;
+}
+
+void FloatingWindow::EndCompactTable()
+{
+    const ImGuiStyle style = ImGui::GetStyle();
+
+    ImGui::EndTable();
+    ImGui::PopStyleVar(2);
+
+    //Selectables cover parts of the default table border and the bottom border would be one pixel inside the last row, so we draw our own header and table border on top instead
+    ImVec2 rect_min = ImGui::GetItemRectMin(), rect_max = ImGui::GetItemRectMax();
+    ImGui::GetWindowDrawList()->AddRect(rect_min, {rect_max.x, rect_min.y + ceilf(m_CompactTableHeaderHeight - 1.0f)}, ImGui::GetColorU32(ImGuiCol_Border), 0.0f, 0, style.WindowBorderSize);
+    ImGui::GetWindowDrawList()->AddRect(rect_min, {rect_max.x, rect_max.y + 1.0f},                              ImGui::GetColorU32(ImGuiCol_Border), 0.0f, 0, style.WindowBorderSize);
 }
 
 void FloatingWindow::Update()

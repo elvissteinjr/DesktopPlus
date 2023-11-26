@@ -96,6 +96,8 @@ class FloatingWindow
         bool m_HasAppearedOnce;
         bool m_IsWindowAppearing;
 
+        float m_CompactTableHeaderHeight;
+
         void WindowUpdateBase();         //Sets up ImGui window with custom title bar, pinning and overlay-based dragging
         virtual void WindowUpdate() = 0; //Window content, called within an ImGui Begin()'d window
 
@@ -117,6 +119,12 @@ class FloatingWindow
         bool ActionOrderList(ActionManager::ActionList& list_actions_target, bool is_appearing, bool is_returning, FloatingWindowActionOrderListState& state, 
                              bool& go_add_actions, float height_offset = 0.0f);
         bool ActionAddSelector(ActionManager::ActionList& list_actions_target, bool is_appearing, FloatingWindowActionAddSelectorState& state, float height_offset = 0.0f);
+
+        //BeginTable(), but with some hacks to allow for compact, gap-less selectable + border around header (always set). Fairly specific, so not a generic ImGui extension
+        //Text has to be aligned to frame padding with this
+        bool BeginCompactTable(const char* str_id, int column, ImGuiTableFlags flags = 0, const ImVec2& outer_size = ImVec2(0.0f, 0.0f), float inner_width = 0.0f);
+        void CompactTableHeadersRow();
+        void EndCompactTable();
 
     public:
         FloatingWindow();
