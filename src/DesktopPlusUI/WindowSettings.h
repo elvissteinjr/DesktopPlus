@@ -93,7 +93,7 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         void UpdatePageMainCatPerformance();
         void UpdatePageMainCatMisc();
         void UpdatePagePersistentUI();
-        void UpdatePageKeyboardLayout();
+        void UpdatePageKeyboardLayout(bool only_restore_settings = false);
         void UpdatePageProfiles();
         void UpdatePageProfilesOverlaySelect();
         void UpdatePageAppProfiles();
@@ -101,10 +101,10 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         void UpdatePageActionsEdit(bool only_restore_settings = false);
         void UpdatePageActionsOrder(bool only_restore_settings = false);
         void UpdatePageActionsOrderAdd();
-        void UpdatePageColorPicker();
+        void UpdatePageColorPicker(bool only_restore_settings = false);
         void UpdatePageProfilePicker();
         void UpdatePageActionPicker();
-        void UpdatePageKeyCodePicker();
+        void UpdatePageKeyCodePicker(bool only_restore_settings = false);
         void UpdatePageIconPicker();
         void UpdatePageResetConfirm();
 

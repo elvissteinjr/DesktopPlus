@@ -2140,7 +2140,7 @@ void WindowSettings::UpdatePagePersistentUI()
     }
 }
 
-void WindowSettings::UpdatePageKeyboardLayout()
+void WindowSettings::UpdatePageKeyboardLayout(bool only_restore_settings)
 {
     ImGuiStyle& style = ImGui::GetStyle();
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
@@ -2148,6 +2148,18 @@ void WindowSettings::UpdatePageKeyboardLayout()
     static int list_id = -1;
     static std::vector<KeyboardLayoutMetadata> list_layouts;
     static bool cluster_enabled_prev[kbdlayout_cluster_MAX] = {false};
+
+    if (only_restore_settings)
+    {
+        //Restore previous cluster settings
+        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_function_enabled,   cluster_enabled_prev[kbdlayout_cluster_function]);
+        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_navigation_enabled, cluster_enabled_prev[kbdlayout_cluster_navigation]);
+        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_numpad_enabled,     cluster_enabled_prev[kbdlayout_cluster_numpad]);
+        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_extra_enabled,      cluster_enabled_prev[kbdlayout_cluster_extra]);
+
+        vr_keyboard.LoadCurrentLayout();
+        return;
+    }
     
     if (m_PageAppearing == wndsettings_page_keyboard)
     {
@@ -2316,14 +2328,6 @@ void WindowSettings::UpdatePageKeyboardLayout()
 
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
     {
-        //Restore previous cluster settings
-        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_function_enabled,   cluster_enabled_prev[kbdlayout_cluster_function]);
-        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_navigation_enabled, cluster_enabled_prev[kbdlayout_cluster_navigation]);
-        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_numpad_enabled,     cluster_enabled_prev[kbdlayout_cluster_numpad]);
-        ConfigManager::SetValue(configid_bool_input_keyboard_cluster_extra_enabled,      cluster_enabled_prev[kbdlayout_cluster_extra]);
-
-        vr_keyboard.LoadCurrentLayout();
-
         PageGoBack();
     }
 }
@@ -4452,16 +4456,31 @@ void WindowSettings::UpdatePageActionsOrderAdd()
     }
 }
 
-void WindowSettings::UpdatePageColorPicker()
+void WindowSettings::UpdatePageColorPicker(bool only_restore_settings)
 {
     static ImVec4 color_current;
     static ImVec4 color_original;
+    static bool do_restore_color = true;
     const ConfigID_Int config_id = configid_int_interface_background_color; //Currently only need this one, so we keep it simple
+
+    if (only_restore_settings)
+    {
+        if (do_restore_color)
+        {
+            ImU32 rgba = ImGui::ColorConvertFloat4ToU32(color_original);
+
+            ConfigManager::Get().SetValue(config_id, *(int*)&rgba);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(config_id), *(int*)&rgba);
+        }
+
+        return;
+    }
 
     if (m_PageAppearing == wndsettings_page_color_picker)
     {
         color_current  = ImGui::ColorConvertU32ToFloat4( pun_cast<ImU32, int>(ConfigManager::Get().GetValue(config_id)) );
         color_original = color_current;
+        do_restore_color = true;
     }
 
     ImGuiStyle& style = ImGui::GetStyle();
@@ -4497,6 +4516,9 @@ void WindowSettings::UpdatePageColorPicker()
 
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogOk))) 
     {
+        //Prevent restore settings code from overwriting it later
+        do_restore_color = false;
+
         PageGoBack();
     }
 
@@ -4504,12 +4526,6 @@ void WindowSettings::UpdatePageColorPicker()
 
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
     {
-        //Restore previous setting
-        ImU32 rgba = ImGui::ColorConvertFloat4ToU32(color_original);
-
-        ConfigManager::Get().SetValue(config_id, *(int*)&rgba);
-        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(config_id), *(int*)&rgba);
-
         PageGoBack();
     }
 }
@@ -4715,7 +4731,7 @@ void WindowSettings::UpdatePageActionPicker()
     }
 }
 
-void WindowSettings::UpdatePageKeyCodePicker()
+void WindowSettings::UpdatePageKeyCodePicker(bool only_restore_settings)
 {
     ImGuiStyle& style = ImGui::GetStyle();
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
@@ -4730,6 +4746,13 @@ void WindowSettings::UpdatePageKeyCodePicker()
     static bool mod_alt   = false;
     static bool mod_shift = false;
     static bool mod_win   = false;
+
+    if (only_restore_settings)
+    {
+        //Only really need to reset this in hotkey mode
+        m_KeyCodePickerID = key_code_prev;
+        return;
+    }
 
     if (m_PageAppearing == wndsettings_page_keycode_picker)
     {
@@ -4890,6 +4913,9 @@ void WindowSettings::UpdatePageKeyCodePicker()
             if (mod_win)
                 m_KeyCodePickerHotkeyFlags |= MOD_WIN;
 
+            //Prevent restore settings code from overwriting it later
+            key_code_prev = m_KeyCodePickerID;
+
             PageGoBack();
         }
 
@@ -4898,9 +4924,6 @@ void WindowSettings::UpdatePageKeyCodePicker()
 
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
     {
-        //Only really need to reset this in hotkey mode
-        m_KeyCodePickerID = key_code_prev;
-
         PageGoBack();
     }
 
@@ -5258,6 +5281,11 @@ void WindowSettings::OnPageLeaving(WindowSettingsPage previous_page)
 {
     switch (previous_page)
     {
+        case wndsettings_page_keyboard:
+        {
+            UpdatePageKeyboardLayout(true); //Call to reset settings
+            break;
+        }
         case wndsettings_page_actions_edit:
         {
             UpdatePageActionsEdit(true); //Call to reset settings
@@ -5266,6 +5294,16 @@ void WindowSettings::OnPageLeaving(WindowSettingsPage previous_page)
         case wndsettings_page_actions_order:
         {
             UpdatePageActionsOrder(true); //Call to reset settings
+            break;
+        }
+        case wndsettings_page_color_picker:
+        {
+            UpdatePageColorPicker(true); //Call to reset settings
+            break;
+        }
+        case wndsettings_page_keycode_picker:
+        {
+            UpdatePageKeyCodePicker(true); //Call to reset settings
             break;
         }
         default: break;
