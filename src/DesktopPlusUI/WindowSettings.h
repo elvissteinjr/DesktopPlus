@@ -116,7 +116,7 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         void OnPageLeaving(WindowSettingsPage previous_page); //Called from PageGoBack() and PageGoHome() to allow for page-specific cleanup if necessary
 
         void SelectableWarning(const char* selectable_id, const char* popup_id, const char* text, bool show_warning_prefix = true, const ImVec4* text_color = nullptr);
-        void SelectableHotkey(unsigned int hotkey_id);
+        void SelectableHotkey(ConfigHotkey& hotkey, int id);
 
         void RefreshAppList();
 

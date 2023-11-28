@@ -253,7 +253,7 @@ class OutputManager
         std::vector<unsigned int> m_RemoveOverlayQueue;
 
         bool m_IsAnyHotkeyActive;
-        bool m_IsHotkeyDown[3];
+        int m_RegisteredHotkeyCount;
 };
 
 #endif

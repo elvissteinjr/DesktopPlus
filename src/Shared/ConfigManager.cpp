@@ -45,6 +45,36 @@ static const std::pair<OverlayOrigin, const char*> g_OvrlOriginConfigFileStrings
     {ovrl_origin_aux,             "7"},
 };
 
+
+std::string ConfigHotkey::Serialize() const
+{
+    std::stringstream ss(std::ios::out | std::ios::binary);
+
+    ss.write((const char*)&KeyCode,   sizeof(KeyCode));
+    ss.write((const char*)&Modifiers, sizeof(Modifiers));
+    ss.write((const char*)&ActionUID, sizeof(ActionUID));
+
+    return ss.str();
+}
+
+void ConfigHotkey::Deserialize(const std::string& str)
+{
+    std::stringstream ss(str, std::ios::in | std::ios::binary);
+
+    ConfigHotkey new_hotkey;
+
+    ss.read((char*)&new_hotkey.KeyCode,   sizeof(KeyCode));
+    ss.read((char*)&new_hotkey.Modifiers, sizeof(Modifiers));
+    ss.read((char*)&new_hotkey.ActionUID, sizeof(ActionUID));
+
+    //Replace all data with the read hotkey if there were no stream errors
+    if (ss.good())
+    {
+        *this = new_hotkey;
+    }
+}
+
+
 OverlayConfigData::OverlayConfigData()
 {
     std::fill(std::begin(ConfigBool),   std::end(ConfigBool),   false);
@@ -431,15 +461,30 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigHandle[configid_handle_input_shortcut05_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut05ActionUID", "0").c_str(), nullptr, 10);
     m_ConfigHandle[configid_handle_input_shortcut06_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut06ActionUID", "0").c_str(), nullptr, 10);
 
-    m_ConfigInt[configid_int_input_hotkey01_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey01Modifiers", 0);
-    m_ConfigInt[configid_int_input_hotkey01_keycode]                        = config.ReadInt( "Input", "GlobalHotkey01KeyCode",   0);
-    m_ConfigHandle[configid_handle_input_hotkey01_action_uid]               = std::strtoull(config.ReadString("Input", "GlobalHotkey01ActionUID", "0").c_str(), nullptr, 10);
-    m_ConfigInt[configid_int_input_hotkey02_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey02Modifiers", 0);
-    m_ConfigInt[configid_int_input_hotkey02_keycode]                        = config.ReadInt( "Input", "GlobalHotkey02KeyCode",   0);
-    m_ConfigHandle[configid_handle_input_hotkey02_action_uid]               = std::strtoull(config.ReadString("Input", "GlobalHotkey02ActionUID", "0").c_str(), nullptr, 10);
-    m_ConfigInt[configid_int_input_hotkey03_modifiers]                      = config.ReadInt( "Input", "GlobalHotkey03Modifiers", 0);
-    m_ConfigInt[configid_int_input_hotkey03_keycode]                        = config.ReadInt( "Input", "GlobalHotkey03KeyCode",   0);
-    m_ConfigHandle[configid_handle_input_hotkey03_action_uid]               = std::strtoull(config.ReadString("Input", "GlobalHotkey03ActionUID", "0").c_str(), nullptr, 10);
+    //Hotkeys
+    m_ConfigHotkey.clear();
+    int hotkey_id = 0;
+    for (;;)
+    {
+        std::stringstream ss;
+        ss << "GlobalHotkey" << std::setfill('0') << std::setw(2) << hotkey_id + 1;   //Naming pattern is backwards-compatible to legacy hotkey 01-03 entries
+
+        if (config.KeyExists("Input", (ss.str() + "Modifiers").c_str()))
+        {
+            ConfigHotkey hotkey;
+            hotkey.Modifiers = config.ReadInt("Input", (ss.str() + "Modifiers").c_str(), 0);
+            hotkey.KeyCode   = config.ReadInt("Input", (ss.str() + "KeyCode"  ).c_str(), 0);
+            hotkey.ActionUID = std::strtoull(config.ReadString("Input", (ss.str() + "ActionUID").c_str(), 0).c_str(), nullptr, 10);
+
+            m_ConfigHotkey.push_back(hotkey);
+        }
+        else
+        {
+            break;
+        }
+
+        ++hotkey_id;
+    }
 
     m_ConfigFloat[configid_float_input_detached_interaction_max_distance]   = config.ReadInt( "Input", "DetachedInteractionMaxDistance", 200) / 100.0f;
     m_ConfigBool[configid_bool_input_global_hmd_pointer]                    = config.ReadBool("Input", "GlobalHMDPointer", false);
@@ -548,6 +593,19 @@ bool ConfigManager::LoadConfigFromFile()
     if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut06_action_uid]))
     {
         m_ConfigHandle[configid_handle_input_shortcut06_action_uid] = k_ActionUID_Invalid;
+    }
+
+    //Validate hotkey ActionUIDs
+    hotkey_id = 0;
+    for (ConfigHotkey& hotkey : m_ConfigHotkey)
+    {
+        if (!m_ActionManager.ActionExists(hotkey.ActionUID))
+        {
+            LOG_F(WARNING, "Hotkey %02d is referencing unknown action %llu, resetting to [None]", hotkey_id, hotkey.ActionUID);
+            hotkey.ActionUID = k_ActionUID_Invalid;
+        }
+
+        ++hotkey_id;
     }
 
     #ifndef DPLUS_UI
@@ -867,9 +925,15 @@ void ConfigManager::MigrateLegacyActionsFromConfig(const Ini& config)
     m_ConfigHandle[configid_handle_input_shortcut01_action_uid] = legacy_id_to_uid[config.ReadInt("Input", "GlobalShortcut01ActionID", 0)];
     m_ConfigHandle[configid_handle_input_shortcut02_action_uid] = legacy_id_to_uid[config.ReadInt("Input", "GlobalShortcut02ActionID", 0)];
     m_ConfigHandle[configid_handle_input_shortcut03_action_uid] = legacy_id_to_uid[config.ReadInt("Input", "GlobalShortcut03ActionID", 0)];
-    m_ConfigHandle[configid_handle_input_hotkey01_action_uid]   = legacy_id_to_uid[config.ReadInt("Input", "GlobalHotkey01ActionID",   0)];
-    m_ConfigHandle[configid_handle_input_hotkey02_action_uid]   = legacy_id_to_uid[config.ReadInt("Input", "GlobalHotkey02ActionID",   0)];
-    m_ConfigHandle[configid_handle_input_hotkey03_action_uid]   = legacy_id_to_uid[config.ReadInt("Input", "GlobalHotkey03ActionID",   0)];
+
+    for (size_t i = 0; i < 2; ++i)
+    {
+        if (i < m_ConfigHotkey.size())
+        {
+            std::string config_name = "GlobalHotkey0" + std::to_string(i + 1) + "ActionID";
+            m_ConfigHotkey[i].ActionUID = legacy_id_to_uid[config.ReadInt("Input", config_name.c_str(), 0)];
+        }
+    }
 }
 
 OverlayOrigin ConfigManager::GetOverlayOriginFromConfigString(const std::string& str)
@@ -1002,15 +1066,19 @@ void ConfigManager::SaveConfigToFile()
     config.WriteString("Input", "GlobalShortcut05ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut05_action_uid]).c_str());
     config.WriteString("Input", "GlobalShortcut06ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut06_action_uid]).c_str());
 
-    config.WriteInt(   "Input",  "GlobalHotkey01Modifiers",          m_ConfigInt[configid_int_input_hotkey01_modifiers]);
-    config.WriteInt(   "Input",  "GlobalHotkey01KeyCode",            m_ConfigInt[configid_int_input_hotkey01_keycode]);
-    config.WriteString("Input",  "GlobalHotkey01ActionUID",          std::to_string(m_ConfigHandle[configid_handle_input_hotkey01_action_uid]).c_str());
-    config.WriteInt(   "Input",  "GlobalHotkey02Modifiers",          m_ConfigInt[configid_int_input_hotkey02_modifiers]);
-    config.WriteInt(   "Input",  "GlobalHotkey02KeyCode",            m_ConfigInt[configid_int_input_hotkey02_keycode]);
-    config.WriteString("Input",  "GlobalHotkey02ActionUID",          std::to_string(m_ConfigHandle[configid_handle_input_hotkey02_action_uid]).c_str());
-    config.WriteInt(   "Input",  "GlobalHotkey03Modifiers",          m_ConfigInt[configid_int_input_hotkey03_modifiers]);
-    config.WriteInt(   "Input",  "GlobalHotkey03KeyCode",            m_ConfigInt[configid_int_input_hotkey03_keycode]);
-    config.WriteString("Input",  "GlobalHotkey03ActionUID",          std::to_string(m_ConfigHandle[configid_handle_input_hotkey03_action_uid]).c_str());
+    //Hotkeys
+    int hotkey_id = 0;
+    for (const ConfigHotkey& hotkey : m_ConfigHotkey)
+    {
+        ss = std::stringstream();
+        ss << "GlobalHotkey" << std::setfill('0') << std::setw(2) << hotkey_id + 1;
+
+        config.WriteInt(   "Input", (ss.str() + "Modifiers").c_str(), hotkey.Modifiers);
+        config.WriteInt(   "Input", (ss.str() + "KeyCode"  ).c_str(), hotkey.KeyCode);
+        config.WriteString("Input", (ss.str() + "ActionUID").c_str(), std::to_string(hotkey.ActionUID).c_str());
+
+        ++hotkey_id;
+    }
 
     config.WriteInt( "Input",  "DetachedInteractionMaxDistance", int(m_ConfigFloat[configid_float_input_detached_interaction_max_distance] * 100.0f));
     config.WriteBool("Input",  "GlobalHMDPointer",                   m_ConfigBool[configid_bool_input_global_hmd_pointer]);
@@ -1334,6 +1402,16 @@ float& ConfigManager::GetRef(ConfigID_Float configid)
 uint64_t& ConfigManager::GetRef(ConfigID_Handle configid)
 {
     return (configid < configid_handle_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigHandle[configid] : Get().m_ConfigHandle[configid];
+}
+
+ConfigHotkeyList& ConfigManager::GetHotkeys()
+{
+    return m_ConfigHotkey;
+}
+
+const ConfigHotkeyList& ConfigManager::GetHotkeys() const
+{
+    return m_ConfigHotkey;
 }
 
 void ConfigManager::ResetConfigStateValues()

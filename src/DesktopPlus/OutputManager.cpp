@@ -98,7 +98,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_PerformanceFrameCountStartTick(0),
     m_PerformanceUpdateLimiterDelay{0},
     m_IsAnyHotkeyActive(false),
-    m_IsHotkeyDown{0}
+    m_RegisteredHotkeyCount(0)
 {
     m_MouseLastInfo = {0};
     m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
@@ -1427,6 +1427,34 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                     break;
                 }
+                case ipcact_hotkey_set:
+                {
+                    ConfigHotkeyList& hotkey_list = ConfigManager::Get().GetHotkeys();
+                    const std::string& hotkey_data = ConfigManager::GetValue(configid_str_state_hotkey_data);
+                    int hotkey_id = msg.lParam;
+
+                    if ((hotkey_id >= 0) && (hotkey_id < (int)hotkey_list.size()))
+                    {
+                        if (!hotkey_data.empty())
+                        {
+                            hotkey_list[hotkey_id].Deserialize(hotkey_data);
+                        }
+                        else
+                        {
+                            hotkey_list.erase(hotkey_list.begin() + msg.lParam);
+                        }
+                    }
+                    else if (!hotkey_data.empty())
+                    {
+                        ConfigHotkey hotkey_new;
+                        hotkey_new.Deserialize(hotkey_data);
+
+                        hotkey_list.push_back(hotkey_new);
+                    }
+
+                    RegisterHotkeys();
+                    break;
+                }
             }
             break;
         }
@@ -1751,14 +1779,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         reset_mirroring = true;
                         break;
                     }
-                    case configid_int_input_hotkey01_keycode:
-                    case configid_int_input_hotkey02_keycode:
-                    case configid_int_input_hotkey03_keycode:
-                    {
-                        //*_keycode always follows after *_modifiers, so we only catch the keycode ones
-                        RegisterHotkeys();
-                        break;
-                    }
                     case configid_int_input_mouse_dbl_click_assist_duration_ms:
                     {
                         ApplySettingMouseInput();
@@ -1834,13 +1854,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                 switch (handle_id)
                 {
-                    case configid_handle_input_hotkey01_action_uid:
-                    case configid_handle_input_hotkey02_action_uid:
-                    case configid_handle_input_hotkey03_action_uid:
-                    {
-                        RegisterHotkeys();
-                        break;
-                    }
                     case configid_handle_overlay_state_winrt_hwnd:
                     {
                         if (value != previous_value)
@@ -1999,13 +2012,20 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
 
 void OutputManager::HandleHotkeyMessage(const MSG& msg)
 {
-    //m_IsHotkeyDown blocks HandleHotkeys() and the hotkey messages from triggering hotkey actions twice. It's reset in HandleHotkeys when the key is no longer pressed
-    if ((msg.wParam <= 2) && (!m_IsHotkeyDown[msg.wParam]))
-    {
-        ConfigID_Handle config_id = (ConfigID_Handle)(configid_handle_input_hotkey01_action_uid + msg.wParam);
-        ConfigManager::Get().GetActionManager().DoAction(config_id);
+    ConfigHotkeyList& hotkey_list = ConfigManager::Get().GetHotkeys();
+    int hotkey_id = msg.wParam;
 
-        m_IsHotkeyDown[msg.wParam] = true;
+    if ((hotkey_id >= 0) && (hotkey_id < (int)hotkey_list.size()))
+    {
+        ConfigHotkey& hotkey = hotkey_list[hotkey_id];
+
+        //StateIsDown blocks HandleHotkeys() and the hotkey messages from triggering hotkey actions twice. It's reset in HandleHotkeys() when the key is no longer pressed
+        if (!hotkey.StateIsDown)
+        {
+            ConfigManager::Get().GetActionManager().DoAction(hotkey.ActionUID);
+
+            hotkey.StateIsDown = true;
+        }
     }
 }
 
@@ -7004,38 +7024,25 @@ bool OutputManager::IsAnyOverlayUsingGazeFade() const
 void OutputManager::RegisterHotkeys()
 {
     //Just unregister all we have when updating any
-    ::UnregisterHotKey(nullptr, 0);
-    ::UnregisterHotKey(nullptr, 1);
-    ::UnregisterHotKey(nullptr, 2);
+    for (int i = 0; i < m_RegisteredHotkeyCount; ++i)
+    {
+        ::UnregisterHotKey(nullptr, i);
+    }
     m_IsAnyHotkeyActive = false;
 
     //...and register them again if there's an action assigned
-    UINT flags   = ConfigManager::GetValue(configid_int_input_hotkey01_modifiers);
-    UINT keycode = ConfigManager::GetValue(configid_int_input_hotkey01_keycode);
-
-    if (ConfigManager::GetValue(configid_handle_input_hotkey01_action_uid) != k_ActionUID_Invalid)
+    int id = 0;
+    for (ConfigHotkey& hotkey : ConfigManager::Get().GetHotkeys())
     {
-        ::RegisterHotKey(nullptr, 0, flags | MOD_NOREPEAT, keycode);
-        m_IsAnyHotkeyActive = true;
+        if (hotkey.ActionUID != k_ActionUID_Invalid)
+        {
+            ::RegisterHotKey(nullptr, id, hotkey.Modifiers | MOD_NOREPEAT, hotkey.KeyCode);
+            m_IsAnyHotkeyActive = true;
+        }
+        ++id;
     }
 
-    flags   = ConfigManager::GetValue(configid_int_input_hotkey02_modifiers);
-    keycode = ConfigManager::GetValue(configid_int_input_hotkey02_keycode);
-
-    if (ConfigManager::GetValue(configid_handle_input_hotkey02_action_uid) != k_ActionUID_Invalid)
-    {
-        ::RegisterHotKey(nullptr, 1, flags | MOD_NOREPEAT, keycode);
-        m_IsAnyHotkeyActive = true;
-    }
-
-    flags   = ConfigManager::GetValue(configid_int_input_hotkey03_modifiers);
-    keycode = ConfigManager::GetValue(configid_int_input_hotkey03_keycode);
-
-    if (ConfigManager::GetValue(configid_handle_input_hotkey03_action_uid) != k_ActionUID_Invalid)
-    {
-        ::RegisterHotKey(nullptr, 2, flags | MOD_NOREPEAT, keycode);
-        m_IsAnyHotkeyActive = true;
-    }
+    m_RegisteredHotkeyCount = id;
 }
 
 void OutputManager::HandleHotkeys()
@@ -7047,38 +7054,26 @@ void OutputManager::HandleHotkeys()
     if (!m_IsAnyHotkeyActive)
         return;
 
-    const ActionUID action_uid[3] = {ConfigManager::GetValue(configid_handle_input_hotkey01_action_uid),
-                                     ConfigManager::GetValue(configid_handle_input_hotkey02_action_uid),
-                                     ConfigManager::GetValue(configid_handle_input_hotkey03_action_uid)};
-
-    const UINT flags[3]         = {(UINT)ConfigManager::GetValue(configid_int_input_hotkey01_modifiers), 
-                                   (UINT)ConfigManager::GetValue(configid_int_input_hotkey02_modifiers), 
-                                   (UINT)ConfigManager::GetValue(configid_int_input_hotkey03_modifiers)};
-
-    const int keycode[3]        = {ConfigManager::GetValue(configid_int_input_hotkey01_keycode),
-                                   ConfigManager::GetValue(configid_int_input_hotkey02_keycode),
-                                   ConfigManager::GetValue(configid_int_input_hotkey03_keycode)};
-
-    for (int i = 0; i < 3; ++i)
+    for (ConfigHotkey& hotkey : ConfigManager::Get().GetHotkeys())
     {
-        if (action_uid[i] != k_ActionUID_Invalid)
+        if (hotkey.ActionUID != k_ActionUID_Invalid)
         {
-            if ( (::GetAsyncKeyState(keycode[i]) < 0) && 
-                 ( ((flags[i] & MOD_SHIFT)   == 0) || (::GetAsyncKeyState(VK_SHIFT)   < 0) ) &&
-                 ( ((flags[i] & MOD_CONTROL) == 0) || (::GetAsyncKeyState(VK_CONTROL) < 0) ) &&
-                 ( ((flags[i] & MOD_ALT)     == 0) || (::GetAsyncKeyState(VK_MENU)    < 0) ) &&
-                 ( ((flags[i] & MOD_WIN)     == 0) || ((::GetAsyncKeyState(VK_LWIN)   < 0) || (::GetAsyncKeyState(VK_RWIN) < 0)) ) )
+            if ( (::GetAsyncKeyState(hotkey.KeyCode) < 0) && 
+                 ( ((hotkey.Modifiers & MOD_SHIFT)   == 0) ||  (::GetAsyncKeyState(VK_SHIFT)   < 0) ) &&
+                 ( ((hotkey.Modifiers & MOD_CONTROL) == 0) ||  (::GetAsyncKeyState(VK_CONTROL) < 0) ) &&
+                 ( ((hotkey.Modifiers & MOD_ALT)     == 0) ||  (::GetAsyncKeyState(VK_MENU)    < 0) ) &&
+                 ( ((hotkey.Modifiers & MOD_WIN)     == 0) || ((::GetAsyncKeyState(VK_LWIN)    < 0) || (::GetAsyncKeyState(VK_RWIN) < 0)) ) )
             {
-                if (!m_IsHotkeyDown[i])
+                if (!hotkey.StateIsDown)
                 {
-                    m_IsHotkeyDown[i] = true;
+                    hotkey.StateIsDown = true;
 
-                    ConfigManager::Get().GetActionManager().DoAction(action_uid[i]);
+                    ConfigManager::Get().GetActionManager().DoAction(hotkey.ActionUID);
                 }
             }
-            else if (m_IsHotkeyDown[i])
+            else if (hotkey.StateIsDown)
             {
-                m_IsHotkeyDown[i] = false;
+                hotkey.StateIsDown = false;
             }
         }
     }

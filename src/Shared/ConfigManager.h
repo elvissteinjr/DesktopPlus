@@ -146,12 +146,6 @@ enum ConfigID_Int
     configid_int_interface_background_color,
     configid_int_interface_background_color_display_mode,
     configid_int_interface_wmr_ignore_vscreens,             //-1 means auto/unset which is the value non-WMR users get
-    configid_int_input_hotkey01_modifiers,
-    configid_int_input_hotkey01_keycode,
-    configid_int_input_hotkey02_modifiers,
-    configid_int_input_hotkey02_keycode,
-    configid_int_input_hotkey03_modifiers,
-    configid_int_input_hotkey03_keycode,
     configid_int_input_mouse_dbl_click_assist_duration_ms,
     configid_int_input_drag_fixed_distance_shape,           //0 = Sphere, 1 = Cylinder
     configid_int_windows_winrt_dragging_mode,
@@ -215,9 +209,6 @@ enum ConfigID_Handle
     configid_handle_input_shortcut04_action_uid,
     configid_handle_input_shortcut05_action_uid,
     configid_handle_input_shortcut06_action_uid,
-    configid_handle_input_hotkey01_action_uid,
-    configid_handle_input_hotkey02_action_uid,
-    configid_handle_input_hotkey03_action_uid,
     configid_handle_state_arg_hwnd,                           //Used when a HWND is needed as an ipcact message argument
     configid_handle_state_dplus_laser_pointer_target_overlay, //Overlay handle for active Desktop+ laser pointer
     configid_handle_state_action_uid,                         //Used when an action UID is needed as an ipcact message argument and message space is needed for something else
@@ -244,6 +235,7 @@ enum ConfigID_String
     configid_str_state_app_profile_key,                     //Target app key for app profile synching
     configid_str_state_app_profile_data,                    //Serialized data string of app profile for synching
     configid_str_state_action_data,                         //Serialized data string of action for synching
+    configid_str_state_hotkey_data,                         //Serialized data string of hotkey for synching
     configid_str_MAX
 };
 
@@ -346,6 +338,21 @@ enum WindowCaptureLostBehavior
     window_caplost_MAX
 };
 
+struct ConfigHotkey
+{
+    UINT KeyCode        = 0;
+    UINT Modifiers      = 0;
+    ActionUID ActionUID = k_ActionUID_Invalid;
+
+    std::string StateUIName;
+    bool StateIsDown    = false;
+
+    std::string Serialize() const;              //Serializes into binary data stored as string (contains NUL bytes), not suitable for storage, does not write state values
+    void Deserialize(const std::string& str);   //Deserializes from strings created by above function
+};
+
+typedef std::vector<ConfigHotkey> ConfigHotkeyList;
+
 class OverlayConfigData
 {
     public:
@@ -371,6 +378,7 @@ class ConfigManager
         float m_ConfigFloat[configid_float_MAX];
         uint64_t m_ConfigHandle[configid_handle_MAX];
         std::string m_ConfigString[configid_str_MAX];
+        ConfigHotkeyList m_ConfigHotkey;
 
         ActionManager m_ActionManager;
         AppProfileManager m_AppProfileManager;
@@ -436,6 +444,9 @@ class ConfigManager
         static int&      GetRef(ConfigID_Int    configid);
         static float&    GetRef(ConfigID_Float  configid);
         static uint64_t& GetRef(ConfigID_Handle configid);
+
+        ConfigHotkeyList& GetHotkeys();
+        const ConfigHotkeyList& GetHotkeys() const;
 
         void ResetConfigStateValues();  //Reset all configid_*_state_* settings. Used when restarting a Desktop+ process
 

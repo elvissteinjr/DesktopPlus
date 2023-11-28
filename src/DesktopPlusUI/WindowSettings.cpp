@@ -873,9 +873,11 @@ void WindowSettings::UpdatePageMainCatActions()
     //Actions
     {
         const ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+        ConfigHotkeyList& hotkey_list = ConfigManager::Get().GetHotkeys();
         const ImGuiStyle& style = ImGui::GetStyle();
 
         static ConfigID_Handle action_picker_config_id = configid_handle_MAX;
+        static int action_picker_hotkey_id = -1;
         static float button_binding_width = 0.0f;
 
         if (m_PageReturned == wndsettings_page_actions_order)
@@ -893,6 +895,21 @@ void WindowSettings::UpdatePageMainCatActions()
                 IPCManager::Get().PostConfigMessageToDashboardApp(action_picker_config_id, m_ActionPickerUID);
                 action_picker_config_id = configid_handle_MAX;
 
+                m_PageReturned = wndsettings_page_none;
+            }
+            else if (action_picker_hotkey_id != -1)
+            {
+                if ((action_picker_hotkey_id >= 0) && (action_picker_hotkey_id < (int)hotkey_list.size()))
+                {
+                    ConfigHotkey& hotkey = hotkey_list[action_picker_hotkey_id];
+
+                    hotkey.ActionUID = m_ActionPickerUID;
+
+                    IPCManager::Get().SendStringToDashboardApp(configid_str_state_hotkey_data, hotkey.Serialize(), UIManager::Get()->GetWindowHandle());
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_hotkey_set, action_picker_hotkey_id);
+                }
+
+                action_picker_hotkey_id = -1;
                 m_PageReturned = wndsettings_page_none;
             }
         }
@@ -1101,9 +1118,11 @@ void WindowSettings::UpdatePageMainCatActions()
         ImGui::Unindent();
 
         //Hotkeys
-        static float max_hotkey_column_width = 0.0f;
+        static float table_hotkeys_max_column_width = 0.0f;
+        static float table_hotkeys_remove_button_width = 0.0f;
+        static float table_hotkeys_buttons_width = 0.0f;
+        static int table_hotkeys_hovered_row = -1;
 
-        ImGui::Spacing();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsHotkeys));
         ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_SettingsActionsHotkeysTip));
@@ -1114,43 +1133,112 @@ void WindowSettings::UpdatePageMainCatActions()
 
         if (BeginCompactTable("TableHotkeys", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit, table_size))
         {
-            ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsActionsTableHeaderHotkey), 0, std::max(table_column_width, max_hotkey_column_width));
+            ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsActionsTableHeaderHotkey), 0, std::max(table_column_width, table_hotkeys_max_column_width));
             ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsActionsTableHeaderAction), ImGuiTableColumnFlags_WidthStretch);
             CompactTableHeadersRow();
 
             ImGui::TableNextColumn();
 
             float line_start_x = ImGui::GetCursorPosX();
-            max_hotkey_column_width = 0.0f;
+            table_hotkeys_max_column_width = 0.0f;
+            int hovered_row_new = -1;
 
-            for (int i = 0; i < 3; ++i)
+            int hotkey_id = 0;
+            for (ConfigHotkey& hotkey : hotkey_list)
             {
-                ConfigID_Handle config_id = (ConfigID_Handle)(configid_handle_input_hotkey01_action_uid + i);
-                ActionUID uid = ConfigManager::GetValue(config_id);
-
-                ImGui::PushID(i);
+                ImGui::PushID(hotkey_id);
 
                 ImGui::AlignTextToFramePadding();
-                SelectableHotkey(i);
+                SelectableHotkey(hotkey, hotkey_id);
                 ImGui::SameLine(0.0f, 0.0f);
-                max_hotkey_column_width = std::max(max_hotkey_column_width, ImGui::GetCursorPosX() - line_start_x);
+                table_hotkeys_max_column_width = std::max(table_hotkeys_max_column_width, ImGui::GetCursorPosX() - line_start_x);
 
                 ImGui::TableNextColumn();
 
-                if (ImGui::Selectable(action_manager.GetTranslatedName(uid)))
+                if (table_hotkeys_hovered_row == hotkey_id)
                 {
-                    m_ActionPickerUID = uid;
-                    action_picker_config_id = config_id;
+                    //Use lower-alpha version of hovered header color while the remove button is hovered to increase the contrast with the button hover color (we don't really want to change it, however)
+                    ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered);
+                    col.w *= 0.75f;
+                    ImGui::PushStyleColor(ImGuiCol_Header, col);
+                }
+
+                if (ImGui::Selectable(action_manager.GetTranslatedName(hotkey.ActionUID), (table_hotkeys_hovered_row == hotkey_id), ImGuiSelectableFlags_AllowItemOverlap))
+                {
+                    m_ActionPickerUID = hotkey.ActionUID;
+                    action_picker_hotkey_id = hotkey_id;
                     PageGoForward(wndsettings_page_action_picker);
+                }
+
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenOverlapped | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+                {
+                    hovered_row_new = hotkey_id;
+                }
+
+                if (table_hotkeys_hovered_row == hotkey_id)
+                {
+                    ImGui::PopStyleColor();
+
+                    ImGui::SetItemAllowOverlap();
+                    ImGui::SameLine();
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - table_hotkeys_remove_button_width);
+
+                    if (ImGui::SmallButton(TranslationManager::GetString(tstr_SettingsActionsHotkeysRemove)))
+                    {
+                        if (hotkey_list.size() > 1)
+                        {
+                            hotkey_list.erase(hotkey_list.begin() + hotkey_id);
+                            IPCManager::Get().SendStringToDashboardApp(configid_str_state_hotkey_data, "", UIManager::Get()->GetWindowHandle());
+                        }
+                        else //If there's only one entry, clear it instead to not have a weird looking table
+                        {
+                            hotkey = ConfigHotkey();
+                            IPCManager::Get().SendStringToDashboardApp(configid_str_state_hotkey_data, hotkey.Serialize(), UIManager::Get()->GetWindowHandle());
+                        }
+
+                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_hotkey_set, hotkey_id);
+
+                        //Erased something straight out of the list, get out of the loop and discard frame
+                        UIManager::Get()->RepeatFrame();
+                        ImGui::PopID();
+                        break;
+                    }
+
+                    if (ImGui::IsItemHovered())
+                    {
+                        hovered_row_new = hotkey_id;
+                    }
+
+                    table_hotkeys_remove_button_width = ImGui::GetItemRectSize().x;
                 }
 
                 ImGui::TableNextColumn();
 
                 ImGui::PopID();
+
+                ++hotkey_id;
             }
+
+            table_hotkeys_hovered_row = hovered_row_new;
 
             EndCompactTable();
         }
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - table_hotkeys_buttons_width);
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsHotkeysAdd)))
+        {
+            ConfigHotkey hotkey_new;
+            hotkey_list.push_back(hotkey_new);
+
+            IPCManager::Get().SendStringToDashboardApp(configid_str_state_hotkey_data, hotkey_new.Serialize(), UIManager::Get()->GetWindowHandle());
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_hotkey_set, hotkey_list.size() - 1);
+
+            UIManager::Get()->RepeatFrame(3);   //Avoid some flicker from potentially hovering selectable + remove button appearing in the next few frames
+        }
+
+        table_hotkeys_buttons_width = ImGui::GetItemRectSize().x + style.IndentSpacing;
+
         ImGui::PopID();
 
         ImGui::Unindent();
@@ -5234,83 +5322,51 @@ void WindowSettings::SelectableWarning(const char* selectable_id, const char* po
     }
 }
 
-void WindowSettings::SelectableHotkey(unsigned int hotkey_id)
+void WindowSettings::SelectableHotkey(ConfigHotkey& hotkey, int id)
 {
-    static std::string hotkey_names[3];
-    static unsigned int edited_id = UINT_MAX;
+    static int edited_id = -1;
 
-    hotkey_id = std::min(hotkey_id, 2u);
-    std::string& hotkey_name = hotkey_names[hotkey_id];
-
-    if ((m_PageReturned == wndsettings_page_keycode_picker) && (edited_id != UINT_MAX))
+    //Write changes if we're returning from a picker
+    if ((m_PageReturned == wndsettings_page_keycode_picker) && (edited_id == id))
     {
-        edited_id = std::min(edited_id, 2u);
+        hotkey.KeyCode   = m_KeyCodePickerID;
+        hotkey.Modifiers = m_KeyCodePickerHotkeyFlags;
 
-        ConfigID_Int config_id_modifier = (ConfigID_Int)(configid_int_input_hotkey01_modifiers + (edited_id * 2));
-        ConfigID_Int config_id_keycode  = (ConfigID_Int)(configid_int_input_hotkey01_keycode   + (edited_id * 2));
-
-        ConfigManager::SetValue(config_id_modifier, (int)m_KeyCodePickerHotkeyFlags);
-        ConfigManager::SetValue(config_id_keycode,  (int)m_KeyCodePickerID);
-        IPCManager::Get().PostConfigMessageToDashboardApp(config_id_modifier, (int)m_KeyCodePickerHotkeyFlags);
-        IPCManager::Get().PostConfigMessageToDashboardApp(config_id_keycode,  (int)m_KeyCodePickerID);
+        IPCManager::Get().SendStringToDashboardApp(configid_str_state_hotkey_data, hotkey.Serialize(), UIManager::Get()->GetWindowHandle());
+        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_hotkey_set, id);
 
         m_PageReturned = wndsettings_page_none;
-        hotkey_names[edited_id] = "";
-        edited_id = UINT_MAX;
-    }
-
-    unsigned int  flags   = 0;
-    unsigned char keycode = 0;
-
-    switch (hotkey_id)
-    {
-        case 0:
-        {
-            flags   = (unsigned int) ConfigManager::GetValue(configid_int_input_hotkey01_modifiers);
-            keycode = (unsigned char)ConfigManager::GetValue(configid_int_input_hotkey01_keycode);
-            break;
-        }
-        case 1:
-        {
-            flags   = (unsigned int) ConfigManager::GetValue(configid_int_input_hotkey02_modifiers);
-            keycode = (unsigned char)ConfigManager::GetValue(configid_int_input_hotkey02_keycode);
-            break;
-        }
-        case 2:
-        {
-            flags   = (unsigned int) ConfigManager::GetValue(configid_int_input_hotkey03_modifiers);
-            keycode = (unsigned char)ConfigManager::GetValue(configid_int_input_hotkey03_keycode);
-            break;
-        }
+        hotkey.StateUIName = "";
+        edited_id = -1;
     }
 
     //Update cached hotkey name if window is just appearing or the name is empty
-    if ( (m_PageAppearing == m_PageCurrent) || (hotkey_name.empty()) )
+    if ( (m_PageAppearing == m_PageCurrent) || (hotkey.StateUIName.empty()) )
     {
-        hotkey_name = "";
+        hotkey.StateUIName = "";
 
-        if (keycode != 0)
+        if (hotkey.KeyCode != 0)
         {
-            if (flags & MOD_CONTROL)
-                hotkey_name += "Ctrl+";
-            if (flags & MOD_ALT)
-                hotkey_name += "Alt+";
-            if (flags & MOD_SHIFT)
-                hotkey_name += "Shift+";
-            if (flags & MOD_WIN)
-                hotkey_name += "Win+";
+            if (hotkey.Modifiers & MOD_CONTROL)
+                hotkey.StateUIName += "Ctrl+";
+            if (hotkey.Modifiers & MOD_ALT)
+                hotkey.StateUIName += "Alt+";
+            if (hotkey.Modifiers & MOD_SHIFT)
+                hotkey.StateUIName += "Shift+";
+            if (hotkey.Modifiers & MOD_WIN)
+                hotkey.StateUIName += "Win+";
         }
 
-        hotkey_name += GetStringForKeyCode(keycode);
+        hotkey.StateUIName += GetStringForKeyCode(hotkey.KeyCode);
     }
 
-    ImGui::PushID(hotkey_id);
-    if (ImGui::Selectable(hotkey_name.c_str()))
+    ImGui::PushID("HotkeySelectable");
+    if (ImGui::Selectable(hotkey.StateUIName.c_str()))
     {
         m_KeyCodePickerHotkeyMode = true;
-        m_KeyCodePickerHotkeyFlags = flags;
-        m_KeyCodePickerID = keycode;
-        edited_id = hotkey_id;
+        m_KeyCodePickerHotkeyFlags = hotkey.Modifiers;
+        m_KeyCodePickerID = hotkey.KeyCode;
+        edited_id = id;
 
         PageGoForward(wndsettings_page_keycode_picker);
         m_PageReturned = wndsettings_page_none;

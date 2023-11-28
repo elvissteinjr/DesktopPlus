@@ -117,6 +117,8 @@ enum TRMGRStrID
     tstr_SettingsActionsToggleVisibilityEntry,                  //^
     tstr_SettingsActionsHotkeys,
     tstr_SettingsActionsHotkeysTip,
+    tstr_SettingsActionsHotkeysAdd,
+    tstr_SettingsActionsHotkeysRemove,
     tstr_SettingsActionsTableHeaderAction,
     tstr_SettingsActionsTableHeaderShortcut,
     tstr_SettingsActionsTableHeaderHotkey,
