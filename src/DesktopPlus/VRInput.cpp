@@ -3,6 +3,7 @@
 
 #define NOMINMAX
 #include <string>
+#include <sstream>
 #include <windows.h>
 
 #include "ConfigManager.h"
@@ -13,12 +14,6 @@ VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionsetScrollDiscrete(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionsetScrollSmooth(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionEnableGlobalLaserPointer(vr::k_ulInvalidActionHandle),
-                     m_HandleActionDoGlobalShortcut01(vr::k_ulInvalidActionHandle),
-                     m_HandleActionDoGlobalShortcut02(vr::k_ulInvalidActionHandle),
-                     m_HandleActionDoGlobalShortcut03(vr::k_ulInvalidActionHandle),
-                     m_HandleActionDoGlobalShortcut04(vr::k_ulInvalidActionHandle),
-                     m_HandleActionDoGlobalShortcut05(vr::k_ulInvalidActionHandle),
-                     m_HandleActionDoGlobalShortcut06(vr::k_ulInvalidActionHandle),
                      m_HandleActionLaserPointerLeftClick(vr::k_ulInvalidActionHandle),
                      m_HandleActionLaserPointerRightClick(vr::k_ulInvalidActionHandle),
                      m_HandleActionLaserPointerMiddleClick(vr::k_ulInvalidActionHandle),
@@ -47,13 +42,31 @@ bool VRInput::Init()
             return false;
 
         //Load actions (we assume that the files are not messed with and skip some error checking)
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/EnableGlobalLaserPointer",    &m_HandleActionEnableGlobalLaserPointer);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut01",            &m_HandleActionDoGlobalShortcut01);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut02",            &m_HandleActionDoGlobalShortcut02);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut03",            &m_HandleActionDoGlobalShortcut03);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut04",            &m_HandleActionDoGlobalShortcut04);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut05",            &m_HandleActionDoGlobalShortcut05);
-        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/GlobalShortcut06",            &m_HandleActionDoGlobalShortcut06);
+        vr::VRInput()->GetActionHandle("/actions/shortcuts/in/EnableGlobalLaserPointer", &m_HandleActionEnableGlobalLaserPointer);
+
+        //Load as many global shortcut input actions as we can find. Up to configid_int_input_global_shortcuts_max_count at least.
+        //This allows for extended amounts via end-user modification, though the Steam manifest takes priority if present
+        m_HandleActionDoGlobalShortcuts.clear();
+        const int shortcut_max = ConfigManager::GetValue(configid_int_input_global_shortcuts_max_count);
+        for (int i = 0; i < shortcut_max; ++i)
+        {
+            vr::VRActionHandle_t handle_global_shortcut = vr::k_ulInvalidActionHandle;
+
+            std::stringstream ss;
+            ss << "/actions/shortcuts/in/GlobalShortcut" << std::setfill('0') << std::setw(2) << i + 1;
+
+            vr::VRInput()->GetActionHandle(ss.str().c_str(), &handle_global_shortcut);
+
+            //We do check if we got a handle here, but as of writing this, GetActionHandle() will always return a valid handle, regardless of presence in the manifest.
+            if (handle_global_shortcut != vr::k_ulInvalidActionHandle)
+            {
+                m_HandleActionDoGlobalShortcuts.push_back(handle_global_shortcut);
+            }
+            else
+            {
+                break;
+            }
+        }
 
         vr::VRInput()->GetActionSetHandle("/actions/laserpointer",                &m_HandleActionsetLaserPointer);
         vr::VRInput()->GetActionHandle("/actions/laserpointer/in/LeftClick",      &m_HandleActionLaserPointerLeftClick);
@@ -116,24 +129,10 @@ void VRInput::Update()
 
 void VRInput::RefreshAnyGlobalActionBound()
 {
-    //Doesn't trigger on app start since its actions are not valid yet
-    vr::VRActionHandle_t action_handles[] = 
+    auto is_action_bound = [&](vr::VRActionHandle_t action_handle)
     {
-        m_HandleActionEnableGlobalLaserPointer,
-        m_HandleActionDoGlobalShortcut01,
-        m_HandleActionDoGlobalShortcut02,
-        m_HandleActionDoGlobalShortcut03,
-        m_HandleActionDoGlobalShortcut04,
-        m_HandleActionDoGlobalShortcut05,
-        m_HandleActionDoGlobalShortcut06,
-    };
-
-    vr::VRInputValueHandle_t action_origin = vr::k_ulInvalidInputValueHandle;
-    m_IsAnyGlobalActionBound = false;
-
-    for (auto handle : action_handles)
-    {
-        vr::EVRInputError error = vr::VRInput()->GetActionOrigins(m_HandleActionsetShortcuts, handle, &action_origin, 1);
+        vr::VRInputValueHandle_t action_origin = vr::k_ulInvalidInputValueHandle;
+        vr::EVRInputError error = vr::VRInput()->GetActionOrigins(m_HandleActionsetShortcuts, action_handle, &action_origin, 1);
 
         if (action_origin != vr::k_ulInvalidInputValueHandle) 
         { 
@@ -144,45 +143,55 @@ void VRInput::RefreshAnyGlobalActionBound()
 
             if ( (error == vr::VRInputError_None) && (vr::VRSystem()->IsTrackedDeviceConnected(action_origin_info.trackedDeviceIndex)) )
             {
-                m_IsAnyGlobalActionBound = true;
-                return;
+                return true;
             }
         }
-        else
+        
+        return false;
+    };
+
+    //Doesn't trigger on app start since its actions are not valid yet
+    m_IsAnyGlobalActionBound = false;
+
+    if (is_action_bound(m_HandleActionEnableGlobalLaserPointer))
+    {
+        m_IsAnyGlobalActionBound = true;
+        return;
+    }
+
+    for (auto handle : m_HandleActionDoGlobalShortcuts)
+    {
+        if (is_action_bound(handle))
         {
-            m_IsAnyGlobalActionBoundStateValid = false;
+            m_IsAnyGlobalActionBound = true;
+            return;
         }
     }
 }
 
 void VRInput::HandleGlobalActionShortcuts(OutputManager& outmgr)
 {
+    const ActionManager::ActionList& shortcut_actions = ConfigManager::Get().GetGlobalShortcuts();
     vr::InputDigitalActionData_t data;
-    const std::pair<vr::VRActionHandle_t, ConfigID_Handle> shortcuts[] = 
-    {
-        {m_HandleActionDoGlobalShortcut01, configid_handle_input_shortcut01_action_uid}, 
-        {m_HandleActionDoGlobalShortcut02, configid_handle_input_shortcut02_action_uid}, 
-        {m_HandleActionDoGlobalShortcut03, configid_handle_input_shortcut03_action_uid},
-        {m_HandleActionDoGlobalShortcut04, configid_handle_input_shortcut04_action_uid},
-        {m_HandleActionDoGlobalShortcut05, configid_handle_input_shortcut05_action_uid},
-        {m_HandleActionDoGlobalShortcut06, configid_handle_input_shortcut06_action_uid}
-    };
 
-    for (const auto& shortcut_pair : shortcuts)
+    size_t shortcut_id = 0;
+    for (const auto shortcut_handle : m_HandleActionDoGlobalShortcuts)
     {
-        vr::EVRInputError input_error = vr::VRInput()->GetDigitalActionData(shortcut_pair.first, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
+        vr::EVRInputError input_error = vr::VRInput()->GetDigitalActionData(shortcut_handle, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
 
-        if ((input_error == vr::VRInputError_None) && (data.bChanged))
+        if ((shortcut_id < shortcut_actions.size()) && (input_error == vr::VRInputError_None) && (data.bChanged))
         {
             if (data.bState)
             {
-                ConfigManager::Get().GetActionManager().StartAction( ConfigManager::GetValue(shortcut_pair.second) );
+                ConfigManager::Get().GetActionManager().StartAction(shortcut_actions[shortcut_id]);
             }
             else
             {
-                ConfigManager::Get().GetActionManager().StopAction( ConfigManager::GetValue(shortcut_pair.second) );
+                ConfigManager::Get().GetActionManager().StopAction(shortcut_actions[shortcut_id]);
             }
         }
+
+        ++shortcut_id;
     }
 }
 

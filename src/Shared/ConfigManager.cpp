@@ -452,14 +452,30 @@ bool ConfigManager::LoadConfigFromFile()
         LoadConfigPersistentWindowState(config);
     #endif
 
-    m_ConfigHandle[configid_handle_input_go_home_action_uid]                = std::strtoull(config.ReadString("Input", "GoHomeButtonActionUID",     "0").c_str(), nullptr, 10);
-    m_ConfigHandle[configid_handle_input_go_back_action_uid]                = std::strtoull(config.ReadString("Input", "GoBackButtonActionUID",     "0").c_str(), nullptr, 10);
-    m_ConfigHandle[configid_handle_input_shortcut01_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut01ActionUID", "0").c_str(), nullptr, 10);
-    m_ConfigHandle[configid_handle_input_shortcut02_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut02ActionUID", "0").c_str(), nullptr, 10);
-    m_ConfigHandle[configid_handle_input_shortcut03_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut03ActionUID", "0").c_str(), nullptr, 10);
-    m_ConfigHandle[configid_handle_input_shortcut04_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut04ActionUID", "0").c_str(), nullptr, 10);
-    m_ConfigHandle[configid_handle_input_shortcut05_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut05ActionUID", "0").c_str(), nullptr, 10);
-    m_ConfigHandle[configid_handle_input_shortcut06_action_uid]             = std::strtoull(config.ReadString("Input", "GlobalShortcut06ActionUID", "0").c_str(), nullptr, 10);
+    m_ConfigHandle[configid_handle_input_go_home_action_uid] = std::strtoull(config.ReadString("Input", "GoHomeButtonActionUID", "0").c_str(), nullptr, 10);
+    m_ConfigHandle[configid_handle_input_go_back_action_uid] = std::strtoull(config.ReadString("Input", "GoBackButtonActionUID", "0").c_str(), nullptr, 10);
+
+    //Global Shortcuts
+    m_ConfigInt[configid_int_input_global_shortcuts_max_count] = config.ReadInt("Input", "GlobalShortcutsMaxCount", 20);
+
+    m_ConfigGlobalShortcuts.clear();
+    int shortcut_id = 0;
+    for (;;)
+    {
+        std::stringstream ss;
+        ss << "GlobalShortcut" << std::setfill('0') << std::setw(2) << shortcut_id + 1 << "ActionUID";   //Naming pattern is backwards-compatible to legacy shortcut 01-06 entries
+
+        if (config.KeyExists("Input", ss.str().c_str()))
+        {
+            m_ConfigGlobalShortcuts.push_back(std::strtoull(config.ReadString("Input", ss.str().c_str(), 0).c_str(), nullptr, 10));
+        }
+        else
+        {
+            break;
+        }
+
+        ++shortcut_id;
+    }
 
     //Hotkeys
     m_ConfigHotkey.clear();
@@ -570,38 +586,26 @@ bool ConfigManager::LoadConfigFromFile()
     {
         m_ConfigHandle[configid_handle_input_go_back_action_uid] = k_ActionUID_Invalid;
     }
-    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut01_action_uid]))
+
+    shortcut_id = 0;
+    for (ActionUID& uid : m_ConfigGlobalShortcuts)
     {
-        m_ConfigHandle[configid_handle_input_shortcut01_action_uid] = k_ActionUID_Invalid;
-    }
-    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut02_action_uid]))
-    {
-        m_ConfigHandle[configid_handle_input_shortcut02_action_uid] = k_ActionUID_Invalid;
-    }
-    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut03_action_uid]))
-    {
-        m_ConfigHandle[configid_handle_input_shortcut03_action_uid] = k_ActionUID_Invalid;
-    }
-    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut04_action_uid]))
-    {
-        m_ConfigHandle[configid_handle_input_shortcut04_action_uid] = k_ActionUID_Invalid;
-    }
-    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut05_action_uid]))
-    {
-        m_ConfigHandle[configid_handle_input_shortcut05_action_uid] = k_ActionUID_Invalid;
-    }
-    if (!m_ActionManager.ActionExists(m_ConfigHandle[configid_handle_input_shortcut06_action_uid]))
-    {
-        m_ConfigHandle[configid_handle_input_shortcut06_action_uid] = k_ActionUID_Invalid;
+        if ((uid != k_ActionUID_Invalid) && (!m_ActionManager.ActionExists(uid)))
+        {
+            LOG_F(WARNING, "Global Shortcut %02d is referencing unknown action %llu, resetting to [None]", shortcut_id + 1, uid);
+            uid = k_ActionUID_Invalid;
+        }
+
+        ++shortcut_id;
     }
 
     //Validate hotkey ActionUIDs
     hotkey_id = 0;
     for (ConfigHotkey& hotkey : m_ConfigHotkey)
     {
-        if (!m_ActionManager.ActionExists(hotkey.ActionUID))
+        if ((hotkey.ActionUID != k_ActionUID_Invalid) && (!m_ActionManager.ActionExists(hotkey.ActionUID)))
         {
-            LOG_F(WARNING, "Hotkey %02d is referencing unknown action %llu, resetting to [None]", hotkey_id, hotkey.ActionUID);
+            LOG_F(WARNING, "Hotkey %02d is referencing unknown action %llu, resetting to [None]", hotkey_id + 1, hotkey.ActionUID);
             hotkey.ActionUID = k_ActionUID_Invalid;
         }
 
@@ -922,9 +926,15 @@ void ConfigManager::MigrateLegacyActionsFromConfig(const Ini& config)
     //Adapt references to legacy actions if possible (this will fail for the default ones though)
     m_ConfigHandle[configid_handle_input_go_home_action_uid]    = legacy_id_to_uid[config.ReadInt("Input", "GoHomeButtonActionID",     0)];
     m_ConfigHandle[configid_handle_input_go_back_action_uid]    = legacy_id_to_uid[config.ReadInt("Input", "GoBackButtonActionID",     0)];
-    m_ConfigHandle[configid_handle_input_shortcut01_action_uid] = legacy_id_to_uid[config.ReadInt("Input", "GlobalShortcut01ActionID", 0)];
-    m_ConfigHandle[configid_handle_input_shortcut02_action_uid] = legacy_id_to_uid[config.ReadInt("Input", "GlobalShortcut02ActionID", 0)];
-    m_ConfigHandle[configid_handle_input_shortcut03_action_uid] = legacy_id_to_uid[config.ReadInt("Input", "GlobalShortcut03ActionID", 0)];
+
+    for (size_t i = 0; i < 2; ++i)
+    {
+        if (i < m_ConfigGlobalShortcuts.size())
+        {
+            std::string config_name = "GlobalShortcut0" + std::to_string(i + 1) + "ActionID";
+            m_ConfigGlobalShortcuts[i] = legacy_id_to_uid[config.ReadInt("Input", config_name.c_str(), 0)];
+        }
+    }
 
     for (size_t i = 0; i < 2; ++i)
     {
@@ -1057,17 +1067,63 @@ void ConfigManager::SaveConfigToFile()
     config.WriteString("Interface", "ActionOrderBarDefault", m_ActionManager.ActionOrderListToString(m_ActionManager.GetActionOrderListBarDefault()).c_str() );
     config.WriteString("Interface", "ActionOrderOverlayBar", m_ActionManager.ActionOrderListToString(m_ActionManager.GetActionOrderListOverlayBar()).c_str() );
 
-    config.WriteString("Input", "GoHomeButtonActionUID",             std::to_string(m_ConfigHandle[configid_handle_input_go_home_action_uid]).c_str());
-    config.WriteString("Input", "GoBackButtonActionUID",             std::to_string(m_ConfigHandle[configid_handle_input_go_back_action_uid]).c_str());
-    config.WriteString("Input", "GlobalShortcut01ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut01_action_uid]).c_str());
-    config.WriteString("Input", "GlobalShortcut02ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut02_action_uid]).c_str());
-    config.WriteString("Input", "GlobalShortcut03ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut03_action_uid]).c_str());
-    config.WriteString("Input", "GlobalShortcut04ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut04_action_uid]).c_str());
-    config.WriteString("Input", "GlobalShortcut05ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut05_action_uid]).c_str());
-    config.WriteString("Input", "GlobalShortcut06ActionUID",         std::to_string(m_ConfigHandle[configid_handle_input_shortcut06_action_uid]).c_str());
+    config.WriteString("Input", "GoHomeButtonActionUID", std::to_string(m_ConfigHandle[configid_handle_input_go_home_action_uid]).c_str());
+    config.WriteString("Input", "GoBackButtonActionUID", std::to_string(m_ConfigHandle[configid_handle_input_go_back_action_uid]).c_str());
+
+    //Global Shorcuts
+    int shortcut_id = 0;
+
+    for (;;) //Remove any previous entries
+    {
+        ss = std::stringstream();
+        ss << "GlobalShortcut" << std::setfill('0') << std::setw(2) << shortcut_id + 1 << "ActionUID";
+
+        if (config.KeyExists("Input", ss.str().c_str()))
+        {
+            config.RemoveKey("Input", ss.str().c_str());
+        }
+        else
+        {
+            break;
+        }
+
+        ++shortcut_id;
+    }
+
+    shortcut_id = 0;
+    for (const ActionUID uid: m_ConfigGlobalShortcuts)
+    {
+        ss = std::stringstream();
+        ss << "GlobalShortcut" << std::setfill('0') << std::setw(2) << shortcut_id + 1 << "ActionUID";
+
+        config.WriteString("Input", ss.str().c_str(), std::to_string(uid).c_str());
+
+        ++shortcut_id;
+    }
 
     //Hotkeys
     int hotkey_id = 0;
+
+    for (;;) //Remove any previous entries
+    {
+        ss = std::stringstream();
+        ss << "GlobalHotkey" << std::setfill('0') << std::setw(2) << hotkey_id + 1;
+
+        if (config.KeyExists("Input", (ss.str() + "Modifiers").c_str()))
+        {
+            config.RemoveKey("Input", (ss.str() + "Modifiers").c_str());
+            config.RemoveKey("Input", (ss.str() + "KeyCode"  ).c_str());
+            config.RemoveKey("Input", (ss.str() + "ActionUID").c_str());
+        }
+        else
+        {
+            break;
+        }
+
+        ++hotkey_id;
+    }
+
+    hotkey_id = 0;
     for (const ConfigHotkey& hotkey : m_ConfigHotkey)
     {
         ss = std::stringstream();
@@ -1402,6 +1458,16 @@ float& ConfigManager::GetRef(ConfigID_Float configid)
 uint64_t& ConfigManager::GetRef(ConfigID_Handle configid)
 {
     return (configid < configid_handle_overlay_MAX) ? OverlayManager::Get().GetCurrentConfigData().ConfigHandle[configid] : Get().m_ConfigHandle[configid];
+}
+
+ActionManager::ActionList& ConfigManager::GetGlobalShortcuts()
+{
+    return m_ConfigGlobalShortcuts;
+}
+
+const ActionManager::ActionList& ConfigManager::GetGlobalShortcuts() const
+{
+    return m_ConfigGlobalShortcuts;
 }
 
 ConfigHotkeyList& ConfigManager::GetHotkeys()

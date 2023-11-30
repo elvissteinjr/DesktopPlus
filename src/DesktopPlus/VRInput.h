@@ -30,12 +30,7 @@ class VRInput
         vr::VRActionSetHandle_t m_HandleActionsetScrollSmooth;
 
         vr::VRActionHandle_t m_HandleActionEnableGlobalLaserPointer;
-        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut01;
-        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut02;
-        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut03;
-        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut04;
-        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut05;
-        vr::VRActionHandle_t m_HandleActionDoGlobalShortcut06;
+        std::vector<vr::VRActionHandle_t> m_HandleActionDoGlobalShortcuts;
 
         vr::VRActionHandle_t m_HandleActionLaserPointerLeftClick;
         vr::VRActionHandle_t m_HandleActionLaserPointerRightClick;

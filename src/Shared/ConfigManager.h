@@ -148,6 +148,7 @@ enum ConfigID_Int
     configid_int_interface_wmr_ignore_vscreens,             //-1 means auto/unset which is the value non-WMR users get
     configid_int_input_mouse_dbl_click_assist_duration_ms,
     configid_int_input_drag_fixed_distance_shape,           //0 = Sphere, 1 = Cylinder
+    configid_int_input_global_shortcuts_max_count,
     configid_int_windows_winrt_dragging_mode,
     configid_int_windows_winrt_capture_lost_behavior,
     configid_int_browser_max_fps,                           //Browser overlays use this instead of update limits
@@ -203,12 +204,6 @@ enum ConfigID_Handle
     configid_handle_overlay_MAX,
     configid_handle_input_go_home_action_uid,
     configid_handle_input_go_back_action_uid,
-    configid_handle_input_shortcut01_action_uid,
-    configid_handle_input_shortcut02_action_uid,
-    configid_handle_input_shortcut03_action_uid,
-    configid_handle_input_shortcut04_action_uid,
-    configid_handle_input_shortcut05_action_uid,
-    configid_handle_input_shortcut06_action_uid,
     configid_handle_state_arg_hwnd,                           //Used when a HWND is needed as an ipcact message argument
     configid_handle_state_dplus_laser_pointer_target_overlay, //Overlay handle for active Desktop+ laser pointer
     configid_handle_state_action_uid,                         //Used when an action UID is needed as an ipcact message argument and message space is needed for something else
@@ -378,6 +373,7 @@ class ConfigManager
         float m_ConfigFloat[configid_float_MAX];
         uint64_t m_ConfigHandle[configid_handle_MAX];
         std::string m_ConfigString[configid_str_MAX];
+        ActionManager::ActionList m_ConfigGlobalShortcuts;
         ConfigHotkeyList m_ConfigHotkey;
 
         ActionManager m_ActionManager;
@@ -445,6 +441,8 @@ class ConfigManager
         static float&    GetRef(ConfigID_Float  configid);
         static uint64_t& GetRef(ConfigID_Handle configid);
 
+        ActionManager::ActionList& GetGlobalShortcuts();
+        const ActionManager::ActionList& GetGlobalShortcuts() const;
         ConfigHotkeyList& GetHotkeys();
         const ConfigHotkeyList& GetHotkeys() const;
 

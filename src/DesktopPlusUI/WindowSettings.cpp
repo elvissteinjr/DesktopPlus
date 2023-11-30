@@ -131,7 +131,7 @@ void WindowSettings::ClearCachedTranslationStrings()
     m_BrowserBlockListCountText.clear();
     m_ActionButtonsDefaultLabel.clear();
     m_ActionButtonsOverlayBarLabel.clear();
-    m_ActionGlobalShortcutLabels[0].clear();    //Only first element is checked for recreation
+    m_ActionGlobalShortcutLabels.clear();
 }
 
 void WindowSettings::WindowUpdate()
@@ -873,10 +873,12 @@ void WindowSettings::UpdatePageMainCatActions()
     //Actions
     {
         const ActionManager& action_manager = ConfigManager::Get().GetActionManager();
+        ActionManager::ActionList& global_shortcut_list = ConfigManager::Get().GetGlobalShortcuts();
         ConfigHotkeyList& hotkey_list = ConfigManager::Get().GetHotkeys();
         const ImGuiStyle& style = ImGui::GetStyle();
 
         static ConfigID_Handle action_picker_config_id = configid_handle_MAX;
+        static int action_picker_global_shortcut_id = -1;
         static int action_picker_hotkey_id = -1;
         static float button_binding_width = 0.0f;
 
@@ -895,6 +897,19 @@ void WindowSettings::UpdatePageMainCatActions()
                 IPCManager::Get().PostConfigMessageToDashboardApp(action_picker_config_id, m_ActionPickerUID);
                 action_picker_config_id = configid_handle_MAX;
 
+                m_PageReturned = wndsettings_page_none;
+            }
+            else if (action_picker_global_shortcut_id != -1)
+            {
+                if ((action_picker_global_shortcut_id >= 0) && (action_picker_global_shortcut_id < (int)global_shortcut_list.size()))
+                {
+                    global_shortcut_list[action_picker_global_shortcut_id] = m_ActionPickerUID;
+
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_state_action_uid, m_ActionPickerUID);
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_global_shortcut_set, action_picker_global_shortcut_id);
+                }
+
+                action_picker_global_shortcut_id = -1;
                 m_PageReturned = wndsettings_page_none;
             }
             else if (action_picker_hotkey_id != -1)
@@ -930,12 +945,15 @@ void WindowSettings::UpdatePageMainCatActions()
             StringReplaceAll(m_ActionButtonsOverlayBarLabel, "%COUNT%", std::to_string(action_count));
         }
 
-        if (m_ActionGlobalShortcutLabels[0].empty())
+        if ((m_ActionGlobalShortcutLabels.empty()) || (m_ActionGlobalShortcutLabels.size() != global_shortcut_list.size()))
         {
-            for (int i = 0; i < IM_ARRAYSIZE(m_ActionGlobalShortcutLabels); ++i)
+            m_ActionGlobalShortcutLabels.clear();
+
+            for (int i = 0; i < global_shortcut_list.size(); ++i)
             {
-                m_ActionGlobalShortcutLabels[i] = TranslationManager::GetString(tstr_SettingsActionsGlobalShortcutsEntry);
-                StringReplaceAll(m_ActionGlobalShortcutLabels[i], "%ID%", std::to_string(i + 1));
+                std::string label = TranslationManager::GetString(tstr_SettingsActionsGlobalShortcutsEntry);
+                StringReplaceAll(label, "%ID%", std::to_string(i + 1));
+                m_ActionGlobalShortcutLabels.push_back(label);
             }
         }
 
@@ -1017,7 +1035,7 @@ void WindowSettings::UpdatePageMainCatActions()
 
         ImGui::Indent();
 
-        const ImVec2 table_size(-style.WindowPadding.x - style.WindowPadding.x - 1.0f, 0.0f);           //Replicate padding from columns
+        const ImVec2 table_size(-style.IndentSpacing - 1.0f, 0.0f);                                     //Replicate padding from columns
         const float table_column_width = m_Column0Width - style.IndentSpacing - style.IndentSpacing;    //Align with width of other columns 
 
         if (BeginCompactTable("TableActiveButtons", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit, table_size))
@@ -1080,38 +1098,77 @@ void WindowSettings::UpdatePageMainCatActions()
 
         ImGui::Indent();
 
+        static float table_global_shortcuts_buttons_width = 0.0f;
+
+        const int shortcuts_visible = (int)global_shortcut_list.size();
+        const int shortcuts_max     = ConfigManager::GetValue(configid_int_input_global_shortcuts_max_count);
+
         if (BeginCompactTable("TableGlobalShortcuts", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit, table_size))
         {
             ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsActionsTableHeaderShortcut), 0, table_column_width);
             ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsActionsTableHeaderAction),   ImGuiTableColumnFlags_WidthStretch);
             CompactTableHeadersRow();
 
-            for (int i = 0; i < IM_ARRAYSIZE(m_ActionGlobalShortcutLabels); ++i)
-            {
-                ConfigID_Handle config_id = (ConfigID_Handle)(configid_handle_input_shortcut01_action_uid + i);
-                ActionUID uid = ConfigManager::GetValue(config_id);
+            IM_ASSERT(m_ActionGlobalShortcutLabels.size() == global_shortcut_list.size());
 
-                ImGui::PushID(i);
+            int shortcut_id = 0;
+            for (ActionUID uid : global_shortcut_list)
+            {
+                ImGui::PushID(shortcut_id);
 
                 ImGui::TableNextColumn();
 
                 ImGui::AlignTextToFramePadding();
-                ImGui::TextUnformatted(m_ActionGlobalShortcutLabels[i].c_str());
+                ImGui::TextUnformatted(m_ActionGlobalShortcutLabels[shortcut_id].c_str());
                 ImGui::SameLine();
 
                 ImGui::TableNextColumn();
                 if (ImGui::Selectable(action_manager.GetTranslatedName(uid)))
                 {
                     m_ActionPickerUID = uid;
-                    action_picker_config_id = config_id;
+                    action_picker_global_shortcut_id = shortcut_id;
                     PageGoForward(wndsettings_page_action_picker);
                 }
 
                 ImGui::PopID();
+
+                ++shortcut_id;
             }
 
             EndCompactTable();
         }
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - table_global_shortcuts_buttons_width - 1.0f);
+
+        ImGui::BeginGroup();
+
+        if (shortcuts_visible >= shortcuts_max)
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsGlobalShortcutsAdd)))
+        {
+            global_shortcut_list.push_back(k_ActionUID_Invalid);
+        }
+
+        if (shortcuts_visible >= shortcuts_max)
+            ImGui::PopItemDisabled();
+
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+
+        if (shortcuts_visible <= 1)
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsGlobalShortcutsRemove)))
+        {
+            global_shortcut_list.pop_back();
+        }
+
+        if (shortcuts_visible <= 1)
+            ImGui::PopItemDisabled();
+
+        ImGui::EndGroup();
+
+        table_global_shortcuts_buttons_width = ImGui::GetItemRectSize().x + style.IndentSpacing;
 
         ImGui::PopID();
 
@@ -1224,7 +1281,7 @@ void WindowSettings::UpdatePageMainCatActions()
             EndCompactTable();
         }
 
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - table_hotkeys_buttons_width);
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - table_hotkeys_buttons_width - 1.0f);
 
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsHotkeysAdd)))
         {

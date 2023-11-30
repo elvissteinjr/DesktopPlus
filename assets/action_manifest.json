@@ -36,6 +36,76 @@
       "type": "boolean"
     },
     {
+      "name": "/actions/shortcuts/in/GlobalShortcut07",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut08",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut09",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut10",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut11",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut12",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut13",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut14",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut15",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut16",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut17",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut18",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut19",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/shortcuts/in/GlobalShortcut20",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
       "name": "/actions/laserpointer/in/LeftClick",
       "requirement": "suggested",
       "type": "boolean"
@@ -138,6 +208,6 @@
       "binding_url": "input/action_bindings_generic.json"
     }
   ],
-  "version": 3,
+  "version": 4,
   "minimum_required_version": 2
 }

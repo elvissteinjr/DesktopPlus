@@ -114,7 +114,8 @@ enum TRMGRStrID
     tstr_SettingsActionsGlobalShortcuts,
     tstr_SettingsActionsGlobalShortcutsTip,
     tstr_SettingsActionsGlobalShortcutsEntry,                   //%ID% == ID of shortcut, starts with 1
-    tstr_SettingsActionsToggleVisibilityEntry,                  //^
+    tstr_SettingsActionsGlobalShortcutsAdd,
+    tstr_SettingsActionsGlobalShortcutsRemove,
     tstr_SettingsActionsHotkeys,
     tstr_SettingsActionsHotkeysTip,
     tstr_SettingsActionsHotkeysAdd,

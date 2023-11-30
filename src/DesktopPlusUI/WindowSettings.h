@@ -47,8 +47,7 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         std::string m_WarningTextAppProfile;
         std::string m_ActionButtonsDefaultLabel;
         std::string m_ActionButtonsOverlayBarLabel;
-        std::string m_ActionGlobalShortcutLabels[6];
-        std::string m_ActionToggleOverlayVisibilityLabels[3];
+        std::vector<std::string> m_ActionGlobalShortcutLabels;
         std::string m_BrowserMaxFPSValueText;
         std::string m_BrowserBlockListCountText;
 

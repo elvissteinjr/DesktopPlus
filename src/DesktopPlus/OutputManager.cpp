@@ -1427,6 +1427,17 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                     break;
                 }
+                case ipcact_global_shortcut_set:
+                {
+                    ActionManager::ActionList& global_shortcut_list = ConfigManager::Get().GetGlobalShortcuts();
+                    int shortcut_id = msg.lParam;
+
+                    if ((shortcut_id >= 0) && (shortcut_id < (int)global_shortcut_list.size()))
+                    {
+                        global_shortcut_list[shortcut_id] = ConfigManager::GetValue(configid_handle_state_action_uid);
+                    }
+                    break;
+                }
                 case ipcact_hotkey_set:
                 {
                     ConfigHotkeyList& hotkey_list = ConfigManager::Get().GetHotkeys();
