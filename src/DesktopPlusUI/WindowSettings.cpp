@@ -132,6 +132,11 @@ void WindowSettings::ClearCachedTranslationStrings()
     m_ActionButtonsDefaultLabel.clear();
     m_ActionButtonsOverlayBarLabel.clear();
     m_ActionGlobalShortcutLabels.clear();
+
+    for (ConfigHotkey& hotkey : ConfigManager::Get().GetHotkeys())
+    {
+        hotkey.StateUIName.clear();
+    }
 }
 
 void WindowSettings::WindowUpdate()
@@ -4134,7 +4139,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
                 ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandKeyCode));
                 ImGui::NextColumn();
 
-                if (ImGui::Button( GetStringForKeyCode((unsigned int)command.UIntID)) )
+                if (ImGui::Button( (command.UIntID == 0) ? TranslationManager::GetString(tstr_DialogKeyCodePickerKeyCodeNone) : GetStringForKeyCode(command.UIntID) ))
                 {
                     m_KeyCodePickerID = (unsigned int)command.UIntID;
                     PageGoForward(wndsettings_page_keycode_picker);
@@ -4826,7 +4831,7 @@ void WindowSettings::UpdatePageKeyCodePicker(bool only_restore_settings)
                 list_id = i;
 
                 //Clear filter if it wouldn't show the current selection
-                if (!filter.PassFilter(GetStringForKeyCode(m_KeyCodePickerID)))
+                if (!filter.PassFilter( (m_KeyCodePickerID == 0) ? TranslationManager::GetString(tstr_DialogKeyCodePickerKeyCodeNone) : GetStringForKeyCode(m_KeyCodePickerID) ))
                 {
                     filter.Clear();
                 }
@@ -4902,10 +4907,12 @@ void WindowSettings::UpdatePageKeyCodePicker(bool only_restore_settings)
     ImGui::BeginChild("KeyCodePickerList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
     unsigned char list_keycode;
+    const char* list_keycode_str = nullptr;
     for (int i = 0; i < 256; i++)
     {
         list_keycode = GetKeyCodeForListID(i);
-        if (filter.PassFilter( GetStringForKeyCode(list_keycode) ))
+        list_keycode_str = (list_keycode == 0) ? TranslationManager::GetString(tstr_DialogKeyCodePickerKeyCodeNone) : GetStringForKeyCode(list_keycode);
+        if (filter.PassFilter(list_keycode_str))
         {
             if ( (m_KeyCodePickerNoMouse) && (list_keycode >= VK_LBUTTON) && (list_keycode <= VK_XBUTTON2) && (list_keycode != VK_CANCEL) )    //Skip mouse buttons if turned off
                 continue;
@@ -4916,7 +4923,7 @@ void WindowSettings::UpdatePageKeyCodePicker(bool only_restore_settings)
                 is_nav_focus_entry_pending = false;
             }
 
-            if (ImGui::Selectable( GetStringForKeyCode(list_keycode), (i == list_id)))
+            if (ImGui::Selectable(list_keycode_str, (i == list_id)))
             {
                 list_id = i;
                 m_KeyCodePickerID = list_keycode;
@@ -5452,7 +5459,7 @@ void WindowSettings::SelectableHotkey(ConfigHotkey& hotkey, int id)
                 hotkey.StateUIName += "Win+";
         }
 
-        hotkey.StateUIName += GetStringForKeyCode(hotkey.KeyCode);
+        hotkey.StateUIName += (hotkey.KeyCode == 0) ? TranslationManager::GetString(tstr_DialogKeyCodePickerKeyCodeNone) : GetStringForKeyCode(hotkey.KeyCode);
     }
 
     ImGui::PushID("HotkeySelectable");

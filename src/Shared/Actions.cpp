@@ -982,7 +982,7 @@ std::string ActionManager::GetCommandDescription(const ActionCommand& command, f
         case ActionCommand::command_key:
         {
             str = TranslationManager::GetString((command.UIntArg == 1) ? tstr_SettingsActionsEditCommandDescKeyToggle : tstr_SettingsActionsEditCommandDescKey);
-            StringReplaceAll(str, "%KEYNAME%", GetStringForKeyCode(command.UIntID));
+            StringReplaceAll(str, "%KEYNAME%", (command.UIntID == 0) ? TranslationManager::GetString(tstr_DialogKeyCodePickerKeyCodeNone) : GetStringForKeyCode(command.UIntID));
             break;
         }
         case ActionCommand::command_mouse_pos:

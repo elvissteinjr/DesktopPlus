@@ -522,6 +522,7 @@ enum TRMGRStrID
     tstr_DialogKeyCodePickerModifiers,
     tstr_DialogKeyCodePickerKeyCode,
     tstr_DialogKeyCodePickerKeyCodeHint,
+    tstr_DialogKeyCodePickerKeyCodeNone,
     tstr_DialogKeyCodePickerFromInput,
     tstr_DialogKeyCodePickerFromInputPopup,
     tstr_DialogKeyCodePickerFromInputPopupNoMouse,
