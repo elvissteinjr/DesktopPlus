@@ -4898,10 +4898,11 @@ void WindowSettings::UpdatePageKeyCodePicker(bool only_restore_settings)
     {
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogKeyCodePickerHeader)); 
     }
-    
+
     ImGui::Indent();
 
     ImGui::SetNextItemWidth(-1.0f);
+    vr_keyboard.SetShortcutWindowDirectionHint(ImGuiDir_Up);
     vr_keyboard.VRKeyboardInputBegin("##FilterList");
     if (ImGui::InputTextWithHint("##FilterList", TranslationManager::GetString(tstr_DialogKeyCodePickerKeyCodeHint), filter.InputBuf, IM_ARRAYSIZE(filter.InputBuf)))
     {
