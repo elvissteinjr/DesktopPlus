@@ -1016,6 +1016,9 @@ void WindowSettings::UpdatePageMainCatActions()
         ImGui::Columns(1);
 
         //Active Shortcuts
+        if (UIManager::Get()->IsOpenVRLoaded())
+            ImGui::Spacing();
+
         ImGui::Indent();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsActiveShortcuts));
         ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
@@ -1036,6 +1039,11 @@ void WindowSettings::UpdatePageMainCatActions()
                 vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
             }
             button_binding_width = ImGui::GetItemRectSize().x;
+
+            //For reasons unknown, if there's no item added in this spot and the Show Bindings button exist, ImGuiContext::HoveredIdDisabled will be true for the table rows (needs to be false for haptics)
+            //This is despite item disabled last being set in CompactTableHeadersRow(), so I'm not sure how this transfers over, but this works, eh
+            ImGui::SameLine();
+            ImGui::Dummy({0.0f, 0.0f});
         }
 
         ImGui::Indent();
@@ -1099,6 +1107,10 @@ void WindowSettings::UpdatePageMainCatActions()
                 vr::VRInput()->OpenBindingUI(g_AppKeyDashboardApp, vr::k_ulInvalidActionSetHandle, vr::k_ulInvalidInputValueHandle, UIManager::Get()->IsInDesktopMode());
                 vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
             }
+
+            //See Active Shortcuts comment
+            ImGui::SameLine();
+            ImGui::Dummy({0.0f, 0.0f});
         }
 
         ImGui::Indent();
