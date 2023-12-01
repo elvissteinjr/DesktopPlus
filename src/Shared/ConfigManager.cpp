@@ -1482,9 +1482,10 @@ const ConfigHotkeyList& ConfigManager::GetHotkeys() const
 
 void ConfigManager::ResetConfigStateValues()
 {
-    std::fill(std::begin(m_ConfigBool) + configid_bool_state_overlay_dragmode,           std::begin(m_ConfigBool) + configid_bool_state_misc_process_started_by_steam, false);
-    std::fill(std::begin(m_ConfigInt)  + configid_int_state_overlay_current_id_override, std::begin(m_ConfigInt)  + configid_int_state_performance_duplication_fps,    -1);
+    std::fill(std::begin(m_ConfigBool) + configid_bool_state_overlay_dragmode,                std::begin(m_ConfigBool) + configid_bool_state_misc_process_started_by_steam,     false);
+    std::fill(std::begin(m_ConfigInt)  + configid_int_state_overlay_current_id_override,      std::begin(m_ConfigInt)  + configid_int_state_performance_duplication_fps,        -1);
     //configid_int_state_interface_desktop_count is not reset
+    std::fill(std::begin(m_ConfigInt)  + configid_int_state_interface_floating_ui_hovered_id, std::begin(m_ConfigInt)  + configid_int_state_browser_content_blocker_list_count, -1);
 
     //Also reset overlay states
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
