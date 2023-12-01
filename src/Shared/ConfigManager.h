@@ -417,6 +417,7 @@ class ConfigManager
         #ifdef DPLUS_UI
             std::vector<std::string> GetOverlayProfileList();
             std::vector< std::pair<std::string, OverlayOrigin> > GetOverlayProfileOverlayNameList(const std::string& filename);
+            void RestoreActionOrdersFromDefault();
         #endif
 
         static WPARAM GetWParamForConfigID(ConfigID_Bool id);

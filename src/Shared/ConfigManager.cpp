@@ -1353,6 +1353,18 @@ std::vector< std::pair<std::string, OverlayOrigin> > ConfigManager::GetOverlayPr
     return list;
 }
 
+void ConfigManager::RestoreActionOrdersFromDefault()
+{
+    LOG_F(INFO, "Restoring action orders from default config...");
+
+    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_default.ini").c_str() );
+
+    Ini config(wpath.c_str());
+    m_ActionManager.SetActionOrderListUI(         m_ActionManager.ActionOrderListFromString( config.ReadString("Interface", "ActionOrder") ));
+    m_ActionManager.SetActionOrderListBarDefault( m_ActionManager.ActionOrderListFromString( config.ReadString("Interface", "ActionOrderBarDefault") ));
+    m_ActionManager.SetActionOrderListOverlayBar( m_ActionManager.ActionOrderListFromString( config.ReadString("Interface", "ActionOrderOverlayBar") ));
+}
+
 #endif //ifdef DPLUS_UI
 
 WPARAM ConfigManager::GetWParamForConfigID(ConfigID_Bool id)    //This is a no-op, but for consistencies' sake and in case anything changes there, it still exists

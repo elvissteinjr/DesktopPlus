@@ -631,12 +631,10 @@ void ActionManager::SaveActionsToFile()
 
 void ActionManager::RestoreActionsFromDefault()
 {
-    #ifdef DPLUS_UI
-        m_ActionOrderUI.clear();
-        m_ActionOrderBarDefault.clear();
-        m_ActionOrderOverlayBar.clear();
-    #endif
     LoadActionsFromFile("actions_default.ini");
+    #ifdef DPLUS_UI
+        ConfigManager::Get().RestoreActionOrdersFromDefault();
+    #endif
 }
 
 const Action& ActionManager::GetAction(ActionUID action_uid) const
