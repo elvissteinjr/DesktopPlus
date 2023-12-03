@@ -900,7 +900,7 @@ IMGUI_IMPL_API bool ImGui_ImplOpenVR_InputEventHandler(const vr::VREvent_t& vr_e
         case vr::VREvent_ScrollDiscrete:
         case vr::VREvent_ScrollSmooth:
         {
-            io.AddMouseWheelEvent(vr_event.data.scroll.xdelta - io.MouseWheelH, vr_event.data.scroll.ydelta - io.MouseWheel);
+            io.AddMouseWheelEvent(vr_event.data.scroll.xdelta, vr_event.data.scroll.ydelta);
             return true;
         }
         case vr::VREvent_KeyboardCharInput:
