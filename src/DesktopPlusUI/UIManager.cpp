@@ -1931,11 +1931,11 @@ void UIManager::UpdateOverlayDrag()
             //Add distance as long as y-delta input is bigger
             if (hwheel_abs < ywheel_abs)
             {
-                m_OverlayDragger.DragAddDistance(io.MouseWheel);
+                m_OverlayDragger.DragAddDistance(io.MouseWheel * 0.5f);
             }
             else
             {
-                m_OverlayDragger.DragAddWidth(io.MouseWheelH * -0.25f);
+                m_OverlayDragger.DragAddWidth(io.MouseWheelH * -0.15f);
             }
         }
 
@@ -2007,6 +2007,34 @@ void UIManager::HighlightOverlay(unsigned int overlay_id)
             colored_handle = vr::k_ulOverlayHandleInvalid;
         }
     }
+}
+
+float UIManager::GetOverlayHeight(vr::VROverlayHandle_t overlay_handle) const
+{
+    //This only checks for overlays that are draggable by the UI
+    float overlay_width = 1.0f;
+    vr::VROverlay()->GetOverlayWidthInMeters(overlay_handle, &overlay_width);
+
+    UITexspaceID overlay_texspace = ui_texspace_total;
+    if (overlay_handle == m_OvrlHandleSettings)
+    {
+        overlay_texspace = ui_texspace_settings;
+    }
+    else if (overlay_handle == m_OvrlHandleOverlayProperties)
+    {
+        overlay_texspace = ui_texspace_overlay_properties;
+    }
+    else if (overlay_handle == m_OvrlHandleKeyboard)
+    {
+        overlay_texspace = ui_texspace_keyboard;
+    }
+    else
+    {
+        return -1.0f;
+    }
+
+    const DPRect& rect_tex = UITextureSpaces::Get().GetRect(overlay_texspace);
+    return ((float)rect_tex.GetHeight() / (float)rect_tex.GetWidth()) * overlay_width;
 }
 
 void UIManager::TriggerLaserPointerHaptics(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index) const

@@ -1,6 +1,8 @@
 #include "OverlayDragger.h"
 
-#ifndef DPLUS_UI
+#ifdef DPLUS_UI
+    #include "UIManager.h"
+#else
     #include "OutputManager.h"
 #endif
 
@@ -527,19 +529,42 @@ void OverlayDragger::DragUpdate()
 
 void OverlayDragger::DragAddDistance(float distance)
 {
-    float overlay_width = 1.0f;
+    float overlay_width  =  1.0f;
+    float overlay_height = -1.0f;
 
     if (m_DragModeOverlayID != k_ulOverlayID_None)
     {
         overlay_width = OverlayManager::Get().GetConfigData(m_DragModeOverlayID).ConfigFloat[configid_float_overlay_width];
+
+        #ifndef DPLUS_UI
+            if (OutputManager* outmgr = OutputManager::Get())
+            {
+                overlay_height = outmgr->GetOverlayHeight(m_DragModeOverlayID);
+            }
+        #endif
     }
     else
     {
         vr::VROverlay()->GetOverlayWidthInMeters(m_DragModeOverlayHandle, &overlay_width);
+
+        #ifdef DPLUS_UI
+            if (UIManager* uimgr = UIManager::Get())
+            {
+                overlay_height = uimgr->GetOverlayHeight(m_DragModeOverlayHandle);
+            }
+        #endif
     }
 
-    //Scale distance to overlay width
-    distance = clamp(distance * (overlay_width / 2.0f), -0.5f, 0.5f);
+    if (overlay_height == -1.0f)
+    {
+        //Fallback method if above don't apply. This usually isn't used, however, as dashboard drags the managed overlays and UI the unmanaged ones.
+        Vector3 pos_middle = OverlayManager::Get().GetOverlayMiddleTransform(      m_DragModeOverlayID, m_DragModeOverlayHandle).getTranslation();
+        Vector3 pos_bottom = OverlayManager::Get().GetOverlayCenterBottomTransform(m_DragModeOverlayID, m_DragModeOverlayHandle).getTranslation();
+        overlay_height = pos_middle.distance(pos_bottom) * 2.0f;
+    }
+
+    //Scale distance to overlay size
+    distance = clamp(distance * std::max(std::min(overlay_width, overlay_height) * 0.5f, 0.1f), -0.35f, 0.35f);
 
     if (m_AbsoluteModeActive)
     {

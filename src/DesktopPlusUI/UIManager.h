@@ -213,6 +213,7 @@ class UIManager
         void PositionOverlay();
         void UpdateOverlayDrag();
         void HighlightOverlay(unsigned int overlay_id);
+        float GetOverlayHeight(vr::VROverlayHandle_t overlay_handle) const;
 
         //Invalid device index triggers on current primary device
         void TriggerLaserPointerHaptics(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index = vr::k_unTrackedDeviceIndexInvalid) const;
