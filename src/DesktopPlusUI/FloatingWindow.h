@@ -93,6 +93,7 @@ class FloatingWindow
         float m_TitleBarTitleMaxWidth;   //Width available for the title string without icon and buttons
         float m_TitleBarTitleIconAlpha;  //Alpha value applied to both window title text & icon
         bool m_IsTitleBarHovered;
+        bool m_IsTitleIconClicked;
         bool m_HasAppearedOnce;
         bool m_IsWindowAppearing;
 

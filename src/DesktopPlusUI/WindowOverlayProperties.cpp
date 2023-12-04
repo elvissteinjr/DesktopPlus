@@ -185,6 +185,19 @@ float WindowOverlayProperties::DesktopModeGetTitleIconAlpha() const
     return m_TitleBarTitleIconAlpha;
 }
 
+void WindowOverlayProperties::DesktopModeOnTitleIconClick()
+{
+    //Toggle visibility on title icon double-click
+    const int click_count = ImGui::GetMouseClickedCount(ImGuiMouseButton_Left);
+    if ((click_count > 1) && (click_count % 2 == 0))     //ImGui keeps counting up so fast double-clicks in a row don't get detected as such with ImGui::IsMouseDoubleClicked()
+    {    
+        bool& is_enabled = ConfigManager::GetRef(configid_bool_overlay_enabled);
+        is_enabled = !is_enabled;
+
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_enabled, is_enabled);
+    }
+}
+
 void WindowOverlayProperties::DesktopModeOnTitleBarHover(bool is_hovered)
 {
     m_IsTitleBarHovered = is_hovered;
@@ -229,6 +242,12 @@ void WindowOverlayProperties::WindowUpdate()
 
     //Set title icon/text alpha based on overlay visibility
     m_TitleBarTitleIconAlpha = (ConfigManager::GetValue(configid_bool_overlay_enabled)) ? 1.0f : 0.5f;
+
+    //Check for double clicks if the icon is being clicked
+    if (m_IsTitleIconClicked)
+    {
+        DesktopModeOnTitleIconClick();  //Desktop mode function, but no reason to do anything differently in VR so we always use it
+    }
 
     ImGuiStyle& style = ImGui::GetStyle();
 

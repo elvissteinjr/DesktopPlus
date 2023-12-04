@@ -23,6 +23,7 @@ FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
                                    m_TitleBarTitleMaxWidth(-1.0f),
                                    m_TitleBarTitleIconAlpha(1.0f),
                                    m_IsTitleBarHovered(false),
+                                   m_IsTitleIconClicked(false),
                                    m_HasAppearedOnce(false),
                                    m_IsWindowAppearing(false),
                                    m_CompactTableHeaderHeight(0.0f)
@@ -109,6 +110,8 @@ void FloatingWindow::WindowUpdateBase()
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_TitleBarTitleIconAlpha);
 
     ImGui::Image(io.Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+    m_IsTitleIconClicked = ImGui::IsItemClicked();
+
     ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
     ImVec2 clip_end = ImGui::GetCursorScreenPos();

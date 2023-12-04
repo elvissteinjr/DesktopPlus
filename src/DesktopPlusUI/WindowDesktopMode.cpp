@@ -74,6 +74,12 @@ void WindowDesktopMode::UpdateTitleBar()
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, title_icon_alpha);
 
     ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+    if ((ImGui::IsItemClicked()) && (m_PageStack[m_PageStackPos] == wnddesktopmode_page_properties))
+    {
+        UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeOnTitleIconClick();
+    }
+
     ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
     ImGui::SetCursorPosY( (m_TitleBarRect.w / 2.0f) - (ImGui::GetTextLineHeight() / 1.90f) );   //1.90f to adjust alignment a bit
