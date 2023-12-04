@@ -115,12 +115,6 @@ void OverlayDragger::DragStartBase(bool is_gesture_drag)
         vr::VROverlay()->GetOverlayTransformAbsolute(m_DragModeOverlayHandle, &origin, &transform_target);
         m_DragModeMatrixTargetStart   = transform_target;
         m_DragModeMatrixTargetCurrent = m_DragModeMatrixTargetStart;
-
-        if ( (!is_gesture_drag) && (m_DragModeOverlayID != k_ulOverlayID_None) )
-        {
-            vr::VROverlay()->SetOverlayFlag(m_DragModeOverlayHandle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, false);
-            vr::VROverlay()->SetOverlayFlag(m_DragModeOverlayHandle, vr::VROverlayFlags_SendVRSmoothScrollEvents,   true);
-        }
     }
     else
     {
@@ -714,21 +708,6 @@ Matrix4 OverlayDragger::DragFinish()
     if (m_DragModeOverlayID != k_ulOverlayID_None)
     {
         OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_DragModeOverlayID);
-
-        //Restore scroll method
-        if (data.ConfigBool[configid_bool_overlay_input_enabled])
-        {
-            //No need to do anything if smooth scroll is enabled
-            if (!ConfigManager::GetValue(configid_bool_input_mouse_scroll_smooth))
-            {
-                vr::VROverlay()->SetOverlayFlag(m_DragModeOverlayHandle, vr::VROverlayFlags_SendVRSmoothScrollEvents,   false);
-                vr::VROverlay()->SetOverlayFlag(m_DragModeOverlayHandle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
-            }
-        }
-        else
-        {
-            vr::VROverlay()->SetOverlayFlag(m_DragModeOverlayHandle, vr::VROverlayFlags_SendVRSmoothScrollEvents, false);
-        }
 
         //Counteract additonal offset that might've been present on the transform
         matrix_target_relative.translate_relative(-data.ConfigFloat[configid_float_overlay_offset_right],
