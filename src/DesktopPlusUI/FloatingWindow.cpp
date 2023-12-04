@@ -55,10 +55,17 @@ void FloatingWindow::WindowUpdateBase()
         if ( (!UIManager::Get()->IsInDesktopMode()) && (alpha_prev != m_Alpha) )
             vr::VROverlay()->SetOverlayAlpha(GetOverlayHandle(), m_Alpha);
 
-        //Finish transition fade if one's active
-        if ((m_Alpha == 0.0f) && (m_IsTransitionFading))
+        if (m_Alpha == 0.0f)
         {
-            OverlayStateSwitchFinish();
+            //Not the best spot, but it can be difficult to cancel an active overlay hightlight when disappearing since the window code isn't running anymore
+            //So instead we always cancel the current highlight here, which shouldn't be problematic
+            UIManager::Get()->HighlightOverlay(k_ulOverlayID_None);
+
+            //Finish transition fade if one's active
+            if (m_IsTransitionFading)
+            {
+                OverlayStateSwitchFinish();
+            }
         }
     }
 
@@ -88,7 +95,7 @@ void FloatingWindow::WindowUpdateBase()
 
     ImGui::Begin(m_WindowID.c_str(), nullptr, flags);
 
-    m_IsTitleBarHovered = ImGui::IsItemHovered(); //Current item is the title bar (needs to be checked before BeginTitleBar())
+    m_IsTitleBarHovered = ((ImGui::IsItemHovered()) && (m_OverlayStateCurrent->IsVisible)); //Current item is the title bar (needs to be checked before BeginTitleBar())
     m_IsWindowAppearing = ImGui::IsWindowAppearing();
 
     //Title bar
