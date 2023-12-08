@@ -109,8 +109,8 @@ void WindowDesktopMode::UpdateTitleBar()
 
     ImGui::SetCursorScreenPos({back_button_x, m_TitleBarRect.y + (m_TitleBarRect.w / 2.0f) - (back_button_size.y / 2.0f) });
 
-    ImGui::PushID("BackButton");
-    if ( (ImGui::ImageButton(io.Fonts->TexID, img_size_line_height_back, img_uv_min, img_uv_max, 1)) || 
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1.0f, 1.0f));
+    if ( (ImGui::ImageButton("BackButton", io.Fonts->TexID, img_size_line_height_back, img_uv_min, img_uv_max)) || 
          (ImGui::IsMouseClicked(3 /* MouseX1 / Back */)) || ( (ImGui::IsKeyPressed(ImGuiKey_Backspace)) && (!ImGui::IsAnyInputTextActive()) ) )
     {
         if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup))
@@ -134,7 +134,7 @@ void WindowDesktopMode::UpdateTitleBar()
             }
         }
     }
-    ImGui::PopID();
+    ImGui::PopStyleVar();
 
     if (!can_go_back)
         ImGui::PopItemDisabled();

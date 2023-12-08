@@ -1549,7 +1549,7 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
     {
         case btn_act_cut:
         {
-            io.AddKeyEvent(ImGuiKey_ModCtrl, false);
+            io.AddKeyEvent(ImGuiMod_Ctrl, false);
             io.AddKeyEvent(ImGuiKey_X, false);
 
             m_ActiveButtonAction = btn_act_none;
@@ -1557,7 +1557,7 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
         }
         case btn_act_copy:
         {
-            io.AddKeyEvent(ImGuiKey_ModCtrl, false);
+            io.AddKeyEvent(ImGuiMod_Ctrl, false);
             io.AddKeyEvent(ImGuiKey_C, false);
 
             m_ActiveButtonAction = btn_act_none;
@@ -1565,7 +1565,7 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
         }
         case btn_act_paste:
         {
-            io.AddKeyEvent(ImGuiKey_ModCtrl, false);
+            io.AddKeyEvent(ImGuiMod_Ctrl, false);
             io.AddKeyEvent(ImGuiKey_V, false);
 
             m_ActiveButtonAction = btn_act_none;
@@ -1650,7 +1650,7 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
 
     if (ImGui::Button(TranslationManager::GetString(tstr_KeyboardShortcutsCut)))
     {
-        io.AddKeyEvent(ImGuiKey_ModCtrl, true);
+        io.AddKeyEvent(ImGuiMod_Ctrl, true);
         io.AddKeyEvent(ImGuiKey_X, true);
 
         m_ActiveButtonAction = btn_act_cut;
@@ -1665,7 +1665,7 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
 
     if (ImGui::Button(TranslationManager::GetString(tstr_KeyboardShortcutsCopy)))
     {
-        io.AddKeyEvent(ImGuiKey_ModCtrl, true);
+        io.AddKeyEvent(ImGuiMod_Ctrl, true);
         io.AddKeyEvent(ImGuiKey_C, true);
 
         m_ActiveButtonAction = btn_act_copy;
@@ -1687,7 +1687,7 @@ void WindowKeyboardShortcuts::Update(ImGuiID widget_id)
 
     if (ImGui::Button(TranslationManager::GetString(tstr_KeyboardShortcutsPaste)))
     {
-        io.AddKeyEvent(ImGuiKey_ModCtrl, true);
+        io.AddKeyEvent(ImGuiMod_Ctrl, true);
         io.AddKeyEvent(ImGuiKey_V, true);
 
         m_ActiveButtonAction = btn_act_paste;

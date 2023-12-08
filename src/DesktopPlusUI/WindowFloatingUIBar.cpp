@@ -83,9 +83,8 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     if (actionbar_was_enabled)
         ImGui::PushStyleColor(ImGuiCol_Button, Style_ImGuiCol_ButtonPassiveToggled);
 
-    ImGui::PushID(tmtex_icon_small_actionbar);
     TextureManager::Get().GetTextureInfo(tmtex_icon_small_actionbar, b_size, b_uv_min, b_uv_max);
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    if (ImGui::ImageButton("ToggleActionBar", io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
     {
         is_actionbar_enabled = !is_actionbar_enabled;
         //This is an UI state so no need to sync
@@ -95,8 +94,6 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
         ImGui::PopStyleColor();
 
     DisplayTooltipIfHovered(TranslationManager::GetString( (actionbar_was_enabled) ? tstr_FloatingUIActionBarHideTip : tstr_FloatingUIActionBarShowTip ));
-
-    ImGui::PopID();
     //
 
     ImGui::SameLine();
@@ -114,9 +111,8 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
         if (m_IsCurrentWindowCapturable != 1)
             ImGui::PushItemDisabled();
 
-        ImGui::PushID(tmtex_icon_small_add_window);
         TextureManager::Get().GetTextureInfo(tmtex_icon_small_add_window, b_size, b_uv_min, b_uv_max);
-        ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max); //This one's activated on mouse down
+        ImGui::ImageButton("AddWindow", io.Fonts->TexID, b_size, b_uv_min, b_uv_max); //This one's activated on mouse down
 
         if (ImGui::IsItemActivated())
         {
@@ -155,8 +151,6 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
 
         DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIWindowAddTip));
 
-        ImGui::PopID();
-
         ImGui::SameLine();
     }
     //
@@ -179,9 +173,8 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     if (dragmode_was_enabled)
         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
-    ImGui::PushID(tmtex_icon_small_move);
     TextureManager::Get().GetTextureInfo((is_overlay_transform_locked) ? tmtex_icon_small_move_locked : tmtex_icon_small_move, b_size, b_uv_min, b_uv_max);
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    if (ImGui::ImageButton("DragMode", io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
     {
         if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 1.5f) //Don't do normal button behavior after lock toggle was triggered
         {
@@ -229,16 +222,13 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     {
         DisplayTooltipIfHovered(TranslationManager::GetString((dragmode_was_enabled) ? tstr_FloatingUIDragModeDisableTip : tstr_FloatingUIDragModeEnableTip));
     }
-
-    ImGui::PopID();
     //
 
     ImGui::SameLine();
 
     //Close/Disable Button
-    ImGui::PushID(tmtex_icon_small_close);
     TextureManager::Get().GetTextureInfo(tmtex_icon_small_close, b_size, b_uv_min, b_uv_max);
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    if (ImGui::ImageButton("Close", io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
     {
         if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 2.5f) //Don't do normal button behavior after lock toggle was triggered
         {
@@ -289,8 +279,6 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     {
         DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIHideOverlayTip));
     }
-
-    ImGui::PopID();
     //
 
     ImGui::PopStyleColor(); //ImGuiCol_Button
@@ -322,16 +310,13 @@ void WindowFloatingUIMainBar::UpdatePerformanceMonitorButtons()
     const ImGuiStyle& style = ImGui::GetStyle();
 
     //Reset Cumulative Values Button
-    ImGui::PushID(tmtex_icon_small_performance_monitor_reset);
     TextureManager::Get().GetTextureInfo(tmtex_icon_small_performance_monitor_reset, b_size, b_uv_min, b_uv_max);
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    if (ImGui::ImageButton("Perfmon Reset", io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
     {
         UIManager::Get()->GetPerformanceWindow().ResetCumulativeValues();
     }
 
     DisplayTooltipIfHovered(TranslationManager::GetString(tstr_OvrlPropsPerfMonResetValues));
-
-    ImGui::PopID();
 
     ImGui::SameLine();
 }
@@ -352,9 +337,8 @@ void WindowFloatingUIMainBar::UpdateBrowserButtons(unsigned int overlay_id)
     if (!overlay_data.ConfigBool[configid_bool_overlay_state_browser_nav_can_go_back])
         ImGui::PushItemDisabled();
 
-    ImGui::PushID(tmtex_icon_small_browser_back);
     TextureManager::Get().GetTextureInfo(tmtex_icon_small_browser_back, b_size, b_uv_min, b_uv_max);
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    if (ImGui::ImageButton("GoBack", io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
     {
         DPBrowserAPIClient::Get().DPBrowser_GoBack(overlay_data.ConfigHandle[configid_handle_overlay_state_overlay_handle]);
     }
@@ -363,8 +347,6 @@ void WindowFloatingUIMainBar::UpdateBrowserButtons(unsigned int overlay_id)
         ImGui::PopItemDisabled();
 
     DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIBrowserGoBackTip));
-
-    ImGui::PopID();
     //
 
     ImGui::SameLine();
@@ -373,9 +355,8 @@ void WindowFloatingUIMainBar::UpdateBrowserButtons(unsigned int overlay_id)
     if (!overlay_data.ConfigBool[configid_bool_overlay_state_browser_nav_can_go_forward])
         ImGui::PushItemDisabled();
 
-    ImGui::PushID(tmtex_icon_small_browser_forward);
     TextureManager::Get().GetTextureInfo(tmtex_icon_small_browser_forward, b_size, b_uv_min, b_uv_max);
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    if (ImGui::ImageButton("GoForward", io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
     {
         DPBrowserAPIClient::Get().DPBrowser_GoForward(overlay_data.ConfigHandle[configid_handle_overlay_state_overlay_handle]);
     }
@@ -384,24 +365,19 @@ void WindowFloatingUIMainBar::UpdateBrowserButtons(unsigned int overlay_id)
         ImGui::PopItemDisabled();
 
     DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIBrowserGoForwardTip));
-
-    ImGui::PopID();
     //
 
     ImGui::SameLine();
 
     //Refresh Button
-    ImGui::PushID(tmtex_icon_small_browser_refresh);
     const bool is_loading = overlay_data.ConfigBool[configid_bool_overlay_state_browser_nav_is_loading];
     TextureManager::Get().GetTextureInfo((is_loading) ? tmtex_icon_small_browser_stop : tmtex_icon_small_browser_refresh, b_size, b_uv_min, b_uv_max);
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
+    if (ImGui::ImageButton("Refresh", io.Fonts->TexID, b_size, b_uv_min, b_uv_max))
     {
         DPBrowserAPIClient::Get().DPBrowser_Refresh(overlay_data.ConfigHandle[configid_handle_overlay_state_overlay_handle]);
     }
 
     DisplayTooltipIfHovered(TranslationManager::GetString((is_loading) ? tstr_FloatingUIBrowserStopTip : tstr_FloatingUIBrowserRefreshTip));
-
-    ImGui::PopID();
     //
 
     ImGui::SameLine();
@@ -514,9 +490,8 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
         if (current_desktop == -1)
             ImGui::PushStyleColor(ImGuiCol_Button, Style_ImGuiCol_ButtonPassiveToggled);
 
-        ImGui::PushID(tmtex_icon_desktop_all);
         TextureManager::Get().GetTextureInfo(tmtex_icon_desktop_all, b_size, b_uv_min, b_uv_max);
-        if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+        if (ImGui::ImageButton("Combined Desktop", io.Fonts->TexID, b_size, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
         {
             //Don't change to same value to avoid flicker from mirror reset
             if ( (current_desktop != -1) || (!ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring)) )
@@ -525,7 +500,6 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
             }
         }
         DisplayTooltipIfHovered(TranslationManager::GetString(tstr_SourceDesktopAll));
-        ImGui::PopID();
         ImGui::SameLine();
 
         if (current_desktop == -1)
@@ -560,7 +534,7 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
                 if (i == current_desktop)
                     ImGui::PushStyleColor(ImGuiCol_Button, Style_ImGuiCol_ButtonPassiveToggled);
 
-                if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+                if (ImGui::ImageButton("", io.Fonts->TexID, b_size, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
                 {
                     //Don't change to same value to avoid flicker from mirror reset
                     if ( (i != current_desktop) || (!ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring)) )
@@ -581,9 +555,8 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
         }
         case desktop_listing_style_cycle:
         {
-            ImGui::PushID(tmtex_icon_desktop_prev);
             TextureManager::Get().GetTextureInfo(tmtex_icon_desktop_prev, b_size, b_uv_min, b_uv_max);
-            if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+            if (ImGui::ImageButton("Previous Desktop", io.Fonts->TexID, b_size, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
             {
                 current_desktop_new--;
 
@@ -591,12 +564,10 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
                     current_desktop_new = desktop_count - 1;
             }
             DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIActionBarDesktopPrev));
-            ImGui::PopID();
             ImGui::SameLine();
 
-            ImGui::PushID(tmtex_icon_desktop_next);
             TextureManager::Get().GetTextureInfo(tmtex_icon_desktop_next, b_size, b_uv_min, b_uv_max);
-            if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+            if (ImGui::ImageButton("Next Destkop", io.Fonts->TexID, b_size, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
             {
                 current_desktop_new++;
 
@@ -604,7 +575,6 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
                     current_desktop_new = 0;
             }
             DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIActionBarDesktopNext));
-            ImGui::PopID();
             ImGui::SameLine();
             break;
         }
@@ -893,7 +863,7 @@ bool WindowFloatingUIActionBar::ButtonAction(const Action& action, const ImVec2&
             TextureManager::Get().GetTextureInfo(action, b_size, b_uv_min, b_uv_max);
         }
 
-        ret = ImGui::ImageButton(io.Fonts->TexID, size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ret = ImGui::ImageButton("##ActionButtonImg", io.Fonts->TexID, size, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
     }
     else
     {

@@ -1268,9 +1268,8 @@ void UIManager::UpdateStyle()
 
     //Setup ImPlot style
     ImPlotStyle& plot_style = ImPlot::GetStyle();
-    plot_style.PlotPadding      = {0.0f, 0.0f};
-    plot_style.AntiAliasedLines = true;
-    plot_style.FillAlpha        = 0.25f;
+    plot_style.PlotPadding               = {0.0f, 0.0f};
+    plot_style.FillAlpha                 = 0.25f;
     plot_style.Colors[ImPlotCol_FrameBg] = ImVec4(0.03f, 0.05f, 0.06f, 0.10f);
     plot_style.Colors[ImPlotCol_PlotBg]  = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
 

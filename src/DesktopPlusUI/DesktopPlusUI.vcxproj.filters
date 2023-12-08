@@ -65,7 +65,7 @@
       <Filter>ImPlot</Filter>
     </ClCompile>
     <ClCompile Include="Win32PerformanceData.cpp" />
-    <ClCompile Include="implot\implot_stripped.cpp">
+    <ClCompile Include="implot\implot.cpp">
       <Filter>ImPlot</Filter>
     </ClCompile>
     <ClCompile Include="NotificationIcon.cpp" />

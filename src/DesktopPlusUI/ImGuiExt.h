@@ -14,6 +14,36 @@ extern ImVec4 Style_ImGuiCol_ButtonPassiveToggled; //Toggled state for a button 
 extern ImVec4 Style_ImGuiCol_SteamVRCursor;        //Inner color used to mimic a SteamVR overlay cursor
 extern ImVec4 Style_ImGuiCol_SteamVRCursorBorder;  //Border color used to mimic a SteamVR overlay cursor
 
+//Legacy ImGui enum, now provided by us instead
+enum ImGuiNavInput
+{
+    // Gamepad Mapping
+    ImGuiNavInput_Activate,      // Activate / Open / Toggle / Tweak value       // e.g. Cross  (PS4), A (Xbox), A (Switch), Space (Keyboard)
+    ImGuiNavInput_Cancel,        // Cancel / Close / Exit                        // e.g. Circle (PS4), B (Xbox), B (Switch), Escape (Keyboard)
+    ImGuiNavInput_Input,         // Text input / On-Screen keyboard              // e.g. Triang.(PS4), Y (Xbox), X (Switch), Return (Keyboard)
+    ImGuiNavInput_Menu,          // Tap: Toggle menu / Hold: Focus, Move, Resize // e.g. Square (PS4), X (Xbox), Y (Switch), Alt (Keyboard)
+    ImGuiNavInput_DpadLeft,      // Move / Tweak / Resize window (w/ PadMenu)    // e.g. D-pad Left/Right/Up/Down (Gamepads), Arrow keys (Keyboard)
+    ImGuiNavInput_DpadRight,     //
+    ImGuiNavInput_DpadUp,        //
+    ImGuiNavInput_DpadDown,      //
+    ImGuiNavInput_LStickLeft,    // Scroll / Move window (w/ PadMenu)            // e.g. Left Analog Stick Left/Right/Up/Down
+    ImGuiNavInput_LStickRight,   //
+    ImGuiNavInput_LStickUp,      //
+    ImGuiNavInput_LStickDown,    //
+    ImGuiNavInput_FocusPrev,     // Focus Next window (w/ PadMenu)               // e.g. L1 or L2 (PS4), LB or LT (Xbox), L or ZL (Switch)
+    ImGuiNavInput_FocusNext,     // Focus Prev window (w/ PadMenu)               // e.g. R1 or R2 (PS4), RB or RT (Xbox), R or ZL (Switch)
+    ImGuiNavInput_TweakSlow,     // Slower tweaks                                // e.g. L1 or L2 (PS4), LB or LT (Xbox), L or ZL (Switch)
+    ImGuiNavInput_TweakFast,     // Faster tweaks                                // e.g. R1 or R2 (PS4), RB or RT (Xbox), R or ZL (Switch)
+
+    // [Internal] Don't use directly! This is used internally to differentiate keyboard from gamepad inputs for behaviors that require to differentiate them.
+    // Keyboard behavior that have no corresponding gamepad mapping (e.g. CTRL+TAB) will be directly reading from keyboard keys instead of io.NavInputs[].
+    ImGuiNavInput_KeyLeft_,      // Move left                                    // = Arrow keys
+    ImGuiNavInput_KeyRight_,     // Move right
+    ImGuiNavInput_KeyUp_,        // Move up
+    ImGuiNavInput_KeyDown_,      // Move down
+    ImGuiNavInput_COUNT
+};
+
 namespace ImGui
 {
     //Like InputFloat()'s buttons but with a slider instead. Not quite as flexible, though. Always takes as much space as available.
@@ -80,7 +110,7 @@ namespace ImGui
     void ClearActiveID();
 
     //Allow checking for mapped nav inputs for implementing nav-related behavior
-    bool IsNavInputDownEx(ImGuiNavInput nav_input);                                 //Existing internal IsNavInputDown() doesn't allow for ImGuiNavInput_Dpad* with keyboard, this does
+    bool IsNavInputDown(ImGuiNavInput nav_input);
     bool IsNavInputPressed(ImGuiNavInput nav_input, bool repeat = false);
     bool IsNavInputReleased(ImGuiNavInput nav_input);
 
@@ -187,8 +217,6 @@ namespace ImGui
             ImGuiID HoveredId;
             ImGuiID HoveredIdPreviousFrame;
             bool    HoveredIdAllowOverlap;
-            bool    HoveredIdUsingMouseWheel;
-            bool    HoveredIdPreviousFrameUsingMouseWheel;
             bool    HoveredIdDisabled;
             float   HoveredIdTimer;
             float   HoveredIdNotActiveTimer; 
@@ -201,10 +229,6 @@ namespace ImGui
             bool    ActiveIdHasBeenPressedBefore;
             bool    ActiveIdHasBeenEditedBefore;
             bool    ActiveIdHasBeenEditedThisFrame;
-            bool    ActiveIdUsingMouseWheel;
-            ImU32   ActiveIdUsingNavDirMask;
-            ImU32   ActiveIdUsingNavInputMask;
-            ImU32   ActiveIdUsingKeyInputMask[5];
             ImVec2  ActiveIdClickOffset;
             void*   ActiveIdWindow;
             int     ActiveIdSource;
@@ -215,6 +239,10 @@ namespace ImGui
             void*   ActiveIdPreviousFrameWindow;
             ImGuiID LastActiveId;
             float   LastActiveIdTimer;
+
+            //ImGuiKeyOwnerData is not part of this. Probably doesn't need to be
+            ImU32   ActiveIdUsingNavDirMask;
+            bool    ActiveIdUsingAllKeyboardKeys;
 
         public:
             ActiveWidgetStateStorage();

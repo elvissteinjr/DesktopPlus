@@ -1198,12 +1198,14 @@ void WindowPerformance::DrawFrameTimeGraphCPU(const ImVec2& graph_size, double p
     float frame_offset = 1.0f + ImGui::GetStyle().FrameBorderSize;
     ImVec2 cursor_screen_pos_graph = ImGui::GetCursorScreenPos();
 
-    ImPlot::SetNextPlotLimits(plot_xmin, plot_xmax, 0.0, plot_ymax, ImGuiCond_Always);
+    ImPlot::SetNextAxesLimits(plot_xmin, plot_xmax, 0.0, plot_ymax, ImGuiCond_Always);
 
-    if (ImPlot::BeginPlot("##PlotCPU", nullptr, nullptr, graph_size, ImPlotFlags_CanvasOnly, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_LockMin))
+    if (ImPlot::BeginPlot("##PlotCPU", graph_size, ImPlotFlags_CanvasOnly))
     {
         const ImVector<ImVec2>& plot_data      = m_FrameTimeCPUHistory.Data;
         const ImVector<ImVec2>& plot_data_warn = m_FrameTimeCPUHistoryWarning.Data;
+
+        ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_LockMin);
 
         if (!plot_data.empty())
         {
@@ -1213,10 +1215,10 @@ void WindowPerformance::DrawFrameTimeGraphCPU(const ImVec2& graph_size, double p
 
 
             ImPlot::SetNextFillStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
-            ImPlot::PlotShaded("##DataShaded", &plot_data[0].x, &plot_data[0].y, plot_data.size(), 0.0, m_FrameTimeCPUHistory.Offset, 2 * sizeof(float));
+            ImPlot::PlotShaded("##DataShaded", &plot_data[0].x, &plot_data[0].y, plot_data.size(), 0.0, ImPlotShadedFlags_None, m_FrameTimeCPUHistory.Offset, 2 * sizeof(float));
 
             ImPlot::SetNextLineStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
-            ImPlot::PlotLine("##DataLine", &plot_data[0].x, &plot_data[0].y, plot_data.size(), m_FrameTimeCPUHistory.Offset, 2 * sizeof(float));
+            ImPlot::PlotLine("##DataLine", &plot_data[0].x, &plot_data[0].y, plot_data.size(), ImPlotLineFlags_None, m_FrameTimeCPUHistory.Offset, 2 * sizeof(float));
 
             ImPlot::SetNextFillStyle(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
             ImPlot::SetNextLineStyle(ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
@@ -1227,7 +1229,6 @@ void WindowPerformance::DrawFrameTimeGraphCPU(const ImVec2& graph_size, double p
             ImPlot::PushPlotClipRect();
             ImPlot::GetPlotDrawList()->AddLine(rmin, rmax, ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_Border)) ); 
             ImPlot::PopPlotClipRect();
-
 
             ImGui::PopClipRect();
         }
@@ -1241,12 +1242,14 @@ void WindowPerformance::DrawFrameTimeGraphGPU(const ImVec2& graph_size, double p
     float frame_offset = 1.0f + ImGui::GetStyle().FrameBorderSize;
     ImVec2 cursor_screen_pos_graph = ImGui::GetCursorScreenPos();
 
-    ImPlot::SetNextPlotLimits(plot_xmin, plot_xmax, 0.0, plot_ymax, ImGuiCond_Always);
+    ImPlot::SetNextAxesLimits(plot_xmin, plot_xmax, 0.0, plot_ymax, ImGuiCond_Always);
 
-    if (ImPlot::BeginPlot("##PlotGPU", nullptr, nullptr, graph_size, ImPlotFlags_CanvasOnly, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_LockMin))
+    if (ImPlot::BeginPlot("##PlotGPU", graph_size, ImPlotFlags_CanvasOnly))
     {
         const ImVector<ImVec2>& plot_data      = m_FrameTimeGPUHistory.Data;
         const ImVector<ImVec2>& plot_data_warn = m_FrameTimeGPUHistoryWarning.Data;
+
+        ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_LockMin);
 
         if (!plot_data.empty())
         {
@@ -1256,10 +1259,10 @@ void WindowPerformance::DrawFrameTimeGraphGPU(const ImVec2& graph_size, double p
 
 
             ImPlot::SetNextFillStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
-            ImPlot::PlotShaded("##DataShaded", &plot_data[0].x, &plot_data[0].y, plot_data.size(), 0.0, m_FrameTimeGPUHistory.Offset, 2 * sizeof(float));
+            ImPlot::PlotShaded("##DataShaded", &plot_data[0].x, &plot_data[0].y, plot_data.size(), 0.0, ImPlotShadedFlags_None, m_FrameTimeGPUHistory.Offset, 2 * sizeof(float));
 
             ImPlot::SetNextLineStyle(ImVec4(0.5f, 1.0f, 0.0f, 1.0f));
-            ImPlot::PlotLine("##DataLine", &plot_data[0].x, &plot_data[0].y, plot_data.size(), m_FrameTimeGPUHistory.Offset, 2 * sizeof(float));
+            ImPlot::PlotLine("##DataLine", &plot_data[0].x, &plot_data[0].y, plot_data.size(), ImPlotLineFlags_None, m_FrameTimeGPUHistory.Offset, 2 * sizeof(float));
 
             ImPlot::SetNextFillStyle(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
             ImPlot::SetNextLineStyle(ImVec4(0.0f, 0.0f, 0.0f, 0.0f));

@@ -121,7 +121,7 @@
     <ClCompile Include="imgui_win32_dx11_openvr\imgui_impl_dx11_openvr.cpp" />
     <ClCompile Include="imgui_win32_dx11_openvr\imgui_impl_win32_openvr.cpp" />
     <ClCompile Include="..\Shared\InterprocessMessaging.cpp" />
-    <ClCompile Include="implot\implot_stripped.cpp">
+    <ClCompile Include="implot\implot.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>

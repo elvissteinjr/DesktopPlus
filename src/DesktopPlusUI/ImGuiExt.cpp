@@ -30,7 +30,7 @@ namespace ImGui
         {
             io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
-            io.KeyMods |= ImGuiModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
+            io.KeyMods |= ImGuiMod_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
         }
 
         //Use small step value when shift is down
@@ -117,7 +117,7 @@ namespace ImGui
         io.KeyCtrl = key_ctrl_old;
         if (!io.KeyCtrl)
         {
-            io.KeyMods &= ~ImGuiModFlags_Ctrl;
+            io.KeyMods &= ~ImGuiMod_Ctrl;
         }
 
         return (value != value_old);
@@ -134,7 +134,7 @@ namespace ImGui
         {
             io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
-            io.KeyMods |= ImGuiModFlags_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
+            io.KeyMods |= ImGuiMod_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
         }
 
         //Use small step value when shift is down
@@ -207,7 +207,7 @@ namespace ImGui
         io.KeyCtrl = key_ctrl_old;
         if (!io.KeyCtrl)
         {
-            io.KeyMods &= ~ImGuiModFlags_Ctrl;
+            io.KeyMods &= ~ImGuiMod_Ctrl;
         }
 
         return (value != value_old);
@@ -370,7 +370,7 @@ namespace ImGui
 
             if (!persist_input_activated)
             {
-                ImGui::ActivateItem(ImGui::GetItemID());
+                ImGui::ActivateItemByID(ImGui::GetItemID());
                 persist_input_activated = true;
             }
             else if ( (!ImGui::IsPopupOpen(str_id)) && ( (ImGui::IsItemDeactivated()) || (g.ActiveId != input_text_id) ) )
@@ -721,7 +721,7 @@ namespace ImGui
         {
             io.MouseClicked[ImGuiMouseButton_Left] = true;
             io.KeyCtrl = true;
-            io.KeyMods |= ImGuiModFlags_Ctrl; //Mods needs to stay consistent with KeyCtrl
+            io.KeyMods |= ImGuiMod_Ctrl; //Mods needs to stay consistent with KeyCtrl
         }
 
         ImGuiContext& g = *GImGui;
@@ -756,7 +756,7 @@ namespace ImGui
         io.KeyCtrl = key_ctrl_old;
         if (!io.KeyCtrl)
         {
-            io.KeyMods &= ~ImGuiModFlags_Ctrl;
+            io.KeyMods &= ~ImGuiMod_Ctrl;
         }
 
         //Picker style switching without popup
@@ -942,38 +942,60 @@ namespace ImGui
         return ret;
     }
 
-    //ImGui does not fill the dpad values from keyboard input, so we map them here if the current source is keyboard
-    ImGuiNavInput MapNavKeyboardDPad(ImGuiNavInput nav_input)
+    //ImGui got rid of direct nav input access, but we keep it around as an abstraction layer
+    ImGuiKey MapNavToKey(ImGuiNavInput nav_input, ImGuiInputSource input_source)
     {
-        if (ImGui::GetCurrentContext()->NavInputSource != ImGuiInputSource_Keyboard)
-            return nav_input;
+        ImGuiKey imgui_key = ImGuiKey_None;
 
-        switch (nav_input)
+        if (input_source == ImGuiInputSource_Keyboard)
         {
-            case ImGuiNavInput_DpadLeft:  return ImGuiNavInput_KeyLeft_;
-            case ImGuiNavInput_DpadRight: return ImGuiNavInput_KeyRight_;
-            case ImGuiNavInput_DpadUp:    return ImGuiNavInput_KeyUp_;
-            case ImGuiNavInput_DpadDown:  return ImGuiNavInput_KeyDown_;
-            default:                      return nav_input;
+            switch (nav_input)
+            {
+                case ImGuiNavInput_Activate:  imgui_key = ImGuiKey_Space;      break;
+                case ImGuiNavInput_Cancel:    imgui_key = ImGuiKey_Escape;     break;
+                case ImGuiNavInput_Input:     imgui_key = ImGuiKey_Enter;      break;
+                case ImGuiNavInput_Menu:      imgui_key = ImGuiMod_Alt;        break;
+                case ImGuiNavInput_DpadLeft:  imgui_key = ImGuiKey_LeftArrow;  break;
+                case ImGuiNavInput_DpadRight: imgui_key = ImGuiKey_RightArrow; break;
+                case ImGuiNavInput_DpadUp:    imgui_key = ImGuiKey_UpArrow;    break;
+                case ImGuiNavInput_DpadDown:  imgui_key = ImGuiKey_DownArrow;  break;
+                case ImGuiNavInput_TweakSlow: imgui_key = ImGuiMod_Ctrl;       break;
+                case ImGuiNavInput_TweakFast: imgui_key = ImGuiMod_Shift;      break;
+            }
         }
+        else if (input_source == ImGuiInputSource_Gamepad)
+        {
+            switch (nav_input)
+            {
+                case ImGuiNavInput_Activate:  imgui_key = ImGuiKey_GamepadFaceDown;  break;
+                case ImGuiNavInput_Cancel:    imgui_key = ImGuiKey_GamepadFaceRight; break;
+                case ImGuiNavInput_Input:     imgui_key = ImGuiKey_GamepadFaceLeft;  break;
+                case ImGuiNavInput_Menu:      imgui_key = ImGuiKey_GamepadFaceUp;    break;
+                case ImGuiNavInput_DpadLeft:  imgui_key = ImGuiKey_GamepadDpadLeft;  break;
+                case ImGuiNavInput_DpadRight: imgui_key = ImGuiKey_GamepadDpadRight; break;
+                case ImGuiNavInput_DpadUp:    imgui_key = ImGuiKey_GamepadDpadUp;    break;
+                case ImGuiNavInput_DpadDown:  imgui_key = ImGuiKey_GamepadDpadDown;  break;
+                case ImGuiNavInput_TweakSlow: imgui_key = ImGuiKey_GamepadL1;        break;
+                case ImGuiNavInput_TweakFast: imgui_key = ImGuiKey_GamepadR1;        break;
+            }
+        }
+
+        return imgui_key;
     }
 
-    bool IsNavInputDownEx(ImGuiNavInput nav_input)
+    bool IsNavInputDown(ImGuiNavInput nav_input)
     {
-        return ImGui::IsNavInputDown(MapNavKeyboardDPad(nav_input));
+        return ImGui::IsKeyDown(MapNavToKey(nav_input, GImGui->NavInputSource));
     }
 
     bool ImGui::IsNavInputPressed(ImGuiNavInput nav_input, bool repeat)
     {
-        if (repeat)
-            return (ImGui::GetNavInputAmount(MapNavKeyboardDPad(nav_input), ImGuiNavReadMode_Repeat) > 0.0f);
-        else
-            return (ImGui::GetNavInputAmount(MapNavKeyboardDPad(nav_input), ImGuiNavReadMode_Pressed) > 0.0f);
+        return ImGui::IsKeyPressed(MapNavToKey(nav_input, GImGui->NavInputSource), repeat);
     }
 
     bool ImGui::IsNavInputReleased(ImGuiNavInput nav_input)
     {
-        return (ImGui::GetNavInputAmount(MapNavKeyboardDPad(nav_input), ImGuiNavReadMode_Released) > 0.0f);
+        return ImGui::IsKeyReleased(MapNavToKey(nav_input, GImGui->NavInputSource));
     }
 
     float ImGui::GetPreviousLineHeight()
@@ -1026,9 +1048,10 @@ namespace ImGui
         ImGuiContext& g = *GImGui;
 
         ImGui::SetActiveID(ImGui::GetID("ImGuiExtInputBlock"), nullptr);
-        g.ActiveIdUsingMouseWheel = true;
+        ImGui::SetKeyOwner(ImGuiKey_MouseWheelX, g.ActiveId);
+        ImGui::SetKeyOwner(ImGuiKey_MouseWheelY, g.ActiveId);
         g.WheelingWindow = nullptr;
-        g.WheelingWindowTimer = 0.0f;
+        g.WheelingWindowReleaseTimer = 0.0f;
     }
 
     void HScrollWindowFromMouseWheelV()
@@ -1046,7 +1069,7 @@ namespace ImGui
 
         const float wheel_x = g.IO.MouseWheel;
         float max_step = window->InnerRect.GetWidth() * 0.67f;
-        float scroll_step = ImFloor(ImMin(2.0f * window->CalcFontSize(), max_step));
+        float scroll_step = ImTrunc(ImMin(2.0f * window->CalcFontSize(), max_step));
 
         ImGui::SetScrollX(window, window->Scroll.x - wheel_x * scroll_step);
     }
@@ -1070,13 +1093,13 @@ namespace ImGui
 
         //HScroll
         float max_step = window_target->InnerRect.GetWidth() * 0.67f;
-        float scroll_step = ImFloor(ImMin(2.0f * window_target->CalcFontSize(), max_step));
+        float scroll_step = ImTrunc(ImMin(2.0f * window_target->CalcFontSize(), max_step));
 
         ImGui::SetScrollX(window_target, window_target->Scroll.x - wheel_x * scroll_step);
 
         //VScroll
         max_step = window_target->InnerRect.GetHeight() * 0.67f;
-        scroll_step = ImFloor(ImMin(5.0f * window_target->CalcFontSize(), max_step));
+        scroll_step = ImTrunc(ImMin(5.0f * window_target->CalcFontSize(), max_step));
 
         ImGui::SetScrollY(window_target, window_target->Scroll.y - wheel_y * scroll_step);
     }
@@ -1242,6 +1265,7 @@ namespace ImGui
             highlight_edge = false;
 
             //Invisible button spanning the entire area to catch right clicks anywhere for relative drag
+            ImGui::SetNextItemAllowOverlap();
             if (ImGui::InvisibleButton("DraggableRectArea", area_size, ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_PressedOnClick))
             {
                 offset_start = offset;
@@ -1267,8 +1291,7 @@ namespace ImGui
             size_button_padded.y += drag_margin;
 
             ImGui::SetCursorScreenPos(pos_button_padded);
-            ImGui::SetItemAllowOverlap();
-            if (ImGui::InvisibleButton("DraggableRect", size_button_padded, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_PressedOnClick | ImGuiButtonFlags_AllowItemOverlap))
+            if (ImGui::InvisibleButton("DraggableRect", size_button_padded, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_PressedOnClick | ImGuiButtonFlags_AllowOverlap))
             {
                 offset_start = offset;
                 size_start   = size;
@@ -1488,7 +1511,7 @@ namespace ImGui
 
         // Round mouse position to avoid spreading non-rounded position (e.g. UpdateManualResize doesn't support them well)
         if (IsMousePosValid(&MousePos))
-            MousePos = ImFloorSigned(MousePos);
+            MousePos = ImFloor(MousePos);
 
         // If mouse just appeared or disappeared (usually denoted by -FLT_MAX components) we cancel out movement in MouseDelta
         if (IsMousePosValid(&MousePos) && IsMousePosValid(&MousePosPrev))
@@ -1540,11 +1563,10 @@ namespace ImGui
     ActiveWidgetStateStorage::ActiveWidgetStateStorage()
     {
         IsInitialized                            = false;
+
         HoveredId                                = 0;
         HoveredIdPreviousFrame                   = 0;
         HoveredIdAllowOverlap                    = false;
-        HoveredIdUsingMouseWheel                 = false;
-        HoveredIdPreviousFrameUsingMouseWheel    = false;
         HoveredIdDisabled                        = false;
         HoveredIdTimer                           = 0.0f;
         HoveredIdNotActiveTimer                  = 0.0f;
@@ -1557,10 +1579,7 @@ namespace ImGui
         ActiveIdHasBeenPressedBefore             = false;
         ActiveIdHasBeenEditedBefore              = false;
         ActiveIdHasBeenEditedThisFrame           = false;
-        ActiveIdUsingMouseWheel                  = false;
         ActiveIdUsingNavDirMask                  = 0x00;
-        ActiveIdUsingNavInputMask                = 0x00;
-        std::fill(std::begin(ActiveIdUsingKeyInputMask), std::end(ActiveIdUsingKeyInputMask), 0x00);
         ActiveIdClickOffset                      = ImVec2(-1, -1);
         ActiveIdWindow                           = nullptr;
         ActiveIdSource                           = ImGuiInputSource_None;
@@ -1571,6 +1590,9 @@ namespace ImGui
         ActiveIdPreviousFrameWindow              = nullptr;
         LastActiveId                             = 0;
         LastActiveIdTimer                        = 0.0f;
+
+        ActiveIdUsingNavDirMask                  = 0;
+        ActiveIdUsingAllKeyboardKeys             = false;
     }
 
     void ActiveWidgetStateStorage::StoreCurrentState()
@@ -1579,13 +1601,9 @@ namespace ImGui
 
         ImGuiContext& g = *ImGui::GetCurrentContext();
 
-        IM_ASSERT(sizeof(ActiveIdUsingKeyInputMask) == sizeof(g.ActiveIdUsingKeyInputMask.Storage));
-
         HoveredId                                = g.HoveredId;
         HoveredIdPreviousFrame                   = g.HoveredIdPreviousFrame;
         HoveredIdAllowOverlap                    = g.HoveredIdAllowOverlap;
-        HoveredIdUsingMouseWheel                 = g.HoveredIdUsingMouseWheel;
-        HoveredIdPreviousFrameUsingMouseWheel    = g.HoveredIdPreviousFrameUsingMouseWheel;
         HoveredIdDisabled                        = g.HoveredIdDisabled;
         HoveredIdTimer                           = g.HoveredIdTimer;
         HoveredIdNotActiveTimer                  = g.HoveredIdNotActiveTimer;
@@ -1598,10 +1616,6 @@ namespace ImGui
         ActiveIdHasBeenPressedBefore             = g.ActiveIdHasBeenPressedBefore;
         ActiveIdHasBeenEditedBefore              = g.ActiveIdHasBeenEditedBefore;
         ActiveIdHasBeenEditedThisFrame           = g.ActiveIdHasBeenEditedThisFrame;
-        ActiveIdUsingMouseWheel                  = g.ActiveIdUsingMouseWheel;
-        ActiveIdUsingNavDirMask                  = g.ActiveIdUsingNavDirMask;
-        ActiveIdUsingNavInputMask                = g.ActiveIdUsingNavInputMask;
-        std::copy(std::begin(g.ActiveIdUsingKeyInputMask.Storage), std::end(g.ActiveIdUsingKeyInputMask.Storage), ActiveIdUsingKeyInputMask);
         ActiveIdClickOffset                      = g.ActiveIdClickOffset;
         ActiveIdWindow                           = g.ActiveIdWindow;
         ActiveIdSource                           = g.ActiveIdSource;
@@ -1612,6 +1626,9 @@ namespace ImGui
         ActiveIdPreviousFrameWindow              = g.ActiveIdPreviousFrameWindow;
         LastActiveId                             = g.LastActiveId;
         LastActiveIdTimer                        = g.LastActiveIdTimer;
+
+        ActiveIdUsingNavDirMask                  = g.ActiveIdUsingNavDirMask;
+        ActiveIdUsingAllKeyboardKeys             = g.ActiveIdUsingAllKeyboardKeys;
     }
 
     void ActiveWidgetStateStorage::ApplyState()
@@ -1622,13 +1639,9 @@ namespace ImGui
 
         ImGuiContext& g = *ImGui::GetCurrentContext();
 
-        IM_ASSERT(sizeof(ActiveIdUsingKeyInputMask) == sizeof(g.ActiveIdUsingKeyInputMask.Storage));
-
         g.HoveredId                                = HoveredId;
         g.HoveredIdPreviousFrame                   = HoveredIdPreviousFrame;
         g.HoveredIdAllowOverlap                    = HoveredIdAllowOverlap;
-        g.HoveredIdUsingMouseWheel                 = HoveredIdUsingMouseWheel;
-        g.HoveredIdPreviousFrameUsingMouseWheel    = HoveredIdPreviousFrameUsingMouseWheel;
         g.HoveredIdDisabled                        = HoveredIdDisabled;
         g.HoveredIdTimer                           = HoveredIdTimer;
         g.HoveredIdNotActiveTimer                  = HoveredIdNotActiveTimer;
@@ -1641,10 +1654,6 @@ namespace ImGui
         g.ActiveIdHasBeenPressedBefore             = ActiveIdHasBeenPressedBefore;
         g.ActiveIdHasBeenEditedBefore              = ActiveIdHasBeenEditedBefore;
         g.ActiveIdHasBeenEditedThisFrame           = ActiveIdHasBeenEditedThisFrame;
-        g.ActiveIdUsingMouseWheel                  = ActiveIdUsingMouseWheel;
-        g.ActiveIdUsingNavDirMask                  = ActiveIdUsingNavDirMask;
-        g.ActiveIdUsingNavInputMask                = ActiveIdUsingNavInputMask;
-        std::copy(std::begin(ActiveIdUsingKeyInputMask), std::end(ActiveIdUsingKeyInputMask), g.ActiveIdUsingKeyInputMask.Storage);
         g.ActiveIdClickOffset                      = ActiveIdClickOffset;
         g.ActiveIdWindow                           = (ImGuiWindow*)ActiveIdWindow;
         g.ActiveIdSource                           = (ImGuiInputSource)ActiveIdSource;
@@ -1655,6 +1664,9 @@ namespace ImGui
         g.ActiveIdPreviousFrameWindow              = (ImGuiWindow*)ActiveIdPreviousFrameWindow;
         g.LastActiveId                             = LastActiveId;
         g.LastActiveIdTimer                        = LastActiveIdTimer;
+
+        g.ActiveIdUsingNavDirMask                  = ActiveIdUsingNavDirMask;
+        g.ActiveIdUsingAllKeyboardKeys             = ActiveIdUsingAllKeyboardKeys;
     }
 
     void ActiveWidgetStateStorage::AdvanceState()
@@ -1674,10 +1686,8 @@ namespace ImGui
         if (HoveredId && ActiveId != HoveredId)
             HoveredIdNotActiveTimer += io.DeltaTime;
         HoveredIdPreviousFrame = HoveredId;
-        HoveredIdPreviousFrameUsingMouseWheel = HoveredIdUsingMouseWheel;
         HoveredId = 0;
         HoveredIdAllowOverlap = false;
-        HoveredIdUsingMouseWheel = false;
         HoveredIdDisabled = false;
 
         // Clear ActiveID if the item is not alive anymore.
@@ -1732,9 +1742,8 @@ namespace ImGui
 
         if (ActiveId == 0)
         {
-            ActiveIdUsingNavDirMask   = 0x00;
-            ActiveIdUsingNavInputMask = 0x00;
-            std::fill(std::begin(ActiveIdUsingKeyInputMask), std::end(ActiveIdUsingKeyInputMask), 0x00);
+            ActiveIdUsingNavDirMask      = 0x00;
+            ActiveIdUsingAllKeyboardKeys = false;
         }
     }
 }

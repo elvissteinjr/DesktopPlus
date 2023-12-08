@@ -136,7 +136,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
 
         const ImVec4 tint_color = ImVec4(1.0f, 1.0f, 1.0f, data.ConfigBool[configid_bool_overlay_enabled] ? 1.0f : 0.5f); //Transparent when hidden
 
-        if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tint_color))
+        if (ImGui::ImageButton("OverlayButton", io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tint_color))
         {
             if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 3.0f) //Don't do normal button behavior after reset was just triggered
             {
@@ -711,9 +711,8 @@ void WindowOverlayBar::Update()
         if (is_add_overlay_active)
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
-        ImGui::PushID(tmtex_icon_small_close);
         TextureManager::Get().GetTextureInfo(tmtex_icon_add, b_size, b_uv_min, b_uv_max);
-        if (ImGui::ImageButton(io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+        if (ImGui::ImageButton("Close", io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
         {
             if (!m_IsAddOverlayButtonActive)
             {
@@ -743,8 +742,6 @@ void WindowOverlayBar::Update()
             MenuAddOverlayButton({pos.x + width / 2.0f, menu_y}, button_active);
         }
 
-        ImGui::PopID();
-
         if (!UIManager::Get()->IsOpenVRLoaded())
             ImGui::PopItemDisabled();
     }
@@ -762,9 +759,8 @@ void WindowOverlayBar::Update()
     if (settings_shown)
         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
-    ImGui::PushID(tmtex_icon_settings);
     TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+    if (ImGui::ImageButton("Settings", io.Fonts->TexID, b_size, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
     {
         if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 3.0f) //Don't do normal button behavior after reset was just triggered
         {
@@ -809,8 +805,6 @@ void WindowOverlayBar::Update()
     right_buttons_width = (ImGui::GetItemRectSize().x * 2.0f) + ImGui::GetStyle().ItemSpacing.x;
 
     DisplayTooltipIfHovered( TranslationManager::GetString((show_hold_message) ? tstr_OverlayBarTooltipResetHold : tstr_OverlayBarTooltipSettings) );
-
-    ImGui::PopID();
 
     ImGui::PopStyleColor(); //ImGuiCol_Button
     ImGui::PopStyleVar();   //ImGuiStyleVar_FrameRounding

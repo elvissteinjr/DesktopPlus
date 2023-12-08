@@ -149,13 +149,11 @@ void FloatingWindow::WindowUpdateBase()
     if (disable_pinning)
         ImGui::PushItemDisabled();
 
-    ImGui::PushID("PinButton");
-    if (ImGui::ImageButton(io.Fonts->TexID, img_size, img_uv_min, img_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+    if (ImGui::ImageButton("PinButton", io.Fonts->TexID, img_size, img_uv_min, img_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
     {
         SetPinned(!IsPinned());
         OnWindowPinButtonPressed();
     }
-    ImGui::PopID();
     ImGui::SameLine(0.0f, 0.0f);
 
     if (disable_pinning)
@@ -163,13 +161,11 @@ void FloatingWindow::WindowUpdateBase()
 
     TextureManager::Get().GetTextureInfo(tmtex_icon_xxsmall_close, img_size, img_uv_min, img_uv_max);
 
-    ImGui::PushID("CloseButton");
-    if (ImGui::ImageButton(io.Fonts->TexID, img_size, img_uv_min, img_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+    if (ImGui::ImageButton("CloseButton", io.Fonts->TexID, img_size, img_uv_min, img_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
     {
         Hide();
         OnWindowCloseButtonPressed();
     }
-    ImGui::PopID();
 
     ImGui::EndGroup();
 
@@ -811,12 +807,10 @@ bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, siz
     if (state.IsTagAlreadyInBuffer)
         ImGui::PushItemDisabled();
 
-    ImGui::PushID("AddButton");
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size_real, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+    if (ImGui::ImageButton("AddButton", io.Fonts->TexID, b_size_real, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
     {
         add_current_input = true;
     }
-    ImGui::PopID();
 
     if (state.IsTagAlreadyInBuffer)
         ImGui::PopItemDisabled();
@@ -824,15 +818,13 @@ bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, siz
     ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
     TextureManager::Get().GetTextureInfo(tmtex_icon_small_close, b_size, b_uv_min, b_uv_max);
-    ImGui::PushID("DeleteButton");
-    if (ImGui::ImageButton(io.Fonts->TexID, b_size_real, b_uv_min, b_uv_max, -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+    if (ImGui::ImageButton("DeleteButton", io.Fonts->TexID, b_size_real, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
     {
         state.TagEditBuffer[0] = '\0';
         state.TagEditOrigStr = "";
         state.IsTagAlreadyInBuffer = true;
         update_filter = true;
     }
-    ImGui::PopID();
 
     ImGui::EndGroup();
 
@@ -1033,11 +1025,11 @@ bool FloatingWindow::ActionOrderList(ActionManager::ActionList& list_actions_tar
                 }
             }
 
-            if (ImGui::Selectable(entry.Name.c_str(), (index == state.SelectedIndex), ImGuiSelectableFlags_AllowItemOverlap))
+            ImGui::SetNextItemAllowOverlap();
+            if (ImGui::Selectable(entry.Name.c_str(), (index == state.SelectedIndex), ImGuiSelectableFlags_AllowOverlap))
             {
                 state.SelectedIndex = index;
             }
-            ImGui::SetItemAllowOverlap();
 
             if (ImGui::IsItemHovered())
             {
@@ -1331,9 +1323,10 @@ void FloatingWindow::CompactTableHeadersRow()
     ImGui::PushItemDisabledNoVisual();
     ImGui::TableHeadersRow();
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 1.0f);
+    ImGui::Dummy({0.0f, 0.0f});         //To appease parent boundary extension error check
     ImGui::PopItemDisabledNoVisual();
 
-    m_CompactTableHeaderHeight = ImGui::GetCursorPosY() - m_CompactTableHeaderHeight;
+    m_CompactTableHeaderHeight = ImGui::GetCursorPosY() - m_CompactTableHeaderHeight - ImGui::GetStyle().ItemSpacing.y;
 }
 
 void FloatingWindow::EndCompactTable()

@@ -644,6 +644,8 @@ void WindowSettings::UpdateWarnings()
     }
 }
 
+#include "implot.h"
+
 void WindowSettings::UpdatePageMain()
 {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
@@ -1237,7 +1239,7 @@ void WindowSettings::UpdatePageMainCatActions()
                     ImGui::PushStyleColor(ImGuiCol_Header, col);
                 }
 
-                if (ImGui::Selectable(action_manager.GetTranslatedName(hotkey.ActionUID), (table_hotkeys_hovered_row == hotkey_id), ImGuiSelectableFlags_AllowItemOverlap))
+                if (ImGui::Selectable(action_manager.GetTranslatedName(hotkey.ActionUID), (table_hotkeys_hovered_row == hotkey_id), ImGuiSelectableFlags_AllowOverlap))
                 {
                     m_ActionPickerUID = hotkey.ActionUID;
                     action_picker_hotkey_id = hotkey_id;
@@ -1253,7 +1255,7 @@ void WindowSettings::UpdatePageMainCatActions()
                 {
                     ImGui::PopStyleColor();
 
-                    ImGui::SetItemAllowOverlap();
+                    ImGui::SetNextItemAllowOverlap();
                     ImGui::SameLine();
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - table_hotkeys_remove_button_width);
 

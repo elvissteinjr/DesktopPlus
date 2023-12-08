@@ -305,7 +305,7 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
 
         if (m_InputTarget == kbdtarget_ui)
         {
-            ImGui::GetIO().AddKeyEvent(ImGuiKey_ModShift, m_KeyDown[VK_SHIFT]);
+            ImGui::GetIO().AddKeyEvent(ImGuiMod_Shift, m_KeyDown[VK_SHIFT]);
         }
     }
     else if ((keycode == VK_LCONTROL) || (keycode == VK_RCONTROL))
@@ -314,7 +314,7 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
 
         if (m_InputTarget == kbdtarget_ui)
         {
-            ImGui::GetIO().AddKeyEvent(ImGuiKey_ModCtrl, m_KeyDown[VK_CONTROL]);
+            ImGui::GetIO().AddKeyEvent(ImGuiMod_Ctrl, m_KeyDown[VK_CONTROL]);
         }
     }
     else if ((keycode == VK_LMENU) || (keycode == VK_RMENU))
@@ -323,7 +323,7 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
 
         if (m_InputTarget == kbdtarget_ui)
         {
-            ImGui::GetIO().AddKeyEvent(ImGuiKey_ModAlt, m_KeyDown[VK_MENU]);
+            ImGui::GetIO().AddKeyEvent(ImGuiMod_Alt, m_KeyDown[VK_MENU]);
         }
     }
     else if ( (down) && (keycode == VK_CAPITAL) ) //For caps lock, update toggled state
