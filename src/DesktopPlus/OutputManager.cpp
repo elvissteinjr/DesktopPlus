@@ -4018,30 +4018,10 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             break;
         }
         case vr::VREvent_ScrollDiscrete:
-        {
-            if ( ((ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (overlay_current.GetID() != k_ulOverlayID_Dashboard)) ||
-                 (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) || 
-                 (overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui) )
-            {
-                break;
-            }
-
-            if (vr_event.data.scroll.xdelta != 0.0f) //This doesn't seem to be ever sent by SteamVR
-            {
-                m_InputSim.MouseWheelHorizontal(vr_event.data.scroll.xdelta);
-            }
-
-            if (vr_event.data.scroll.ydelta != 0.0f)
-            {
-                m_InputSim.MouseWheelVertical(vr_event.data.scroll.ydelta);
-            }
-
-            break;
-        }
         case vr::VREvent_ScrollSmooth:
         {
-            //Smooth scrolls are only used for dragging mode
-            if (m_DragModeDeviceID != -1)
+            //Dragging mode inputs
+            if ((m_DragModeDeviceID != -1) && (overlay_current.GetID() != k_ulOverlayID_Dashboard))
             {
                 float xdelta_abs = fabs(vr_event.data.scroll.xdelta);
                 float ydelta_abs = fabs(vr_event.data.scroll.ydelta);
@@ -4058,6 +4038,25 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                     {
                         DragAddWidth(vr_event.data.scroll.xdelta * -0.25f);
                     }
+                }
+            }
+            else
+            {
+                if ( ((ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_dragmode)) && (overlay_current.GetID() != k_ulOverlayID_Dashboard)) ||
+                     (ConfigManager::Get().GetConfigBool(configid_bool_state_overlay_selectmode)) || 
+                     (overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui) )
+                {
+                    break;
+                }
+
+                if (vr_event.data.scroll.xdelta != 0.0f) //This doesn't seem to be ever sent by SteamVR for discrete scroll
+                {
+                    m_InputSim.MouseWheelHorizontal(vr_event.data.scroll.xdelta);
+                }
+
+                if (vr_event.data.scroll.ydelta != 0.0f)
+                {
+                    m_InputSim.MouseWheelVertical(vr_event.data.scroll.ydelta);
                 }
             }
 
@@ -4920,7 +4919,17 @@ void OutputManager::ApplySettingMouseInput()
         //Set input method (possibly overridden by ApplyInputMethod() right afterwards)
         if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled))
         {
-            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
+            if ((drag_mode_enabled) && (i != k_ulOverlayID_Dashboard))
+            {
+                vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, false);
+                vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRSmoothScrollEvents,   true);
+            }
+            else
+            {
+                vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
+                vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRSmoothScrollEvents,   false);
+            }
+
             vr::VROverlay()->SetOverlayInputMethod(ovrl_handle, vr::VROverlayInputMethod_Mouse);
         }
         else
@@ -5255,12 +5264,6 @@ void OutputManager::DragStart(bool is_gesture_drag)
         vr::TrackingUniverseOrigin origin;
         vr::VROverlay()->GetOverlayTransformAbsolute(ovrl_handle, &origin, &transform_target);
         m_DragModeMatrixTargetStart = transform_target;
-
-        if (!is_gesture_drag)
-        {
-            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, false);
-            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRSmoothScrollEvents, true);
-        }
     }
 }
 
@@ -5493,13 +5496,6 @@ void OutputManager::DragFinish()
     m_DragModeDeviceID = -1;
     m_DragModeOverlayID = k_ulOverlayID_None;
     ResetMouseLastLaserPointerPos();
-
-    vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRSmoothScrollEvents, false);
-
-    if (ConfigManager::Get().GetConfigBool(configid_bool_overlay_input_enabled))
-    {
-        vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
-    }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
