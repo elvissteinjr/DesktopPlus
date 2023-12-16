@@ -762,6 +762,7 @@ bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, siz
 
     //-Window contents
     static float buttons_width = 0.0f;
+    const bool is_input_text_active = ImGui::IsAnyInputTextActive(); //Need to get this before InputText is canceled in the same frame
     bool add_current_input = false;
 
     if (state.FocusTextInput)
@@ -923,8 +924,9 @@ bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, siz
         state.PosAnimationProgress = (state.PosDir == ImGuiDir_Down) ? 0.0f : 1.0f;
     }
 
-    //Fade out on focus loss
-    if ((!ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows)) && (!ImGui::IsAnyItemActive()))
+    //Fade out on focus loss/cancel input
+    if ( ((!ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows)) && (!ImGui::IsAnyItemActive())) ||
+         ((!is_input_text_active) && (ImGui::IsNavInputPressed(ImGuiNavInput_Cancel))) )
     {
         state.IsFadingOut = true;
     }
