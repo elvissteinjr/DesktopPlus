@@ -789,6 +789,7 @@ void InitImGui(HWND hwnd, bool desktop_mode)
 
     io.IniFilename = nullptr;                   //We don't need any imgui.ini support
     io.ConfigInputTrickleEventQueue = false;    //Opt out of input trickling since it doesn't play well with VR scrolling (and lowers responsiveness on certain inputs)
+    ImGui::ConfigDisableCtrlTab();
 
     //Use system double-click time in desktop mode, but set it to something VR-trigger-friendly otherwise
     io.MouseDoubleClickTime = (desktop_mode) ? ::GetDoubleClickTime() / 1000.0f : 0.50f;

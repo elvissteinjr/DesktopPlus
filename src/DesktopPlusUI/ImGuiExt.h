@@ -103,6 +103,9 @@ namespace ImGui
     void PushItemDisabledNoVisual();
     void PopItemDisabledNoVisual();
 
+    //Disables window switcher by setting internal config values
+    void ConfigDisableCtrlTab();
+
     //Just straight up brought into the public API, use -1.0f on one axis to leave as-is
     void SetNextWindowScroll(const ImVec2& scroll);
 

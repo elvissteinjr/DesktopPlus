@@ -899,6 +899,12 @@ namespace ImGui
         ImGui::PopItemFlag();
     }
 
+    void ConfigDisableCtrlTab()
+    {
+        GImGui->ConfigNavWindowingKeyNext = ImGuiKey_None;
+        GImGui->ConfigNavWindowingKeyPrev = ImGuiKey_None;
+    }
+
     bool PopupContextMenuInputText(const char* str_id, char* str_buffer, size_t buffer_size, bool paste_remove_newlines)
     {
         bool ret = false;
