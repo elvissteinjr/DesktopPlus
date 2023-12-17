@@ -2453,8 +2453,8 @@ void WindowSettings::UpdatePageProfiles()
     if ((m_PageAppearing == wndsettings_page_profiles) || (m_CachedSizes.Profiles_ButtonDeleteSize.x == 0.0f))
     {
         //Figure out size for delete button. We need it to stay the same but also consider the case of the confirm text being longer in some languages
-        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete));
-        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm));
+        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete),        nullptr, true);
+        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm), nullptr, true);
         m_CachedSizes.Profiles_ButtonDeleteSize = (text_size_delete.x > text_size_confirm.x) ? text_size_delete : text_size_confirm;
 
         m_CachedSizes.Profiles_ButtonDeleteSize.x += style.FramePadding.x * 2.0f;
@@ -2462,6 +2462,8 @@ void WindowSettings::UpdatePageProfiles()
 
         UIManager::Get()->RepeatFrame();
     }
+
+    bool focus_add_button = false;
 
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsProfilesOverlaysHeader) ); 
     ImGui::Indent();
@@ -2483,6 +2485,7 @@ void WindowSettings::UpdatePageProfiles()
             m_ProfileSelectionName = (list_id == m_ProfileList.size() - 1) ? "" : m_ProfileList[list_id];
 
             delete_confirm_state = false;
+            focus_add_button = ImGui::GetIO().NavVisible;
         }
         ImGui::PopID();
 
@@ -2512,6 +2515,9 @@ void WindowSettings::UpdatePageProfiles()
 
     if ( (is_last) || (is_none) )
         ImGui::PushItemDisabled();
+
+    if ( (is_first) && (focus_add_button) )
+        ImGui::SetKeyboardFocusHere();
 
     if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileLoad)))
     {
@@ -2553,6 +2559,9 @@ void WindowSettings::UpdatePageProfiles()
 
     if ( (is_first) || (is_last) || (is_none) )
         ImGui::PushItemDisabled();
+
+    if ( (!is_first) && (focus_add_button) )
+        ImGui::SetKeyboardFocusHere();
 
     if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileAdd)))
     {
@@ -3085,8 +3094,8 @@ void WindowSettings::UpdatePageAppProfiles()
     if ((m_PageAppearing == wndsettings_page_app_profiles) || (m_CachedSizes.Profiles_ButtonDeleteSize.x == 0.0f))
     {
         //Figure out size for delete button. We need it to stay the same but also consider the case of the confirm text being longer in some languages
-        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete));
-        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm));
+        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDelete),        nullptr, true);
+        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileDeleteConfirm), nullptr, true);
         m_CachedSizes.Profiles_ButtonDeleteSize = (text_size_delete.x > text_size_confirm.x) ? text_size_delete : text_size_confirm;
 
         m_CachedSizes.Profiles_ButtonDeleteSize.x += style.FramePadding.x * 2.0f;
@@ -3117,6 +3126,8 @@ void WindowSettings::UpdatePageAppProfiles()
         ImGui::SetScrollY(0.0f);
     }
 
+    bool focus_app_section = false;
+
     //List applications
     const bool is_any_app_profile_active = !app_profiles.GetActiveProfileAppKey().empty();
     const AppProfile& app_profile_active = app_profiles.GetProfile(app_profiles.GetActiveProfileAppKey());
@@ -3145,6 +3156,7 @@ void WindowSettings::UpdatePageAppProfiles()
 
                 delete_confirm_state = false;
                 delete_disabled = !app_profiles.ProfileExists(m_AppList[i].first);
+                focus_app_section = ImGui::GetIO().NavVisible;
             }
             ImGui::PopID();
 
@@ -3211,6 +3223,11 @@ void WindowSettings::UpdatePageAppProfiles()
             ImGui::TextColoredUnformatted(Style_ImGuiCol_TextNotification, TranslationManager::GetString(tstr_SettingsProfilesAppsProfileHeaderActive));
 
             active_header_text_width = ImGui::GetItemRectSize().x;
+        }
+
+        if (focus_app_section)
+        {
+            ImGui::SetKeyboardFocusHere();
         }
 
         ImGui::Indent();
@@ -3376,8 +3393,8 @@ void WindowSettings::UpdatePageActions()
     if ((m_PageAppearing == wndsettings_page_actions) || (m_CachedSizes.Actions_ButtonDeleteSize.x == 0.0f))
     {
         //Figure out size for delete button. We need it to stay the same but also consider the case of the confirm text being longer in some languages
-        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsManageDelete));
-        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsManageDeleteConfirm));
+        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsManageDelete),        nullptr, true);
+        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsManageDeleteConfirm), nullptr, true);
         m_CachedSizes.Actions_ButtonDeleteSize = (text_size_delete.x > text_size_confirm.x) ? text_size_delete : text_size_confirm;
 
         m_CachedSizes.Actions_ButtonDeleteSize.x += style.FramePadding.x * 2.0f;
@@ -3385,6 +3402,8 @@ void WindowSettings::UpdatePageActions()
 
         UIManager::Get()->RepeatFrame();
     }
+
+    bool focus_edit_button = false;
 
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsActionsManageHeader)); 
     ImGui::Indent();
@@ -3430,6 +3449,7 @@ void WindowSettings::UpdatePageActions()
                 m_ActionSelectionUID = entry.UID;
 
                 delete_confirm_state = false;
+                focus_edit_button = io.NavVisible;
             }
 
             if ( (scroll_to_selection) && (index == list_id) )
@@ -3530,6 +3550,9 @@ void WindowSettings::UpdatePageActions()
 
     if (is_none)
         ImGui::PushItemDisabled();
+
+    if (focus_edit_button)
+        ImGui::SetKeyboardFocusHere();
 
     if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsManageEdit)))
     {
@@ -3734,8 +3757,8 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
     if ((m_PageAppearing == wndsettings_page_actions_edit) || (m_CachedSizes.ActionEdit_ButtonDeleteSize.x == 0.0f))
     {
         //Figure out size for delete button. We need it to stay the same but also consider the case of the confirm text being longer in some languages
-        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsEditCommandDelete));
-        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsEditCommandDeleteConfirm));
+        ImVec2 text_size_delete  = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsEditCommandDelete),        nullptr, true);
+        ImVec2 text_size_confirm = ImGui::CalcTextSize(TranslationManager::GetString(tstr_SettingsActionsEditCommandDeleteConfirm), nullptr, true);
         m_CachedSizes.ActionEdit_ButtonDeleteSize = (text_size_delete.x > text_size_confirm.x) ? text_size_delete : text_size_confirm;
 
         m_CachedSizes.ActionEdit_ButtonDeleteSize.x += style.FramePadding.x * 2.0f;

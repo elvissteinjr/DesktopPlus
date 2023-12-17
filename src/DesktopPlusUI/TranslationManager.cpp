@@ -666,6 +666,16 @@ void TranslationManager::LoadTranslationFromFile(const std::string& filename)
             }
         }
 
+        //Append fixed IDs to strings that need it
+        m_Strings[tstr_OverlayBarOvrlRemove]                         += "###OverlayRemove";
+        m_Strings[tstr_OverlayBarOvrlRemoveConfirm]                  += "###OverlayRemove";
+        m_Strings[tstr_SettingsProfilesOverlaysProfileDelete]        += "###ProfileDelete";
+        m_Strings[tstr_SettingsProfilesOverlaysProfileDeleteConfirm] += "###ProfileDelete";
+        m_Strings[tstr_SettingsActionsManageDelete]                  += "###ActionDelete";
+        m_Strings[tstr_SettingsActionsManageDeleteConfirm]           += "###ActionDelete";
+        m_Strings[tstr_SettingsActionsEditCommandDelete]             += "###CommandDelete";
+        m_Strings[tstr_SettingsActionsEditCommandDeleteConfirm]      += "###CommandDelete";
+
         //Set locale or reset it if it's not in the file
         //It's debatable if we should set the locale based on the language as they're separate things... but I personally like seeing separators and formats matching the typical language pattern.
         //It's always possible to edit the locale key to blank to get the user one here
