@@ -226,6 +226,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
 
     data.ConfigBool[configid_bool_overlay_floatingui_enabled]           = config.ReadBool(section.c_str(), "ShowFloatingUI", true);
     data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled]  = config.ReadBool(section.c_str(), "ShowDesktopButtons", false);
+    data.ConfigBool[configid_bool_overlay_floatingui_extras_enabled]    = config.ReadBool(section.c_str(), "ShowExtraButtons", true);
     data.ConfigBool[configid_bool_overlay_actionbar_enabled]            = config.ReadBool(section.c_str(), "ShowActionBar", false);
     data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]   = config.ReadBool(section.c_str(), "ActionBarOrderUseGlobal", true);
 
@@ -360,6 +361,7 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
 
     config.WriteBool(section.c_str(), "ShowFloatingUI",          data.ConfigBool[configid_bool_overlay_floatingui_enabled]);
     config.WriteBool(section.c_str(), "ShowDesktopButtons",      data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled]);
+    config.WriteBool(section.c_str(), "ShowExtraButtons",        data.ConfigBool[configid_bool_overlay_floatingui_extras_enabled]);
     config.WriteBool(section.c_str(), "ShowActionBar",           data.ConfigBool[configid_bool_overlay_actionbar_enabled]);
     config.WriteBool(section.c_str(), "ActionBarOrderUseGlobal", data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]);
 

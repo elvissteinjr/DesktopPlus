@@ -36,6 +36,7 @@ enum ConfigID_Bool
     configid_bool_overlay_update_invisible,
     configid_bool_overlay_floatingui_enabled,
     configid_bool_overlay_floatingui_desktops_enabled,
+    configid_bool_overlay_floatingui_extras_enabled,
     configid_bool_overlay_actionbar_enabled,
     configid_bool_overlay_actionbar_order_use_global,
     configid_bool_overlay_state_no_output,

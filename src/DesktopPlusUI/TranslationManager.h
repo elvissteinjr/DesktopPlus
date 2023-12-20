@@ -428,6 +428,7 @@ enum TRMGRStrID
     tstr_OvrlPropsInterfaceOverlayNameAuto,
     tstr_OvrlPropsInterfaceActionOrderCustom,
     tstr_OvrlPropsInterfaceDesktopButtons,
+    tstr_OvrlPropsInterfaceExtraButtons,
     tstr_OverlayBarOvrlHide,
     tstr_OverlayBarOvrlShow,
     tstr_OverlayBarOvrlClone,

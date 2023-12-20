@@ -1766,6 +1766,11 @@ void WindowOverlayProperties::UpdatePageMainCatInterface()
         }
     }
 
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsInterfaceExtraButtons), &data.ConfigBool[configid_bool_overlay_floatingui_extras_enabled]))
+    {
+        UIManager::Get()->RepeatFrame();
+    }
+
     ImGui::Columns(1);
 }
 

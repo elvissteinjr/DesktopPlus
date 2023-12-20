@@ -98,70 +98,74 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
 
     ImGui::SameLine();
 
-    //Add current window as overlay (only show if desktop duplication or non-window WinRT capture)
-    if (  (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) ||
-         ((overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (overlay_data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == 0)) )
+    //Extra buttons
+    if (overlay_data.ConfigBool[configid_bool_overlay_floatingui_extras_enabled])
     {
-        //If marked to need update, refresh actual state
-        if (m_IsCurrentWindowCapturable == -1)
+        //Add current window as overlay (only show if desktop duplication or non-window WinRT capture)
+        if (  (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) ||
+             ((overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (overlay_data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == 0)) )
         {
-            m_IsCurrentWindowCapturable = (WindowManager::Get().WindowListFindWindow(::GetForegroundWindow()) != nullptr);
-        }
-
-        if (m_IsCurrentWindowCapturable != 1)
-            ImGui::PushItemDisabled();
-
-        TextureManager::Get().GetTextureInfo(tmtex_icon_small_add_window, b_size, b_uv_min, b_uv_max);
-        ImGui::ImageButton("AddWindow", io.Fonts->TexID, b_size, b_uv_min, b_uv_max); //This one's activated on mouse down
-
-        if (ImGui::IsItemActivated())
-        {
-            vr::TrackedDeviceIndex_t device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
-
-            //If no dashboard device, try finding one
-            if (device_index == vr::k_unTrackedDeviceIndexInvalid)
+            //If marked to need update, refresh actual state
+            if (m_IsCurrentWindowCapturable == -1)
             {
-                device_index = FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleFloatingUI());
+                m_IsCurrentWindowCapturable = (WindowManager::Get().WindowListFindWindow(::GetForegroundWindow()) != nullptr);
             }
 
-            //Try to get the pointer distance
-            float source_distance = 1.0f;
-            vr::VROverlayIntersectionResults_t results;
+            if (m_IsCurrentWindowCapturable != 1)
+                ImGui::PushItemDisabled();
 
-            if (ComputeOverlayIntersectionForDevice(UIManager::Get()->GetOverlayHandleFloatingUI(), device_index, vr::TrackingUniverseStanding, &results))
+            TextureManager::Get().GetTextureInfo(tmtex_icon_small_add_window, b_size, b_uv_min, b_uv_max);
+            ImGui::ImageButton("AddWindow", io.Fonts->TexID, b_size, b_uv_min, b_uv_max); //This one's activated on mouse down
+
+            if (ImGui::IsItemActivated())
             {
-                source_distance = results.fDistance;
+                vr::TrackedDeviceIndex_t device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
+
+                //If no dashboard device, try finding one
+                if (device_index == vr::k_unTrackedDeviceIndexInvalid)
+                {
+                    device_index = FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleFloatingUI());
+                }
+
+                //Try to get the pointer distance
+                float source_distance = 1.0f;
+                vr::VROverlayIntersectionResults_t results;
+
+                if (ComputeOverlayIntersectionForDevice(UIManager::Get()->GetOverlayHandleFloatingUI(), device_index, vr::TrackingUniverseStanding, &results))
+                {
+                    source_distance = results.fDistance;
+                }
+
+                //Set pointer hint in case dashboard app needs it
+                ConfigManager::SetValue(configid_int_state_laser_pointer_device_hint, (int)device_index);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_laser_pointer_device_hint, (int)device_index);
+
+                //Add overlay
+                HWND current_window = ::GetForegroundWindow();
+                OverlayManager::Get().AddOverlay(ovrl_capsource_winrt_capture, -2, current_window);
+
+                //Send to dashboard app
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_state_arg_hwnd, (LPARAM)current_window);
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new_drag, MAKELPARAM(-2, (source_distance * 100.0f)));
             }
 
-            //Set pointer hint in case dashboard app needs it
-            ConfigManager::SetValue(configid_int_state_laser_pointer_device_hint, (int)device_index);
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_laser_pointer_device_hint, (int)device_index);
+            if (m_IsCurrentWindowCapturable != 1)
+                ImGui::PopItemDisabled();
 
-            //Add overlay
-            HWND current_window = ::GetForegroundWindow();
-            OverlayManager::Get().AddOverlay(ovrl_capsource_winrt_capture, -2, current_window);
+            DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIWindowAddTip));
 
-            //Send to dashboard app
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_state_arg_hwnd, (LPARAM)current_window);
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new_drag, MAKELPARAM(-2, (source_distance * 100.0f)));
+            ImGui::SameLine();
         }
+        //
 
-        if (m_IsCurrentWindowCapturable != 1)
-            ImGui::PopItemDisabled();
-
-        DisplayTooltipIfHovered(TranslationManager::GetString(tstr_FloatingUIWindowAddTip));
-
-        ImGui::SameLine();
-    }
-    //
-
-    if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui) //Performance Monitor reset button (only show if UI overlay)
-    {
-        UpdatePerformanceMonitorButtons();
-    }
-    else if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser) //Browser navigation/reload buttons (only show if browser overlay)
-    {
-        UpdateBrowserButtons(overlay_id);
+        if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_ui) //Performance Monitor reset button (only show if UI overlay)
+        {
+            UpdatePerformanceMonitorButtons();
+        }
+        else if (overlay_data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser) //Browser navigation/reload buttons (only show if browser overlay)
+        {
+            UpdateBrowserButtons(overlay_id);
+        }
     }
     //
 
