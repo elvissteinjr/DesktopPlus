@@ -173,6 +173,12 @@ enum TRMGRStrID
     tstr_SettingsActionsEditCommandArgs,
     tstr_SettingsActionsEditCommandArgsTip,
     tstr_SettingsActionsEditCommandVisibility,
+    tstr_SettingsActionsEditCommandSwitchingMethod,
+    tstr_SettingsActionsEditCommandSwitchingMethodSwitcher,
+    tstr_SettingsActionsEditCommandSwitchingMethodFocus,
+    tstr_SettingsActionsEditCommandWindow,
+    tstr_SettingsActionsEditCommandWindowNone,
+    tstr_SettingsActionsEditCommandCursorWarp,
     tstr_SettingsActionsEditCommandDescNone,
     tstr_SettingsActionsEditCommandDescKey,               //%KEYNAME% == key name
     tstr_SettingsActionsEditCommandDescKeyToggle,         //^
@@ -189,6 +195,7 @@ enum TRMGRStrID
     tstr_SettingsActionsEditCommandDescOverlayHide,       //^
     tstr_SettingsActionsEditCommandDescOverlayTargetDefault,
     tstr_SettingsActionsEditCommandDescSwitchTask,
+    tstr_SettingsActionsEditCommandDescSwitchTaskWindow,  //%WINDOW% == window title string
     tstr_SettingsActionsEditCommandDescUnknown,
     tstr_SettingsActionsOrderHeader,
     tstr_SettingsActionsOrderButtonLabel,                 //%COUNT% == Action count

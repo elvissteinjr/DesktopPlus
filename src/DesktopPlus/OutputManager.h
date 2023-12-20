@@ -78,6 +78,7 @@ class OutputManager
         void SetOverlayEnabled(unsigned int overlay_id, bool is_enabled);
         void CropToActiveWindowToggle(unsigned int overlay_id);
         void ShowWindowSwitcher();
+        void SwitchToWindow(HWND window, bool warp_cursor);
 
         VRInput& GetVRInput();
         InputSimulator& GetInputSimulator();

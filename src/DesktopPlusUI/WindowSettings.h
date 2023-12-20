@@ -21,6 +21,7 @@ enum WindowSettingsPage
     wndsettings_page_action_picker,
     wndsettings_page_keycode_picker,
     wndsettings_page_icon_picker,
+    wndsettings_page_window_picker,
     wndsettings_page_reset_confirm
 };
 
@@ -66,6 +67,7 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         bool m_KeyCodePickerNoMouse;
         bool m_KeyCodePickerHotkeyMode;
         std::string m_IconPickerFile;
+        HWND m_WindowPickerHWND;
 
         std::vector< std::pair<std::string, std::string> > m_AppList;   //app key, app name
 
@@ -105,6 +107,7 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         void UpdatePageActionPicker();
         void UpdatePageKeyCodePicker(bool only_restore_settings = false);
         void UpdatePageIconPicker();
+        void UpdatePageWindowPicker();
         void UpdatePageResetConfirm();
 
         void PageGoForward(WindowSettingsPage new_page);

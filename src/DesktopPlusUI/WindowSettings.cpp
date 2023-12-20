@@ -7,6 +7,7 @@
 #include "ImGuiExt.h"
 #include "UIManager.h"
 #include "TranslationManager.h"
+#include "WindowManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
 #include "DesktopPlusWinRT.h"
@@ -31,7 +32,8 @@ WindowSettings::WindowSettings() :
     m_KeyCodePickerID(0),
     m_KeyCodePickerHotkeyFlags(0),
     m_KeyCodePickerNoMouse(false),
-    m_KeyCodePickerHotkeyMode(false)
+    m_KeyCodePickerHotkeyMode(false),
+    m_WindowPickerHWND(nullptr)
 {
     m_WindowTitleStrID = tstr_SettingsWindowTitle;
     m_WindowIcon = tmtex_icon_xsmall_settings;
@@ -248,6 +250,7 @@ void WindowSettings::WindowUpdate()
                 case wndsettings_page_actions_order:           UpdatePageActionsOrder();            break;
                 case wndsettings_page_keycode_picker:          UpdatePageKeyCodePicker();           break;
                 case wndsettings_page_icon_picker:             UpdatePageIconPicker();              break;
+                case wndsettings_page_window_picker:           UpdatePageWindowPicker();            break;
                 case wndsettings_page_reset_confirm:           UpdatePageResetConfirm();            break;
                 default: break;
             }
@@ -3640,6 +3643,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
         char buffer_str_arg[1024]  = "";
         int temp_int_1 = 0;
         int temp_int_2 = 0;
+        std::string temp_window_button_title;
         FloatingWindowInputOverlayTagsState input_tags_state;
     };
 
@@ -4378,6 +4382,137 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
                 }
 
                 ImGui::EndCollapsingArea();
+
+                break;
+            }
+            case ActionCommand::command_switch_task:
+            {
+                bool use_strict_matching = (LOWORD(command.UIntArg) == 1);
+                bool warp_cursor         = (HIWORD(command.UIntArg) == 1);
+
+                //If window title needs to be refreshed or returned from widnow picker
+                if ((ui_state.temp_window_button_title.empty()) || ((m_PageReturned == wndsettings_page_window_picker) && (header_open == command_id)))
+                {
+                    const auto& window_list = WindowManager::Get().WindowListGet();
+                    const bool returned_from_picker = (m_WindowPickerHWND != nullptr);
+
+                    //If not returned from window picker, find HWND for the target window title if possible
+                    if (!returned_from_picker)
+                    {
+                        //exe & class names are packed into StrArg, seperated by |, which isn't allowed to appear in file names so it makes a decent separator here
+                        std::string exe_name;
+                        std::string class_name;
+                        size_t search_pos = command.StrArg.find("|");
+
+                        if (search_pos != std::string::npos)
+                        {
+                            exe_name   = command.StrArg.substr(0, search_pos);
+                            class_name = command.StrArg.substr(search_pos + 1);
+                        }
+
+                        m_WindowPickerHWND = WindowInfo::FindClosestWindowForTitle(command.StrMain, class_name, exe_name, window_list, use_strict_matching);
+                    }
+
+                    const auto it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& window) { return (window.GetWindowHandle() == m_WindowPickerHWND); });
+
+                    if (it != window_list.end())
+                    {
+                        command.StrMain = StringConvertFromUTF16(it->GetTitle().c_str());
+                        command.StrArg  = it->GetExeName() + "|" + StringConvertFromUTF16(it->GetWindowClassName().c_str());
+
+                        ui_state.temp_window_button_title = it->GetListTitle();
+                    }
+                    else if (!command.StrMain.empty())  //Referenced window doesn't exist right now
+                    {
+                        ui_state.temp_window_button_title = TranslationManager::GetString(tstr_SourceWinRTClosed) + std::string(" " + command.StrMain);
+                    }
+                    else  //Couldn't find any open window
+                    {
+                        command.StrArg.clear();
+
+                        ui_state.temp_window_button_title = TranslationManager::GetString(tstr_SettingsActionsEditCommandWindowNone);
+                    }
+
+                    has_value_changed = true;
+
+                    m_PageReturned = wndsettings_page_none;
+                    m_WindowPickerHWND = nullptr;
+                }
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandSwitchingMethod));
+                ImGui::NextColumn();
+
+                if (ImGui::RadioButton(TranslationManager::GetString(tstr_SettingsActionsEditCommandSwitchingMethodSwitcher), (command.UIntID == 0)))
+                {
+                    command.UIntID = 0;
+                    has_value_changed = true;
+                }
+
+                ImGui::SameLine();
+
+                if (ImGui::RadioButton(TranslationManager::GetString(tstr_SettingsActionsEditCommandSwitchingMethodFocus), (command.UIntID == 1)))
+                {
+                    command.UIntID = 1;
+                    has_value_changed = true;
+                }
+
+                ImGui::NextColumn();
+
+                if (command.UIntID == 0)
+                    ImGui::PushItemDisabled();
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandWindow));
+                ImGui::NextColumn();
+
+                //Window picker button
+                ImVec2 button_size(0.0f, 0.0f);
+
+                if (ImGui::CalcTextSize(ui_state.temp_window_button_title.c_str()).x > ImGui::GetContentRegionAvail().x - style.FramePadding.x * 2.0f)
+                {
+                    button_size.x = ImGui::GetContentRegionAvail().x - 1.0f;
+                }
+
+                if (ImGui::Button(ui_state.temp_window_button_title.c_str(), button_size))
+                {
+                    std::string exe_name;
+                    std::string class_name;
+                    size_t search_pos = command.StrArg.find("|");
+
+                    if (search_pos != std::string::npos)
+                    {
+                        exe_name   = command.StrArg.substr(0, search_pos);
+                        class_name = command.StrArg.substr(search_pos + 1);
+                    }
+
+                    HWND hwnd_current = WindowInfo::FindClosestWindowForTitle(command.StrMain, class_name, exe_name, WindowManager::Get().WindowListGet(), use_strict_matching);
+
+                    m_WindowPickerHWND = hwnd_current;
+                    PageGoForward(wndsettings_page_window_picker);
+                }
+
+                ImGui::NextColumn();
+                ImGui::NextColumn();
+
+                if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsCaptureGCStrictMatching), &use_strict_matching))
+                {
+                    command.UIntArg = MAKELPARAM(use_strict_matching, warp_cursor);
+                    has_value_changed = true;
+                }
+                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                HelpMarker(TranslationManager::GetString(tstr_OvrlPropsCaptureGCStrictMatchingTip));
+
+                ImGui::NextColumn();
+
+                if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsActionsEditCommandCursorWarp), &warp_cursor))
+                {
+                    command.UIntArg = MAKELPARAM(use_strict_matching, warp_cursor);
+                    has_value_changed = true;
+                }
+
+                if (command.UIntID == 0)
+                    ImGui::PopItemDisabled();
 
                 break;
             }
@@ -5253,6 +5388,86 @@ void WindowSettings::UpdatePageIconPicker()
 
     ImGui::SameLine();
 
+    if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
+    {
+        PageGoBack();
+    }
+}
+
+void WindowSettings::UpdatePageWindowPicker()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    static HWND list_hwnd = nullptr;
+    static bool is_nav_focus_entry_pending = false;    //Focus has to be delayed until after the page animation is done
+    static bool scroll_to_selection = false;
+    static ImVec2 no_actions_text_size;
+
+    if (m_PageAppearing == wndsettings_page_action_picker)
+    {
+        is_nav_focus_entry_pending = m_WindowPickerHWND;
+        scroll_to_selection = true;
+        is_nav_focus_entry_pending = ImGui::GetIO().NavVisible;
+    }
+
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogActionPickerHeader)); 
+    ImGui::Indent();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
+    const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 22.0f : 15.0f;
+    ImGui::BeginChild("WindowPickerList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
+
+    //List windows
+    ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
+    ImVec2 img_size, img_uv_min, img_uv_max;
+    const ImVec2 combo_pos = ImGui::GetCursorScreenPos();
+
+    for (const auto& window_info : WindowManager::Get().WindowListGet())
+    {
+        ImGui::PushID(window_info.GetWindowHandle());
+        if (ImGui::Selectable("", (list_hwnd == window_info.GetWindowHandle()) ))
+        {
+            list_hwnd = window_info.GetWindowHandle();
+            m_WindowPickerHWND = list_hwnd;
+
+            PageGoBack();
+        }
+
+        if ( (scroll_to_selection) && (list_hwnd == window_info.GetWindowHandle()) )
+        {
+            ImGui::SetScrollHereY();
+
+            if (ImGui::IsItemVisible())
+            {
+                scroll_to_selection = false;
+            }
+        }
+
+        ImGui::SameLine(0.0f, 0.0f);
+
+        int icon_id = TextureManager::Get().GetWindowIconCacheID(window_info.GetIcon());
+
+        if (icon_id != -1)
+        {
+            TextureManager::Get().GetWindowIconTextureInfo(icon_id, img_size, img_uv_min, img_uv_max);
+            ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
+
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        }
+
+        ImGui::TextUnformatted(window_info.GetListTitle().c_str());
+
+        ImGui::PopID();
+    }
+
+    ImGui::EndChild();
+    ImGui::Unindent();
+
+    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight()) );
+
+    //Cancel button
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
     {
         PageGoBack();

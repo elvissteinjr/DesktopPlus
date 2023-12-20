@@ -2646,6 +2646,26 @@ void OutputManager::ShowWindowSwitcher()
     }
 }
 
+void OutputManager::SwitchToWindow(HWND window, bool warp_cursor)
+{
+    WindowManager::Get().RaiseAndFocusWindow(window, &m_InputSim);
+
+    if (warp_cursor)
+    {
+        //Figure out center point of the window and put the cursor there
+        RECT window_rect = {0};
+
+        //Just using GetWindowRect() can include shadows and such, which we don't want
+        if (::DwmGetWindowAttribute(window, DWMWA_EXTENDED_FRAME_BOUNDS, &window_rect, sizeof(window_rect)) == S_OK)
+        {
+            DPRect window_dprect(window_rect.left, window_rect.top, window_rect.right, window_rect.bottom);
+            Vector2Int pt_center = window_dprect.GetCenter();
+
+            m_InputSim.MouseMove(pt_center.x, pt_center.y);
+        }
+    }
+}
+
 VRInput& OutputManager::GetVRInput()
 {
     return m_VRInput;

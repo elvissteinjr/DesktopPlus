@@ -21,6 +21,7 @@
 
 #ifndef DPLUS_UI
     #include "OutputManager.h"
+    #include "WindowManager.h"
 #endif
 
 #ifdef DPLUS_UI
@@ -433,11 +434,42 @@ void ActionManager::DoShowOverlayCommand(const ActionCommand& command, OverlayID
     }
 }
 
-void ActionManager::DoSwitchTaskCommand(const ActionCommand& /*command*/, OverlayIDList& /*overlay_targets*/) const
+void ActionManager::DoSwitchTaskCommand(const ActionCommand& command, OverlayIDList& /*overlay_targets*/) const
 {
-    if (OutputManager* outmgr = OutputManager::Get())
+    const bool show_window_switcher = (command.UIntID == 0);
+
+    if (show_window_switcher)
     {
-        outmgr->ShowWindowSwitcher();
+        if (OutputManager* outmgr = OutputManager::Get())
+        {
+            outmgr->ShowWindowSwitcher();
+        }
+    }
+    else    //Focus Window
+    {
+        const bool use_strict_matching = (LOWORD(command.UIntArg) == 1);
+        const bool warp_cursor         = (HIWORD(command.UIntArg) == 1);
+
+        //exe & class names are packed into StrArg, seperated by |
+        std::string exe_name;
+        std::string class_name;
+        size_t search_pos = command.StrArg.find("|");
+
+        if (search_pos != std::string::npos)
+        {
+            exe_name   = command.StrArg.substr(0, search_pos);
+            class_name = command.StrArg.substr(search_pos + 1);
+        }
+
+        HWND window_handle = WindowInfo::FindClosestWindowForTitle(command.StrMain, class_name, exe_name, WindowManager::Get().WindowListGet(), use_strict_matching);
+
+        if (window_handle != nullptr)
+        {
+            if (OutputManager* outmgr = OutputManager::Get())
+            {
+                outmgr->SwitchToWindow(window_handle, warp_cursor);
+            }
+        }
     }
 }
 
@@ -1043,7 +1075,15 @@ std::string ActionManager::GetCommandDescription(const ActionCommand& command, f
         }
         case ActionCommand::command_switch_task:
         {
-            str = TranslationManager::GetString(tstr_SettingsActionsEditCommandDescSwitchTask);
+            if (command.UIntID == 0)
+            {
+                str = TranslationManager::GetString(tstr_SettingsActionsEditCommandDescSwitchTask);
+            }
+            else
+            {
+                str = TranslationManager::GetString(tstr_SettingsActionsEditCommandDescSwitchTaskWindow);
+                StringReplaceAll(str, "%WINDOW%", (!command.StrMain.empty()) ? command.StrMain : TranslationManager::GetString(tstr_SettingsActionsEditCommandWindowNone));
+            }
             break;
         }
         default: str = TranslationManager::GetString(tstr_SettingsActionsEditCommandDescUnknown); break;
