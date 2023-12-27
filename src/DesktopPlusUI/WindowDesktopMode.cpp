@@ -211,7 +211,7 @@ void WindowDesktopMode::UpdatePageMain()
         m_PageReturned = wnddesktopmode_page_none;
     }
 
-    if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsActionsManage))) 
+    if (ImGui::Selectable(TranslationManager::GetString(tstr_DesktopModeToolActions))) 
     {
         UIManager::Get()->GetSettingsWindow().DesktopModeSetRootPage(wndsettings_page_actions);
         PageGoForward(wnddesktopmode_page_actions);

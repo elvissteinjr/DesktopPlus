@@ -103,7 +103,7 @@ const char* WindowSettings::DesktopModeGetTitle() const
     else if (m_PageStack[0] == wndsettings_page_app_profiles)
         return TranslationManager::GetString(tstr_SettingsProfilesApps);
     else if (m_PageStack[0] == wndsettings_page_actions)
-        return TranslationManager::GetString(tstr_SettingsActionsManage);
+        return TranslationManager::GetString(tstr_DesktopModeToolActions);
     else
         return TranslationManager::GetString(m_WindowTitleStrID);
 }
@@ -978,7 +978,7 @@ void WindowSettings::UpdatePageMainCatActions()
         ImGui::NextColumn();
 
         ImGui::PushID(tstr_SettingsActionsManage);  //Avoid ID conflict from common "Manage" label
-        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsProfilesManage)))
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsManageButton)))
         {
             PageGoForward(wndsettings_page_actions);
         }
