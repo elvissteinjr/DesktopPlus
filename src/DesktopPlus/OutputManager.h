@@ -112,7 +112,6 @@ class OutputManager
         void ApplySettingCrop();
         void ApplySettingInputMode();
         void ApplySettingMouseInput();
-        void ApplySettingKeyboardScale();
         void ApplySettingUpdateLimiter();
 
         void DragStart(bool is_gesture_drag = false);

@@ -257,8 +257,6 @@ Custom icons for these actions can be added by putting PNG files in the "images/
 - **Keyboard**
   - **Enable Keyboard Extension**:  
   Adds additional keyboard modifier toggles, tab, function and arrow keys below the SteamVR keyboard when used with Desktop+ overlays. Note that the modifier toggles directly manipulate the global keyboard state, so using them and the hardware keyboard at the same time may conflict.
-  - **Floating Size**:  
-  Size of the SteamVR keyboard when used for non-dashboard/floating Desktop+ overlays.
   
 - **Floating Overlay**
   - **Interaction Auto-Toggle Max Distance**:  

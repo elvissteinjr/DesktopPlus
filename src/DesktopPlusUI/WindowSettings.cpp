@@ -2605,24 +2605,6 @@ void WindowSettings::UpdateCatInput()
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_input_keyboard_helper_enabled), enable_keyboard_helper);
         }
 
-        ImGui::NextColumn();
-        ImGui::NextColumn();
-
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Floating Size");
-        ImGui::NextColumn();
-
-        float& size = ConfigManager::Get().GetConfigFloatRef(configid_float_input_keyboard_detached_size);
-
-        if (ImGui::SliderWithButtonsFloatPercentage("KeyboardSize", size, 5, 1, 10, 100, "%d%%"))
-        {
-            if (size < 0.10f)
-                size = 0.10f;
-
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_float_input_keyboard_detached_size), *(LPARAM*)&size);
-        }
-        ImGui::NextColumn();
-
         ImGui::Columns(1);
     }
 

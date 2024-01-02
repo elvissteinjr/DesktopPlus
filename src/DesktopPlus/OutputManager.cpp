@@ -1410,11 +1410,6 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         ApplySettingTransform();
                         break;
                     }
-                    case configid_float_input_keyboard_detached_size:
-                    {
-                        ApplySettingKeyboardScale();
-                        break;
-                    }
                     case configid_float_performance_update_limit_ms:
                     case configid_float_overlay_update_limit_override_ms:
                     {
@@ -4191,8 +4186,6 @@ void OutputManager::ShowKeyboardForOverlay(unsigned int overlay_id, bool show)
 
             ConfigManager::Get().SetConfigInt(configid_int_state_keyboard_visible_for_overlay_id, ovrl_keyboard_id);
 
-            ApplySettingKeyboardScale();    //Apply detached keyboard scale if necessary
-
             //Tell UI that the keyboard helper can be displayed
             IPCManager::Get().PostMessageToUIApp(ipcmsg_set_config, ConfigManager::Get().GetWParamForConfigID(configid_int_state_keyboard_visible_for_overlay_id), ovrl_keyboard_id);
         }
@@ -5005,47 +4998,6 @@ void OutputManager::ApplySettingMouseInput()
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
-}
-
-void OutputManager::ApplySettingKeyboardScale()
-{
-    //Check for SteamVR 2 keyboard first, then fall back to system keyboard if necessary
-    vr::VROverlayHandle_t ovrl_handle_keyboard = vr::k_ulOverlayHandleInvalid;;
-    vr::VROverlay()->FindOverlay("valve.steam.gamepadui.keyboard", &ovrl_handle_keyboard);
-
-    if (ovrl_handle_keyboard == vr::k_ulOverlayHandleInvalid)
-    {
-        vr::VROverlay()->FindOverlay("system.keyboard", &ovrl_handle_keyboard);
-    }
-
-    if (ovrl_handle_keyboard != vr::k_ulOverlayHandleInvalid)
-    {
-        if (ConfigManager::Get().GetConfigInt(configid_int_state_keyboard_visible_for_overlay_id) > k_ulOverlayID_Dashboard)
-        {
-            vr::HmdMatrix34_t hmd_mat;
-            vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
-
-            vr::VROverlay()->GetOverlayTransformAbsolute(ovrl_handle_keyboard, &universe_origin, &hmd_mat);
-
-            Matrix4 mat = hmd_mat;
-            Vector3 translation = mat.getTranslation();
-
-            mat.setTranslation(Vector3(0.0f, 0.0f, 0.0f));
-
-            //Get last scale from the HMD transform
-            Vector3 row_1(hmd_mat.m[0][0], hmd_mat.m[1][0], hmd_mat.m[2][0]);
-            float last_used_scale = row_1.length();
-
-            //Undo last scale
-            mat.scale(1.0 / last_used_scale);
-            mat.scale(ConfigManager::Get().GetConfigFloat(configid_float_input_keyboard_detached_size));
-            mat.setTranslation(translation);
-
-            hmd_mat = mat.toOpenVR34();
-
-            vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_keyboard, universe_origin, &hmd_mat);
-        }
-    }
 }
 
 void OutputManager::ApplySettingUpdateLimiter()

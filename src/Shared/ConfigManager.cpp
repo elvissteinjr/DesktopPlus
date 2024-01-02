@@ -530,7 +530,6 @@ bool ConfigManager::LoadConfigFromFile()
 	m_ConfigBool[configid_bool_input_mouse_hmd_pointer_override]       = config.ReadBool("Mouse", "HMDPointerOverride", true);
 
     m_ConfigBool[configid_bool_input_keyboard_helper_enabled]          = config.ReadBool("Keyboard", "EnableKeyboardHelper", true);
-    m_ConfigFloat[configid_float_input_keyboard_detached_size]         = config.ReadInt( "Keyboard", "KeyboardDetachedSize", 100) / 100.0f;
 
     m_ConfigBool[configid_bool_windows_auto_focus_scene_app_dashboard] = config.ReadBool("Windows", "AutoFocusSceneAppDashboard", false);
     m_ConfigBool[configid_bool_windows_winrt_auto_focus]               = config.ReadBool("Windows", "WinRTAutoFocus", true);
@@ -902,7 +901,6 @@ void ConfigManager::SaveConfigToFile()
     config.WriteInt( "Mouse", "DoubleClickAssistDuration", m_ConfigInt[configid_int_input_mouse_dbl_click_assist_duration_ms]);
 
     config.WriteBool("Keyboard", "EnableKeyboardHelper",        m_ConfigBool[configid_bool_input_keyboard_helper_enabled]);
-    config.WriteInt( "Keyboard", "KeyboardDetachedSize",    int(m_ConfigFloat[configid_float_input_keyboard_detached_size] * 100.0f));
 
     config.WriteBool("Windows", "AutoFocusSceneAppDashboard",   m_ConfigBool[configid_bool_windows_auto_focus_scene_app_dashboard]);
     config.WriteBool("Windows", "WinRTAutoFocus",               m_ConfigBool[configid_bool_windows_winrt_auto_focus]);
