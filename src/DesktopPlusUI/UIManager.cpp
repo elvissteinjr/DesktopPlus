@@ -936,8 +936,8 @@ void UIManager::PositionOverlay(WindowKeyboardHelper& window_kdbhelper)
                 }
                 else
                 {
-                    //This anchors it on the bottom end of the used minimal mode SteamVR keyboard space
-                    vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_keyboard, origin, {960.0f, 29.0f}, &matrix);
+                    //This anchors it on the bottom end below the drag handle of the minimal mode SteamVR keyboard
+                    vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_keyboard, origin, {960.0f, -50.0f}, &matrix);
                 }
 
                 //Slighty lift it so input goes here (minimal mode SteamVR keyboard has a larger overlay than used for the keys)
