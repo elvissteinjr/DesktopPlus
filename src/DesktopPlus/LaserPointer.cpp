@@ -151,7 +151,7 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
     LaserPointerDevice& lp_device = m_Devices[device_index];
     bool is_primary_device = (device_index == (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
     bool was_active_for_multilaser_input = lp_device.IsActiveForMultiLaserInput;
-    bool skip_intersection_test = ( (vr::VROverlay()->IsDashboardVisible()) || (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid) );
+    bool skip_intersection_test = IsSystemLaserPointerActive();
     bool skip_input = skip_intersection_test;
 
     //Set up intersection test
@@ -555,7 +555,7 @@ void LaserPointer::Update()
     }
 
     //Primary device switching
-    if (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndexInvalid)
+    if (!IsSystemLaserPointerActive())
     {
         vr::InputOriginInfo_t origin_info = {0};
         vr::InputDigitalActionData_t left_click_state = vr_input.GetLaserPointerLeftClickState();
@@ -813,7 +813,7 @@ LaserPointerActivationOrigin LaserPointer::GetActivationOrigin() const
 bool LaserPointer::IsActive() const
 {
     vr::TrackedDeviceIndex_t primary_pointer_device = (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device);
-    return ( (vr::VROverlay()->GetPrimaryDashboardDevice() == vr::k_unTrackedDeviceIndexInvalid) && (!vr::VROverlay()->IsDashboardVisible()) && (primary_pointer_device != vr::k_unTrackedDeviceIndexInvalid) );
+    return ( (!IsSystemLaserPointerActive()) && (primary_pointer_device != vr::k_unTrackedDeviceIndexInvalid) );
 }
 
 vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) const

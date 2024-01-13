@@ -283,7 +283,7 @@ void WindowKeyboard::WindowUpdate()
     if (!UIManager::Get()->IsInDesktopMode())
     {
         vr::TrackedDeviceIndex_t primary_device = ConfigManager::Get().GetPrimaryLaserPointerDevice();
-        bool dashboard_device_exists = (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid);
+        bool dashboard_device_exists = IsSystemLaserPointerActive();
 
         //Overlay leave events are not processed when a dashboard pointer exists changes active state, so make sure to get the pointers out of the way anyways
         if (dashboard_device_exists != m_IsDashboardPointerActiveLast)
@@ -1431,7 +1431,7 @@ bool WindowKeyboard::HandleOverlayEvent(const vr::VREvent_t& vr_event)
     //Skip if no valid device index or it's the system pointer (sends as device 0 (HMD) or invalid)
     //For mouse move events with cursor indices above 0 we allow invalid devices as they're used to guess the correct one
     if ( ( (device_index >= vr::k_unMaxTrackedDeviceCount) || (device_index == vr::k_unTrackedDeviceIndex_Hmd) || 
-          ((cursor_index == 0) && (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid)) ) && ((cursor_index == 0) || (vr_event.eventType != vr::VREvent_MouseMove)) )
+          ((cursor_index == 0) && (IsSystemLaserPointerActive())) ) && ((cursor_index == 0) || (vr_event.eventType != vr::VREvent_MouseMove)) )
     {
         return (cursor_index != 0); //Still return true for non-0 index as we don't want it to be treated as ImGui mouse input
     }

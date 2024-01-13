@@ -168,6 +168,12 @@ bool IsOverlayIntersectionHitFrontFacing(const vr::VROverlayIntersectionParams_t
     return (intersect_target_normal.dot(intersect_src_pos - intersect_target_pos) >= 0.0f);
 }
 
+bool IsSystemLaserPointerActive()
+{
+    //IsSteamVRDrawingControllers() appears to only return true while the laser pointer is active even if SteamVR is drawing controllers from no scene app running or similar
+    return (vr::VROverlay()->IsDashboardVisible() || vr::VRSystem()->IsSteamVRDrawingControllers());
+}
+
 Matrix4 ComputeHMDFacingTransform(float distance)
 {
     //This is based on dashboard positioning code posted by Valve on the OpenVR GitHub

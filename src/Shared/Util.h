@@ -30,6 +30,9 @@ bool ComputeOverlayIntersectionForDevice(vr::VROverlayHandle_t overlay_handle, v
 //Returns true if intersection hit the front side of the overlay
 bool IsOverlayIntersectionHitFrontFacing(const vr::VROverlayIntersectionParams_t& params, const vr::VROverlayIntersectionResults_t& results);
 
+//Returns true if the system laser pointer is likely to be active. There may be edge-cases with this depending on SteamVR behavior
+bool IsSystemLaserPointerActive();
+
 //Returns transform similar to the dashboard transform (not a perfect match, though)
 Matrix4 ComputeHMDFacingTransform(float distance);
 

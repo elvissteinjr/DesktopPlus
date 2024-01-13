@@ -269,7 +269,7 @@ void FloatingUI::UpdateUITargetState()
         if (overlay_data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen) 
         {
             //SteamVR's control bar is only shown while system laser pointer is active, so only add offset if that's the case
-            const bool add_offset = (vr::VROverlay()->GetPrimaryDashboardDevice() != vr::k_unTrackedDeviceIndexInvalid);
+            const bool add_offset = IsSystemLaserPointerActive();
 
             if (is_newly_visible)
             {
