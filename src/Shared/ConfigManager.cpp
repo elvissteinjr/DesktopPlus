@@ -1560,7 +1560,15 @@ bool ConfigManager::IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayH
     bool ret = false;
 
     if (IsSystemLaserPointerActive())
-        ret = vr::VROverlay()->IsHoverTargetOverlay(ulOverlayHandle);
+    {
+        if (vr::VROverlay()->IsHoverTargetOverlay(ulOverlayHandle))
+        {
+            //Double check IsHoverTargetOverlay() with an intersection check as it's not guaranteed to always return false after leaving an overlay
+            //(it mostly does, but it's documented as returning the last overlay)
+            vr::VROverlayIntersectionResults_t results;
+            ret = ComputeOverlayIntersectionForDevice(ulOverlayHandle, vr::VROverlay()->GetPrimaryDashboardDevice(), vr::TrackingUniverseStanding, &results);
+        }
+    }
 
     if (!ret)
         return (ulOverlayHandle == m_ConfigHandle[configid_handle_state_dplus_laser_pointer_target_overlay]);
