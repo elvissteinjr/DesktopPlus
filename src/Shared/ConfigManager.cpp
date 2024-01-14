@@ -187,8 +187,8 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigStr[configid_str_overlay_browser_url_user_last]          = config.ReadString(section.c_str(), "BrowserURLUserLast");
     data.ConfigStr[configid_str_overlay_browser_title]                  = config.ReadString(section.c_str(), "BrowserTitle");
     data.ConfigBool[configid_bool_overlay_browser_allow_transparency]   = config.ReadBool(section.c_str(),   "BrowserAllowTransparency", false);
-    data.ConfigFloat[configid_float_overlay_width]                      = config.ReadInt(section.c_str(),    "Width", 165) / 100.0f;
-    data.ConfigFloat[configid_float_overlay_curvature]                  = config.ReadInt(section.c_str(),    "Curvature", 17) / 100.0f;
+    data.ConfigFloat[configid_float_overlay_width]                      = clamp(config.ReadInt(section.c_str(), "Width", 165)    / 100.0f, 0.00001f, 1000.0f);
+    data.ConfigFloat[configid_float_overlay_curvature]                  = clamp(config.ReadInt(section.c_str(), "Curvature", 17) / 100.0f, 0.0f,     1.0f);
     data.ConfigFloat[configid_float_overlay_opacity]                    = config.ReadInt(section.c_str(),    "Opacity", 100) / 100.0f;
     data.ConfigFloat[configid_float_overlay_brightness]                 = config.ReadInt(section.c_str(),    "Brightness", 100) / 100.0f;
     data.ConfigFloat[configid_float_overlay_browser_zoom]               = config.ReadInt(section.c_str(),    "BrowserZoom", 100) / 100.0f;
