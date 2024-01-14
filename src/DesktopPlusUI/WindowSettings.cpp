@@ -5103,6 +5103,7 @@ void WindowSettings::UpdatePageKeyCodePicker(bool only_restore_settings)
 
                 if (!m_KeyCodePickerHotkeyMode)
                 {
+                    key_code_prev = m_KeyCodePickerID; //Prevent it from being reset
                     PageGoBack();
                 }
             }
