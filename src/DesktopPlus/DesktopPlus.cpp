@@ -65,7 +65,7 @@ HRESULT EnumOutputsExpectedErrors[] = {
 DWORD WINAPI CaptureThreadEntry(_In_ void* Param);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 bool SpawnProcessWithDefaultEnv(LPCWSTR application_name, LPWSTR commandline = nullptr);
-void ProcessCmdline(bool& use_elevated_mode);
+void ProcessCmdline(bool& use_elevated_mode, bool& cancel_startup);
 bool DisplayInitError(vr::EVRInitError vr_init_error, vr::EVROverlayError vr_overlay_error, bool vr_input_success);
 
 //
@@ -159,12 +159,18 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     UNREFERENCED_PARAMETER(lpCmdLine);
 
     bool use_elevated_mode = false;
-    ProcessCmdline(use_elevated_mode);
+    bool cancel_startup = false;
+    ProcessCmdline(use_elevated_mode, cancel_startup);
 
     if (use_elevated_mode)
     {
         //Pass all control to eleveated mode and exit when we're done there
         return ElevatedModeEnter(hInstance);
+    }
+    else if (cancel_startup)
+    {
+        //Command line contained a one-off command sent to existing instances, exit
+        return 0;
     }
 
     DPLog_Init("DesktopPlus");
@@ -633,15 +639,28 @@ bool SpawnProcessWithDefaultEnv(LPCWSTR application_name, LPWSTR commandline)
     return false;
 }
 
-void ProcessCmdline(bool& use_elevated_mode)
+void ProcessCmdline(bool& use_elevated_mode, bool& cancel_startup)
 {
     //__argv and __argc are global vars set by system
     for (UINT i = 0; i < static_cast<UINT>(__argc); ++i)
     {
-        if ((strcmp(__argv[i], "-ElevatedMode") == 0) ||
-            (strcmp(__argv[i], "/ElevatedMode") == 0))
+        if ((strcmp(__argv[i], "-ElevatedMode")  == 0) ||
+            (strcmp(__argv[i], "--ElevatedMode") == 0) ||
+            (strcmp(__argv[i], "/ElevatedMode")  == 0))
         {
             use_elevated_mode = true;
+        }
+        else if ((strcmp(__argv[i], "-DoAction")  == 0) ||
+                 (strcmp(__argv[i], "--DoAction") == 0) ||
+                 (strcmp(__argv[i], "/DoAction")  == 0))
+        {
+            //Take the following argument and parse it as ActionUID to send it to the running dashboard app instance
+            if (__argc > i + 1)
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_action_do, std::strtoull(__argv[i+1], nullptr, 10));
+            }
+
+            cancel_startup = true;
         }
     }
 }
