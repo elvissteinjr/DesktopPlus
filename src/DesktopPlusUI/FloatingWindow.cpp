@@ -1240,7 +1240,6 @@ bool FloatingWindow::ActionAddSelector(ActionManager::ActionList& list_actions_t
 
     ImGui::EndChild();
     ImGui::Unindent();
-    ImGui::Spacing();
 
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - list_buttons_width);
 

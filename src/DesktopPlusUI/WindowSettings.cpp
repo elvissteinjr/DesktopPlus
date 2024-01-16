@@ -1815,6 +1815,7 @@ void WindowSettings::UpdatePageMainCatMisc()
         if (ConfigManager::GetValue(configid_bool_interface_warning_welcome_hidden))
             warning_hidden_count++;
 
+        ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsWarningsHidden));
         ImGui::SameLine();
         ImGui::Text("%i", warning_hidden_count);
@@ -1877,6 +1878,7 @@ void WindowSettings::UpdatePageMainCatMisc()
         ImGui::SetColumnWidth(0, m_Column0Width);
 
         //All the restart buttons only start up new processes, but both UI and dashboard app get rid of the older instance when starting
+        ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted("Desktop+");
         ImGui::NextColumn();
 
@@ -1934,6 +1936,7 @@ void WindowSettings::UpdatePageMainCatMisc()
 
         ImGui::NextColumn();
 
+        ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted("Desktop+ UI");
         ImGui::NextColumn();
 
@@ -2506,7 +2509,6 @@ void WindowSettings::UpdatePageProfiles()
     }
 
     ImGui::EndChild();
-    ImGui::Spacing();
 
     const bool is_none  = (list_id == -1);
     const bool is_first = (list_id == 0);
@@ -2959,7 +2961,6 @@ void WindowSettings::UpdatePageProfilesOverlaySelect()
         }
 
         ImGui::EndChild();
-        ImGui::Spacing();
 
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - list_buttons_width);
 
@@ -3411,7 +3412,6 @@ void WindowSettings::UpdatePageActions()
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsActionsManageHeader)); 
     ImGui::Indent();
 
-    ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
     const float item_count = (UIManager::Get()->IsInDesktopMode()) ? ( (is_root_page) ? 22.0f : 20.0f ) : 16.0f;
@@ -3531,7 +3531,6 @@ void WindowSettings::UpdatePageActions()
     }
 
     ImGui::EndChild();
-    ImGui::Spacing();
 
     const bool is_none  = (list_id == -1);
     const bool is_first = (list_id == 0);
@@ -4863,7 +4862,6 @@ void WindowSettings::UpdatePageActionPicker()
     static ActionUID list_uid = k_ActionUID_Invalid;
     static bool is_nav_focus_entry_pending = false;    //Focus has to be delayed until after the page animation is done
     static bool scroll_to_selection = false;
-    static ImVec2 no_actions_text_size;
 
     if (m_PageAppearing == wndsettings_page_action_picker)
     {
@@ -5072,12 +5070,11 @@ void WindowSettings::UpdatePageKeyCodePicker(bool only_restore_settings)
     }
     vr_keyboard.VRKeyboardInputEnd();
 
-    ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
     const float item_count_offset = (m_KeyCodePickerHotkeyMode) ? -2.5f : 0.0f;
     const float item_count = ((UIManager::Get()->IsInDesktopMode()) ? 21.0f : 16.0f) + item_count_offset;
-    ImGui::BeginChild("KeyCodePickerList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
+    ImGui::BeginChild("KeyCodePickerList", ImVec2(-1.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
     unsigned char list_keycode;
     const char* list_keycode_str = nullptr;
