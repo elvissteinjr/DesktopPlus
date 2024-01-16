@@ -831,7 +831,7 @@ bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, siz
 
     buttons_width = ImGui::GetItemRectSize().x;
 
-    ImGui::BeginChild("ChildKnownTags", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_NavFlattened);
+    ImGui::BeginChild("ChildKnownTags", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_NavFlattened | ImGuiWindowFlags_NoBackground);
 
     for (const auto& list_entry : state.KnownTagsList)
     {
