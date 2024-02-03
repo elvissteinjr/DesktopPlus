@@ -605,6 +605,9 @@ enum TRMGRStrID
     tstr_NotificationIconRestoreVR,
     tstr_NotificationIconOpenOnDesktop,
     tstr_NotificationIconQuit,
+    tstr_NotificationInitialStartupTitleVR,
+    tstr_NotificationInitialStartupTitleDesktop,
+    tstr_NotificationInitialStartupMessage,
     tstr_MAX,
     tstr_NONE = tstr_MAX //Don't pass this into GetString()
 };

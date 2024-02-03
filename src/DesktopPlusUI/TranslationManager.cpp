@@ -605,7 +605,10 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SourceBrowserNoPage",
     "tstr_NotificationIconRestoreVR",
     "tstr_NotificationIconOpenOnDesktop",
-    "tstr_NotificationIconQuit"
+    "tstr_NotificationIconQuit",
+    "tstr_NotificationInitialStartupTitleVR",
+    "tstr_NotificationInitialStartupTitleDesktop",
+    "tstr_NotificationInitialStartupMessage"
 };
 
 static TranslationManager g_TranslationManager;

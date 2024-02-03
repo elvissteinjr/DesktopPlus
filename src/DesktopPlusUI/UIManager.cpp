@@ -192,6 +192,50 @@ void UIManager::DisplayDashboardAppError(const std::string& str) //Ideally this 
     vr::VROverlay()->ShowDashboard("elvissteinjr.DesktopPlusDashboard");
 }
 
+void UIManager::DisplayInitialSetupNotification()
+{
+    //Check if the user is currently using the HMD and display the initial setup message as a VR notification instead then
+    bool use_vr_notification = false;
+    vr::EDeviceActivityLevel activity_level = vr::VRSystem()->GetTrackedDeviceActivityLevel(vr::k_unTrackedDeviceIndex_Hmd);
+
+    if ((activity_level == vr::k_EDeviceActivityLevel_UserInteraction) || (activity_level == vr::k_EDeviceActivityLevel_UserInteraction_Timeout))
+    {
+        //Also check if the HMD is tracking properly right now so the notification can actually be seen (fresh SteamVR start is active but not tracking for example)
+        vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+
+        use_vr_notification = (poses[vr::k_unTrackedDeviceIndex_Hmd].eTrackingResult == vr::TrackingResult_Running_OK);
+    }
+
+    if (use_vr_notification)
+    {
+        vr::VRNotificationId notification_id = 0; //Unused, but documentation doesn't say if passing nullptr is allowed, so we pass this
+        std::string message = TranslationManager::GetString(tstr_NotificationInitialStartupTitleVR);
+        message += "\n";
+        message += TranslationManager::GetString(tstr_NotificationInitialStartupMessage);
+
+        //Despite being sent after overlay creation, it may not be returned right away, so keep trying a bit
+        for (int tries = 0; tries < 20; ++tries)
+        {
+            vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &m_OvrlHandleDPlusDashboard);
+
+            if (m_OvrlHandleDPlusDashboard != vr::k_ulOverlayHandleInvalid)
+            {
+                break;
+            }
+            ::Sleep(50);
+        }
+
+        vr::VRNotifications()->CreateNotification(m_OvrlHandleDPlusDashboard, 0, vr::EVRNotificationType_Transient, message.c_str(), vr::EVRNotificationStyle_Application, nullptr, &notification_id);
+    }
+    else
+    {
+        ::MessageBoxW(nullptr,
+                      WStringConvertFromUTF8(TranslationManager::GetString(tstr_NotificationInitialStartupMessage)).c_str(), 
+                      WStringConvertFromUTF8(TranslationManager::GetString(tstr_NotificationInitialStartupTitleDesktop)).c_str(), MB_OK);
+    }
+}
+
 void UIManager::SetOverlayInputEnabled(bool is_enabled)
 {
     vr::VROverlayInputMethod input_method = (is_enabled) ? vr::VROverlayInputMethod_Mouse : vr::VROverlayInputMethod_None;
@@ -500,6 +544,11 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                 {
                     m_WinRTErrorLast = (HRESULT)msg.lParam;
                     UpdateAnyWarningDisplayedState();
+                    break;
+                }
+                case ipcact_notification_show:
+                {
+                    DisplayInitialSetupNotification();
                     break;
                 }
                 case ipcact_winmanager_winlist_add:

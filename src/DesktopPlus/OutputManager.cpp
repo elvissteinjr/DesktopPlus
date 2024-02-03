@@ -664,7 +664,6 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_started_by_steam, is_steam_app);
 
     //Add application manifest and set app key to Steam one if needed (setting the app key will make it load Steam input bindings even when not launched by it)
-    vr::EVRApplicationError app_error;
     if (!is_steam_app)
     {
         LOG_F(INFO, "Process was not launched by Steam, setting SteamVR application identity");
@@ -684,61 +683,12 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     if (m_IsFirstLaunch)
     {
         LOG_F(INFO, "First launch detected. Setting application to auto-launch with SteamVR");
-        app_error = vr::VRApplications()->SetApplicationAutoLaunch(g_AppKeyDashboardApp, true);
+        vr::EVRApplicationError app_error = vr::VRApplications()->SetApplicationAutoLaunch(g_AppKeyDashboardApp, true);
 
         if (app_error == vr::VRApplicationError_None)
         {
-            //Check if the user is currently using the HMD and display the initial setup message as a VR notification instead then
-            bool use_vr_notification = false;
-            vr::EDeviceActivityLevel activity_level = vr::VRSystem()->GetTrackedDeviceActivityLevel(vr::k_unTrackedDeviceIndex_Hmd);
-
-            if ((activity_level == vr::k_EDeviceActivityLevel_UserInteraction) || (activity_level == vr::k_EDeviceActivityLevel_UserInteraction_Timeout))
-            {
-                //Also check if the HMD is tracking properly right now so the notification can actually be seen (fresh SteamVR start is active but not tracking for example)
-                vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-                vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
-
-                use_vr_notification = (poses[vr::k_unTrackedDeviceIndex_Hmd].eTrackingResult == vr::TrackingResult_Running_OK);
-            }
-
-            if (use_vr_notification)
-            {
-                //Documentation says CreateNotification() would take the icon from the overlay, but it doesn't. So let's do it ourselves then!
-                vr::NotificationBitmap_t* icon_bmp_ptr = nullptr;
-                vr::NotificationBitmap_t icon_bmp;
-                icon_bmp.m_nBytesPerPixel = 4;
-                std::unique_ptr<uint8_t[]> icon_bmp_data;
-
-                //We need to sleep a bit so the icon overlay has actually finished loading before reading the image data (though the notification still works if we miss it)
-                ::Sleep(100);
-
-                uint32_t img_width, img_height, img_buffer_size;
-                if (vr::VROverlay()->GetOverlayImageData(m_OvrlHandleIcon, nullptr, 0, &img_width, &img_height) == vr::VROverlayError_ArrayTooSmall)
-                {
-                    img_buffer_size = img_width * img_height * icon_bmp.m_nBytesPerPixel;
-                    icon_bmp_data = std::unique_ptr<uint8_t[]>{ new uint8_t[img_buffer_size] };
-
-                    if (vr::VROverlay()->GetOverlayImageData(m_OvrlHandleIcon, icon_bmp_data.get(), img_buffer_size, &img_width, &img_height) == vr::VROverlayError_None)
-                    {
-                        icon_bmp.m_nWidth  = img_width;
-                        icon_bmp.m_nHeight = img_height;
-                        icon_bmp.m_pImageData = icon_bmp_data.get();
-
-                        icon_bmp_ptr = &icon_bmp;
-                    }
-                }
-
-
-                vr::VRNotificationId notification_id = 0; //Unused, but documentation doesn't say if passing nullptr is allowed, so we pass this
-
-                vr::VRNotifications()->CreateNotification(m_OvrlHandleDashboardDummy, 0, vr::EVRNotificationType_Transient,
-                                                          "Initial Setup\nDesktop+ has been successfully added to SteamVR and will now automatically launch when SteamVR is run.",
-                                                          vr::EVRNotificationStyle_Application, icon_bmp_ptr, &notification_id);
-            }
-            else
-            {
-                DisplayMsg(L"Desktop+ has been successfully added to SteamVR.\nIt will now automatically launch when SteamVR is run.", L"Desktop+ Initial Setup", S_OK);
-            }
+            //Have the UI app display the initial setup notification
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_notification_show);
 
             //Show the dashboard overlay as well to make it easier to find when first using the app
             vr::VROverlay()->ShowDashboard("elvissteinjr.DesktopPlusDashboard");

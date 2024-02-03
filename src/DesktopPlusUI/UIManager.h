@@ -122,6 +122,7 @@ class UIManager
         std::vector<MSG> m_DelayedICPMessages;  //Stores ICP messages that need to be delayed for processing within an ImGui frame
 
         void DisplayDashboardAppError(const std::string& str);
+        void DisplayInitialSetupNotification();
         void SetOverlayInputEnabled(bool is_enabled);
 
     public:
