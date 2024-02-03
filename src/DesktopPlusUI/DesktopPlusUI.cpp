@@ -45,7 +45,7 @@ void CleanupRenderTarget();
 void RefreshOverlayTextureSharing();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void InitImGui(HWND hwnd, bool desktop_mode);
-void ProcessCmdline(bool& force_desktop_mode);
+void ProcessCmdline(bool& force_desktop_mode, bool& open_keyboard_editor);
 
 // Main code
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ INT nCmdShow)
@@ -53,11 +53,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     DPLog_Init("DesktopPlusUI");
 
     bool force_desktop_mode = false;
-    ProcessCmdline(force_desktop_mode);
+    bool open_keyboard_editor = false;
+    ProcessCmdline(force_desktop_mode, open_keyboard_editor);
 
     //Automatically use desktop mode if dashboard app isn't running
     bool desktop_mode = ( (force_desktop_mode) || (!IPCManager::IsDashboardAppRunning()) );
-    LOG_F(INFO, "Desktop+ UI running in %s", (desktop_mode) ? "desktop mode" : "VR mode");
+    LOG_F(INFO, "Desktop+ UI running in %s", (desktop_mode) ? ((open_keyboard_editor) ? "desktop mode (keyboard editor)" : "desktop mode") : "VR mode");
 
     //Make sure only one instance is running
     StopProcessByWindowClass(g_WindowClassNameUIApp);
@@ -79,7 +80,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         hwnd = ::CreateWindow(wc.lpszClassName, L"Desktop+ UI", 0, 0, 0, 1, 1, HWND_MESSAGE, nullptr, wc.hInstance, nullptr);
 
     //Init UITextureSpaces
-    UITextureSpaces::Get().Init(desktop_mode);
+    UITextureSpaces::Get().Init(desktop_mode, open_keyboard_editor);
 
     //Init WinRT DLL
     DPWinRT_Init();
@@ -456,7 +457,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
         else
         {
-            ui_manager.GetDesktopModeWindow().Update();
+            if (open_keyboard_editor)
+            {
+                ui_manager.GetVRKeyboard().GetEditor().Update();
+            }
+            else
+            {
+                ui_manager.GetDesktopModeWindow().Update();
+            }
         }
 
         //Haptic feedback for hovered items, like the rest of the SteamVR UI
@@ -802,15 +810,23 @@ void InitImGui(HWND hwnd, bool desktop_mode)
     UIManager::Get()->UpdateStyle();
 }
 
-void ProcessCmdline(bool& force_desktop_mode)
+void ProcessCmdline(bool& force_desktop_mode, bool& open_keyboard_editor)
 {
     //__argv and __argc are global vars set by system
     for (UINT i = 0; i < static_cast<UINT>(__argc); ++i)
     {
-        if ((strcmp(__argv[i], "-DesktopMode") == 0) ||
-            (strcmp(__argv[i], "/DesktopMode") == 0))
+        if ((strcmp(__argv[i], "-DesktopMode")  == 0) ||
+            (strcmp(__argv[i], "--DesktopMode") == 0) ||
+            (strcmp(__argv[i], "/DesktopMode")  == 0))
         {
             force_desktop_mode = true;
+        }
+        else if ((strcmp(__argv[i], "-KeyboardEditor")  == 0) ||
+                 (strcmp(__argv[i], "--KeyboardEditor") == 0) ||
+                 (strcmp(__argv[i], "/KeyboardEditor")  == 0))
+        {
+            open_keyboard_editor = true;
+            force_desktop_mode   = true;
         }
     }
 }

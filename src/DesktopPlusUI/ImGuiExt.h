@@ -129,6 +129,7 @@ namespace ImGui
 
     //Returns true if any item is or was active in the previous frame
     bool IsAnyItemActiveOrDeactivated();
+    bool IsAnyItemDeactivated();
 
     //Returns true if any InputText is active
     //Use IsAnyTempInputTextActive() to handle widgets creating temp InputTexts instead as the text state ID doesn't get cleared and it can't tell normal use and text input apart

@@ -138,6 +138,7 @@
     <ClCompile Include="WindowKeyboard.cpp" />
     <ClCompile Include="WindowFloatingUIBar.cpp" />
     <ClCompile Include="TextureManager.cpp" />
+    <ClCompile Include="WindowKeyboardEditor.cpp" />
     <ClCompile Include="WindowOverlayBar.cpp" />
     <ClCompile Include="WindowOverlayProperties.cpp" />
     <ClCompile Include="WindowPerformance.cpp" />
@@ -170,6 +171,7 @@
     <ClInclude Include="NotificationIcon.h" />
     <ClInclude Include="TranslationManager.h" />
     <ClInclude Include="VRKeyboard.h" />
+    <ClInclude Include="VRKeyboardCommon.h" />
     <ClInclude Include="Win32PerformanceData.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="UIManager.h" />
@@ -185,6 +187,7 @@
     <ClInclude Include="imgui_win32_dx11_openvr\imgui_impl_dx11_openvr.h" />
     <ClInclude Include="imgui_win32_dx11_openvr\imgui_impl_win32_openvr.h" />
     <ClInclude Include="TextureManager.h" />
+    <ClInclude Include="WindowKeyboardEditor.h" />
     <ClInclude Include="WindowOverlayBar.h" />
     <ClInclude Include="WindowOverlayProperties.h" />
     <ClInclude Include="WindowPerformance.h" />

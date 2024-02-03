@@ -1028,6 +1028,12 @@ namespace ImGui
         return ( (g.ActiveId != 0) || (g.ActiveIdPreviousFrame != 0) );
     }
 
+    bool IsAnyItemDeactivated()
+    {
+        const ImGuiContext& g = *GImGui;
+        return ( (g.ActiveIdPreviousFrame != 0) && (g.ActiveId != g.ActiveIdPreviousFrame) );
+    }
+
     bool IsAnyInputTextActive()
     {
         const ImGuiContext& g = *GImGui;

@@ -110,7 +110,6 @@ class FloatingWindow
         virtual bool IsVirtualWindowItemHovered() const; //Returns false by default, can be overridden to signal hover state of widgets that don't touch global ImGui state (used for blank space drag)
 
         void HelpMarker(const char* desc, const char* marker_str = "(?)") const;    //Help marker, but tooltip is fixed to top or bottom of the window
-        static bool TranslatedComboAnimated(const char* label, int& value, TRMGRStrID trstr_min, TRMGRStrID trstr_max);
         void UpdateLimiterSetting(bool is_override) const;
 
         //Input widget for a collection of overlay tags. clip_parent_depth is the depth of parent window look up for popup's clipping rect, change when used in nested child windows
@@ -158,4 +157,6 @@ class FloatingWindow
         const ImVec2& GetPos() const;
         const ImVec2& GetSize() const;
         virtual vr::VROverlayHandle_t GetOverlayHandle() const = 0;
+
+        static bool TranslatedComboAnimated(const char* label, int& value, TRMGRStrID trstr_min, TRMGRStrID trstr_max);
 };

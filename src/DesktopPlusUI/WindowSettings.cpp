@@ -2229,6 +2229,7 @@ void WindowSettings::UpdatePageKeyboardLayout(bool only_restore_settings)
 
     static int list_id = -1;
     static std::vector<KeyboardLayoutMetadata> list_layouts;
+    static std::vector<std::string> str_list_authors; 
     static bool cluster_enabled_prev[kbdlayout_cluster_MAX] = {false};
 
     if (only_restore_settings)
@@ -2242,7 +2243,7 @@ void WindowSettings::UpdatePageKeyboardLayout(bool only_restore_settings)
         vr_keyboard.LoadCurrentLayout();
         return;
     }
-    
+
     if (m_PageAppearing == wndsettings_page_keyboard)
     {
         //Show the keyboard since that's probably useful
@@ -2251,6 +2252,22 @@ void WindowSettings::UpdatePageKeyboardLayout(bool only_restore_settings)
         //Load layout list
         list_id = -1;
         list_layouts = VRKeyboard::GetKeyboardLayoutList();
+
+        //Generate cached author list strings
+        str_list_authors.clear();
+        for (const auto& metadata: list_layouts)
+        {
+            if (!metadata.Author.empty())
+            {
+                std::string author_str = TranslationManager::GetString(tstr_SettingsKeyboardLayoutAuthor);
+                StringReplaceAll(author_str, "%AUTHOR%", metadata.Author);
+                str_list_authors.push_back(author_str);
+            }
+            else
+            {
+                str_list_authors.emplace_back();
+            }
+        }
 
         //Select matching entry
         const std::string& current_filename = ConfigManager::GetValue(configid_str_input_keyboard_layout_file);
@@ -2286,11 +2303,21 @@ void WindowSettings::UpdatePageKeyboardLayout(bool only_restore_settings)
     for (const auto& metadata: list_layouts)
     {
         ImGui::PushID(index);
+
         if (ImGui::Selectable(metadata.Name.c_str(), (index == list_id)))
         {
             list_id = index;
             vr_keyboard.LoadLayoutFromFile(metadata.FileName);
         }
+
+        if (!metadata.Author.empty())
+        {
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
+            ImGui::TextRightUnformatted(0.0f, str_list_authors[index].c_str());
+            ImGui::PopStyleColor();
+        }
+
         ImGui::PopID();
 
         index++;
@@ -2411,6 +2438,21 @@ void WindowSettings::UpdatePageKeyboardLayout(bool only_restore_settings)
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogCancel))) 
     {
         PageGoBack();
+    }
+    
+    if (UIManager::Get()->IsInDesktopMode())
+    {
+        ImGui::SameLine();
+
+        static float keyboard_editor_button_width = 0.0f;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - keyboard_editor_button_width);
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsKeyboardSwitchToEditor)))
+        {
+            UIManager::Get()->RestartIntoKeyboardEditor();
+        }
+
+        keyboard_editor_button_width = ImGui::GetItemRectSize().x;
     }
 }
 

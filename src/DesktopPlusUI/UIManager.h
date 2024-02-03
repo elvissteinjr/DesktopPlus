@@ -55,7 +55,7 @@ class UITextureSpaces
     public:
         static UITextureSpaces& Get();
 
-        void Init(bool desktop_mode);
+        void Init(bool desktop_mode, bool keyboard_editor_mode);
         const DPRect& GetRect(UITexspaceID texspace_id) const;
         ImVec4 GetRectAsVec4(UITexspaceID texspace_id) const;
 };
@@ -176,7 +176,7 @@ class UIManager
         void DisableRestartOnExit();
 
         void Restart(bool desktop_mode);
-        void RestartIntoActionEditor();
+        void RestartIntoKeyboardEditor();
         void RestartDashboardApp(bool force_steam = false);
         void ElevatedModeEnter();
         void ElevatedModeLeave();

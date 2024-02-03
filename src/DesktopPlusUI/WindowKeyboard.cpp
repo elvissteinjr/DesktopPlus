@@ -243,6 +243,7 @@ bool WindowKeyboard::SetAutoVisibility(int assigned_overlay_id, bool show)
 void WindowKeyboard::WindowUpdate()
 {
     ImGuiIO& io = ImGui::GetIO();
+    ImGuiStyle& style = ImGui::GetStyle();
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
     //Set input state from the real mouse for ButtonLaser
@@ -332,7 +333,7 @@ void WindowKeyboard::WindowUpdate()
     io.KeyRepeatRate  = 0.025f;
 
     m_IsHovered = ((ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | ImGuiHoveredFlags_AllowWhenBlockedByPopup)) && 
-                   (io.MousePos.y >= ImGui::GetCursorScreenPos().y - ImGui::GetStyle().WindowPadding.y));
+                   (io.MousePos.y >= ImGui::GetCursorScreenPos().y - style.WindowPadding.y));
 
     //Keyboard buttons use their own window-local active widget state in order to not interrupt active InputText() widgets. This is a dirty hack, but works for now
     ImGui::ActiveWidgetStateStorage widget_state_back;
@@ -470,14 +471,27 @@ void WindowKeyboard::WindowUpdate()
     m_IsAnyButtonHovered = false;
 
     int key_index = 0;
+    ImVec2 cursor_pos = ImGui::GetCursorPos();
     for (const auto& key : vr_keyboard.GetLayout(current_sublayout))
     {
         ButtonLaserState& button_state = m_ButtonStates[key_index];
         ImGui::PushID(key_index);
 
+        //Keep cursor pos on integer values
+        cursor_pos = ImGui::GetCursorPos();
+        ImGui::SetCursorPos({ceilf(cursor_pos.x), ceilf(cursor_pos.y)});
+
         //This accounts for the spacing that is missing with wider keys so rows still line up and also forces integer values
-        const float key_width  = (float)int( base_width * key.Width  + (ImGui::GetStyle().ItemInnerSpacing.x * (key.Width  - 1.0f)) );
-        const float key_height = (float)int( base_width * key.Height + (ImGui::GetStyle().ItemInnerSpacing.y * (key.Height - 1.0f)) );
+        const float key_width_f = base_width * key.Width  + (style.ItemInnerSpacing.x * (key.Width  - 1.0f));
+        const float key_height  = (float)(int)( base_width * key.Height + (style.ItemInnerSpacing.y * (key.Height - 1.0f)) );
+        float key_width         = (float)(int)( key_width_f );
+
+        //Add an extra pixel of width if the untruncated values would push it further
+        //There might be a smarter way to do this (simple rounding doesn't seem to be it), but this helps the keys align while rendering on full pixels only
+        if (cursor_pos.x + key_width_f > ImGui::GetCursorPosX() + key_width)
+        {
+            key_width += 1.0f;
+        }
 
         //Disable button repeat if the individual key has its key repeat disabled (avoid doing it when it's already off though)
         const bool use_key_repeat = ((use_key_repeat_global) && (!key.NoRepeat));
@@ -582,7 +596,7 @@ void WindowKeyboard::WindowUpdate()
                 //If second ISO-enter key, offset cursor to the previous row and stretch the button down to the end of the current row
                 if (is_bottom_key)
                 {
-                    offset_y = ImGui::GetStyle().ItemSpacing.y + base_width;
+                    offset_y = style.ItemSpacing.y + base_width;
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - offset_y);
                 }
                 else //else remember the width of the top part for later
@@ -632,7 +646,7 @@ void WindowKeyboard::WindowUpdate()
                 //If second ISO-enter key, create two visible buttons that match the active state collected from the invisible buttons (but otherwise don't do anything)
                 if (is_bottom_key)
                 {
-                    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
                     bool push_color = ((vr_keyboard.GetKeyDown(key.KeyCode)) && (m_IsIsoEnterDown));
 
@@ -651,7 +665,7 @@ void WindowKeyboard::WindowUpdate()
                     ImGui::SetCursorPos(iso_enter_top_pos);
 
                     //Shorten width by rounding so it doesn't stack corner AA
-                    ButtonVisual("##IsoEnterTop", {iso_enter_top_width - ImGui::GetStyle().FrameRounding, base_width});
+                    ButtonVisual("##IsoEnterTop", {iso_enter_top_width - style.FrameRounding, base_width});
 
                     //Lower part with label
                     ImGui::SetCursorPos({cursor_pos.x, cursor_pos.y - offset_y});
@@ -805,7 +819,8 @@ void WindowKeyboard::WindowUpdate()
 
         if (!key.IsRowEnd)
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+            cursor_pos.x += key_width_f;
         }
 
         //Undo disabled button repeat if necessary

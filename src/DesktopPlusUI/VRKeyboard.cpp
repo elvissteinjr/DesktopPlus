@@ -10,6 +10,10 @@
 #include "imgui_internal.h"
 #include "imgui_impl_win32_openvr.h"
 
+static const char* const g_KeyboardSublayoutNames[kbdlayout_sub_MAX]    = {"Base", "Shift", "AltGr", "Aux"};
+static const char* const g_KeyboardClusterNames[kbdlayout_cluster_MAX]  = {"Base", "Function", "Navigation", "Numpad", "Extra"};
+static const char* const g_KeyboardKeyTypeNames[kbdlayout_key_MAX]      = {"Blank", "VirtualKey", "VirtualKeyToggle", "VirtualKeyIsoEnter", "String", "SubLayoutToggle", "Action"};
+
 VRKeyboard::VRKeyboard() : 
     m_InputTarget(kbdtarget_desktop),
     m_InputTargetOverlayID(k_ulOverlayID_None),
@@ -18,6 +22,7 @@ VRKeyboard::VRKeyboard() :
     m_InputBeginWidgetID(0),
     m_ShortcutWindowDirHint(ImGuiDir_Down),
     m_ShortcutWindowYOffset(0.0f),
+    m_ActiveInputTextIsMultiline(false),
     m_MouseLeftDownPrevCached(false),
     m_MouseLeftClickedPrevCached(false),
     m_KeyboardHiddenLastFrame(false)
@@ -54,6 +59,11 @@ WindowKeyboard& VRKeyboard::GetWindow()
     return m_WindowKeyboard;
 }
 
+KeyboardEditor& VRKeyboard::GetEditor()
+{
+    return m_KeyboardEditor;
+}
+
 void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
 {
     std::string fullpath = ConfigManager::Get().GetApplicationPath() + "keyboards/" + filename;
@@ -75,8 +85,6 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
         //Load new layout
         m_LayoutMetadata = LoadLayoutMetadataFromFile(filename);
 
-        const char* const sublayout_names[kbdlayout_sub_MAX]   = {"Base", "Shift", "AltGr", "Aux"};
-        const char* const cluster_names[kbdlayout_cluster_MAX] = {"Base", "Function", "Navigation", "Numpad", "Extra"};
         const bool cluster_enabled[kbdlayout_cluster_MAX] = 
         {
             true, 
@@ -98,7 +106,7 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
         while (true)
         {
             std::stringstream key_section;
-            key_section << "Key_" << sublayout_names[sublayout_id] << "_Row_" << row_id << "_ID_" << key_id;
+            key_section << "Key_" << g_KeyboardSublayoutNames[sublayout_id] << "_Row_" << row_id << "_ID_" << key_id;
 
             if (layout_file.SectionExists(key_section.str().c_str()))
             {
@@ -107,11 +115,15 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
 
                 //Match cluster string and skip if the cluster has been disabled
                 bool skip_key = false;
-                for (size_t i = 0; i < kbdlayout_cluster_MAX; ++i)
+                size_t key_cluster_i = 0;
+                for (key_cluster_i = 0; key_cluster_i < kbdlayout_cluster_MAX; ++key_cluster_i)
                 {
-                    if ( (key_cluster_str == cluster_names[i]) && (!cluster_enabled[i]) )
+                    if (key_cluster_str == g_KeyboardClusterNames[key_cluster_i])
                     {
-                        skip_key = true;
+                        if (!cluster_enabled[key_cluster_i])
+                        {
+                            skip_key = true;
+                        }
                         break;
                     }
                 }
@@ -123,6 +135,9 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
                 }
 
                 KeyboardLayoutKey key;
+
+                //Key cluster
+                key.KeyCluster = (KeyboardLayoutCluster)key_cluster_i;
 
                 //Key type
                 key_type_str = layout_file.ReadString(key_section.str().c_str(), "Type", "Blank");
@@ -161,7 +176,7 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
                     //Match sublayout string
                     for (size_t i = 0; i < kbdlayout_sub_MAX; ++i)
                     {
-                        if (key_sublayout_toggle_str == sublayout_names[i])
+                        if (key_sublayout_toggle_str == g_KeyboardSublayoutNames[i])
                         {
                             key.KeySubLayoutToggle = (KeyboardLayoutSubLayout)i;
                             break;
@@ -171,7 +186,7 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
                 else if (key_type_str == "Action")
                 {
                     key.KeyType = kbdlayout_key_action;
-                    key.KeyActionUID = std::strtoull(layout_file.ReadString(key_section.str().c_str(), "ActionID", "0").c_str(), nullptr, 10);
+                    key.KeyActionUID = std::strtoull(layout_file.ReadString(key_section.str().c_str(), "ActionUID", "0").c_str(), nullptr, 10);
                 }
 
                 //General
@@ -227,6 +242,125 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
     }
 }
 
+bool VRKeyboard::SaveCurrentLayoutToFile(const std::string& filename)
+{
+    m_LayoutMetadata.FileName = filename;
+
+    std::string fullpath = ConfigManager::Get().GetApplicationPath() + "keyboards/" + filename;
+    std::wstring wpath = WStringConvertFromUTF8(fullpath.c_str());
+
+    //Update cluster availability metadata
+    for (int i_sublayout = kbdlayout_sub_base; i_sublayout < kbdlayout_sub_MAX; ++i_sublayout)
+    {
+        KeyboardLayoutSubLayout sublayout = (KeyboardLayoutSubLayout)i_sublayout;
+
+        for (const KeyboardLayoutKey& key : m_KeyboardKeys[sublayout])
+        {
+            m_LayoutMetadata.HasCluster[key.KeyCluster] = true;
+        }
+    }
+
+    Ini layout_file(wpath.c_str(), true);
+
+    //Write metadata
+    layout_file.WriteString("LayoutInfo", "Name",                 m_LayoutMetadata.Name.c_str());
+    layout_file.WriteString("LayoutInfo", "Author",               m_LayoutMetadata.Author.c_str());
+    layout_file.WriteBool(  "LayoutInfo", "HasAltGr",             m_LayoutMetadata.HasAltGr);
+    layout_file.WriteBool(  "LayoutInfo", "HasClusterFunction",   m_LayoutMetadata.HasCluster[kbdlayout_cluster_function]);
+    layout_file.WriteBool(  "LayoutInfo", "HasClusterNavigation", m_LayoutMetadata.HasCluster[kbdlayout_cluster_navigation]);
+    layout_file.WriteBool(  "LayoutInfo", "HasClusterNumpad",     m_LayoutMetadata.HasCluster[kbdlayout_cluster_numpad]);
+    layout_file.WriteBool(  "LayoutInfo", "HasClusterExtra",      m_LayoutMetadata.HasCluster[kbdlayout_cluster_extra]);
+
+    for (int i_sublayout = kbdlayout_sub_base; i_sublayout < kbdlayout_sub_MAX; ++i_sublayout)
+    {
+        KeyboardLayoutSubLayout sublayout = (KeyboardLayoutSubLayout)i_sublayout;
+        unsigned int row_id = 0;
+        unsigned int key_id = 0;
+
+        for (const KeyboardLayoutKey& key : m_KeyboardKeys[sublayout])
+        {
+            std::stringstream key_section;
+            key_section << "Key_" << g_KeyboardSublayoutNames[sublayout] << "_Row_" << row_id << "_ID_" << key_id;
+
+            //Key type
+            layout_file.WriteString(key_section.str().c_str(), "Type", g_KeyboardKeyTypeNames[key.KeyType]);
+
+            //General
+            if (key.Width != 1.0f)
+            {
+                layout_file.WriteInt(key_section.str().c_str(), "Width", int(key.Width * 100.0f));
+            }
+
+            if (key.Height != 1.0f)
+            {
+                layout_file.WriteInt(key_section.str().c_str(), "Height", int(key.Height * 100.0f));
+            }
+
+            if (key.KeyType != kbdlayout_key_blank_space)
+            {
+                std::string label_escaped = key.Label;
+                StringReplaceAll(label_escaped, "\n", "\\n");
+
+                layout_file.WriteString(key_section.str().c_str(), "Label", label_escaped.c_str());
+            }
+
+            if (key.KeyCluster != kbdlayout_cluster_base)
+            {
+                layout_file.WriteString(key_section.str().c_str(), "Cluster", g_KeyboardClusterNames[key.KeyCluster]);
+            }
+
+            //Key type specific values
+            switch (key.KeyType)
+            {
+                case kbdlayout_key_virtual_key:
+                case kbdlayout_key_virtual_key_toggle:
+                case kbdlayout_key_virtual_key_iso_enter:
+                {
+                    layout_file.WriteInt(   key_section.str().c_str(), "KeyCode", key.KeyCode);
+
+                    if ((key.KeyType == kbdlayout_key_virtual_key) && (key.BlockModifiers))
+                    {
+                        layout_file.ReadBool(key_section.str().c_str(), "BlockModifiers", true);
+                    }
+                    break;
+                }
+                case kbdlayout_key_string:
+                {
+                    layout_file.WriteString(key_section.str().c_str(), "String", key.KeyString.c_str());
+                    break;
+                }
+                case kbdlayout_key_sublayout_toggle:
+                {
+                    layout_file.WriteString(key_section.str().c_str(), "SubLayout", g_KeyboardSublayoutNames[key.KeySubLayoutToggle]);
+                    break;
+                }
+                case kbdlayout_key_action:
+                {
+                    layout_file.WriteString(key_section.str().c_str(), "ActionUID", std::to_string(key.KeyActionUID).c_str());
+                    break;
+                }
+            }
+
+            if (key.NoRepeat)
+            {
+                layout_file.WriteBool(key_section.str().c_str(), "NoRepeat", true);
+            }
+
+            if (key.IsRowEnd)
+            {
+                row_id++;
+                key_id = 0;
+            }
+            else
+            {
+                key_id++;
+            }
+        }
+    }
+
+    return layout_file.Save();
+}
+
 void VRKeyboard::LoadCurrentLayout()
 {
     LoadLayoutFromFile(ConfigManager::GetValue(configid_str_input_keyboard_layout_file));
@@ -265,9 +399,19 @@ const KeyboardLayoutMetadata& VRKeyboard::GetLayoutMetadata() const
     return m_LayoutMetadata;
 }
 
+void VRKeyboard::SetLayoutMetadata(const KeyboardLayoutMetadata& metadata)
+{
+    m_LayoutMetadata = metadata;
+}
+
 std::vector<KeyboardLayoutKey>& VRKeyboard::GetLayout(KeyboardLayoutSubLayout sublayout)
 {
     return m_KeyboardKeys[sublayout];
+}
+
+void VRKeyboard::SetLayout(KeyboardLayoutSubLayout sublayout, std::vector<KeyboardLayoutKey>& keys)
+{
+    m_KeyboardKeys[sublayout] = keys;
 }
 
 const std::string& VRKeyboard::GetKeyLabelsString() const
@@ -708,6 +852,7 @@ KeyboardLayoutMetadata VRKeyboard::LoadLayoutMetadataFromFile(const std::string&
     if (layout_file.SectionExists("LayoutInfo"))
     {
         metadata.Name     = layout_file.ReadString("LayoutInfo", "Name");
+        metadata.Author   = layout_file.ReadString("LayoutInfo", "Author");
         metadata.FileName = filename;
         metadata.HasCluster[kbdlayout_cluster_base]       = true;   //Always true for valid layouts
         metadata.HasCluster[kbdlayout_cluster_function]   = layout_file.ReadBool("LayoutInfo", "HasClusterFunction");

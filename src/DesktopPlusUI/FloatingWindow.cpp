@@ -207,6 +207,10 @@ void FloatingWindow::WindowUpdateBase()
 
     ImGui::EndTitleBar();
 
+    //To appease boundary extension error check
+    ImGui::Dummy({0.0f, 0.0f});
+    ImGui::SameLine(0.0f, 0.0f);
+
     //Window content
     WindowUpdate();
 
@@ -354,33 +358,6 @@ void FloatingWindow::HelpMarker(const char* desc, const char* marker_str) const
         if (is_invisible)
             ImGui::PopStyleVar(); //ImGuiStyleVar_Alpha
     }
-}
-
-bool FloatingWindow::TranslatedComboAnimated(const char* label, int& value, TRMGRStrID trstr_min, TRMGRStrID trstr_max)
-{
-    bool ret = false;
-
-    if (ImGui::BeginComboAnimated(label, TranslationManager::GetString( (TRMGRStrID)(trstr_min + value) ) ))
-    {
-        //Make use of the fact values and translation string IDs are laid out sequentially and shorten this to a nice loop
-        const int value_max = (trstr_max - trstr_min) + 1;
-        for (int i = 0; i < value_max; ++i)
-        {
-            ImGui::PushID(i);
-
-            if (ImGui::Selectable(TranslationManager::GetString( (TRMGRStrID)(trstr_min + i) ), (value == i)))
-            {
-                value = i;
-                ret = true;
-            }
-
-            ImGui::PopID();
-        }
-
-        ImGui::EndCombo();
-    }
-
-    return ret;
 }
 
 void FloatingWindow::UpdateLimiterSetting(bool is_override) const
@@ -1340,7 +1317,7 @@ void FloatingWindow::EndCompactTable()
     //Selectables cover parts of the default table border and the bottom border would be one pixel inside the last row, so we draw our own header and table border on top instead
     ImVec2 rect_min = ImGui::GetItemRectMin(), rect_max = ImGui::GetItemRectMax();
     ImGui::GetWindowDrawList()->AddRect(rect_min, {rect_max.x, rect_min.y + ceilf(m_CompactTableHeaderHeight - 1.0f)}, ImGui::GetColorU32(ImGuiCol_Border), 0.0f, 0, style.WindowBorderSize);
-    ImGui::GetWindowDrawList()->AddRect(rect_min, {rect_max.x, rect_max.y + 1.0f},                              ImGui::GetColorU32(ImGuiCol_Border), 0.0f, 0, style.WindowBorderSize);
+    ImGui::GetWindowDrawList()->AddRect(rect_min, {rect_max.x, rect_max.y + 1.0f},                                     ImGui::GetColorU32(ImGuiCol_Border), 0.0f, 0, style.WindowBorderSize);
 }
 
 void FloatingWindow::Update()
@@ -1578,4 +1555,31 @@ const ImVec2& FloatingWindow::GetPos() const
 const ImVec2& FloatingWindow::GetSize() const
 {
     return m_Size;
+}
+
+bool FloatingWindow::TranslatedComboAnimated(const char* label, int& value, TRMGRStrID trstr_min, TRMGRStrID trstr_max)
+{
+    bool ret = false;
+
+    if (ImGui::BeginComboAnimated(label, TranslationManager::GetString( (TRMGRStrID)(trstr_min + value) ) ))
+    {
+        //Make use of the fact values and translation string IDs are laid out sequentially and shorten this to a nice loop
+        const int value_max = (trstr_max - trstr_min) + 1;
+        for (int i = 0; i < value_max; ++i)
+        {
+            ImGui::PushID(i);
+
+            if (ImGui::Selectable(TranslationManager::GetString( (TRMGRStrID)(trstr_min + i) ), (value == i)))
+            {
+                value = i;
+                ret = true;
+            }
+
+            ImGui::PopID();
+        }
+
+        ImGui::EndCombo();
+    }
+
+    return ret;
 }

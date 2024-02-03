@@ -22,7 +22,7 @@ UITextureSpaces& UITextureSpaces::Get()
     return g_UITextureSpaces;
 }
 
-void UITextureSpaces::Init(bool desktop_mode)
+void UITextureSpaces::Init(bool desktop_mode, bool keyboard_editor_mode)
 {
     if (!desktop_mode)
     {
@@ -67,10 +67,18 @@ void UITextureSpaces::Init(bool desktop_mode)
     else
     {
         //Desktop mode only initializes total texture space (as the unscaled window size) and windows used in it
-        m_TexspaceRects[ui_texspace_total] = {0, 0, 1153, 1042};    //Results in 720x651px at 100% DPI scaling
+        if (keyboard_editor_mode)
+        {
+            m_TexspaceRects[ui_texspace_total] = {0, 0, 2100, 1152};    //Results in 1312x720px at 100% DPI scaling
+        }
+        else
+        {
+            m_TexspaceRects[ui_texspace_total] = {0, 0, 1153, 1042};    //Results in 720x651px at 100% DPI scaling
+        }
 
         m_TexspaceRects[ui_texspace_overlay_properties] = m_TexspaceRects[ui_texspace_total];
         m_TexspaceRects[ui_texspace_settings] = m_TexspaceRects[ui_texspace_total];
+        m_TexspaceRects[ui_texspace_keyboard] = {0, 0, m_TexspaceRects[ui_texspace_total].GetWidth(), 750};
     }
 }
 
@@ -1054,7 +1062,7 @@ void UIManager::Restart(bool desktop_mode)
     si.cb = sizeof(si);
 
     std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlusUI.exe";
-    WCHAR cmd[] = L"-DesktopMode";
+    WCHAR cmd[] = L"--DesktopMode";
 
     ::CreateProcess(path.c_str(), (desktop_mode) ? cmd : nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
 
@@ -1063,9 +1071,9 @@ void UIManager::Restart(bool desktop_mode)
     ::CloseHandle(pi.hThread);
 }
 
-void UIManager::RestartIntoActionEditor()
+void UIManager::RestartIntoKeyboardEditor()
 {
-    LOG_F(INFO, "Restarting into Action Editor...");
+    LOG_F(INFO, "Restarting into Keyboard Editor...");
 
     ConfigManager::Get().SaveConfigToFile();
 
@@ -1076,7 +1084,7 @@ void UIManager::RestartIntoActionEditor()
     si.cb = sizeof(si);
 
     std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlusUI.exe";
-    WCHAR cmd[] = L"-ActionEditor";
+    WCHAR cmd[] = L"--KeyboardEditor";
 
     ::CreateProcess(path.c_str(), cmd, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
 
@@ -1262,7 +1270,7 @@ void UIManager::UpdateStyle()
     Style_ImGuiCol_TextNotification        = ImVec4(0.64f, 0.97f, 0.26f, 1.00f);
     Style_ImGuiCol_TextWarning             = ImVec4(0.98f, 0.81f, 0.26f, 1.00f);
     Style_ImGuiCol_TextError               = ImVec4(0.97f, 0.33f, 0.33f, 1.00f);
-    Style_ImGuiCol_ButtonPassiveToggled    = ImVec4(0.180f, 0.349f, 0.580f, 0.404f);
+    Style_ImGuiCol_ButtonPassiveToggled    = ImVec4(0.122f, 0.220f, 0.322f, 1.000f);
     Style_ImGuiCol_SteamVRCursor           = ImVec4(0.463f, 0.765f, 0.882f, 1.000f);
     Style_ImGuiCol_SteamVRCursorBorder     = ImVec4(0.161f, 0.176f, 0.196f, 0.929f);
 
