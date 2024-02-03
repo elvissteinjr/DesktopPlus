@@ -721,6 +721,13 @@ void WindowFloatingUIActionBar::Update(unsigned int overlay_id)
     ImGui::Begin("WindowFloatingUIActionBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
                                                        ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
+    //Set focused ID when clicking anywhere on the window
+    if ((ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) && (ImGui::IsMouseClicked(ImGuiMouseButton_Left)))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_focused_id, (int)overlay_id);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_focused_id,        (int)overlay_id);  //Sending to self to trigger change behavior
+    }
+
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 
