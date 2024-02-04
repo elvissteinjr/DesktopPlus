@@ -3578,6 +3578,25 @@ void WindowSettings::UpdatePageActions()
     const bool is_first = (list_id == 0);
     const bool is_last  = (list_id == m_ProfileList.size() - 1);
 
+    ImGui::Indent();
+
+    if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
+    {
+        if (is_none)
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsManageCopyUID)))
+        {
+            ImGui::SetClipboardText(std::to_string(m_ActionList[list_id].UID).c_str());
+            delete_confirm_state = false;
+        }
+
+        if (is_none)
+            ImGui::PopItemDisabled();
+
+        ImGui::SameLine();
+    }
+
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - list_buttons_width);
 
     ImGui::BeginGroup();
@@ -3657,6 +3676,7 @@ void WindowSettings::UpdatePageActions()
 
     list_buttons_width = ImGui::GetItemRectSize().x + style.IndentSpacing;
 
+    ImGui::Unindent();
     ImGui::Unindent();
 
     ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );

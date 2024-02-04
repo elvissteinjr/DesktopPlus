@@ -126,6 +126,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsActionsTableHeaderShortcut",
     "tstr_SettingsActionsTableHeaderHotkey",
     "tstr_SettingsActionsManageHeader",
+    "tstr_SettingsActionsManageCopyUID",
     "tstr_SettingsActionsManageNew",
     "tstr_SettingsActionsManageEdit",
     "tstr_SettingsActionsManageDuplicate",

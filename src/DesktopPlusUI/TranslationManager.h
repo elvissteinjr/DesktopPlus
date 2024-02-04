@@ -125,6 +125,7 @@ enum TRMGRStrID
     tstr_SettingsActionsTableHeaderShortcut,
     tstr_SettingsActionsTableHeaderHotkey,
     tstr_SettingsActionsManageHeader,
+    tstr_SettingsActionsManageCopyUID,
     tstr_SettingsActionsManageNew,
     tstr_SettingsActionsManageEdit,
     tstr_SettingsActionsManageDuplicate,
