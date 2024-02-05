@@ -469,9 +469,11 @@ namespace loguru
 		int arg_dest = 1;
 		int out_argc = argc;
 
+		auto verbosity_len = strlen(verbosity_flag);
+
 		for (int arg_it = 1; arg_it < argc; ++arg_it) {
-			auto cmd = argv[arg_it];
-			auto arg_len = strlen(verbosity_flag);
+			auto arg = argv[arg_it];
+			auto arg_len = strlen(arg);
 
 			bool last_is_alpha = false;
 			#if LOGURU_USE_LOCALE
@@ -479,19 +481,19 @@ namespace loguru
 				last_is_alpha = std::isalpha(cmd[arg_len], std::locale(""));
 			}
 			catch (...) {
-				last_is_alpha = std::isalpha(static_cast<int>(cmd[arg_len]));
+				last_is_alpha = std::isalpha(static_cast<int>(arg[arg_len]));
 			}
 			#else
-			last_is_alpha = std::isalpha(static_cast<int>(cmd[arg_len]));
+			last_is_alpha = std::isalpha(static_cast<int>(arg[arg_len]));
 			#endif
 
-			if (strncmp(cmd, verbosity_flag, arg_len) == 0 && !last_is_alpha) {
+			if (strncmp(arg, verbosity_flag, verbosity_len) == 0 && !last_is_alpha) {
 				out_argc -= 1;
-				auto value_str = cmd + arg_len;
+				auto value_str = arg + arg_len;
 				if (value_str[0] == '\0') {
 					// Value in separate argument
 					arg_it += 1;
-					CHECK_LT_F(arg_it, argc, "Missing verbosiy level after " LOGURU_FMT(s) "", verbosity_flag);
+					CHECK_LT_F(arg_it, argc, "Missing verbosity level after " LOGURU_FMT(s) "", verbosity_flag);
 					value_str = argv[arg_it];
 					out_argc -= 1;
 				}
