@@ -8,7 +8,6 @@
 enum TRMGRStrID
 {
     tstr_SettingsWindowTitle,
-    tstr_SettingsJumpTo,
     tstr_SettingsCatInterface,
     tstr_SettingsCatEnvironment,
     tstr_SettingsCatProfiles,
@@ -39,6 +38,8 @@ enum TRMGRStrID
     tstr_SettingsWarningMenuDontShowAgain,
     tstr_SettingsWarningMenuDismiss,
     tstr_SettingsInterfaceLanguage,
+    tstr_SettingsInterfaceLanguageCommunity,         //%AUTHOR% == Language Author string
+    tstr_SettingsInterfaceLanguageIncompleteWarning,
     tstr_SettingsInterfaceAdvancedSettings,
     tstr_SettingsInterfaceAdvancedSettingsTip,
     tstr_SettingsInterfaceBlankSpaceDrag,
@@ -631,6 +632,7 @@ class TranslationManager
         std::vector<std::string> m_StringsFPSLimit;
 
         std::string m_CurrentTranslationName;
+        std::string m_CurrentTranslationAuthor;
         bool m_IsCurrentTranslationComplete;
 
     public:
@@ -643,7 +645,8 @@ class TranslationManager
 
         void LoadTranslationFromFile(const std::string& filename);
 
-        const char* GetCurrentTranslationName() const;
+        const std::string& GetCurrentTranslationName() const;
+        const std::string& GetCurrentTranslationAuthor() const;
         bool IsCurrentTranslationComplete() const;
         void AddStringsToFontBuilder(ImFontGlyphRangesBuilder& builder) const;
 

@@ -46,6 +46,7 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         std::string m_WarningTextOverlayError;
         std::string m_WarningTextWinRTError;
         std::string m_WarningTextAppProfile;
+        std::string m_TranslationAuthorLabel;
         std::string m_ActionButtonsDefaultLabel;
         std::string m_ActionButtonsOverlayBarLabel;
         std::vector<std::string> m_ActionGlobalShortcutLabels;

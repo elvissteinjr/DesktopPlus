@@ -3,13 +3,13 @@
 #include "ConfigManager.h"
 #include "Ini.h"
 #include "Util.h"
+#include "Logging.h"
 
 #include <clocale>
 
 const char* TranslationManager::s_StringIDNames[tstr_MAX] =
 {
     "tstr_SettingsWindowTitle",
-    "tstr_SettingsJumpTo",
     "tstr_SettingsCatInterface",
     "tstr_SettingsCatEnvironment",
     "tstr_SettingsCatProfiles",
@@ -40,6 +40,8 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsWarningMenuDontShowAgain",
     "tstr_SettingsWarningMenuDismiss",
     "tstr_SettingsInterfaceLanguage",
+    "tstr_SettingsInterfaceLanguageCommunity",
+    "tstr_SettingsInterfaceLanguageIncompleteWarning",
     "tstr_SettingsInterfaceAdvancedSettings",
     "tstr_SettingsInterfaceAdvancedSettingsTip",
     "tstr_SettingsInterfaceBlankSpaceDrag",
@@ -716,8 +718,11 @@ void TranslationManager::LoadTranslationFromFile(const std::string& filename)
     //Check if it's probably a translation/language file
     if (lang_file.SectionExists("TranslationInfo"))
     {
-        m_CurrentTranslationName = lang_file.ReadString("TranslationInfo", "Name", "Unknown");
+        m_CurrentTranslationName   = lang_file.ReadString("TranslationInfo", "Name", "Unknown");
+        m_CurrentTranslationAuthor = lang_file.ReadString("TranslationInfo", "Author");
         m_IsCurrentTranslationComplete = true;
+
+        LOG_IF_F(INFO, (filename != "en.ini"), "Loading translation \"%s\", from \"%s\"...", m_CurrentTranslationName.c_str(), filename.c_str());
 
         //Clear precomputed strings to regenerate them with new translation later
         m_StringsDesktopID.clear();
@@ -734,8 +739,12 @@ void TranslationManager::LoadTranslationFromFile(const std::string& filename)
             else
             {
                 m_IsCurrentTranslationComplete = false;
+
+                VLOG_F(1, "Missing translation string %s", s_StringIDNames[i]);
             }
         }
+
+        LOG_IF_F(WARNING, ((!m_IsCurrentTranslationComplete) && (loguru::current_verbosity_cutoff() < 1)), "Translation has missing strings. Set logging verbosity to 1 or higher for more details");
 
         //Append fixed IDs to strings that need it
         m_Strings[tstr_OverlayBarOvrlRemove]                         += "###OverlayRemove";
@@ -757,6 +766,10 @@ void TranslationManager::LoadTranslationFromFile(const std::string& filename)
             setlocale(LC_ALL, "C");
         }
     }
+    else
+    {
+        LOG_F(WARNING, "Tried to load translation, but \"%s\" is not a valid translation file");
+    }
 }
 
 bool TranslationManager::IsCurrentTranslationComplete() const
@@ -764,9 +777,14 @@ bool TranslationManager::IsCurrentTranslationComplete() const
     return m_IsCurrentTranslationComplete;
 }
 
-const char* TranslationManager::GetCurrentTranslationName() const
+const std::string& TranslationManager::GetCurrentTranslationName() const
 {
-    return m_CurrentTranslationName.c_str();
+    return m_CurrentTranslationName;
+}
+
+const std::string& TranslationManager::GetCurrentTranslationAuthor() const
+{
+    return m_CurrentTranslationAuthor;
 }
 
 void TranslationManager::AddStringsToFontBuilder(ImFontGlyphRangesBuilder& builder) const

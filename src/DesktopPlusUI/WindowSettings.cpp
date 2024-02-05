@@ -129,6 +129,7 @@ void WindowSettings::ClearCachedTranslationStrings()
     m_WarningTextOverlayError.clear();
     m_WarningTextWinRTError.clear();
     m_WarningTextAppProfile.clear();
+    m_TranslationAuthorLabel.clear();
     m_BrowserMaxFPSValueText.clear();
     m_BrowserBlockListCountText.clear();
     m_ActionButtonsDefaultLabel.clear();
@@ -670,6 +671,8 @@ void WindowSettings::UpdatePageMain()
 
 void WindowSettings::UpdatePageMainCatInterface()
 {
+    const ImGuiStyle& style = ImGui::GetStyle();
+
     //Interface
     {
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatInterface)); 
@@ -678,10 +681,17 @@ void WindowSettings::UpdatePageMainCatInterface()
 
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted( TranslationManager::GetString(tstr_SettingsInterfaceLanguage) );
+
+        if (!TranslationManager::Get().IsCurrentTranslationComplete())
+        {
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsInterfaceLanguageIncompleteWarning), "(!)");
+        }
+
         ImGui::NextColumn();
 
         ImGui::PushItemWidth(-1);
-        if (ImGui::BeginComboAnimated("##ComboLang", TranslationManager::Get().GetCurrentTranslationName() ))
+        if (ImGui::BeginComboAnimated("##ComboLang", TranslationManager::Get().GetCurrentTranslationName().c_str() ))
         {
             static std::vector<TranslationManager::ListEntry> list_langs;
             static int list_id = 0;
@@ -720,6 +730,24 @@ void WindowSettings::UpdatePageMainCatInterface()
             ImGui::EndCombo();
         }
 
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+
+        if (!TranslationManager::Get().GetCurrentTranslationAuthor().empty())
+        {
+            if (m_TranslationAuthorLabel.empty())
+            {
+                m_TranslationAuthorLabel = TranslationManager::GetString(tstr_SettingsInterfaceLanguageCommunity);
+                StringReplaceAll(m_TranslationAuthorLabel, "%AUTHOR%", TranslationManager::Get().GetCurrentTranslationAuthor());
+            }
+
+            ImGui::Indent(style.ItemInnerSpacing.x);    //Indent a bit since text lined up with the combo widget instead of the widget's text looks a bit odd
+            ImGui::PushTextWrapPos();
+            ImGui::TextUnformatted(m_TranslationAuthorLabel.c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::Unindent(style.ItemInnerSpacing.x);
+        }
+
         ImGui::Columns(1);
 
         ImGui::Spacing();
@@ -729,7 +757,7 @@ void WindowSettings::UpdatePageMainCatInterface()
         {
             UIManager::Get()->RepeatFrame();
         }
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_SettingsInterfaceAdvancedSettingsTip));
 
         if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
@@ -811,7 +839,7 @@ void WindowSettings::UpdatePageMainCatInterface()
             PageGoForward(wndsettings_page_color_picker);
         }
 
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
         int& mode_display = ConfigManager::GetRef(configid_int_interface_background_color_display_mode);
 
@@ -833,7 +861,7 @@ void WindowSettings::UpdatePageMainCatInterface()
                 UIManager::Get()->UpdateOverlayDimming();
             }
         }
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_SettingsEnvironmentDimInterfaceTip));
 
         ImGui::Columns(1);
