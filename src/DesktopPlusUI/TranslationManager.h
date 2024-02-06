@@ -476,6 +476,8 @@ enum TRMGRStrID
     tstr_DefActionBackMouseLabel,
     tstr_DefActionReadMe,
     tstr_DefActionReadMeLabel,
+    tstr_DefActionDashboardToggle,
+    tstr_DefActionDashboardToggleLabel,
     tstr_PerformanceMonitorCPU,
     tstr_PerformanceMonitorGPU,
     tstr_PerformanceMonitorRAM,
