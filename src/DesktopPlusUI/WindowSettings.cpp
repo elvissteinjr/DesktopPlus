@@ -702,13 +702,16 @@ void WindowSettings::UpdatePageMainCatInterface()
                 list_id = 0;
                 list_langs = TranslationManager::GetTranslationList();
 
-                //Select matching entry
+                //Select matching entry and add unmapped characters if needed
                 const std::string& current_filename = ConfigManager::GetValue(configid_str_interface_language_file);
-                auto it = std::find_if(list_langs.begin(), list_langs.end(), [&current_filename](const auto& list_entry){ return (current_filename == list_entry.FileName); });
-
-                if (it != list_langs.end())
+                for (auto it = list_langs.cbegin(); it != list_langs.cend(); ++it)
                 {
-                    list_id = (int)std::distance(list_langs.begin(), it);
+                    if (current_filename == it->FileName)
+                    {
+                        list_id = (int)std::distance(list_langs.cbegin(), it);
+                    }
+
+                    UIManager::Get()->AddFontBuilderStringIfAnyUnmappedCharacters(it->ListName.c_str());
                 }
             }
 
