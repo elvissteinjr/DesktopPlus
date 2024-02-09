@@ -3,6 +3,7 @@
 #include <sstream>
 
 #include "CommonTypes.h"
+#include "OpenVRExt.h"
 #include "OverlayManager.h"
 #include "OutputManager.h"
 #include "DesktopPlusWinRT.h"
@@ -144,7 +145,7 @@ void Overlay::AssignDesktopDuplicationTexture()
 
         //Use desktop texture overlay as source for a shared overlay texture
         ID3D11Resource* device_texture_ref = (OutputManager::Get()->GetMultiGPUTargetTexture() != nullptr) ? OutputManager::Get()->GetMultiGPUTargetTexture() : OutputManager::Get()->GetOverlayTexture();
-        SetSharedOverlayTexture(outmgr->GetDesktopTextureOverlay(), m_OvrlHandle, device_texture_ref);
+        vr::IVROverlayEx::SetSharedOverlayTexture(outmgr->GetDesktopTextureOverlay(), m_OvrlHandle, device_texture_ref);
     }
 }
 

@@ -11,6 +11,7 @@
 #include "ConfigManager.h"
 #include "OverlayManager.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 #include "WindowManager.h"
 #include "DPBrowserAPIClient.h"
 
@@ -202,7 +203,7 @@ void UIManager::DisplayInitialSetupNotification()
     {
         //Also check if the HMD is tracking properly right now so the notification can actually be seen (fresh SteamVR start is active but not tracking for example)
         vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
 
         use_vr_notification = (poses[vr::k_unTrackedDeviceIndex_Hmd].eTrackingResult == vr::TrackingResult_Running_OK);
     }
@@ -416,8 +417,7 @@ vr::EVRInitError UIManager::InitOverlay()
     m_WindowPerformance.ResetCumulativeValues();
     m_WindowPerformance.RefreshTrackerBatteryList();
 
-    //Check if it's a WMR system and set up for that if needed
-    SetConfigForWMR(ConfigManager::GetRef(configid_int_interface_wmr_ignore_vscreens));
+    ConfigManager::Get().InitConfigForWMR();
 
     if ((ovrl_error == vr::VROverlayError_None))
         return vr::VRInitError_None;
@@ -1791,22 +1791,22 @@ void UIManager::PositionOverlay()
         {
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
-                TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.247f, 0.392f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.247f, 0.392f);
             }
             else
             {
-                TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.272f, 0.195f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.272f, 0.195f);
             }
         }
         else
         {
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
-                TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.200f, 0.382f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.200f, 0.382f);
             }
             else
             {
-                TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.225f, 0.185f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.225f, 0.185f);
             }
         }
 
@@ -2099,7 +2099,7 @@ void UIManager::TriggerLaserPointerHaptics(vr::VROverlayHandle_t overlay_handle,
         return;
 
     //Trigger directly when dashboard pointer is active as it's going to be the right device anyways
-    if ( (device_index == vr::k_unTrackedDeviceIndexInvalid) && (IsSystemLaserPointerActive()) )
+    if ( (device_index == vr::k_unTrackedDeviceIndexInvalid) && (vr::IVROverlayEx::IsSystemLaserPointerActive()) )
     {
         vr::VROverlay()->TriggerLaserMouseHapticVibration(overlay_handle, 0.0f, 1.0f, 0.16f);
     }

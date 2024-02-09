@@ -4,6 +4,7 @@
 #include "OverlayManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 #include "ImGuiExt.h"
 #include "imgui_internal.h"
 
@@ -1541,7 +1542,7 @@ void FloatingWindow::ResetTransform(FloatingWindowOverlayStateID state_id)
         }
         else if ((UIManager::Get() != nullptr) && (UIManager::Get()->IsOpenVRLoaded())) //If the dashboard tab transform is still zero, generate a HMD facing transform instead (needs startup to be done though)
         {
-            m_OverlayStateRoom.TransformAbs = ComputeHMDFacingTransform(1.25f);
+            m_OverlayStateRoom.TransformAbs = vr::IVRSystemEx::ComputeHMDFacingTransform(1.25f);
             UIManager::Get()->GetOverlayDragger().ApplyDashboardScale(m_OverlayStateRoom.TransformAbs);
         }
     }

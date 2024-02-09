@@ -18,32 +18,6 @@ std::string StringConvertFromUTF16(LPCWSTR str);
 std::wstring WStringConvertFromUTF8(const char* str);
 std::wstring WStringConvertFromLocalEncoding(const char* str);
 
-//VR helpers
-void TransformOpenVR34TranslateRelative(vr::HmdMatrix34_t& matrix, float offset_right, float offset_up, float offset_forward);
-void TransformLookAt(Matrix4& matrix, const Vector3 pos_target, const Vector3 up = {0.0f, 1.0f, 0.0f});
-
-//Returns false if the device has no valid pose
-bool GetOverlayIntersectionParamsForDevice(vr::VROverlayIntersectionParams_t& params, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, bool use_tip_offset = true);
-//Returns if intersection happened
-bool ComputeOverlayIntersectionForDevice(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index, vr::ETrackingUniverseOrigin tracking_origin, vr::VROverlayIntersectionResults_t* results, 
-                                         bool use_tip_offset = true, bool front_face_only = true);
-//Returns true if intersection hit the front side of the overlay
-bool IsOverlayIntersectionHitFrontFacing(const vr::VROverlayIntersectionParams_t& params, const vr::VROverlayIntersectionResults_t& results);
-
-//Returns true if the system laser pointer is likely to be active. There may be edge-cases with this depending on SteamVR behavior
-bool IsSystemLaserPointerActive();
-
-//Returns transform similar to the dashboard transform (not a perfect match, though)
-Matrix4 ComputeHMDFacingTransform(float distance);
-
-vr::TrackedDeviceIndex_t FindPointerDeviceForOverlay(vr::VROverlayHandle_t overlay_handle);
-vr::TrackedDeviceIndex_t FindPointerDeviceForOverlay(vr::VROverlayHandle_t overlay_handle, Vector2 pos_uv); //Returns the device pointing closest to the given position if there are multiple
-vr::TrackedDeviceIndex_t GetFirstVRTracker();
-Matrix4 GetControllerTipMatrix(bool right_hand = true);
-float GetTimeNowToPhotons();
-void SetConfigForWMR(int& wmr_ignore_vscreens);
-vr::EVROverlayError SetSharedOverlayTexture(vr::VROverlayHandle_t ovrl_handle_source, vr::VROverlayHandle_t ovrl_handle_target, ID3D11Resource* device_texture_ref);
-
 //Algorithm helpers
 template <typename T> T clamp(const T& value, const T& value_min, const T& value_max) 
 {

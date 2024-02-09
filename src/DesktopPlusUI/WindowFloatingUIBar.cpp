@@ -4,6 +4,7 @@
 #include "TextureManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 #include "UIManager.h"
 #include "OverlayManager.h"
 #include "WindowManager.h"
@@ -124,14 +125,14 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
                 //If no dashboard device, try finding one
                 if (device_index == vr::k_unTrackedDeviceIndexInvalid)
                 {
-                    device_index = FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleFloatingUI());
+                    device_index = vr::IVROverlayEx::FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleFloatingUI());
                 }
 
                 //Try to get the pointer distance
                 float source_distance = 1.0f;
                 vr::VROverlayIntersectionResults_t results;
 
-                if (ComputeOverlayIntersectionForDevice(UIManager::Get()->GetOverlayHandleFloatingUI(), device_index, vr::TrackingUniverseStanding, &results))
+                if (vr::IVROverlayEx::ComputeOverlayIntersectionForDevice(UIManager::Get()->GetOverlayHandleFloatingUI(), device_index, vr::TrackingUniverseStanding, &results))
                 {
                     source_distance = results.fDistance;
                 }

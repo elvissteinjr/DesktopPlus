@@ -8,6 +8,7 @@
 #include "TextureManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 #include "UIManager.h"
 #include "OverlayManager.h"
 
@@ -1308,7 +1309,7 @@ void WindowPerformance::CheckScheduledOverlaySharedTextureUpdate()
                     //Check if we're allowed to render to it from this process yet, otherwise try again next frame
                     if (vr::VROverlay()->GetOverlayRenderingPid(ovrl_handle) == ::GetCurrentProcessId())
                     {
-                        SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), ovrl_handle, UIManager::Get()->GetSharedTextureRef());
+                        vr::IVROverlayEx::SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), ovrl_handle, UIManager::Get()->GetSharedTextureRef());
                         vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
                     }
                     else

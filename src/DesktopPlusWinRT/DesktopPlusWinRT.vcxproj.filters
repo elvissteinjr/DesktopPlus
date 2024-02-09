@@ -10,6 +10,9 @@
       <Filter>Shared</Filter>
     </ClCompile>
     <ClCompile Include="OverlayCapture.cpp" />
+    <ClCompile Include="..\Shared\OpenVRExt.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="util\capture.desktop.interop.h">
@@ -45,6 +48,9 @@
       <Filter>Shared</Filter>
     </ClInclude>
     <ClInclude Include="OverlayCapture.h" />
+    <ClInclude Include="..\Shared\OpenVRExt.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">

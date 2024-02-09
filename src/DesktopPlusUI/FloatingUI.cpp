@@ -4,6 +4,7 @@
 #include "OverlayManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 
 FloatingUI::FloatingUI() : m_OvrlHandleCurrentUITarget(vr::k_ulOverlayHandleInvalid),
                            m_OvrlIDCurrentUITarget(0),
@@ -246,7 +247,7 @@ void FloatingUI::UpdateUITargetState()
             else
             {
                 vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-                vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+                vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
 
                 if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
                 {
@@ -269,7 +270,7 @@ void FloatingUI::UpdateUITargetState()
         if (overlay_data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen) 
         {
             //SteamVR's control bar is only shown while system laser pointer is active, so only add offset if that's the case
-            const bool add_offset = IsSystemLaserPointerActive();
+            const bool add_offset = vr::IVROverlayEx::IsSystemLaserPointerActive();
 
             if (is_newly_visible)
             {

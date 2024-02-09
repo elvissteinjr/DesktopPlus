@@ -4,6 +4,7 @@
 #include "TextureManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 #include "UIManager.h"
 #include "OverlayManager.h"
 #include "DesktopPlusWinRT.h"
@@ -473,7 +474,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
                 //If no dashboard device, try finding one
                 if (device_index == vr::k_unTrackedDeviceIndexInvalid)
                 {
-                    device_index = FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleOverlayBar());
+                    device_index = vr::IVROverlayEx::FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleOverlayBar());
                 }
 
                 Matrix4 overlay_transform;
@@ -481,7 +482,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
 
                 vr::VROverlayIntersectionResults_t results;
 
-                if (ComputeOverlayIntersectionForDevice(UIManager::Get()->GetOverlayHandleOverlayBar(), device_index, vr::TrackingUniverseStanding, &results))
+                if (vr::IVROverlayEx::ComputeOverlayIntersectionForDevice(UIManager::Get()->GetOverlayHandleOverlayBar(), device_index, vr::TrackingUniverseStanding, &results))
                 {
                     overlay_transform.setTranslation(results.vPoint);
                 }
@@ -495,7 +496,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
 
                 //Get devices poses
                 vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-                vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+                vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
                 if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
                 {
@@ -513,7 +514,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
                         pos.z /= 2.0f;
                     }
 
-                    TransformLookAt(overlay_transform, pos);
+                    vr::IVRSystemEx::TransformLookAt(overlay_transform, pos);
                 }
 
                 UIManager::Get()->GetAuxUI().GetCaptureWindowSelectWindow().SetTransform(overlay_transform);
@@ -548,7 +549,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
             //If no dashboard device, try finding one
             if (device_index == vr::k_unTrackedDeviceIndexInvalid)
             {
-                device_index = FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleOverlayBar());
+                device_index = vr::IVROverlayEx::FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleOverlayBar());
             }
 
             float pointer_distance = 0.5f;
@@ -557,7 +558,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
             {
                 vr::VROverlayIntersectionResults_t results;
 
-                if (ComputeOverlayIntersectionForDevice(UIManager::Get()->GetOverlayHandleOverlayBar(), device_index, vr::TrackingUniverseStanding, &results))
+                if (vr::IVROverlayEx::ComputeOverlayIntersectionForDevice(UIManager::Get()->GetOverlayHandleOverlayBar(), device_index, vr::TrackingUniverseStanding, &results))
                 {
                     pointer_distance = results.fDistance;
                 }

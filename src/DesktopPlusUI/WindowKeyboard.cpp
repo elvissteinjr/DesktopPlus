@@ -5,6 +5,7 @@
 #include "TranslationManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 #include "UIManager.h"
 #include "OverlayManager.h"
 
@@ -183,7 +184,7 @@ void WindowKeyboard::Show(bool skip_fade)
     if ( (m_Alpha == 0.0f) && (UIManager::Get()->IsOpenVRLoaded()) )
     {
         //Get dashboard-similar transform and adjust it down a bit
-        Matrix4 matrix_facing = ComputeHMDFacingTransform(1.15f);
+        Matrix4 matrix_facing = vr::IVRSystemEx::ComputeHMDFacingTransform(1.15f);
         matrix_facing.translate_relative(0.0f, -0.50f, 0.0f);
 
         //dplus_tab origin contains dashboard scale, so apply it to this transform to stay consistent in size
@@ -284,7 +285,7 @@ void WindowKeyboard::WindowUpdate()
     if (!UIManager::Get()->IsInDesktopMode())
     {
         vr::TrackedDeviceIndex_t primary_device = ConfigManager::Get().GetPrimaryLaserPointerDevice();
-        bool dashboard_device_exists = IsSystemLaserPointerActive();
+        bool dashboard_device_exists = vr::IVROverlayEx::IsSystemLaserPointerActive();
 
         //Overlay leave events are not processed when a dashboard pointer exists changes active state, so make sure to get the pointers out of the way anyways
         if (dashboard_device_exists != m_IsDashboardPointerActiveLast)
@@ -1309,7 +1310,7 @@ void WindowKeyboard::ResetTransform(FloatingWindowOverlayStateID state_id)
          (!vr::VROverlay()->IsOverlayVisible(UIManager::Get()->GetOverlayHandleDPlusDashboard())) )
     {
         //Get dashboard-similar transform and adjust it down a bit
-        Matrix4 matrix_facing = ComputeHMDFacingTransform(1.15f);
+        Matrix4 matrix_facing = vr::IVRSystemEx::ComputeHMDFacingTransform(1.15f);
         matrix_facing.translate_relative(0.0f, -0.50f, 0.0f);
 
         //dplus_tab origin contains dashboard scale, so get that scale and apply it to this transform to stay consistent in size
@@ -1446,7 +1447,7 @@ bool WindowKeyboard::HandleOverlayEvent(const vr::VREvent_t& vr_event)
     //Skip if no valid device index or it's the system pointer (sends as device 0 (HMD) or invalid)
     //For mouse move events with cursor indices above 0 we allow invalid devices as they're used to guess the correct one
     if ( ( (device_index >= vr::k_unMaxTrackedDeviceCount) || (device_index == vr::k_unTrackedDeviceIndex_Hmd) || 
-          ((cursor_index == 0) && (IsSystemLaserPointerActive())) ) && ((cursor_index == 0) || (vr_event.eventType != vr::VREvent_MouseMove)) )
+          ((cursor_index == 0) && (vr::IVROverlayEx::IsSystemLaserPointerActive())) ) && ((cursor_index == 0) || (vr_event.eventType != vr::VREvent_MouseMove)) )
     {
         return (cursor_index != 0); //Still return true for non-0 index as we don't want it to be treated as ImGui mouse input
     }
@@ -1459,7 +1460,7 @@ bool WindowKeyboard::HandleOverlayEvent(const vr::VREvent_t& vr_event)
             if (GetLaserInputState(device_index).CursorIndexLast != cursor_index)
             {
                 Vector2 uv_pos(vr_event.data.mouse.x / ImGui::GetIO().DisplaySize.x, vr_event.data.mouse.y / ImGui::GetIO().DisplaySize.y);
-                device_index = FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleKeyboard(), uv_pos);
+                device_index = vr::IVROverlayEx::FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleKeyboard(), uv_pos);
             }
 
             if (device_index != vr::k_unTrackedDeviceIndexInvalid)

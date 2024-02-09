@@ -11,6 +11,7 @@ using namespace DirectX;
 
 #include "WindowManager.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 #include "Logging.h"
 
 #include "DesktopPlusWinRT.h"
@@ -698,7 +699,7 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     const bool vrinput_init_success = m_VRInput.Init();
 
     //Check if it's a WMR system and set up for that if needed
-    SetConfigForWMR(ConfigManager::GetRef(configid_int_interface_wmr_ignore_vscreens));
+    ConfigManager::Get().InitConfigForWMR();
     DPWinRT_SetDesktopEnumerationFlags( (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1) );
     LOG_IF_F(INFO, (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1), "WMR headset detected, ignoring additional virtual displays");
 
@@ -2466,7 +2467,7 @@ Matrix4 OutputManager::GetFallbackOverlayTransform() const
 
     //Get HMD pose
     vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
 
     if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
     {
@@ -2476,7 +2477,7 @@ Matrix4 OutputManager::GetFallbackOverlayTransform() const
         transform.translate_relative(0.0f, 0.0f, -2.0f);
 
         //Rotate towards HMD position
-        TransformLookAt(transform, mat_hmd.getTranslation());
+        vr::IVRSystemEx::TransformLookAt(transform, mat_hmd.getTranslation());
     }
 
     return transform;
@@ -4847,14 +4848,14 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                         //If no dashboard device, try finding one
                         if (device_index == vr::k_unTrackedDeviceIndexInvalid)
                         {
-                            device_index = FindPointerDeviceForOverlay(overlay_current.GetHandle());
+                            device_index = vr::IVROverlayEx::FindPointerDeviceForOverlay(overlay_current.GetHandle());
                         }
 
                         float source_distance = 1.0f;
                         float target_width = 0.3f;
                         vr::VROverlayIntersectionResults_t results;
 
-                        if (ComputeOverlayIntersectionForDevice(overlay_current.GetHandle(), device_index, vr::TrackingUniverseStanding, &results))
+                        if (vr::IVROverlayEx::ComputeOverlayIntersectionForDevice(overlay_current.GetHandle(), device_index, vr::TrackingUniverseStanding, &results))
                         {
                             source_distance = results.fDistance;
 
@@ -5500,9 +5501,9 @@ void OutputManager::ApplySettingTransform()
             matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
 
             //Offset transform by additional offset values
-            TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
-                                                       ConfigManager::GetValue(configid_float_overlay_offset_up),
-                                                       ConfigManager::GetValue(configid_float_overlay_offset_forward));
+            vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                                                        ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                                                        ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
             vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle, universe_origin, &matrix);
             break;
@@ -5552,9 +5553,9 @@ void OutputManager::ApplySettingTransform()
             matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
 
             //Offset transform by additional offset values
-            TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
-                                                       ConfigManager::GetValue(configid_float_overlay_offset_up),
-                                                       ConfigManager::GetValue(configid_float_overlay_offset_forward));
+            vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                                                        ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                                                        ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
             vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, vr::k_unTrackedDeviceIndex_Hmd, &matrix);
             break;
@@ -5568,9 +5569,9 @@ void OutputManager::ApplySettingTransform()
                 matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
 
                 //Offset transform by additional offset values
-                TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
-                                                           ConfigManager::GetValue(configid_float_overlay_offset_up),
-                                                           ConfigManager::GetValue(configid_float_overlay_offset_forward));
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                                                            ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                                                            ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
                 vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, device_index, &matrix);
             }
@@ -5589,9 +5590,9 @@ void OutputManager::ApplySettingTransform()
                 matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
 
                 //Offset transform by additional offset values
-                TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
-                                                           ConfigManager::GetValue(configid_float_overlay_offset_up),
-                                                           ConfigManager::GetValue(configid_float_overlay_offset_forward));
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                                                            ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                                                            ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
                 vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, device_index, &matrix);
             }
@@ -5603,16 +5604,16 @@ void OutputManager::ApplySettingTransform()
         }
         case ovrl_origin_aux:
         {
-            vr::TrackedDeviceIndex_t index_tracker = GetFirstVRTracker();
+            vr::TrackedDeviceIndex_t index_tracker = vr::IVRSystemEx::GetFirstVRTracker();
 
             if (index_tracker != vr::k_unTrackedDeviceIndexInvalid)
             {
                 matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
 
                 //Offset transform by additional offset values
-                TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
-                                                           ConfigManager::GetValue(configid_float_overlay_offset_up),
-                                                           ConfigManager::GetValue(configid_float_overlay_offset_forward));
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                                                            ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                                                            ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
                 vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, index_tracker, &matrix);
             }
@@ -6278,7 +6279,7 @@ void OutputManager::DetachedTransformAdjust(unsigned int packed_value)
         //Get HMD pose
         vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
         vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
-        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
 
         if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
         {
@@ -6304,7 +6305,7 @@ void OutputManager::DetachedTransformAdjust(unsigned int packed_value)
                 mat_lookat.translate_relative(0.0f, overlay_height / 2.0f, 0.0f);
             }
 
-            TransformLookAt(mat_lookat, mat_hmd.getTranslation());
+            vr::IVRSystemEx::TransformLookAt(mat_lookat, mat_hmd.getTranslation());
 
             //Remove dashboard origin offset again
             if (ConfigManager::GetValue(configid_int_overlay_origin) == ovrl_origin_dashboard)
@@ -6501,7 +6502,7 @@ void OutputManager::DetachedOverlayGazeFade()
         {
             vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
             vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-            vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+            vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
 
             if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
             {
@@ -6567,7 +6568,7 @@ void OutputManager::DetachedOverlayGazeFade()
 void OutputManager::DetachedOverlayGazeFadeAutoConfigure()
 {
     vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
 
     if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
     {
@@ -6607,7 +6608,7 @@ void OutputManager::DetachedOverlayGlobalHMDPointerAll()
 
     vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
     vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
 
     if (!poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
         return;
@@ -6723,7 +6724,7 @@ void OutputManager::DetachedOverlayAutoDockingAll()
     int config_value = 0;
 
     vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
     //Check left and right hand controller
     vr::ETrackedControllerRole controller_role = vr::TrackedControllerRole_LeftHand;

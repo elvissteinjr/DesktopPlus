@@ -112,6 +112,7 @@
     <ClCompile Include="..\Shared\Logging.cpp" />
     <ClCompile Include="..\Shared\loguru.cpp" />
     <ClCompile Include="..\Shared\Matrices.cpp" />
+    <ClCompile Include="..\Shared\OpenVRExt.cpp" />
     <ClCompile Include="..\Shared\OUtoSBSConverter.cpp" />
     <ClCompile Include="..\Shared\OverlayDragger.cpp" />
     <ClCompile Include="..\Shared\OverlayManager.cpp" />
@@ -145,6 +146,7 @@
     <ClInclude Include="..\Shared\loguru.hpp" />
     <ClInclude Include="..\Shared\Matrices.h" />
     <ClInclude Include="..\Shared\openvr.h" />
+    <ClInclude Include="..\Shared\OpenVRExt.h" />
     <ClInclude Include="..\Shared\OUtoSBSConverter.h" />
     <ClInclude Include="..\Shared\OverlayDragger.h" />
     <ClInclude Include="..\Shared\OverlayManager.h" />

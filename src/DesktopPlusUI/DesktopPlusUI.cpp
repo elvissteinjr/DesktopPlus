@@ -21,6 +21,7 @@
 #include "InterprocessMessaging.h"
 #include "WindowSettings.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 #include "ImGuiExt.h"
 
 #include "DesktopPlusWinRT.h"
@@ -708,11 +709,11 @@ void CleanupRenderTarget()
 void RefreshOverlayTextureSharing()
 {
     //Set up advanced texture sharing between the overlays
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleFloatingUI(),        g_vrTex.Get());
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleSettings(),          g_vrTex.Get());
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleOverlayProperties(), g_vrTex.Get());
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleKeyboard(),          g_vrTex.Get());
-    SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleAuxUI(),             g_vrTex.Get());
+    vr::IVROverlayEx::SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleFloatingUI(),        g_vrTex.Get());
+    vr::IVROverlayEx::SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleSettings(),          g_vrTex.Get());
+    vr::IVROverlayEx::SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleOverlayProperties(), g_vrTex.Get());
+    vr::IVROverlayEx::SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleKeyboard(),          g_vrTex.Get());
+    vr::IVROverlayEx::SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleAuxUI(),             g_vrTex.Get());
     //Also schedule for performance overlays, in case there are any
     UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
 }

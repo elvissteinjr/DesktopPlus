@@ -5,6 +5,7 @@
 
 #include "DesktopPlusWinRT.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 
 namespace winrt
 {
@@ -274,7 +275,7 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
             }
             else if (m_OverlaySharedTextureSetupsNeeded > 0) //For all others, set it shared from the normal overlay if an update is needed
             {
-                SetSharedOverlayTexture(ovrl_shared_source, overlay.Handle, surface_texture.get());
+                vr::IVROverlayEx::SetSharedOverlayTexture(ovrl_shared_source, overlay.Handle, surface_texture.get());
             }
         }
     }

@@ -12,6 +12,7 @@
 #include "InterprocessMessaging.h"
 #include "WindowManager.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 #include "Logging.h"
 
 #include <sstream>
@@ -154,7 +155,7 @@ Matrix4 OverlayManager::GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handl
         }
 
         //Move to bottom
-        TransformOpenVR34TranslateRelative(matrix, 0.0f, offset_to_bottom, 0.0f);
+        vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix, 0.0f, offset_to_bottom, 0.0f);
     }
 
     return matrix;

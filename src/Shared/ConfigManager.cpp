@@ -5,6 +5,7 @@
 #include <fstream>
 
 #include "Util.h"
+#include "OpenVRExt.h"
 #include "Logging.h"
 #include "Ini.h"
 #include "OverlayManager.h"
@@ -1494,6 +1495,29 @@ const ConfigHotkeyList& ConfigManager::GetHotkeys() const
     return m_ConfigHotkey;
 }
 
+void ConfigManager::InitConfigForWMR()
+{
+    int& wmr_ignore_vscreens = m_ConfigInt[configid_int_interface_wmr_ignore_vscreens];
+
+    //Check if system is WMR and set WMR-specific default values if needed
+    char buffer[vr::k_unMaxPropertyStringSize];
+    vr::VRSystem()->GetStringTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_TrackingSystemName_String, buffer, vr::k_unMaxPropertyStringSize);
+
+    bool is_wmr_system = (strcmp(buffer, "holographic") == 0);
+
+    if (is_wmr_system) //Is WMR, enable settings by default
+    {
+        if (wmr_ignore_vscreens == -1)
+        {
+            wmr_ignore_vscreens = 1;
+        }        
+    }
+    else //Not a WMR system, set values to -1. -1 settings will not be save to disk so a WMR user's settings is preserved if they switch around HMDs, but the setting is still false
+    {
+        wmr_ignore_vscreens = -1;
+    }
+}
+
 void ConfigManager::ResetConfigStateValues()
 {
     std::fill(std::begin(m_ConfigBool) + configid_bool_state_overlay_dragmode,                std::begin(m_ConfigBool) + configid_bool_state_misc_process_started_by_steam,     false);
@@ -1546,7 +1570,7 @@ vr::TrackedDeviceIndex_t ConfigManager::GetPrimaryLaserPointerDevice() const
         return vr::k_unTrackedDeviceIndexInvalid;
 
     //No dashboard device, try Desktop+ laser pointer device
-    if (!IsSystemLaserPointerActive())
+    if (!vr::IVROverlayEx::IsSystemLaserPointerActive())
         return (vr::TrackedDeviceIndex_t)m_ConfigInt[configid_int_state_dplus_laser_pointer_device];
 
     return vr::VROverlay()->GetPrimaryDashboardDevice();
@@ -1559,14 +1583,14 @@ bool ConfigManager::IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayH
 
     bool ret = false;
 
-    if (IsSystemLaserPointerActive())
+    if (vr::IVROverlayEx::IsSystemLaserPointerActive())
     {
         if (vr::VROverlay()->IsHoverTargetOverlay(ulOverlayHandle))
         {
             //Double check IsHoverTargetOverlay() with an intersection check as it's not guaranteed to always return false after leaving an overlay
             //(it mostly does, but it's documented as returning the last overlay)
             vr::VROverlayIntersectionResults_t results;
-            ret = ComputeOverlayIntersectionForDevice(ulOverlayHandle, vr::VROverlay()->GetPrimaryDashboardDevice(), vr::TrackingUniverseStanding, &results);
+            ret = vr::IVROverlayEx::ComputeOverlayIntersectionForDevice(ulOverlayHandle, vr::VROverlay()->GetPrimaryDashboardDevice(), vr::TrackingUniverseStanding, &results);
         }
     }
 

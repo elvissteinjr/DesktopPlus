@@ -6,6 +6,7 @@
 #include "InterprocessMessaging.h"
 #include "WindowManager.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 #include "DesktopPlusWinRT.h"
 #include "DPBrowserAPIClient.h"
 
@@ -461,7 +462,7 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
 
         if ((ImGui::IsWindowAppearing()) && (UIManager::Get()->IsOpenVRLoaded()))
         {
-            is_generic_tracker_connected = (GetFirstVRTracker() != vr::k_unTrackedDeviceIndexInvalid);
+            is_generic_tracker_connected = (vr::IVRSystemEx::GetFirstVRTracker() != vr::k_unTrackedDeviceIndexInvalid);
         }
 
         //Make use of the fact origin, icon and translation string IDs are laid out sequentially and shorten this to a nice loop

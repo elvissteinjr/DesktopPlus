@@ -9,6 +9,7 @@
 #include "OverlayManager.h"
 #include "InterprocessMessaging.h"
 #include "Util.h"
+#include "OpenVRExt.h"
 
 OverlayDragger::OverlayDragger() : 
     m_DragModeDeviceID(-1),
@@ -37,14 +38,14 @@ void OverlayDragger::DragStartBase(bool is_gesture_drag)
     vr::TrackedDeviceIndex_t device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
 
     vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
     //We have no dashboard device, but something still started a drag, eh? This happens when the dashboard is closed but the overlays are still interactive
     //There doesn't seem to be a way to get around this, so we guess by checking which of the two hand controllers are currently pointing at the overlay
     //Works for most cases at least
     if (device_index == vr::k_unTrackedDeviceIndexInvalid)
     {
-        device_index = FindPointerDeviceForOverlay(m_DragModeOverlayHandle);
+        device_index = vr::IVROverlayEx::FindPointerDeviceForOverlay(m_DragModeOverlayHandle);
 
         //Still nothing, try the config hint
         if (device_index == vr::k_unTrackedDeviceIndexInvalid)
@@ -100,7 +101,7 @@ void OverlayDragger::DragStartBase(bool is_gesture_drag)
             }
             case ovrl_origin_aux:
             {
-                vr::TrackedDeviceIndex_t index_tracker = GetFirstVRTracker();
+                vr::TrackedDeviceIndex_t index_tracker = vr::IVRSystemEx::GetFirstVRTracker();
 
                 if ( (index_tracker != vr::k_unTrackedDeviceIndexInvalid) && (poses[index_tracker].bPoseIsValid) )
                 {
@@ -175,7 +176,7 @@ void OverlayDragger::TransformForceDistance(Matrix4& transform, Vector3 referenc
 
     //Use up-vector multiplied by rotation matrix to avoid locking at near-up transforms
     Vector3 up = matrix_lookat * Vector3(0.0f, 1.0f, 0.0f);
-    TransformLookAt(matrix_lookat, reference_pos, up);
+    vr::IVRSystemEx::TransformLookAt(matrix_lookat, reference_pos, up);
     matrix_lookat.translate_relative(0.0f, 0.0f, distance_to_reference - distance);
 
     if (auto_tilt)
@@ -225,7 +226,7 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
         case ovrl_origin_hmd_floor:
         {
             vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-            vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+            vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
 
             if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
             {
@@ -316,14 +317,14 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
                 case ovrl_origin_hmd:        device_index = vr::k_unTrackedDeviceIndex_Hmd;                                                              break;
                 case ovrl_origin_right_hand: device_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand); break;
                 case ovrl_origin_left_hand:  device_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand);  break;
-                case ovrl_origin_aux:        device_index = GetFirstVRTracker();                                                                         break;
+                case ovrl_origin_aux:        device_index = vr::IVRSystemEx::GetFirstVRTracker();                                                        break;
                 default:                     device_index = vr::k_unTrackedDeviceIndexInvalid;
             }
 
             if (device_index != vr::k_unTrackedDeviceIndexInvalid)
             {
                 vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-                vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+                vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
                 if (poses[device_index].bPoseIsValid)
                 {
@@ -413,7 +414,7 @@ void OverlayDragger::DragStart(vr::VROverlayHandle_t overlay_handle, OverlayOrig
 void OverlayDragger::DragUpdate()
 {
     vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
     if (poses[m_DragModeDeviceID].bPoseIsValid)
     {
@@ -423,12 +424,7 @@ void OverlayDragger::DragUpdate()
             Matrix4 mat_device = poses[m_DragModeDeviceID].mDeviceToAbsoluteTracking;
 
             //Apply tip offset if controller
-            vr::TrackedDeviceIndex_t index_right = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand);
-            vr::TrackedDeviceIndex_t index_left  = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand);
-            if ( (m_DragModeDeviceID == index_left) || (m_DragModeDeviceID == index_right) ) 
-            {
-                mat_device = mat_device * GetControllerTipMatrix( (m_DragModeDeviceID == index_right) );
-            }
+            mat_device = mat_device * vr::IVRSystemEx::GetControllerTipMatrix( vr::VRSystem()->GetControllerRoleForTrackedDeviceIndex(m_DragModeDeviceID) );
 
             //Apply forward offset
             mat_device.translate_relative(0.0f, 0.0f, -m_AbsoluteModeOffsetForward);
@@ -581,19 +577,14 @@ void OverlayDragger::DragAddDistance(float distance)
     else
     {
         vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
         if (poses[m_DragModeDeviceID].bPoseIsValid)
         {
             Matrix4 mat_drag_device = m_DragModeMatrixSourceStart;
 
             //Apply tip offset if possible (usually the case)
-            vr::TrackedDeviceIndex_t index_right = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand);
-            vr::TrackedDeviceIndex_t index_left  = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand);
-            if ( (m_DragModeDeviceID == index_left) || (m_DragModeDeviceID == index_right) ) 
-            {
-                mat_drag_device = mat_drag_device * GetControllerTipMatrix( (m_DragModeDeviceID == index_right) );
-            }
+            mat_drag_device = mat_drag_device * vr::IVRSystemEx::GetControllerTipMatrix( vr::VRSystem()->GetControllerRoleForTrackedDeviceIndex(m_DragModeDeviceID) );
 
             //Take the drag device start orientation and the overlay's start translation and offset forward from there
             mat_drag_device.setTranslation(m_DragModeMatrixTargetStart.getTranslation());
@@ -786,7 +777,7 @@ void OverlayDragger::DragGestureUpdate()
     {
         vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
         vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
         if ( (poses[index_right].bPoseIsValid) && (poses[index_left].bPoseIsValid) )
         {
@@ -821,7 +812,7 @@ void OverlayDragger::DragGestureUpdate()
             Vector3 up = m_DragGestureRotateMatLast * Vector3(0.0f, 1.0f, 0.0f);
             up.normalize();
             //Rotation motion is taken from the differences between left controller lookat(right controller) results
-            TransformLookAt(matrix_rotate_current, mat_right.getTranslation(), up);
+            vr::IVRSystemEx::TransformLookAt(matrix_rotate_current, mat_right.getTranslation(), up);
 
             if (m_DragGestureActive)
             {
@@ -938,7 +929,7 @@ void OverlayDragger::UpdateDashboardHMD_Y()
 void OverlayDragger::UpdateTempStandingPosition()
 {
     vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
 
     if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
     {

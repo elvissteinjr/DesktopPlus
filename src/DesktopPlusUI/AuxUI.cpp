@@ -3,7 +3,7 @@
 #include "UIManager.h"
 #include "InterprocessMessaging.h"
 #include "WindowManager.h"
-
+#include "OpenVRExt.h"
 
 AuxUIWindow::AuxUIWindow(AuxUIID ui_id) : m_AuxUIID(ui_id), m_Visible(false), m_Alpha(0.0f), m_IsTransitionFading(false), m_AutoSizeFrames(-1)
 {
@@ -197,7 +197,7 @@ void WindowDragHint::UpdateOverlayPos()
 
         //Get poses
         vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
-        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
 
         if ( (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid) && (device_index < vr::k_unMaxTrackedDeviceCount)  && (poses[device_index].bPoseIsValid) )
         {
@@ -206,7 +206,7 @@ void WindowDragHint::UpdateOverlayPos()
             Matrix4 mat_controller(poses[device_index].mDeviceToAbsoluteTracking);
             mat = mat_controller;
 
-            TransformLookAt(mat, mat_hmd.getTranslation());
+            vr::IVRSystemEx::TransformLookAt(mat, mat_hmd.getTranslation());
 
             //Apply rotation difference between controller used as origin and lookat angle
             mat.setTranslation({0.0f, 0.0f, 0.0f});
@@ -506,14 +506,14 @@ void WindowCaptureWindowSelect::Update()
                 //If no dashboard device, try finding one
                 if (device_index == vr::k_unTrackedDeviceIndexInvalid)
                 {
-                    device_index = FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleAuxUI());
+                    device_index = vr::IVROverlayEx::FindPointerDeviceForOverlay(UIManager::Get()->GetOverlayHandleAuxUI());
                 }
 
                 //Try to get the pointer distance
                 float source_distance = 1.0f;
                 vr::VROverlayIntersectionResults_t results;
 
-                if (ComputeOverlayIntersectionForDevice(UIManager::Get()->GetOverlayHandleAuxUI(), device_index, vr::TrackingUniverseStanding, &results))
+                if (vr::IVROverlayEx::ComputeOverlayIntersectionForDevice(UIManager::Get()->GetOverlayHandleAuxUI(), device_index, vr::TrackingUniverseStanding, &results))
                 {
                     source_distance = results.fDistance;
                 }

@@ -448,6 +448,7 @@ class ConfigManager
         ConfigHotkeyList& GetHotkeys();
         const ConfigHotkeyList& GetHotkeys() const;
 
+        void InitConfigForWMR();        //Setup WMR-specific default values if needed
         void ResetConfigStateValues();  //Reset all configid_*_state_* settings. Used when restarting a Desktop+ process
 
         ActionManager& GetActionManager();
