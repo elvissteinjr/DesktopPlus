@@ -470,7 +470,7 @@ bool ConfigManager::LoadConfigFromFile()
 
         if (config.KeyExists("Input", ss.str().c_str()))
         {
-            m_ConfigGlobalShortcuts.push_back(std::strtoull(config.ReadString("Input", ss.str().c_str(), 0).c_str(), nullptr, 10));
+            m_ConfigGlobalShortcuts.push_back(std::strtoull(config.ReadString("Input", ss.str().c_str(), "0").c_str(), nullptr, 10));
         }
         else
         {
@@ -493,7 +493,7 @@ bool ConfigManager::LoadConfigFromFile()
             ConfigHotkey hotkey;
             hotkey.Modifiers = config.ReadInt("Input", (ss.str() + "Modifiers").c_str(), 0);
             hotkey.KeyCode   = config.ReadInt("Input", (ss.str() + "KeyCode"  ).c_str(), 0);
-            hotkey.ActionUID = std::strtoull(config.ReadString("Input", (ss.str() + "ActionUID").c_str(), 0).c_str(), nullptr, 10);
+            hotkey.ActionUID = std::strtoull(config.ReadString("Input", (ss.str() + "ActionUID").c_str(), "0").c_str(), nullptr, 10);
 
             m_ConfigHotkey.push_back(hotkey);
         }
