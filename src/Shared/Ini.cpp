@@ -146,7 +146,7 @@ std::string Ini::ReadString(const char* section, const char* key, const char* de
         }
     }
 
-    return default_value;
+    return (default_value != nullptr) ? default_value : "";
 }
 
 void Ini::WriteString(const char* section, const char* key, const char* value)
