@@ -14,6 +14,7 @@
 #include "ThreadData.h"
 
 #include "Util.h"
+#include "OpenVRExt.h"
 
 #include "Util/hwnd.interop.h"
 
@@ -347,6 +348,9 @@ bool DPWinRT_StopCapture(vr::VROverlayHandle_t overlay_handle)
 
         ::Sleep(0);
     }
+
+    //Release shared overlay texture if there is any and remove cached data
+    vr::VROverlayEx()->ReleaseSharedOverlayTexture(overlay_handle);
 
     #endif //DPLUSWINRT_STUB
 

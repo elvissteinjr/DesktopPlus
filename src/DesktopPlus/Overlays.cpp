@@ -43,7 +43,7 @@ Overlay& Overlay::operator=(Overlay&& b)
                 DPBrowserAPIClient::Get().DPBrowser_StopBrowser(m_OvrlHandle);
             }
 
-            vr::VROverlay()->DestroyOverlay(m_OvrlHandle);
+            vr::VROverlayEx()->DestroyOverlayEx(m_OvrlHandle);
         }
 
         m_ID                = b.m_ID;
@@ -73,7 +73,7 @@ Overlay::~Overlay()
             DPBrowserAPIClient::Get().DPBrowser_StopBrowser(m_OvrlHandle);
         }
 
-        vr::VROverlay()->DestroyOverlay(m_OvrlHandle);
+        vr::VROverlayEx()->DestroyOverlayEx(m_OvrlHandle);
     }
 }
 
@@ -145,7 +145,7 @@ void Overlay::AssignDesktopDuplicationTexture()
 
         //Use desktop texture overlay as source for a shared overlay texture
         ID3D11Resource* device_texture_ref = (OutputManager::Get()->GetMultiGPUTargetTexture() != nullptr) ? OutputManager::Get()->GetMultiGPUTargetTexture() : OutputManager::Get()->GetOverlayTexture();
-        vr::IVROverlayEx::SetSharedOverlayTexture(outmgr->GetDesktopTextureOverlay(), m_OvrlHandle, device_texture_ref);
+        vr::VROverlayEx()->SetSharedOverlayTexture(outmgr->GetDesktopTextureOverlay(), m_OvrlHandle, device_texture_ref);
     }
 }
 

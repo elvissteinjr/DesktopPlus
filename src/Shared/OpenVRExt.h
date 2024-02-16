@@ -1,6 +1,11 @@
 //Extra functions extending/wrapping OpenVR APIs
+//Interfaces are supposed to be thread-safe
+//Assumes OpenVR is initialized
 
 #pragma once
+
+#include <map>
+#include <mutex>
 
 #ifndef NOMINMAX
     #define NOMINMAX
@@ -35,6 +40,19 @@ namespace vr
 
     class IVROverlayEx
     {
+        private:
+            struct SharedOverlayTexture
+            {
+                ID3D11ShaderResourceView* ShaderResourceView = nullptr;
+                Vector2Int TextureSize = {-1, -1};
+                EColorSpace TextureColorSpace = ColorSpace_Auto;
+            };
+
+            std::mutex m_SharedOverlayTexuresMutex;
+            std::map<VROverlayHandle_t, SharedOverlayTexture> m_SharedOverlayTextures;
+
+            ID3D11ShaderResourceView* GetOverlayTextureExInternal(VROverlayHandle_t overlay_handle, ID3D11Resource* device_texture_ref);
+
         public:
             //Returns false if the device has no valid pose
             static bool GetOverlayIntersectionParamsForDevice(VROverlayIntersectionParams_t& params, TrackedDeviceIndex_t device_index, ETrackingUniverseOrigin tracking_origin, 
@@ -56,8 +74,38 @@ namespace vr
             //Returns true if the system laser pointer is likely to be active. There may be edge-cases with this depending on SteamVR behavior
             static bool IsSystemLaserPointerActive();
 
+            //-OverlayTextureEx functions
+            //These functions wrap around base OpenVR functions to keep track texture sizes and shared texture handles (when used once)
+            //This is under the assumption that nothing except these functions invalidate existing shared texture handles
+            //Size difference is assumed to trigger backing texture change
+            //These functions should only be called on application-owned overlays with textures previously set with SetOverlayTextureEx()
+
+            //Calls IVROverlay::SetOverlayTextureEx() and adds overlay book-keeping data
+            //If out_shared_texture_invalidated_ptr is non-null, it is set to true if the shared texture would be invalidated (even if there never was any, so can be used as refresh flag)
+            EVROverlayError SetOverlayTextureEx(VROverlayHandle_t overlay_handle, const Texture_t* texture_ptr, Vector2Int texture_size, bool* out_shared_texture_invalidated_ptr = nullptr);
+
+            //Calls IVROverlay::SetOverlayFromFile() and adds overlay book-keeping data
+            //This always invalidates the cached shared texture if there is any
+            EVROverlayError SetOverlayFromFileEx(VROverlayHandle_t overlay_handle, const char* file_path);
+
             //Takes the shared texture of the source overlay and sets it as texture on the target overlay. This only works as long as the backing texture exists
-            static EVROverlayError SetSharedOverlayTexture(VROverlayHandle_t ovrl_handle_source, VROverlayHandle_t ovrl_handle_target, ID3D11Resource* device_texture_ref);
+            EVROverlayError SetSharedOverlayTexture(VROverlayHandle_t overlay_handle_source, VROverlayHandle_t overlay_handle_target, ID3D11Resource* device_texture_ref);
+
+            //Releases the shared texture of the overlay, but doesn't touch the overlay in any other way. Use when letting another process/module take over rendering to it
+            EVROverlayError ReleaseSharedOverlayTexture(VROverlayHandle_t overlay_handle);
+
+            //Calls IVROverlay::ClearOverlayTexture(), frees the shared texture if needed, and removes the overlay book-keeping data
+            EVROverlayError ClearOverlayTextureEx(VROverlayHandle_t overlay_handle);
+
+            //Returns the shared texture after requesting it from OpenVR if it's not already cached (or nullptr if that fails)
+            ID3D11ShaderResourceView* GetOverlayTextureEx(VROverlayHandle_t overlay_handle, ID3D11Resource* device_texture_ref);
+
+            //Returns stored texture size. Doesn't call into OpenVR. Returns {-1, -1} if overlay is unknown
+            Vector2Int GetOverlayTextureSizeEx(VROverlayHandle_t overlay_handle);
+
+            //Calls IVROverlay::DestroyOverlay(), frees the shared texture if needed, and removes the overlay book-keeping data
+            EVROverlayError DestroyOverlayEx(VROverlayHandle_t overlay_handle);
+
     };
 
     IVRSystemEx* VRSystemEx();

@@ -1309,7 +1309,7 @@ void WindowPerformance::CheckScheduledOverlaySharedTextureUpdate()
                     //Check if we're allowed to render to it from this process yet, otherwise try again next frame
                     if (vr::VROverlay()->GetOverlayRenderingPid(ovrl_handle) == ::GetCurrentProcessId())
                     {
-                        vr::IVROverlayEx::SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), ovrl_handle, UIManager::Get()->GetSharedTextureRef());
+                        vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), ovrl_handle, UIManager::Get()->GetSharedTextureRef());
                         vr::VROverlay()->SetOverlayMouseScale(ovrl_handle, &mouse_scale);
                     }
                     else

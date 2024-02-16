@@ -2288,6 +2288,7 @@ void OutputManager::ShowTheaterOverlay(unsigned int id)
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     OverlayManager::Get().SetCurrentOverlayID(id);
     ResetCurrentOverlay();
+    OverlayManager::Get().GetCurrentOverlay().AssignDesktopDuplicationTexture();    //Desktop Duplication texture isn't reset and only assigned on change, so do it manually
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
@@ -2485,7 +2486,7 @@ Matrix4 OutputManager::GetFallbackOverlayTransform() const
 
 void OutputManager::SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle)
 {
-    vr::EVROverlayError vr_error = vr::VROverlay()->SetOverlayFromFile(overlay_handle, (ConfigManager::Get().GetApplicationPath() + "images/output_error.png").c_str());    
+    vr::EVROverlayError vr_error = vr::VROverlayEx()->SetOverlayFromFileEx(overlay_handle, (ConfigManager::Get().GetApplicationPath() + "images/output_error.png").c_str());    
 
     vr::VRTextureBounds_t tex_bounds = {0.0f};
     tex_bounds.uMax = 1.0f;
@@ -3638,25 +3639,19 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
         if (!force_full_copy) //Otherwise do a partial copy
         {
             //Get overlay texture from OpenVR and copy dirty rect directly into it
-            ID3D11ShaderResourceView* ovrl_shader_res;
-            uint32_t ovrl_width;
-            uint32_t ovrl_height;
-            uint32_t ovrl_native_format;
-            vr::ETextureType ovrl_api_type;
-            vr::EColorSpace ovrl_color_space;
-            vr::VRTextureBounds_t ovrl_tex_bounds;
+            ID3D11Texture2D* reference_texture = (ID3D11Texture2D*)vrtex.handle;
+            ID3D11ShaderResourceView* ovrl_shader_rsv;
 
-            vr::VROverlayError ovrl_error = vr::VROverlay()->GetOverlayTexture(m_OvrlHandleDesktopTexture, (void**)&ovrl_shader_res, vrtex.handle, &ovrl_width, &ovrl_height, &ovrl_native_format, 
-                                                                               &ovrl_api_type, &ovrl_color_space, &ovrl_tex_bounds);
+            ovrl_shader_rsv = vr::VROverlayEx()->GetOverlayTextureEx(m_OvrlHandleDesktopTexture, reference_texture);
 
-            if (ovrl_error == vr::VROverlayError_None)
+            if (ovrl_shader_rsv != nullptr)
             {
                 ID3D11DeviceContext* device_context = (m_MultiGPUTargetDevice != nullptr) ? m_MultiGPUTargetDeviceContext : m_DeviceContext;
 
-                ID3D11Resource* ovrl_tex;
-                ovrl_shader_res->GetResource(&ovrl_tex);
+                Microsoft::WRL::ComPtr<ID3D11Resource> ovrl_tex;
+                ovrl_shader_rsv->GetResource(&ovrl_tex);
 
-                D3D11_BOX box;
+                D3D11_BOX box = {0};
                 box.left   = DirtyRectTotal.GetTL().x;
                 box.top    = DirtyRectTotal.GetTL().y;
                 box.front  = 0;
@@ -3664,30 +3659,31 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
                 box.bottom = DirtyRectTotal.GetBR().y;
                 box.back   = 1;
 
-                device_context->CopySubresourceRegion(ovrl_tex, 0, box.left, box.top, 0, (ID3D11Texture2D*)vrtex.handle, 0, &box);
+                device_context->CopySubresourceRegion(ovrl_tex.Get(), 0, box.left, box.top, 0, reference_texture, 0, &box);
 
-                ovrl_tex->Release();
-                ovrl_tex = nullptr;
-
-                // Release shader resource
-                vr::VROverlay()->ReleaseNativeOverlayHandle(m_OvrlHandleDesktopTexture, (void*)ovrl_shader_res);
-                ovrl_shader_res = nullptr;
+                //RSV is kept around by IVROverlayEx and not released here
             }
             else //Usually shouldn't fail, but fall back to full copy then
             {
                 force_full_copy = true;
-            }               
+            }
         }
 
         if (force_full_copy) //This is down here so a failed partial copy is picked up as well
         {
-            vr::VROverlay()->SetOverlayTexture(m_OvrlHandleDesktopTexture, &vrtex);
+            bool refresh_shared_texture = false;
+            vr::VROverlayEx()->SetOverlayTextureEx(m_OvrlHandleDesktopTexture, &vrtex, {m_DesktopWidth, m_DesktopHeight}, &refresh_shared_texture);
 
             //Apply potential texture change to all overlays and notify them of duplication update
             for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
             {
                 Overlay& overlay = OverlayManager::Get().GetOverlay(i);
-                overlay.AssignDesktopDuplicationTexture();
+
+                if (refresh_shared_texture)
+                {
+                    overlay.AssignDesktopDuplicationTexture();
+                }
+
                 overlay.OnDesktopDuplicationUpdate();
             }
         }
@@ -5459,7 +5455,8 @@ void OutputManager::ApplySettingTransform()
         if ((OverlayManager::Get().GetTheaterOverlayID() == overlay.GetID()) && ((!ConfigManager::GetValue(configid_bool_overlay_enabled)) || (overlay_origin != ovrl_origin_theater_screen)) )
         {
             OverlayManager::Get().ClearTheaterOverlay();
-            ResetCurrentOverlay();  //Reset overlay so all changes made to the theater one get reflected on the normal one
+            ResetCurrentOverlay();                      //Reset overlay so all changes made to the theater one get reflected on the normal one
+            overlay.AssignDesktopDuplicationTexture();  //Re-assign Desktop Duplication Texture in case it has changed during theater mode
             return;
         }
         else if ((ConfigManager::GetValue(configid_bool_overlay_enabled) && (overlay_origin == ovrl_origin_theater_screen)))   //Enable theater mode if needed

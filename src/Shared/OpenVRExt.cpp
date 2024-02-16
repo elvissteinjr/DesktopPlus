@@ -7,6 +7,43 @@
 
 namespace vr
 {
+    ID3D11ShaderResourceView* IVROverlayEx::GetOverlayTextureExInternal(VROverlayHandle_t overlay_handle, ID3D11Resource* device_texture_ref)
+    {
+        //m_SharedOverlayTexuresMutex is assumed to be locked already
+        if (device_texture_ref == nullptr)
+            return nullptr;
+
+        auto it = m_SharedOverlayTextures.find(overlay_handle);
+
+        if (it == m_SharedOverlayTextures.end())
+            return nullptr;
+
+        SharedOverlayTexture& shared_tex = it->second;
+
+        //Get overlay texture from OpenVR if we don't have it cached yet
+        if (shared_tex.ShaderResourceView == nullptr)
+        {
+            uint32_t ovrl_width;
+            uint32_t ovrl_height;
+            uint32_t ovrl_native_format;
+            vr::ETextureType ovrl_api_type;
+            vr::VRTextureBounds_t ovrl_tex_bounds;
+
+            vr::VROverlayError ovrl_error = vr::VROverlayError_None;
+            ovrl_error = VROverlay()->GetOverlayTexture(overlay_handle, (void**)&shared_tex.ShaderResourceView, device_texture_ref, &ovrl_width, &ovrl_height, &ovrl_native_format,
+                                                        &ovrl_api_type, &shared_tex.TextureColorSpace, &ovrl_tex_bounds);
+
+            //Shader Resource View set despite returning an error might not ever happen, but call release if it does
+            if ((ovrl_error != vr::VROverlayError_None) && (shared_tex.ShaderResourceView != nullptr))
+            {
+                VROverlay()->ReleaseNativeOverlayHandle(overlay_handle, it->second.ShaderResourceView);
+                shared_tex.ShaderResourceView = nullptr;
+            }
+        }
+
+        return shared_tex.ShaderResourceView;
+    }
+
     bool IVROverlayEx::GetOverlayIntersectionParamsForDevice(VROverlayIntersectionParams_t& params, TrackedDeviceIndex_t device_index, ETrackingUniverseOrigin tracking_origin, bool use_tip_offset)
     {
         if (device_index >= k_unMaxTrackedDeviceCount)
@@ -115,53 +152,204 @@ namespace vr
         return (VROverlay()->IsDashboardVisible() || VRSystem()->IsSteamVRDrawingControllers());
     }
 
-    EVROverlayError IVROverlayEx::SetSharedOverlayTexture(VROverlayHandle_t ovrl_handle_source, VROverlayHandle_t ovrl_handle_target, ID3D11Resource* device_texture_ref)
+    EVROverlayError IVROverlayEx::SetOverlayTextureEx(VROverlayHandle_t overlay_handle, const Texture_t* texture_ptr, Vector2Int texture_size, bool* out_shared_texture_invalidated_ptr)
     {
-        if (device_texture_ref == nullptr)
-            return vr::VROverlayError_InvalidTexture;
+        if (texture_ptr == nullptr)
+            return VROverlayError_InvalidTexture;
 
-        //Get overlay texture handle from OpenVR and set it as handle for the target overlay
-        ID3D11ShaderResourceView* ovrl_shader_res = nullptr;
-        uint32_t ovrl_width;
-        uint32_t ovrl_height;
-        uint32_t ovrl_native_format;
-        vr::ETextureType ovrl_api_type;
-        vr::EColorSpace ovrl_color_space;
-        vr::VRTextureBounds_t ovrl_tex_bounds;
+        bool shared_texture_invalidated = true;
 
-        vr::VROverlayError ovrl_error = vr::VROverlayError_None;
-        ovrl_error = vr::VROverlay()->GetOverlayTexture(ovrl_handle_source, (void**)&ovrl_shader_res, device_texture_ref, &ovrl_width, &ovrl_height, &ovrl_native_format,
-                                                        &ovrl_api_type, &ovrl_color_space, &ovrl_tex_bounds);
-
-        if (ovrl_error == vr::VROverlayError_None)
         {
+            const std::lock_guard<std::mutex> textures_lock(m_SharedOverlayTexuresMutex);
+
+            //Check if we already keep track of this overlay and update data & release shared handles if needed
+            auto it = m_SharedOverlayTextures.find(overlay_handle);
+            if (it != m_SharedOverlayTextures.end())
             {
-                Microsoft::WRL::ComPtr<ID3D11Resource> ovrl_tex;
-                Microsoft::WRL::ComPtr<IDXGIResource> ovrl_dxgi_resource;
-                ovrl_shader_res->GetResource(&ovrl_tex);
+                //Release shared texture handle if SetOverlayTexture will invalidate it
+                SharedOverlayTexture& shared_tex = it->second;
+                shared_texture_invalidated = (texture_size != shared_tex.TextureSize);
 
-                HRESULT hr = ovrl_tex.As(&ovrl_dxgi_resource);
-
-                if (!FAILED(hr))
+                if ((shared_texture_invalidated) && (shared_tex.ShaderResourceView != nullptr))
                 {
-                    HANDLE ovrl_tex_handle = nullptr;
-                    ovrl_dxgi_resource->GetSharedHandle(&ovrl_tex_handle);
-
-                    vr::Texture_t vrtex_target = {};
-                    vrtex_target.eType = vr::TextureType_DXGISharedHandle;
-                    vrtex_target.eColorSpace = vr::ColorSpace_Gamma;
-                    vrtex_target.handle = ovrl_tex_handle;
-
-                    vr::VROverlay()->SetOverlayTexture(ovrl_handle_target, &vrtex_target);
+                    VROverlay()->ReleaseNativeOverlayHandle(overlay_handle, shared_tex.ShaderResourceView);
+                    shared_tex.ShaderResourceView = nullptr;
                 }
-            }
 
-            vr::VROverlay()->ReleaseNativeOverlayHandle(ovrl_handle_source, (void*)ovrl_shader_res);
-            ovrl_shader_res = nullptr;
+                shared_tex.TextureSize = texture_size;
+                shared_tex.TextureColorSpace = texture_ptr->eColorSpace;
+            }
+            else    //Add new shared overlay texture data
+            {
+                SharedOverlayTexture shared_tex;
+                shared_tex.TextureSize = texture_size;
+                shared_tex.TextureColorSpace = texture_ptr->eColorSpace;
+
+                m_SharedOverlayTextures.emplace(overlay_handle, shared_tex);
+            }
         }
 
-        return ovrl_error;
+        if (out_shared_texture_invalidated_ptr != nullptr)
+        {
+            *out_shared_texture_invalidated_ptr = shared_texture_invalidated;
+        }
+
+        return VROverlay()->SetOverlayTexture(overlay_handle, texture_ptr);
     }
+
+    EVROverlayError IVROverlayEx::SetOverlayFromFileEx(VROverlayHandle_t overlay_handle, const char* file_path)
+    {
+        {
+            const std::lock_guard<std::mutex> textures_lock(m_SharedOverlayTexuresMutex);
+
+            //Check if we already keep track of this overlay and update data & release shared handles if needed
+            auto it = m_SharedOverlayTextures.find(overlay_handle);
+            if (it != m_SharedOverlayTextures.end())
+            {
+                //Always release shared texture handle (we assume that file loads aren't used for frequent updates and usually don't know the dimensions head of time)
+                SharedOverlayTexture& shared_tex = it->second;
+
+                if (shared_tex.ShaderResourceView != nullptr)
+                {
+                    VROverlay()->ReleaseNativeOverlayHandle(overlay_handle, shared_tex.ShaderResourceView);
+                    shared_tex.ShaderResourceView = nullptr;
+                }
+
+                shared_tex.TextureSize = {-1, -1};
+                shared_tex.TextureColorSpace = ColorSpace_Auto;
+            }
+            else    //Add new shared overlay texture data
+            {
+                SharedOverlayTexture shared_tex;
+                shared_tex.TextureSize = {-1, -1};
+                shared_tex.TextureColorSpace = ColorSpace_Auto;
+
+                m_SharedOverlayTextures.emplace(overlay_handle, shared_tex);
+            }
+        }
+
+        return VROverlay()->SetOverlayFromFile(overlay_handle, file_path);
+    }
+
+    EVROverlayError IVROverlayEx::SetSharedOverlayTexture(VROverlayHandle_t overlay_handle_source, VROverlayHandle_t overlay_handle_target, ID3D11Resource* device_texture_ref)
+    {
+        const std::lock_guard<std::mutex> textures_lock(m_SharedOverlayTexuresMutex);
+
+        ID3D11ShaderResourceView* shader_resource_view = GetOverlayTextureExInternal(overlay_handle_source, device_texture_ref);
+
+        if (shader_resource_view != nullptr)
+        {
+            vr::VROverlayError ovrl_error = vr::VROverlayError_None;
+
+            Microsoft::WRL::ComPtr<ID3D11Resource> ovrl_tex;
+            Microsoft::WRL::ComPtr<IDXGIResource> ovrl_dxgi_resource;
+            shader_resource_view->GetResource(&ovrl_tex);
+
+            HRESULT hr = ovrl_tex.As(&ovrl_dxgi_resource);
+
+            if (!FAILED(hr))
+            {
+                HANDLE ovrl_tex_handle = nullptr;
+                ovrl_dxgi_resource->GetSharedHandle(&ovrl_tex_handle);
+
+                vr::Texture_t vrtex_target = {};
+                vrtex_target.eType = vr::TextureType_DXGISharedHandle;
+                vrtex_target.eColorSpace = m_SharedOverlayTextures[overlay_handle_source].TextureColorSpace;
+                vrtex_target.handle = ovrl_tex_handle;
+
+                return VROverlay()->SetOverlayTexture(overlay_handle_target, &vrtex_target);
+            }
+        }
+
+        return VROverlayError_InvalidTexture;
+    }
+
+    EVROverlayError IVROverlayEx::ReleaseSharedOverlayTexture(VROverlayHandle_t overlay_handle)
+    {
+        const std::lock_guard<std::mutex> textures_lock(m_SharedOverlayTexuresMutex);
+
+        vr::EVROverlayError overlay_error = VROverlayError_None;
+
+        auto it = m_SharedOverlayTextures.find(overlay_handle);
+        if (it != m_SharedOverlayTextures.end())
+        {
+            if (it->second.ShaderResourceView != nullptr)
+            {
+                overlay_error = VROverlay()->ReleaseNativeOverlayHandle(overlay_handle, it->second.ShaderResourceView);
+            }
+
+            m_SharedOverlayTextures.erase(it);
+        }
+
+        return overlay_error;
+    }
+
+    EVROverlayError IVROverlayEx::ClearOverlayTextureEx(VROverlayHandle_t overlay_handle)
+    {
+        {
+            const std::lock_guard<std::mutex> textures_lock(m_SharedOverlayTexuresMutex);
+
+            auto it = m_SharedOverlayTextures.find(overlay_handle);
+            if (it != m_SharedOverlayTextures.end())
+            {
+                if (it->second.ShaderResourceView != nullptr)
+                {
+                    VROverlay()->ReleaseNativeOverlayHandle(overlay_handle, it->second.ShaderResourceView);
+                }
+
+                m_SharedOverlayTextures.erase(it);
+            }
+        }
+
+        return VROverlay()->ClearOverlayTexture(overlay_handle);
+    }
+
+    ID3D11ShaderResourceView* IVROverlayEx::GetOverlayTextureEx(VROverlayHandle_t overlay_handle, ID3D11Resource* device_texture_ref)
+    {
+        if (device_texture_ref == nullptr)
+            return nullptr;
+
+        const std::lock_guard<std::mutex> textures_lock(m_SharedOverlayTexuresMutex);
+
+        return GetOverlayTextureExInternal(overlay_handle, device_texture_ref);
+    }
+
+    Vector2Int IVROverlayEx::GetOverlayTextureSizeEx(VROverlayHandle_t overlay_handle)
+    {
+        {
+            const std::lock_guard<std::mutex> textures_lock(m_SharedOverlayTexuresMutex);
+            auto it = m_SharedOverlayTextures.find(overlay_handle);
+
+            if (it != m_SharedOverlayTextures.end())
+            {
+                return it->second.TextureSize;
+            }
+        }
+
+        return {-1, -1};
+    }
+
+    EVROverlayError IVROverlayEx::DestroyOverlayEx(VROverlayHandle_t overlay_handle)
+    {
+        {
+            const std::lock_guard<std::mutex> textures_lock(m_SharedOverlayTexuresMutex);
+
+            auto it = m_SharedOverlayTextures.find(overlay_handle);
+
+            if (it != m_SharedOverlayTextures.end())
+            {
+                if (it->second.ShaderResourceView != nullptr)
+                {
+                    VROverlay()->ReleaseNativeOverlayHandle(overlay_handle, it->second.ShaderResourceView);
+                }
+
+                m_SharedOverlayTextures.erase(it);
+            }
+        }
+
+        return VROverlay()->DestroyOverlay(overlay_handle);
+    }
+
 
     void IVRSystemEx::TransformOpenVR34TranslateRelative(HmdMatrix34_t& matrix, float offset_right, float offset_up, float offset_forward)
     {

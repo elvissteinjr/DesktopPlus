@@ -205,8 +205,6 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
         {
             m_LastContentSize = frame_content_size;
             recreate_frame_pool = true; //Recreate frame pool after we're done with the frame
-
-            m_OverlaySharedTextureSetupsNeeded = 5;
         }
 
         //Direct3D11CaptureFrame::ContentSize isn't always matching the size of the texture (lagging behind if content resized but frame pool hasn't yet)
@@ -217,10 +215,8 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
         //Check if size of the frame texture changed
         if ((texture_desc.Width != m_LastTextureSize.Width) || (texture_desc.Height != m_LastTextureSize.Height))
         {
-            m_LastTextureSize.Width = texture_desc.Width;
+            m_LastTextureSize.Width  = texture_desc.Width;
             m_LastTextureSize.Height = texture_desc.Height;
-
-            m_OverlaySharedTextureSetupsNeeded = 5;
 
             //Send overlay size updates
             //If the initial sizing has not been done yet, wait until there's no frame pool recreation pending before setting it
@@ -236,10 +232,12 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
 
                 m_InitialSizingDone = true;
             }
+
+            ++m_OverlaySharedTextureSetupsNeeded;
         }
 
         //Set overlay textures
-        vr::Texture_t vrtex;
+        vr::Texture_t vrtex = {};
         vrtex.eType = vr::TextureType_DirectX;
         vrtex.eColorSpace = vr::ColorSpace_Gamma;
         vrtex.handle = surface_texture.get();
@@ -270,12 +268,18 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
             }
             else if (ovrl_shared_source == vr::k_ulOverlayHandleInvalid) //For the first non-OU3D overlay, set the texture as normal
             {
-                vr::VROverlay()->SetOverlayTexture(overlay.Handle, &vrtex);
+                bool is_shared_texture_setup_needed = false;
+                vr::VROverlayEx()->SetOverlayTextureEx(overlay.Handle, &vrtex, {(int)texture_desc.Width, (int)texture_desc.Height}, &is_shared_texture_setup_needed);
                 ovrl_shared_source = overlay.Handle;
+
+                if (is_shared_texture_setup_needed)
+                {
+                    ++m_OverlaySharedTextureSetupsNeeded;
+                }
             }
             else if (m_OverlaySharedTextureSetupsNeeded > 0) //For all others, set it shared from the normal overlay if an update is needed
             {
-                vr::IVROverlayEx::SetSharedOverlayTexture(ovrl_shared_source, overlay.Handle, surface_texture.get());
+                vr::VROverlayEx()->SetSharedOverlayTexture(ovrl_shared_source, overlay.Handle, surface_texture.get());
             }
         }
     }
@@ -310,7 +314,6 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
         }
     }
 
-    //We can only be sure about not needing to set the shared overlay texture after doing it a few times after resize. Not entirely sure why, but it works.
     if (m_OverlaySharedTextureSetupsNeeded > 0)
     {
         m_OverlaySharedTextureSetupsNeeded--;
@@ -332,6 +335,7 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
     if (recreate_frame_pool)
     {
         m_FramePool.Recreate(m_Device, m_PixelFormat, 2, m_LastContentSize);
+        ++m_OverlaySharedTextureSetupsNeeded;
     }
 
     //Frame counter
