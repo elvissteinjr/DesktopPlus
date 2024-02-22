@@ -5076,7 +5076,7 @@ void OutputManager::CropToDisplay(int display_id, bool do_not_apply_setting)
 
 void OutputManager::DuplicateOverlay(unsigned int base_id, bool is_ui_overlay)
 {
-    //Add overlay based on data of lParam ID overlay and set it active
+    //Add overlay based on data of base_id overlay and reset it
     unsigned int new_id = k_ulOverlayID_None;
 
     if (!is_ui_overlay)
@@ -5088,8 +5088,8 @@ void OutputManager::DuplicateOverlay(unsigned int base_id, bool is_ui_overlay)
         new_id = OverlayManager::Get().AddUIOverlay();
     }
 
+    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     OverlayManager::Get().SetCurrentOverlayID(new_id);
-    ConfigManager::SetValue(configid_int_interface_overlay_current_id, (int)new_id);
 
     if (!is_ui_overlay)
     {
@@ -5114,6 +5114,8 @@ void OutputManager::DuplicateOverlay(unsigned int base_id, bool is_ui_overlay)
     }
 
     ResetCurrentOverlay();
+
+    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
 unsigned int OutputManager::AddOverlay(OverlayCaptureSource capture_source, int desktop_id, HWND window_handle)
