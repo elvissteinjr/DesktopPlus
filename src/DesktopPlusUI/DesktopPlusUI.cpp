@@ -181,13 +181,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     ZeroMemory(&msg, sizeof(msg));
     while (msg.message != WM_QUIT)
     {
-        vr::VROverlayHandle_t ovrl_handle_dplus = vr::k_ulOverlayHandleInvalid;
-
-        if (!desktop_mode)
-        {
-            vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &ovrl_handle_dplus);
-        }
-
         //Poll and handle messages (inputs, window resize, etc.)
         if (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
         {

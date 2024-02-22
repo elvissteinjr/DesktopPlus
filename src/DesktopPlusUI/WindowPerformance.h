@@ -46,7 +46,7 @@ struct ScrollingBufferFrameTime
 
 struct TrackerInfo
 {
-    vr::TrackedDeviceIndex_t DeviceIndex;
+    vr::TrackedDeviceIndex_t DeviceIndex = vr::k_unTrackedDeviceIndexInvalid;
     std::string Name;
     std::string NameCompact;
     float BatteryLevel;

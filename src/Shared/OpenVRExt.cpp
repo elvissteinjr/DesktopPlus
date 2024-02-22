@@ -239,8 +239,6 @@ namespace vr
 
         if (shader_resource_view != nullptr)
         {
-            vr::VROverlayError ovrl_error = vr::VROverlayError_None;
-
             Microsoft::WRL::ComPtr<ID3D11Resource> ovrl_tex;
             Microsoft::WRL::ComPtr<IDXGIResource> ovrl_dxgi_resource;
             shader_resource_view->GetResource(&ovrl_tex);

@@ -97,7 +97,7 @@ bool DPBrowserAPIClient::LaunchServerIfNotRunning()
     //Check if the API versions match
     if (m_ServerWindowHandle != nullptr)
     {
-        const int server_api_version = ::SendMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_get_api_version, 0);
+        const int server_api_version = (int)::SendMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_get_api_version, 0);
 
         if (server_api_version != k_lDPBrowserAPIVersion)
         {
@@ -356,7 +356,7 @@ void DPBrowserAPIClient::HandleIPCMessage(const MSG& msg)
         }
         case dpbrowser_ipccmd_notify_cblock_list_count:
         {
-            ConfigManager::SetValue(configid_int_state_browser_content_blocker_list_count, msg.lParam);
+            ConfigManager::SetValue(configid_int_state_browser_content_blocker_list_count, (int)msg.lParam);
             break;
         }
     }

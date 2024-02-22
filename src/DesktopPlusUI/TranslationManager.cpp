@@ -770,7 +770,7 @@ void TranslationManager::LoadTranslationFromFile(const std::string& filename)
     }
     else
     {
-        LOG_F(WARNING, "Tried to load translation, but \"%s\" is not a valid translation file");
+        LOG_F(WARNING, "Tried to load translation, but \"%s\" is not a valid translation file", filename.c_str());
     }
 }
 

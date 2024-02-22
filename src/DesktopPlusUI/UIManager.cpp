@@ -327,7 +327,7 @@ vr::EVRInitError UIManager::InitOverlay()
             vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleFloatingUI,        OVERLAY_WIDTH_METERS_DASHBOARD_UI);
             vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleSettings,          OVERLAY_WIDTH_METERS_SETTINGS);
             vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleOverlayProperties, OVERLAY_WIDTH_METERS_SETTINGS);
-            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleKeyboard,          OVERLAY_WIDTH_METERS_DASHBOARD_UI);
+            vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleKeyboard,          OVERLAY_WIDTH_METERS_KEYBOARD);
 
             vr::VROverlay()->SetOverlayAlpha(m_OvrlHandleFloatingUI, 0.0f);
 

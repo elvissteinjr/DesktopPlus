@@ -417,7 +417,7 @@ void StopProcessByWindowClass(LPCTSTR class_name)
 
 HWND FindMainWindow(DWORD pid)
 {
-    std::pair<HWND, DWORD> params = { 0, pid };
+    std::pair<HWND, DWORD> params = {nullptr, pid};
 
     //Enumerate the windows using a lambda to process each window
     BOOL bResult = ::EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL 
@@ -432,7 +432,6 @@ HWND FindMainWindow(DWORD pid)
                                          if ( (::GetWindow(hwnd, GW_OWNER) == (HWND)0) && (::IsWindowVisible(hwnd)) )
                                          {
                                              //Stop enumerating
-                                             ::SetLastError(-1);
                                              pParams->first = hwnd;
                                              return FALSE;
                                          }
@@ -443,7 +442,7 @@ HWND FindMainWindow(DWORD pid)
                                   },
                                   (LPARAM)&params);
 
-    if ( (!bResult) && (::GetLastError() == -1) && (params.first) )
+    if ((!bResult) && (params.first != nullptr))
     {
         return params.first;
     }
