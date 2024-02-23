@@ -2,33 +2,25 @@
 
 #include "Util.h"
 
-OUtoSBSConverter::OUtoSBSConverter() : m_TexSBSWidth(0),
-                                       m_TexSBSHeight(0)
-{
-
-}
-
-OUtoSBSConverter::~OUtoSBSConverter()
-{
-    CleanRefs();
-}
-
 ID3D11Texture2D* OUtoSBSConverter::GetTexture() const
 {
     return (m_MultiGPUTexSBSTarget != nullptr) ? m_MultiGPUTexSBSTarget.Get() : m_TexSBS.Get();
 }
 
+Vector2Int OUtoSBSConverter::GetTextureSizeSBS() const
+{
+    return m_TextSizeSBS;
+}
+
 HRESULT OUtoSBSConverter::Convert(ID3D11Device* device, ID3D11DeviceContext* device_context, ID3D11Device* multi_gpu_device, ID3D11DeviceContext* multi_gpu_device_context, 
                                   ID3D11Texture2D* tex_source, int tex_source_width, int tex_source_height, int crop_x, int crop_y, int crop_width, int crop_height)
 {
-    int sbs_width  = crop_width  * 2;
-    int sbs_height = crop_height / 2;
+    Vector2Int sbs_size(crop_width * 2, crop_height / 2);
 
     //Resource setup on first time or when dimensions changed
-    if ( (m_TexSBS == nullptr) || (sbs_width != m_TexSBSWidth) || (sbs_height != m_TexSBSHeight) )
+    if ( (m_TexSBS == nullptr) || (sbs_size != m_TextSizeSBS) )
     {
-        m_TexSBSWidth  = sbs_width;
-        m_TexSBSHeight = sbs_height;
+        m_TextSizeSBS = sbs_size;
 
         //Delete old resources if they exist
         CleanRefs();
@@ -40,8 +32,8 @@ HRESULT OUtoSBSConverter::Convert(ID3D11Device* device, ID3D11DeviceContext* dev
         //Create texture
         D3D11_TEXTURE2D_DESC TexD;
         RtlZeroMemory(&TexD, sizeof(D3D11_TEXTURE2D_DESC));
-        TexD.Width  = sbs_width;
-        TexD.Height = sbs_height;
+        TexD.Width  = m_TextSizeSBS.x;
+        TexD.Height = m_TextSizeSBS.y;
         TexD.MipLevels = 1;
         TexD.ArraySize = 1;
         TexD.Format = tex_source_desc.Format;
@@ -88,14 +80,14 @@ HRESULT OUtoSBSConverter::Convert(ID3D11Device* device, ID3D11DeviceContext* dev
     source_region.left   = clamp(crop_x, 0, tex_source_width);
     source_region.right  = clamp(crop_x + crop_width, 0, tex_source_width);
     source_region.top    = clamp(crop_y, 0, tex_source_height);
-    source_region.bottom = clamp(crop_y + sbs_height, 0, tex_source_height);
+    source_region.bottom = clamp(crop_y + m_TextSizeSBS.y, 0, tex_source_height);
     source_region.front  = 0;
     source_region.back   = 1;
 
     device_context->CopySubresourceRegion(m_TexSBS.Get(), 0, 0, 0, 0, tex_source, 0, &source_region);          //Top -> Left
 
     source_region.top    = source_region.bottom;
-    source_region.bottom = clamp((int)source_region.top + sbs_height, 0, tex_source_height);
+    source_region.bottom = clamp((int)source_region.top + m_TextSizeSBS.y, 0, tex_source_height);
 
     device_context->CopySubresourceRegion(m_TexSBS.Get(), 0, crop_width, 0, 0, tex_source, 0, &source_region); //Bottom -> Right
 
@@ -119,7 +111,7 @@ HRESULT OUtoSBSConverter::Convert(ID3D11Device* device, ID3D11DeviceContext* dev
         if (FAILED(hr))
             return hr;
 
-        memcpy(mapped_resource_target.pData, mapped_resource_staging.pData, (size_t)sbs_height * mapped_resource_staging.RowPitch);
+        memcpy(mapped_resource_target.pData, mapped_resource_staging.pData, (size_t)m_TextSizeSBS.y * mapped_resource_staging.RowPitch);
 
         device_context->Unmap(m_MultiGPUTexSBSStaging.Get(), 0);
         multi_gpu_device_context->Unmap(m_MultiGPUTexSBSTarget.Get(), 0);

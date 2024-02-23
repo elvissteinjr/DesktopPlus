@@ -260,7 +260,7 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
                         vrtex_ou.eColorSpace = vr::ColorSpace_Gamma;
                         vrtex_ou.handle = m_OUConverters[ou_count].GetTexture();
 
-                        vr::VROverlay()->SetOverlayTexture(overlay.Handle, &vrtex_ou);
+                        vr::VROverlayEx()->SetOverlayTextureEx(overlay.Handle, &vrtex_ou, m_OUConverters[ou_count].GetTextureSizeSBS());
                     }
 
                     ou_count++;
