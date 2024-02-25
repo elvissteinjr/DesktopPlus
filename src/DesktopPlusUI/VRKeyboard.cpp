@@ -85,13 +85,14 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
         //Load new layout
         m_LayoutMetadata = LoadLayoutMetadataFromFile(filename);
 
+        const bool keyboard_editor_mode = UIManager::Get()->IsInKeyboardEditorMode();   //Always load all clusters when in Keyboard Editor mode
         const bool cluster_enabled[kbdlayout_cluster_MAX] = 
         {
             true, 
-            ConfigManager::GetValue(configid_bool_input_keyboard_cluster_function_enabled),
-            ConfigManager::GetValue(configid_bool_input_keyboard_cluster_navigation_enabled),
-            ConfigManager::GetValue(configid_bool_input_keyboard_cluster_numpad_enabled),
-            ConfigManager::GetValue(configid_bool_input_keyboard_cluster_extra_enabled)
+            (ConfigManager::GetValue(configid_bool_input_keyboard_cluster_function_enabled)   || keyboard_editor_mode),
+            (ConfigManager::GetValue(configid_bool_input_keyboard_cluster_navigation_enabled) || keyboard_editor_mode),
+            (ConfigManager::GetValue(configid_bool_input_keyboard_cluster_numpad_enabled)     || keyboard_editor_mode),
+            (ConfigManager::GetValue(configid_bool_input_keyboard_cluster_extra_enabled)      || keyboard_editor_mode)
         };
 
         unsigned int sublayout_id = kbdlayout_sub_base;

@@ -94,7 +94,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     IPCManager::Get().DisableUIPForRegisteredMessages(hwnd);
 
     //Init UIManager and load config
-    UIManager ui_manager(desktop_mode);
+    UIManager ui_manager(desktop_mode, open_keyboard_editor);
     ConfigManager::Get().LoadConfigFromFile();
     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_sync_config_state);
     ui_manager.SetWindowHandle(hwnd);

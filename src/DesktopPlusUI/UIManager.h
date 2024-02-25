@@ -81,6 +81,7 @@ class UIManager
         int m_RepeatFrame;
 
         bool m_DesktopMode;
+        bool m_KeyboardEditorMode;
         bool m_OpenVRLoaded;         //Desktop mode can run with or without OpenVR and we want to avoid needlessly starting up SteamVR
         bool m_NoRestartOnExit;      //Prevent auto-restart when closing from desktop mode while dashboard app is running (i.e. when using troubleshooting buttons)
 
@@ -128,7 +129,7 @@ class UIManager
     public:
         static UIManager* Get();
 
-        UIManager(bool desktop_mode);
+        UIManager(bool desktop_mode, bool keyboard_editor_mode);
         ~UIManager();
 
         vr::EVRInitError InitOverlay();
@@ -173,6 +174,7 @@ class UIManager
         void DecreaseRepeatFrameCount();
 
         bool IsInDesktopMode() const;
+        bool IsInKeyboardEditorMode() const;
         bool IsOpenVRLoaded() const;
         void DisableRestartOnExit();
 

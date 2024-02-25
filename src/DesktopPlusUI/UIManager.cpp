@@ -97,11 +97,12 @@ ImVec4 UITextureSpaces::GetRectAsVec4(UITexspaceID texspace_id) const
 //While this is a singleton like many other classes, we want to be careful about initializing it at global scope, so we leave that until a bit later in main()
 UIManager* g_UIManagerPtr = nullptr;
 
-UIManager::UIManager(bool desktop_mode) : 
+UIManager::UIManager(bool desktop_mode, bool keyboard_editor_mode) : 
     m_WindowHandle(nullptr),
     m_SharedTextureRef(nullptr),
     m_RepeatFrame(false),
     m_DesktopMode(desktop_mode),
+    m_KeyboardEditorMode(keyboard_editor_mode),
     m_OpenVRLoaded(false),
     m_NoRestartOnExit(false),
     m_UIScale(1.0f),
@@ -1085,6 +1086,11 @@ void UIManager::DecreaseRepeatFrameCount()
 bool UIManager::IsInDesktopMode() const
 {
     return m_DesktopMode;
+}
+
+bool UIManager::IsInKeyboardEditorMode() const
+{
+    return m_KeyboardEditorMode;
 }
 
 bool UIManager::IsOpenVRLoaded() const
