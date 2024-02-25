@@ -10,7 +10,7 @@ BackgroundOverlay::BackgroundOverlay() : m_OvrlHandle(vr::k_ulOverlayHandleInval
 
 BackgroundOverlay::~BackgroundOverlay()
 {
-    if (m_OvrlHandle != vr::k_ulOverlayHandleInvalid)
+    if ((m_OvrlHandle != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay() != nullptr))
     {
         vr::VROverlay()->DestroyOverlay(m_OvrlHandle);
     }
