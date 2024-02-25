@@ -1346,6 +1346,7 @@ void KeyboardEditor::UpdateWindowMetadata()
             ImGui::CloseCurrentPopup();
 
             m_RefreshLayout = true;
+            m_HasChangedSelectedKey = true;
             HistoryClear();
         }
 
