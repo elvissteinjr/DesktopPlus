@@ -306,10 +306,14 @@ void KeyboardEditor::UpdateWindowKeyList()
     const bool has_no_undo = m_HistoryUndo.empty();
     const bool has_no_redo = m_HistoryRedo.empty();
 
+    //ImGui::IsKeyChordPressed() seems neat here but doesn't appear to support key repeat...
+    const bool undo_shortcut_pressed = ((io.KeyMods == ImGuiMod_Ctrl) && (ImGui::IsKeyPressed(ImGuiKey_Z)));
+    const bool redo_shortcut_pressed = ((io.KeyMods == ImGuiMod_Ctrl) && (ImGui::IsKeyPressed(ImGuiKey_Y)));
+
     if (has_no_undo)
         ImGui::PushItemDisabled();
 
-    if (ImGui::Button(TranslationManager::GetString(tstr_DialogUndo)))
+    if ( (ImGui::Button(TranslationManager::GetString(tstr_DialogUndo))) || ((!has_no_undo) && (!ImGui::IsAnyInputTextActive()) && (undo_shortcut_pressed)) )
     {
         HistoryUndo();
         UIManager::Get()->RepeatFrame();
@@ -323,7 +327,7 @@ void KeyboardEditor::UpdateWindowKeyList()
     if (has_no_redo)
         ImGui::PushItemDisabled();
 
-    if (ImGui::Button(TranslationManager::GetString(tstr_DialogRedo)))
+    if ( (ImGui::Button(TranslationManager::GetString(tstr_DialogRedo))) || ((!has_no_redo) && (!ImGui::IsAnyInputTextActive()) && (redo_shortcut_pressed)) )
     {
         HistoryRedo();
         UIManager::Get()->RepeatFrame();
