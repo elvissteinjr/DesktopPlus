@@ -2544,7 +2544,18 @@ void WindowSettings::UpdatePageProfiles()
 
     bool focus_add_button = false;
 
-    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsProfilesOverlaysHeader) ); 
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsProfilesOverlaysHeader) );
+
+    //Show errors up here when used as root page since there's no space elsewhere
+    if ( (is_root_page) && ( (has_loading_failed) || (has_deletion_failed) ) )
+    {
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextError);
+        ImGui::TextRightUnformatted(0.0f, TranslationManager::GetString((has_loading_failed) ? tstr_SettingsProfilesOverlaysProfileFailedLoad : tstr_SettingsProfilesOverlaysProfileFailedDelete));
+        ImGui::PopStyleColor();
+    }
+
     ImGui::Indent();
 
     ImGui::SetNextItemWidth(-1.0f);
