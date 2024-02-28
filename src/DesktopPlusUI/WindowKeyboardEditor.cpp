@@ -1634,6 +1634,7 @@ void KeyboardEditor::HistoryUndo()
     }
 
     m_HasChangedSelectedKey = true;
+    m_RefreshLayout = true;
 }
 
 void KeyboardEditor::HistoryRedo()
@@ -1656,6 +1657,7 @@ void KeyboardEditor::HistoryRedo()
     }
 
     m_HasChangedSelectedKey = true;
+    m_RefreshLayout = true;
 }
 
 void KeyboardEditor::HistoryClear()
