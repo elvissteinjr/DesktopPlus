@@ -4921,17 +4921,17 @@ void OutputManager::HandleKeyboardMessage(IPCActionID ipc_action_id, LPARAM lpar
             bool down     = (HIWORD(lparam) == 1);
 
             //Check if it can be pressed on the current windows keyboard layout
-            SHORT w32_keystate = ::VkKeyScan(wchar);
+            SHORT w32_keystate = ::VkKeyScanW(wchar);
             unsigned char keycode = LOBYTE(w32_keystate);
             unsigned char flags   = HIBYTE(w32_keystate);
 
-            bool is_valid = ((keycode != -1) || (flags != -1));
+            bool is_valid = ((keycode != 255) || (flags != 255));
 
             if (is_valid)
             {
                 m_InputSim.KeyboardSetFromWin32KeyState(w32_keystate, down);
             }
-            else //Otherwise use it as a text input
+            else if (down) //Otherwise use it as a text input
             {
                 wchar_t wstr[2] = {0};
                 wstr[0] = wchar;
