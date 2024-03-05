@@ -309,6 +309,8 @@ void ActionManager::DoStringCommand(const ActionCommand& command, OverlayIDList&
                 input_sim.KeyboardText(command.StrMain.c_str(), true);
                 input_sim.KeyboardTextFinish();
             }
+
+            has_typed_for_desktop = true;
         }
     }
 }
