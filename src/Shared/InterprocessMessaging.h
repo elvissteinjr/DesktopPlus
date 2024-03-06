@@ -33,6 +33,7 @@ enum IPCActionID
     ipcact_nop,
     ipcact_mirror_reset,                //Sent by dashboard application to itself when WndProc needs to trigger a mirror reset
     ipcact_overlays_reset,              //Sent by dashboard application when all overlays were reset. No data in lParam
+    ipcact_overlays_ui_reset,           //Sent by dashboard application when UI overlays were reset or need shared textures re-applied. No data in lParam
     ipcact_overlay_position_reset,      //Sent by UI application to reset the detached overlay position. No data in lParam
     ipcact_overlay_position_adjust,     //Sent by UI application to adjust detached overlay position. lParam = IPCActionOverlayPosAdjustValue
     ipcact_action_delete,               //Sent by UI application to delete an Action. lParam is Action UID

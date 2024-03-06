@@ -499,6 +499,11 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     m_WindowPerformance.ScheduleOverlaySharedTextureUpdate();
                     break;
                 }
+                case ipcact_overlays_ui_reset:
+                {
+                    m_WindowPerformance.ScheduleOverlaySharedTextureUpdate();
+                    break;
+                }
                 case ipcact_overlay_new_drag:
                 {
                     int desktop_id = GET_X_LPARAM(msg.lParam); //(No need to extract pointer distance)

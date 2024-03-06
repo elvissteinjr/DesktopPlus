@@ -42,6 +42,11 @@ class OverlayManager
 
         Matrix4 GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handle, unsigned int id, bool add_bottom_offset) const;
 
+        #ifndef DPLUS_UI
+            void TheaterOverlayForwardCapture(const Overlay& ovrl_source);
+            void TheaterOverlayReturnCapture(const Overlay& ovrl_source);
+        #endif
+
     public:
         static OverlayManager& Get();
 
@@ -58,7 +63,7 @@ class OverlayManager
             vr::VROverlayHandle_t GetTheaterOverlayHandle() const;      //Returns theater overlay handle (may be invalid if no overlay ID is assinged)
             unsigned int GetTheaterOverlayID() const;
             void SetTheaterOverlayID(unsigned int id);
-            void ClearTheaterOverlay();
+            void ClearTheaterOverlay(bool no_ui_update = false);
         #endif
         OverlayConfigData& GetConfigData(unsigned int id);
         const OverlayConfigData& GetConfigData(unsigned int id) const;

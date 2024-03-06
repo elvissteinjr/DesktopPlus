@@ -359,6 +359,15 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
         default: break;
     }
 
+    //If this overlay is the theater overlay, hide it so there's always proper release from the old texture source happening
+    if ( (m_TextureSource != tex_source) && (OverlayManager::Get().GetTheaterOverlayID() == m_ID) )
+    {
+        if (OutputManager* outmgr = OutputManager::Get())
+        {
+            outmgr->HideOverlay(m_ID);
+        }
+    }
+
     m_TextureSource = tex_source;
 
     switch (m_TextureSource)

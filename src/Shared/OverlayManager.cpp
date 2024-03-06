@@ -161,6 +161,52 @@ Matrix4 OverlayManager::GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handl
     return matrix;
 }
 
+#ifndef DPLUS_UI
+
+void OverlayManager::TheaterOverlayForwardCapture(const Overlay& ovrl_source)
+{
+    if (ovrl_source.GetTextureSource() == ovrl_texsource_winrt_capture)
+    {
+        DPWinRT_StartCaptureFromOverlay(m_TheaterOverlayHandle, m_CurrentTheaterOverlayOrigHandle);
+        DPWinRT_PauseCapture(m_TheaterOverlayHandle, !ovrl_source.IsVisible());
+        DPWinRT_PauseCapture(m_CurrentTheaterOverlayOrigHandle, true);
+    }
+    else if (ovrl_source.GetTextureSource() == ovrl_texsource_ui)
+    {
+        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, IPCManager::GetUIAppProcessID());
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlays_ui_reset);
+    }
+    else if (ovrl_source.GetTextureSource() == ovrl_texsource_browser)
+    {
+        DPBrowserAPIClient::Get().DPBrowser_DuplicateBrowserOutput(m_CurrentTheaterOverlayOrigHandle, m_TheaterOverlayHandle);
+        DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(m_TheaterOverlayHandle, !ovrl_source.IsVisible());
+        DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(m_CurrentTheaterOverlayOrigHandle, true);
+
+        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, DPBrowserAPIClient::Get().GetServerAppProcessID());
+    }
+}
+
+void OverlayManager::TheaterOverlayReturnCapture(const Overlay& ovrl_source)
+{
+    if (ovrl_source.GetTextureSource() == ovrl_texsource_winrt_capture)
+    {
+        DPWinRT_StopCapture(m_TheaterOverlayHandle);
+    }
+    else if (ovrl_source.GetTextureSource() == ovrl_texsource_ui)
+    {
+        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, ::GetCurrentProcessId());
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlays_ui_reset);
+    }
+    else if (ovrl_source.GetTextureSource() == ovrl_texsource_browser)
+    {
+        DPBrowserAPIClient::Get().DPBrowser_StopBrowser(m_TheaterOverlayHandle);
+
+        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, ::GetCurrentProcessId());
+    }
+}
+
+#endif //ifndef DPLUS_UI
+
 unsigned int OverlayManager::DuplicateOverlay(const OverlayConfigData& data, unsigned int source_id)
 {
     unsigned int id = (unsigned int)m_OverlayConfigData.size();
@@ -431,6 +477,8 @@ void OverlayManager::SetTheaterOverlayID(unsigned int id)
         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_CurrentTheaterOverlayID);
         IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, m_CurrentTheaterOverlayOrigHandle);
         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+
+        TheaterOverlayReturnCapture(ovrl_source_prev);
     }
 
     m_CurrentTheaterOverlayOrigHandle = ovrl_source.GetHandle();
@@ -448,10 +496,18 @@ void OverlayManager::SetTheaterOverlayID(unsigned int id)
         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_CurrentTheaterOverlayID);
         IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, m_TheaterOverlayHandle);
         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+
+        TheaterOverlayForwardCapture(ovrl_source);
+    }
+
+    //Keep active overlay count correct
+    if (OutputManager* outmgr = OutputManager::Get())
+    {
+        outmgr->ResetOverlayActiveCount();
     }
 }
 
-void OverlayManager::ClearTheaterOverlay()
+void OverlayManager::ClearTheaterOverlay(bool no_ui_update)
 {
     if (m_CurrentTheaterOverlayID < m_OverlayConfigData.size())
     {
@@ -463,10 +519,15 @@ void OverlayManager::ClearTheaterOverlay()
 
         m_OverlayConfigData[m_CurrentTheaterOverlayID].ConfigHandle[configid_handle_overlay_state_overlay_handle] = m_CurrentTheaterOverlayOrigHandle;
 
-        //Send handle change over to UI
-        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_CurrentTheaterOverlayID);
-        IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, m_CurrentTheaterOverlayOrigHandle);
-        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+        //Send handle change over to UI (this should be skipped when the current theater overlay is in the process of being removed)
+        if (!no_ui_update)
+        {
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_CurrentTheaterOverlayID);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, m_CurrentTheaterOverlayOrigHandle);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+        }
+
+        TheaterOverlayReturnCapture(ovrl_source_prev);
     }
 
     if (m_TheaterOverlayHandle != vr::k_ulOverlayHandleInvalid)
@@ -479,7 +540,16 @@ void OverlayManager::ClearTheaterOverlay()
         }
     }
 
-    m_CurrentTheaterOverlayID = k_ulOverlayID_None;
+    m_CurrentTheaterOverlayID         = k_ulOverlayID_None;
+    m_CurrentTheaterOverlayOrigHandle = vr::k_ulOverlayHandleInvalid;
+    m_TheaterOverlayHandle            = vr::k_ulOverlayHandleInvalid;
+    m_TheaterOverlayReferenceHandle   = vr::k_ulOverlayHandleInvalid;
+
+    //Keep active overlay count correct
+    if (OutputManager* outmgr = OutputManager::Get())
+    {
+        outmgr->ResetOverlayActiveCount();
+    }
 }
 
 #endif
@@ -630,6 +700,14 @@ void OverlayManager::RemoveOverlay(unsigned int id)
             }
         }
 
+        #ifndef DPLUS_UI
+            //Clear Theater overlay if it's currently used by this to ensure proper cleanup
+            if (m_CurrentTheaterOverlayID == id)
+            {
+                ClearTheaterOverlay(true);
+            }
+        #endif
+
         //Then delete the config
         m_OverlayConfigData.erase(m_OverlayConfigData.begin() + id);
 
@@ -708,6 +786,10 @@ void OverlayManager::RemoveOverlay(unsigned int id)
 
 void OverlayManager::RemoveAllOverlays()
 {
+    #ifndef DPLUS_UI
+        ClearTheaterOverlay(true);
+    #endif
+
     //Remove all overlays with minimal overhead and refreshes
     while (m_OverlayConfigData.size() > 0)
     {

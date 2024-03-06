@@ -2270,6 +2270,10 @@ void OutputManager::ShowTheaterOverlay(unsigned int id)
     if (OverlayManager::Get().GetTheaterOverlayID() == id)
         return;
 
+    //Don't set theater overlay before texture source is initialized 
+    if (OverlayManager::Get().GetOverlay(id).GetTextureSource() == ovrl_texsource_invalid)
+        return;
+
     OverlayManager::Get().SetTheaterOverlayID(id);
 
     //Check every other existing overlay for theater origin and disable them (only one theater overlay can be active)
