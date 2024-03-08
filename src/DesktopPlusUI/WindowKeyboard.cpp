@@ -28,7 +28,8 @@ WindowKeyboard::WindowKeyboard() :
     m_LastSubLayout(kbdlayout_sub_base)
 {
     m_WindowIcon = tmtex_icon_xsmall_keyboard;
-    m_OvrlWidth = OVERLAY_WIDTH_METERS_KEYBOARD;
+    m_OvrlWidth    = OVERLAY_WIDTH_METERS_KEYBOARD;
+    m_OvrlWidthMax = OVERLAY_WIDTH_METERS_KEYBOARD * 5.0f;
 
     //Leave 2 pixel padding around so interpolation doesn't cut off the pixel border
     const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_keyboard);

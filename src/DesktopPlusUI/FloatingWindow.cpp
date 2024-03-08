@@ -9,6 +9,7 @@
 #include "imgui_internal.h"
 
 FloatingWindow::FloatingWindow() : m_OvrlWidth(1.0f),
+                                   m_OvrlWidthMax(FLT_MAX),
                                    m_Alpha(0.0f),
                                    m_OvrlVisible(false),
                                    m_IsTransitionFading(false),
@@ -199,10 +200,12 @@ void FloatingWindow::WindowUpdateBase()
         if ( (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {
             UIManager::Get()->GetOverlayDragger().DragStart(GetOverlayHandle(), m_DragOrigin);
+            UIManager::Get()->GetOverlayDragger().DragSetMaxWidth(m_OvrlWidthMax);
         }
         else if ( (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {
             UIManager::Get()->GetOverlayDragger().DragGestureStart(GetOverlayHandle(), m_DragOrigin);
+            UIManager::Get()->GetOverlayDragger().DragSetMaxWidth(m_OvrlWidthMax);
         }
     }
 
@@ -235,10 +238,12 @@ void FloatingWindow::WindowUpdateBase()
         if ( (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {
             UIManager::Get()->GetOverlayDragger().DragStart(GetOverlayHandle(), m_DragOrigin);
+            UIManager::Get()->GetOverlayDragger().DragSetMaxWidth(m_OvrlWidthMax);
         }
         else if ( (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) && (!UIManager::Get()->GetOverlayDragger().IsDragActive()) && (!UIManager::Get()->GetOverlayDragger().IsDragGestureActive()) )
         {
             UIManager::Get()->GetOverlayDragger().DragGestureStart(GetOverlayHandle(), m_DragOrigin);
+            UIManager::Get()->GetOverlayDragger().DragSetMaxWidth(m_OvrlWidthMax);
         }
     }
 

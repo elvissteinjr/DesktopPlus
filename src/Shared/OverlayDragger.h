@@ -12,6 +12,7 @@ class OverlayDragger
         vr::VROverlayHandle_t m_DragModeOverlayHandle;
         OverlayOrigin m_DragModeOverlayOrigin;
         OverlayOriginConfig m_DragModeOverlayOriginConfig;
+        float m_DragModeMaxWidth;
 
         Matrix4 m_DragModeMatrixTargetStart;
         Matrix4 m_DragModeMatrixSourceStart;
@@ -50,6 +51,7 @@ class OverlayDragger
         void DragUpdate();
         void DragAddDistance(float distance);
         float DragAddWidth(float width);                            //Returns new width
+        void DragSetMaxWidth(float max_width);                      //Maximum width applied whenever width would otherwise change. Resets on drag start, so set after
         Matrix4 DragFinish();                                       //Returns new overlay origin-relative transform
         void DragCancel();                                          //Stops drag without applying any changes
 

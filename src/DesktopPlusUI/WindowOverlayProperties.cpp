@@ -32,7 +32,8 @@ WindowOverlayProperties::WindowOverlayProperties() :
     m_IsBrowserURLChanged(false)
 {
     m_WindowIcon = tmtex_icon_xsmall_settings;
-    m_OvrlWidth = OVERLAY_WIDTH_METERS_SETTINGS;
+    m_OvrlWidth    = OVERLAY_WIDTH_METERS_SETTINGS;
+    m_OvrlWidthMax = OVERLAY_WIDTH_METERS_SETTINGS * 3.0f;
 
     //Leave 2 pixel padding around so interpolation doesn't cut off the pixel border
     const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_overlay_properties);

@@ -16,6 +16,7 @@ OverlayDragger::OverlayDragger() :
     m_DragModeOverlayID(k_ulOverlayID_None),
     m_DragModeOverlayHandle(vr::k_ulOverlayHandleInvalid),
     m_DragModeOverlayOrigin(ovrl_origin_room),
+    m_DragModeMaxWidth(FLT_MAX),
     m_DragModeSnappedExtraWidth(0.0f),
     m_DragGestureActive(false),
     m_DragGestureScaleDistanceStart(0.0f),
@@ -393,6 +394,7 @@ void OverlayDragger::DragStart(unsigned int overlay_id)
     m_DragModeOverlayOrigin       = (OverlayOrigin)data.ConfigInt[configid_int_overlay_origin];
     m_DragModeOverlayOriginConfig = OverlayManager::Get().GetOriginConfigFromData(data);
     m_DragModeOverlayHandle       = data.ConfigHandle[configid_handle_overlay_state_overlay_handle];
+    m_DragModeMaxWidth            = FLT_MAX;
 
     DragStartBase(false);
 }
@@ -407,6 +409,7 @@ void OverlayDragger::DragStart(vr::VROverlayHandle_t overlay_handle, OverlayOrig
     m_DragModeOverlayHandle       = overlay_handle;
     m_DragModeOverlayOrigin       = overlay_origin;
     m_DragModeOverlayOriginConfig = OverlayOriginConfig();
+    m_DragModeMaxWidth            = FLT_MAX;
 
     DragStartBase(false);
 }
@@ -655,6 +658,7 @@ float OverlayDragger::DragAddWidth(float width)
         }
     }
 
+    overlay_width = std::min(overlay_width, m_DragModeMaxWidth);
     vr::VROverlay()->SetOverlayWidthInMeters(m_DragModeOverlayHandle, overlay_width);
 
     if (m_DragModeOverlayID != k_ulOverlayID_None)
@@ -671,6 +675,11 @@ float OverlayDragger::DragAddWidth(float width)
     }
 
     return overlay_width;
+}
+
+void OverlayDragger::DragSetMaxWidth(float max_width)
+{
+    m_DragModeMaxWidth = max_width;
 }
 
 Matrix4 OverlayDragger::DragFinish()
@@ -791,6 +800,7 @@ void OverlayDragger::DragGestureUpdate()
             {
                 //Scale is just the start scale multiplied by the factor of changed controller distance
                 float width = m_DragGestureScaleWidthStart * (m_DragGestureScaleDistanceLast / m_DragGestureScaleDistanceStart);
+                width = std::min(width, m_DragModeMaxWidth);
                 vr::VROverlay()->SetOverlayWidthInMeters(m_DragModeOverlayHandle, width);
 
                 if (m_DragModeOverlayID != k_ulOverlayID_None)

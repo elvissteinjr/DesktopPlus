@@ -64,6 +64,7 @@ class FloatingWindow
 {
     protected:
         float m_OvrlWidth;
+        float m_OvrlWidthMax;             //Maximum width passed to OverlayDragger
         float m_Alpha;
         bool m_OvrlVisible;
         bool m_IsTransitionFading;
