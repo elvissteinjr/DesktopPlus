@@ -459,5 +459,7 @@ class ConfigManager
         const std::string& GetExecutableName() const;
         bool IsSteamInstall() const;
         vr::TrackedDeviceIndex_t GetPrimaryLaserPointerDevice() const;                 //GetPrimaryDashboardDevice() but works with Desktop+'s laser pointer as well
-        bool IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayHandle) const; //IsHoverTargetOverlay() but works with Desktop+'s laser pointer as well
+
+        //IsHoverTargetOverlay() but works with Desktop+'s laser pointer as well, no_intersection_check skips additional intersection check for system laser pointer
+        bool IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayHandle, bool no_intersection_check = false) const;
 };

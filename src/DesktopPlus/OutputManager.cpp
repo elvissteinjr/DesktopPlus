@@ -1158,7 +1158,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         OverlayManager::Get().SetCurrentOverlayID(overlay_id);
 
                         //Check if it's still being hovered since it could be off before the message is processed
-                        if (ConfigManager::Get().IsLaserPointerTargetOverlay(OverlayManager::Get().GetCurrentOverlay().GetHandle()))
+                        if (ConfigManager::Get().IsLaserPointerTargetOverlay(OverlayManager::Get().GetCurrentOverlay().GetHandle(), true))
                         {
                             //Reset input and WindowManager state manually since the overlay mouse up even will be consumed to finish the drag later
                             m_InputSim.MouseSetLeftDown(false);

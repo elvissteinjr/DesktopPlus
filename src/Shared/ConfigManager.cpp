@@ -1576,7 +1576,7 @@ vr::TrackedDeviceIndex_t ConfigManager::GetPrimaryLaserPointerDevice() const
     return vr::VROverlay()->GetPrimaryDashboardDevice();
 }
 
-bool ConfigManager::IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayHandle) const
+bool ConfigManager::IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayHandle, bool no_intersection_check) const
 {
     if (vr::VROverlay() == nullptr)
         return false;
@@ -1587,10 +1587,15 @@ bool ConfigManager::IsLaserPointerTargetOverlay(vr::VROverlayHandle_t ulOverlayH
     {
         if (vr::VROverlay()->IsHoverTargetOverlay(ulOverlayHandle))
         {
-            //Double check IsHoverTargetOverlay() with an intersection check as it's not guaranteed to always return false after leaving an overlay
-            //(it mostly does, but it's documented as returning the last overlay)
-            vr::VROverlayIntersectionResults_t results;
-            ret = vr::IVROverlayEx::ComputeOverlayIntersectionForDevice(ulOverlayHandle, vr::VROverlay()->GetPrimaryDashboardDevice(), vr::TrackingUniverseStanding, &results);
+            ret = true;
+
+            if (!no_intersection_check)
+            {
+                //Double check IsHoverTargetOverlay() with an intersection check as it's not guaranteed to always return false after leaving an overlay
+                //(it mostly does, but it's documented as returning the last overlay)
+                vr::VROverlayIntersectionResults_t results;
+                ret = vr::IVROverlayEx::ComputeOverlayIntersectionForDevice(ulOverlayHandle, vr::VROverlay()->GetPrimaryDashboardDevice(), vr::TrackingUniverseStanding, &results);
+            }
         }
     }
 
