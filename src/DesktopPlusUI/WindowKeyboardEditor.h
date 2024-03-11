@@ -34,6 +34,7 @@ class KeyboardEditor
         void UpdateWindowPreview();
 
         std::pair<int, int> GetKeyRowRange(KeyboardLayoutSubLayout sublayout, int row_id);  //Returns beginning & end key IDs
+        int FindKeyWithClosestPosInNewSubLayout(int key_index, KeyboardLayoutSubLayout sublayout_id_current, KeyboardLayoutSubLayout sublayout_id_new);
 
         void HistoryPush();
         void HistoryPushInternal(std::vector<HistoryItem>& target_history);

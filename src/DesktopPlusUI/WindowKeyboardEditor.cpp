@@ -65,7 +65,9 @@ void KeyboardEditor::UpdateWindowKeyList()
 
                 if (current_sublayout != m_SelectedSublayout)
                 {
+                    m_SelectedKeyID = FindKeyWithClosestPosInNewSubLayout(m_SelectedKeyID, m_SelectedSublayout, current_sublayout);
                     m_SelectedSublayout = current_sublayout;
+
                     m_HasChangedSelectedKey = true;
                 }
 
@@ -1586,6 +1588,82 @@ std::pair<int, int> KeyboardEditor::GetKeyRowRange(KeyboardLayoutSubLayout subla
     }
 
     return std::make_pair(key_id_begin, key_id_end);
+}
+
+int KeyboardEditor::FindKeyWithClosestPosInNewSubLayout(int key_index, KeyboardLayoutSubLayout sublayout_id_current, KeyboardLayoutSubLayout sublayout_id_new)
+{
+    //Not to be confused with WindowKeyboard::FindSameKeyInNewSubLayout() which only finds exact matches with same function at same pos instead
+    if (key_index < 0)
+        return -1;
+
+    //Return index of key with position closest to sublayout_current's key_index key position
+    VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+    const auto& sublayout_current = vr_keyboard.GetLayout(sublayout_id_current);
+    const auto& sublayout_new     = vr_keyboard.GetLayout(sublayout_id_new);
+
+    //Skip if index doesn't exist in layout for some reason
+    if (sublayout_current.size() <= key_index)
+        return -1;
+
+    //Get key position in current layout
+    int i = 0;
+    Vector2 key_current_pos;
+
+    for (const auto& key : sublayout_current)
+    {
+        if (i == key_index)
+        {
+            break;
+        }
+
+        key_current_pos.x += key.Width;
+
+        if (key.IsRowEnd)
+        {
+            key_current_pos.x  = 0.0f;
+            key_current_pos.y += 1.0f; //Key height doesn't matter, advance a row
+        }
+
+        i++;
+    }
+
+    //Find key closest to the old position in new layout
+    i = 0;
+    Vector2 key_new_pos;
+    int key_lowest_dist_id = -1;
+    float key_lowest_dist = FLT_MAX;
+
+    for (const auto& key : sublayout_new)
+    {
+        if ( (key_new_pos.y == key_current_pos.y) && (key_new_pos.x == key_current_pos.x) )
+        {
+            //Key exists at the same position return that
+            return i;
+        }
+        else
+        {
+            //Alternatively get the closest key and return that at the end if we don't find anything better
+            float distance = key_new_pos.distance(key_current_pos);
+
+            if (distance < key_lowest_dist)
+            {
+                key_lowest_dist_id = i;
+                key_lowest_dist = distance;
+            }
+        }
+
+        key_new_pos.x += key.Width;
+
+        if (key.IsRowEnd)
+        {
+            key_new_pos.x  = 0.0f;
+            key_new_pos.y += 1.0f;
+        }
+
+        i++;
+    }
+
+    return key_lowest_dist_id;
 }
 
 void KeyboardEditor::HistoryPush()
