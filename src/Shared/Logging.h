@@ -5,7 +5,7 @@
 #include "loguru.hpp"
 
 //Version string logged and displayed in the UI
-static const char* const k_pch_DesktopPlusVersion = "Desktop+ NewUI Preview 13";
+static const char* const k_pch_DesktopPlusVersion = "Desktop+ NewUI Preview 14";
 
 void DPLog_Init(const char* name);
 void DPLog_SteamVR_SystemInfo();
