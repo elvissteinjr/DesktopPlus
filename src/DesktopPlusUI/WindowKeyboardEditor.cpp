@@ -527,19 +527,19 @@ void KeyboardEditor::UpdateWindowKeyProperties()
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, style.ItemSpacing.y});    //Avoid horizontal padding from the column
 
     ImGui::Columns(2, "ColumnKeyProps", false);
-    ImGui::SetColumnWidth(0, io.DisplaySize.x / 6.0f);
+    ImGui::SetColumnWidth(0, (float)(int)(io.DisplaySize.x / 6.0f));
 
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_KeyboardEditorKeyPropertiesType));
 
     if (key.KeyType == kbdlayout_key_virtual_key_iso_enter)
     {
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         ImGui::FixedHelpMarker(TranslationManager::GetString(tstr_KeyboardEditorKeyPropertiesTypeVirtualKeyIsoEnterTip));
     }
     else if (key.KeyType == kbdlayout_key_string)
     {
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         ImGui::FixedHelpMarker(TranslationManager::GetString(tstr_KeyboardEditorKeyPropertiesTypeStringTip));
     }
     ImGui::NextColumn();
@@ -682,7 +682,7 @@ void KeyboardEditor::UpdateWindowKeyProperties()
 
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_KeyboardEditorKeyPropertiesCluster));
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
     ImGui::FixedHelpMarker(TranslationManager::GetString(tstr_KeyboardEditorKeyPropertiesClusterTip));
 
     ImGui::NextColumn();
@@ -701,6 +701,9 @@ void KeyboardEditor::UpdateWindowKeyProperties()
     }
     ImGui::NextColumn();
 
+    ImGui::Columns(1);
+    ImGui::PopStyleVar();   //ImGuiStyleVar_ItemSpacing
+
     if (key.KeyType == kbdlayout_key_virtual_key)
     {
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_KeyboardEditorKeyPropertiesBlockModifiers), &key.BlockModifiers))
@@ -710,11 +713,10 @@ void KeyboardEditor::UpdateWindowKeyProperties()
             HistoryPush();
             key.BlockModifiers = !key.BlockModifiers;
         }
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         ImGui::FixedHelpMarker(TranslationManager::GetString(tstr_KeyboardEditorKeyPropertiesBlockModifiersTip));
 
-        ImGui::NextColumn();
-        ImGui::NextColumn();
+        ImGui::SameLine();
     }
 
     if (key.KeyType != kbdlayout_key_blank_space)
@@ -725,12 +727,9 @@ void KeyboardEditor::UpdateWindowKeyProperties()
             HistoryPush();
             key.NoRepeat = !key.NoRepeat;
         }
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         ImGui::FixedHelpMarker(TranslationManager::GetString(tstr_KeyboardEditorKeyPropertiesNoRepeatTip));
     }
-
-    ImGui::Columns(1);
-    ImGui::PopStyleVar();   //ImGuiStyleVar_ItemSpacing
 
 
     //-Key Code Picker popup
@@ -1086,7 +1085,7 @@ void KeyboardEditor::UpdateWindowMetadata()
 
         UIManager::Get()->RepeatFrame();
     }
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
     ImGui::FixedHelpMarker(TranslationManager::GetString(tstr_KeyboardEditorMetadataHasAltGrTip));
 
     ImGui::Spacing();
@@ -1176,7 +1175,7 @@ void KeyboardEditor::UpdateWindowMetadata()
 
         if (is_name_blank)
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             ImGui::FixedHelpMarker(TranslationManager::GetString(tstr_KeyboardEditorMetadataSavePopupFilenameBlankTip), "(!)");
         }
 
