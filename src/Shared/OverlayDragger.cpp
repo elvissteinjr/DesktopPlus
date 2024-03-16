@@ -284,23 +284,24 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
 
             matrix = m_DashboardMatLast;
 
-            //Matrix will be tilted in new dashboard, so force it upright again
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
-                //This doesn't follow the dashboard rotation when moved up- or downwards, but the old behavior didn't do it properly either, so this is good enough for now
-                TransformForceUpright(matrix);
-                ApplyDashboardScale(matrix);
+                //Magic number, from taking the difference of both version's dashboard origins at the same HMD position
+                const Matrix4 matrix_to_old_dash( 1.14634132f,      3.725290300e-09f, -3.725290300e-09f, 0.00000000f, 
+                                                  0.00000000f,      0.878148496f,      0.736854136f,     0.00000000f, 
+                                                  7.45058060e-09f, -0.736854076f,      0.878148496f,     0.00000000f,
+                                                 -5.96046448e-08f,  2.174717430f,      0.123533726f,     1.00000000f);
+
+                //Move origin point roughly back to where it was in the old dashboard
+                matrix = matrix * matrix_to_old_dash;
+
+                //Move matrix towards normal dashboard overlay position
+                matrix.translate_relative(0.0f, -0.57f, 0.32f);
             }
-
-            Vector3 pos_offset = matrix.getTranslation();
-            pos_offset.y = m_DashboardHMD_Y;
-            pos_offset.y -= 0.44f;              //Move 0.44m down for better dashboard overlay default pos (needs to fit Floating UI though)
-            matrix.setTranslation(pos_offset);
-
-            //Move matrix towards normal dashboard overlay position
-            if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+            else
             {
-                matrix.translate_relative(0.0f, 0.0f, -0.8f);
+                //Move matrix towards normal dashboard overlay position
+                matrix.translate_relative(0.0f, 1.09f, 0.0f);
             }
 
             break;
