@@ -1814,12 +1814,11 @@ void WindowSettings::UpdatePageMainCatMisc()
         ImGui::Spacing();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatVersionInfo)); 
-        ImGui::Columns(2, "ColumnVersion", false);
-        ImGui::SetColumnWidth(0, m_Column0Width);
+        ImGui::Indent();
 
         ImGui::TextUnformatted(k_pch_DesktopPlusVersion);
 
-        ImGui::Columns(1);
+        ImGui::Unindent();
     }
 
     //Warnings
