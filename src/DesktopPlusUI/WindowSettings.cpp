@@ -3087,7 +3087,13 @@ void WindowSettings::UpdateCatMisc()
         ImGui::Columns(2, "ColumnVersionInfo", false);
         ImGui::SetColumnWidth(0, column_width_0 * 2.0f);
 
-        ImGui::Text("Desktop+ Version 2.8.6");
+        //DPLUS_SHA is set externally for nightly builds to use the commit hash in version string
+        #ifdef DPLUS_SHA
+            const char* str_version = "Desktop+ " DPLUS_SHA;
+        #else
+            const char* str_version = "Desktop+ Version 2.8.6";
+        #endif
+        ImGui::TextUnformatted(str_version);
 
         ImGui::Columns(1);
     }

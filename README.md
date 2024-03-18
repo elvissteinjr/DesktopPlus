@@ -30,6 +30,11 @@ Install Desktop+ from its [Steam store page](https://store.steampowered.com/app/
 
 Download and extract the latest archive from the [releases page](https://github.com/elvissteinjr/DesktopPlus/releases). Follow instructions in the included [readme file](assets/readme.txt).
 
+### Nightly Build
+
+An automated build based on the latest code changes can be downloaded from [here](https://nightly.link/elvissteinjr/DesktopPlus/workflows/nightly/master).  
+Keep in mind that nightly builds are unstable and mostly untested. Prefer the latest release if possible.
+
 ### Building from Source
 
 The Visual Studio 2019 Solution builds out of the box with no further external dependencies.  

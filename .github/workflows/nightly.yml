@@ -1,0 +1,50 @@
+name: Nightly Build
+
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
+      - 'CONTRIBUTING'
+      - 'LICENSE'
+      - 'docs/**'
+
+env:
+  SOLUTION_FILE_PATH: ./src/DesktopPlus.sln
+  OUTPUT_PATH: ./src/x64/Release
+  BUILD_CONFIGURATION: Release
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Restore NuGet Packages
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:DPLUS_SHA='"${{github.sha}}"' ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Rename Output Folder for Archive
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ren ${{env.OUTPUT_PATH}} DesktopPlus
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: DesktopPlus-${{github.sha}}
+        path: |
+          ./src/x64
+          !./**/*.h
+          !./**/*.lib
+          !./**/*.exp
