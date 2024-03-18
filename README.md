@@ -38,8 +38,6 @@ Graphics Capture support can be disabled entirely if desired. Windows 8 SDK or n
 
 Other compilers likely work as well, but are neither tested nor have a build configuration.
 
-After building, add the contents of the [assets](assets) directory to the executables.
-
 ## Demonstration
 
 [comment]: # (Honestly kind of lost here. Would've preferred to host the clips on the repo, but people probably want them to play in the browser and not download instead)

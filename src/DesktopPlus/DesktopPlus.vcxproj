@@ -173,7 +173,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN8;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>None</DebugInformationFormat>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Full</Optimization>
       <AdditionalIncludeDirectories>$(OutDir);..\Shared;..\DesktopPlus;..\DesktopPlusWinRT</AdditionalIncludeDirectories>
       <WarningLevel>
       </WarningLevel>
@@ -338,6 +338,13 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\Shared\icon_desktop.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\assets\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <DeploymentContent>true</DeploymentContent>
+      <Link>%(RecursiveDir)\%(Filename)%(Extension)</Link>
+    </Content>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
