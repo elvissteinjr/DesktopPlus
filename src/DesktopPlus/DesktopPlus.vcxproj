@@ -51,7 +51,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>LOGURU_FILENAME_WIDTH=30;LOGURU_VERBOSE_SCOPE_ENDINGS=0;WIN32;_DEBUG;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN8;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>LOGURU_FILENAME_WIDTH=30;LOGURU_VERBOSE_SCOPE_ENDINGS=0;DPLUS_SHA=$(DPLUS_SHA);WIN32;_DEBUG;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN8;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -74,7 +74,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>LOGURU_FILENAME_WIDTH=30;LOGURU_VERBOSE_SCOPE_ENDINGS=0;WIN32;NDEBUG;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN8;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>LOGURU_FILENAME_WIDTH=30;LOGURU_VERBOSE_SCOPE_ENDINGS=0;DPLUS_SHA=$(DPLUS_SHA);WIN32;NDEBUG;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WIN8;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>None</DebugInformationFormat>
       <Optimization>Full</Optimization>

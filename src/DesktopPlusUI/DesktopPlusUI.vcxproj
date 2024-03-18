@@ -55,7 +55,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>LOGURU_FILENAME_WIDTH=30;LOGURU_VERBOSE_SCOPE_ENDINGS=0;DPLUS_UI;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>LOGURU_FILENAME_WIDTH=30;LOGURU_VERBOSE_SCOPE_ENDINGS=0;DPLUS_UI;DPLUS_SHA=$(DPLUS_SHA);_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.\imgui_win32_dx11_openvr;.\imgui;.\implot;$(OutDir);..\Shared;..\DesktopPlusUI;..\DesktopPlusWinRT;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DisableSpecificWarnings>26812;%(DisableSpecificWarnings)</DisableSpecificWarnings>
@@ -76,7 +76,7 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>LOGURU_FILENAME_WIDTH=30;LOGURU_VERBOSE_SCOPE_ENDINGS=0;DPLUS_UI;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>LOGURU_FILENAME_WIDTH=30;LOGURU_VERBOSE_SCOPE_ENDINGS=0;DPLUS_UI;DPLUS_SHA=$(DPLUS_SHA);NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.\imgui_win32_dx11_openvr;.\imgui;.\implot;$(OutDir);..\Shared;..\DesktopPlusUI;..\DesktopPlusWinRT;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OmitFramePointers>true</OmitFramePointers>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
