@@ -283,6 +283,8 @@ void ActionManager::DoMousePosCommand(const ActionCommand& command, OverlayIDLis
             {
                 outmgr->GetInputSimulator().MouseMove(mouse_x, mouse_y);
             }
+
+            has_moved_for_desktop = true;
         }
     }
 }
