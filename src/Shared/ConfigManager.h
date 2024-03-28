@@ -81,6 +81,7 @@ enum ConfigID_Bool
     configid_bool_input_mouse_render_intersection_blob,
     configid_bool_input_mouse_scroll_smooth,
     configid_bool_input_mouse_allow_pointer_override,
+    configid_bool_input_mouse_simulate_pen_input,
     configid_bool_input_keyboard_cluster_function_enabled,
     configid_bool_input_keyboard_cluster_navigation_enabled,
     configid_bool_input_keyboard_cluster_numpad_enabled,
@@ -108,6 +109,7 @@ enum ConfigID_Bool
     configid_bool_state_overlay_selectmode,
     configid_bool_state_overlay_dragselectmode_show_hidden,   //True if mode is from a popup
     configid_bool_state_overlay_dragmode_temp,
+    configid_bool_state_pen_simulation_supported,
     configid_bool_state_window_focused_process_elevated,
     configid_bool_state_keyboard_visible,
     configid_bool_state_performance_gpu_copy_active,

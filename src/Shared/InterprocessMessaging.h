@@ -119,6 +119,10 @@ enum IPCElevatedActionID
     ipceact_mouse_move,                //lParam = X & Y (in low/high word order, signed)
     ipceact_mouse_hwheel,              //lParam = delta (float)
     ipceact_mouse_vwheel,              //lParam = delta (float)
+    ipceact_pen_move,                  //lParam = X & Y (in low/high word order, signed)
+    ipceact_pen_button_down,           //lParam = Button ID (0/1)
+    ipceact_pen_button_up,             //lParam = Button ID (0/1)
+    ipceact_pen_leave,                 //No data in lParam
     ipceact_key_down,                  //lParam = Keycodes (3 unsigned chars)
     ipceact_key_up,                    //lParam = Keycodes (3 unsigned chars)
     ipceact_key_toggle,                //lParam = Keycodes (3 unsigned chars)

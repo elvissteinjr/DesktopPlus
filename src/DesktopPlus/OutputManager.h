@@ -228,8 +228,6 @@ class OutputManager
         bool m_MouseLastLaserPointerMoveBlocked;
         int m_MouseLastLaserPointerX;
         int m_MouseLastLaserPointerY;
-        int m_MouseDefaultHotspotX;
-        int m_MouseDefaultHotspotY;
         int m_MouseIgnoreMoveEventMissCount;
         unsigned int m_MouseLeftDownOverlayID;
 

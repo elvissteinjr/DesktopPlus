@@ -230,6 +230,8 @@ enum TRMGRStrID
     tstr_SettingsMouseShowCursorGCUnsupported,
     tstr_SettingsMouseShowCursorGCActiveWarning,
     tstr_SettingsMouseScrollSmooth,
+    tstr_SettingsMouseSimulatePen,
+    tstr_SettingsMouseSimulatePenUnsupported,
     tstr_SettingsMouseAllowLaserPointerOverride,
     tstr_SettingsMouseAllowLaserPointerOverrideTip,
     tstr_SettingsMouseDoubleClickAssist,

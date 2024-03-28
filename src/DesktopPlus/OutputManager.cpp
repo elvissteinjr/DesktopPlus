@@ -84,8 +84,6 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MouseLastLaserPointerMoveBlocked(false),
     m_MouseLastLaserPointerX(-1),
     m_MouseLastLaserPointerY(-1),
-    m_MouseDefaultHotspotX(0),
-    m_MouseDefaultHotspotY(0),
     m_MouseIgnoreMoveEventMissCount(0),
     m_MouseLeftDownOverlayID(k_ulOverlayID_None),
     m_IsFirstLaunch(false),
@@ -233,8 +231,6 @@ void OutputManager::CleanRefs()
     m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
     m_MouseLastLaserPointerX = -1;
     m_MouseLastLaserPointerY = -1;
-    m_MouseDefaultHotspotX = 0;
-    m_MouseDefaultHotspotY = 0;
 
     if (m_KeyMutex)
     {
@@ -500,23 +496,6 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
         return Return;
     }
 
-    // Load default cursor
-    HCURSOR Cursor = nullptr;
-    Cursor = LoadCursor(nullptr, IDC_ARROW);
-    //Get default cursor hotspot for laser pointing
-    if (Cursor)
-    {
-        ICONINFO info = { 0 };
-        if (::GetIconInfo(Cursor, &info) != 0)
-        {
-            m_MouseDefaultHotspotX = info.xHotspot;
-            m_MouseDefaultHotspotY = info.yHotspot;
-
-            ::DeleteObject(info.hbmColor);
-            ::DeleteObject(info.hbmMask);
-        }
-    }
-
     //In case this was called due to a resolution change, check if the crop was just exactly the set desktop in each overlay and adapt then
     if (!ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring))
     {
@@ -702,6 +681,10 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     ConfigManager::Get().InitConfigForWMR();
     DPWinRT_SetDesktopEnumerationFlags( (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1) );
     LOG_IF_F(INFO, (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1), "WMR headset detected, ignoring additional virtual displays");
+
+    //Set pen simulation support state so the UI can act on it
+    ConfigManager::SetValue(configid_bool_state_pen_simulation_supported, m_InputSim.IsPenSimulationSupported());
+    LOG_F(INFO, "Pen input simulation is %s", (m_InputSim.IsPenSimulationSupported()) ? "supported" : "not supported");
 
     //Init background overlay if needed
     m_BackgroundOverlay.Update();
@@ -1151,6 +1134,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 case ipcact_winmanager_drag_start:
                 {
                     unsigned int overlay_id = (unsigned int)msg.lParam;
+                    const bool use_pen = ConfigManager::GetValue(configid_bool_input_mouse_simulate_pen_input);
 
                     if (m_OverlayDragger.GetDragDeviceID() == -1)
                     {
@@ -1161,7 +1145,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         if (ConfigManager::Get().IsLaserPointerTargetOverlay(OverlayManager::Get().GetCurrentOverlay().GetHandle(), true))
                         {
                             //Reset input and WindowManager state manually since the overlay mouse up even will be consumed to finish the drag later
-                            m_InputSim.MouseSetLeftDown(false);
+                            (use_pen) ? m_InputSim.PenSetPrimaryDown(false) : m_InputSim.MouseSetLeftDown(false);
                             WindowManager::Get().SetTargetWindow(nullptr);
 
                             if (ConfigManager::GetValue(configid_int_overlay_origin) != ovrl_origin_theater_screen)
@@ -1187,7 +1171,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
                     else if (overlay_id == k_ulOverlayID_None) //Means it came from a blocked drag, reset input and WindowManager state
                     {
-                        m_InputSim.MouseSetLeftDown(false);
+                        (use_pen) ? m_InputSim.PenSetPrimaryDown(false) : m_InputSim.MouseSetLeftDown(false);
                         WindowManager::Get().SetTargetWindow(nullptr);
                     }
 
@@ -1289,6 +1273,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                     //Global config state
                     IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_interface_desktop_count, ConfigManager::GetValue(configid_int_state_interface_desktop_count));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_pen_simulation_supported, ConfigManager::GetValue(configid_bool_state_pen_simulation_supported));
                     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_window_focused_process_elevated, ConfigManager::GetValue(configid_bool_state_window_focused_process_elevated));
                     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_elevated, ConfigManager::GetValue(configid_bool_state_misc_process_elevated));
                     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_started_by_steam, ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam));
@@ -4092,7 +4077,9 @@ bool OutputManager::HandleOpenVREvents()
                         //A resize while drag can make the pointer lose focus, which is pretty janky. Remove target and do mouse up at least.
                         if (WindowManager::Get().GetTargetWindow() != nullptr)
                         {
-                            m_InputSim.MouseSetLeftDown(false);
+                            const bool use_pen = ConfigManager::GetValue(configid_bool_input_mouse_simulate_pen_input);
+                            (use_pen) ? m_InputSim.PenSetPrimaryDown(false) : m_InputSim.MouseSetLeftDown(false);
+
                             WindowManager::Get().SetTargetWindow(nullptr);
                         }
 
@@ -4114,6 +4101,8 @@ bool OutputManager::HandleOpenVREvents()
                         DPBrowserAPIClient::Get().DPBrowser_MouseLeave(overlay.GetHandle());
                         break;
                     }
+
+                    m_InputSim.PenLeave();
 
                     break;
                 }
@@ -4285,6 +4274,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 {
     const Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
     const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+    const bool use_pen = ConfigManager::GetValue(configid_bool_input_mouse_simulate_pen_input);
 
     switch (vr_event.eventType)
     {
@@ -4295,32 +4285,6 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                  (m_OverlayDragger.IsDragActive()) || (overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui) )
             {
                 break;
-            }
-
-            //Get hotspot value to use
-            int hotspot_x = 0;
-            int hotspot_y = 0;
-            bool is_cursor_visible = false;
-
-            if (m_OvrlDesktopDuplActiveCount != 0)
-            {
-                is_cursor_visible = m_MouseLastInfo.Visible; //We're using a cached value here so we don't have to lock the shared surface for this function
-            }
-            else //If there are no desktop duplication overlays we can't rely on the cached value since it receive no updates
-            {
-                CURSORINFO cursor_info;
-                cursor_info.cbSize = sizeof(CURSORINFO);
-
-                if (::GetCursorInfo(&cursor_info))
-                {
-                    is_cursor_visible = (cursor_info.flags == CURSOR_SHOWING);
-                }
-            }
-
-            if (is_cursor_visible) 
-            {
-                hotspot_x = m_MouseDefaultHotspotX;
-                hotspot_y = m_MouseDefaultHotspotY;
             }
 
             //Offset depending on capture source
@@ -4388,8 +4352,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             }
 
             //GL space (0,0 is bottom left), so we need to flip that around (not correct for browser overlays, but also not relevant for how the values are used with them right now)
-            int pointer_x = (round(vr_event.data.mouse.x) - hotspot_x) + offset_x;
-            int pointer_y = ((-round(vr_event.data.mouse.y) + content_height) - hotspot_y) + offset_y;
+            int pointer_x =   round(vr_event.data.mouse.x) + offset_x;
+            int pointer_y = (-round(vr_event.data.mouse.y) + content_height) + offset_y;
 
             //If double click assist is current active, check if there was an obviously deliberate movement and cancel it then
             if ( (ConfigManager::GetValue(configid_int_state_mouse_dbl_click_assist_duration_ms) != 0) &&
@@ -4424,7 +4388,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                                                                     m_MouseLastLaserPointerX, m_MouseLastLaserPointerY, pointer_x, pointer_y))
                 {
                     //Reset input and WindowManager state manually to block the drag but still move the cursor on the next mouse move event
-                    m_InputSim.MouseSetLeftDown(false);
+                    (use_pen) ? m_InputSim.PenSetPrimaryDown(false) : m_InputSim.MouseSetLeftDown(false);
+                    
                     WindowManager::Get().SetTargetWindow(nullptr);
 
                     //Start overlay drag if setting enabled
@@ -4471,6 +4436,20 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                     }
                 }
 
+                //Simulated pen input does not move the mouse cursor when an application supports pen input directly, which makes the normal check result in false positives
+                //In this case we only check for override when the mouse cursor position changed compared to last time
+                //While it might seem to make sense to always do this, it actually makes it harder to trigger the override during mouse simulation
+                if (ConfigManager::GetValue(configid_bool_input_mouse_simulate_pen_input))
+                {
+                    static POINT pt_last = {0};
+                    if ((pt.x == pt_last.x) && (pt.y == pt_last.y))
+                    {
+                        do_check_for_override = false;
+                    }
+
+                    pt_last = pt;
+                }
+
                 //Check if the cursor is near the corner of one of the desktops and opt out of the pointer override to avoid sticky mouse corners triggering it
                 //It can still happen sometimes, but this catches most cases
                 if (do_check_for_override)
@@ -4499,9 +4478,18 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
                     int max_miss_count = 10; //Arbitrary number, but appears to work reliably
 
-                    if (m_PerformanceUpdateLimiterDelay.QuadPart != 0) //When updates are limited, try adapting for the lower update rate
+                    //Reduce max miss count to 1 for simulated pen input
+                    if (ConfigManager::GetValue(configid_bool_input_mouse_simulate_pen_input))
                     {
-                        max_miss_count = std::max(1, max_miss_count - int((m_PerformanceUpdateLimiterDelay.QuadPart / 1000) / 20));
+                        max_miss_count = 1;
+                    }
+                    else
+                    {
+                        //When updates are limited, try adapting for the lower update rate
+                        if (m_PerformanceUpdateLimiterDelay.QuadPart != 0)
+                        {
+                            max_miss_count = std::max(1, max_miss_count - int((m_PerformanceUpdateLimiterDelay.QuadPart / 1000) / 20));
+                        }
                     }
 
                     if (m_MouseIgnoreMoveEventMissCount > max_miss_count)
@@ -4531,7 +4519,10 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             if (m_MouseLastLaserPointerMoveBlocked) 
             {
                 //Move a single pixel in the direction of the new pointer position
-                m_InputSim.MouseMove(m_MouseLastLaserPointerX + sgn(pointer_x - m_MouseLastLaserPointerX), m_MouseLastLaserPointerY + sgn(pointer_y - m_MouseLastLaserPointerY));
+                pointer_x = m_MouseLastLaserPointerX + sgn(pointer_x - m_MouseLastLaserPointerX);
+                pointer_y = m_MouseLastLaserPointerY + sgn(pointer_y - m_MouseLastLaserPointerY);
+
+                (use_pen) ? m_InputSim.PenMove(pointer_x, pointer_y) : m_InputSim.MouseMove(pointer_x, pointer_y);
 
                 m_MouseLastLaserPointerMoveBlocked = false;
                 //Real movement continues on the next mouse move event
@@ -4539,7 +4530,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             else
             {
                 //Finally do the actual cursor movement if we're still here
-                m_InputSim.MouseMove(pointer_x, pointer_y);
+                (use_pen) ? m_InputSim.PenMove(pointer_x, pointer_y) : m_InputSim.MouseMove(pointer_x, pointer_y);
+
                 m_MouseLastLaserPointerX = pointer_x;
                 m_MouseLastLaserPointerY = pointer_y;
             }
@@ -4684,11 +4676,11 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
             switch (vr_event.data.mouse.button)
             {
-                case vr::VRMouseButton_Left:    m_InputSim.MouseSetLeftDown(true);   break;
-                case vr::VRMouseButton_Right:   m_InputSim.MouseSetRightDown(true);  break;
-                case vr::VRMouseButton_Middle:  m_InputSim.MouseSetMiddleDown(true); break; //This is never sent by SteamVR, but our own laser pointer supports this
-                case VRMouseButton_DP_Aux01: action_manager.StartAction(ConfigManager::GetValue(configid_handle_input_go_back_action_uid), overlay_current.GetID()); break;
-                case VRMouseButton_DP_Aux02: action_manager.StartAction(ConfigManager::GetValue(configid_handle_input_go_home_action_uid), overlay_current.GetID()); break;
+                case vr::VRMouseButton_Left:   (use_pen) ? m_InputSim.PenSetPrimaryDown(true)   : m_InputSim.MouseSetLeftDown(true);   break;
+                case vr::VRMouseButton_Right:  (use_pen) ? m_InputSim.PenSetSecondaryDown(true) : m_InputSim.MouseSetRightDown(true);  break;
+                case vr::VRMouseButton_Middle:             m_InputSim.MouseSetMiddleDown(true);                                        break;
+                case VRMouseButton_DP_Aux01:   action_manager.StartAction(ConfigManager::GetValue(configid_handle_input_go_back_action_uid), overlay_current.GetID()); break;
+                case VRMouseButton_DP_Aux02:   action_manager.StartAction(ConfigManager::GetValue(configid_handle_input_go_home_action_uid), overlay_current.GetID()); break;
             }
 
             break;
@@ -4758,9 +4750,9 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
 
             switch (vr_event.data.mouse.button)
             {
-                case vr::VRMouseButton_Left:   m_InputSim.MouseSetLeftDown(false);   break;
-                case vr::VRMouseButton_Right:  m_InputSim.MouseSetRightDown(false);  break;
-                case vr::VRMouseButton_Middle: m_InputSim.MouseSetMiddleDown(false); break;
+                case vr::VRMouseButton_Left:   (use_pen) ? m_InputSim.PenSetPrimaryDown(false)   : m_InputSim.MouseSetLeftDown(false);  break;
+                case vr::VRMouseButton_Right:  (use_pen) ? m_InputSim.PenSetSecondaryDown(false) : m_InputSim.MouseSetRightDown(false); break;
+                case vr::VRMouseButton_Middle:             m_InputSim.MouseSetMiddleDown(false);                                        break;
                 case VRMouseButton_DP_Aux01:   action_manager.StopAction(ConfigManager::GetValue(configid_handle_input_go_back_action_uid), overlay_current.GetID()); break;
                 case VRMouseButton_DP_Aux02:   action_manager.StopAction(ConfigManager::GetValue(configid_handle_input_go_home_action_uid), overlay_current.GetID()); break;
             }

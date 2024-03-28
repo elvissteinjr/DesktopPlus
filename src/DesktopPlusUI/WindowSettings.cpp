@@ -1512,6 +1512,17 @@ void WindowSettings::UpdatePageMainCatInput()
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_mouse_scroll_smooth, scroll_smooth);
         }
 
+        bool& simulate_pen = ConfigManager::GetRef(configid_bool_input_mouse_simulate_pen_input);
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsMouseSimulatePen), &simulate_pen))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_mouse_simulate_pen_input, simulate_pen);
+        }
+        if (!ConfigManager::GetValue(configid_bool_state_pen_simulation_supported))
+        {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsMouseSimulatePenUnsupported), "(!)");
+        }
+
         bool& pointer_override = ConfigManager::Get().GetRef(configid_bool_input_mouse_allow_pointer_override);
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsMouseAllowLaserPointerOverride), &pointer_override))
         {

@@ -209,6 +209,26 @@ bool HandleIPCMessage(MSG msg)
                     input_sim.MouseWheelVertical(pun_cast<float, LPARAM>(msg.lParam));
                     break;
                 };
+                case ipceact_pen_move:
+                {
+                    input_sim.PenMove(GET_X_LPARAM(msg.lParam), GET_Y_LPARAM(msg.lParam));
+                    break;
+                };
+                case ipceact_pen_button_down:
+                {
+                    (msg.lParam == 0) ? input_sim.PenSetPrimaryDown(true) : input_sim.PenSetSecondaryDown(true);
+                    break;
+                };
+                case ipceact_pen_button_up:
+                {
+                    (msg.lParam == 0) ? input_sim.PenSetPrimaryDown(false) : input_sim.PenSetSecondaryDown(false);
+                    break;
+                };
+                case ipceact_pen_leave:
+                {
+                    input_sim.PenLeave();
+                    break;
+                };
                 case ipceact_key_down:
                 {
                     //Copy 3 keycodes from lparam

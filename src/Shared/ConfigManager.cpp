@@ -98,6 +98,9 @@ ConfigManager::ConfigManager() : m_IsSteamInstall(false)
     //Init desktop count to the system metric, which already correct for most users
     m_ConfigInt[configid_int_state_interface_desktop_count] = ::GetSystemMetrics(SM_CMONITORS);
 
+    //Assume pen simulation is supported by default, as that's true for most users
+    m_ConfigBool[configid_bool_state_pen_simulation_supported] = true;
+
     //Init laser pointer hint to HMD (not controllers since they could be disconnected)
     m_ConfigInt[configid_int_state_laser_pointer_device_hint]  = vr::k_unTrackedDeviceIndex_Hmd;
     m_ConfigInt[configid_int_state_dplus_laser_pointer_device] = vr::k_unTrackedDeviceIndexInvalid;
@@ -524,6 +527,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_input_mouse_dbl_click_assist_duration_ms]      = config.ReadInt( "Mouse", "DoubleClickAssistDuration", -1);
     m_ConfigBool[configid_bool_input_mouse_scroll_smooth]                   = config.ReadBool("Mouse", "ScrollSmooth", false);
     m_ConfigBool[configid_bool_input_mouse_allow_pointer_override]          = config.ReadBool("Mouse", "AllowPointerOverride", true);
+    m_ConfigBool[configid_bool_input_mouse_simulate_pen_input]              = config.ReadBool("Mouse", "SimulatePenInput", false);
 
     m_ConfigString[configid_str_input_keyboard_layout_file]                 = config.ReadString("Keyboard", "LayoutFile", "qwerty_usa.ini");
     m_ConfigBool[configid_bool_input_keyboard_cluster_function_enabled]     = config.ReadBool("Keyboard", "LayoutClusterFunction",   true);
@@ -1157,6 +1161,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Mouse", "RenderIntersectionBlob",    m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]);
     config.WriteBool("Mouse", "ScrollSmooth",              m_ConfigBool[configid_bool_input_mouse_scroll_smooth]);
     config.WriteBool("Mouse", "AllowPointerOverride",      m_ConfigBool[configid_bool_input_mouse_allow_pointer_override]);
+    config.WriteBool("Mouse", "SimulatePenInput",          m_ConfigBool[configid_bool_input_mouse_simulate_pen_input]);
     config.WriteInt( "Mouse", "DoubleClickAssistDuration", m_ConfigInt[configid_int_input_mouse_dbl_click_assist_duration_ms]);
 
     config.WriteString("Keyboard", "LayoutFile",                m_ConfigString[configid_str_input_keyboard_layout_file].c_str());

@@ -11,10 +11,33 @@ enum KeyboardWin32KeystateFlags
     kbd_w32keystate_flag_alt_down         = 1 << 2
 };
 
-InputSimulator::InputSimulator() :
-    m_SpaceMultiplierX(1.0f), m_SpaceMultiplierY(1.0f), m_SpaceOffsetX(0), m_SpaceOffsetY(0), m_ForwardToElevatedModeProcess(false), m_ElevatedModeHasTextQueued(false)
+fn_CreateSyntheticPointerDevice  InputSimulator::s_p_CreateSyntheticPointerDevice  = nullptr;
+fn_InjectSyntheticPointerInput   InputSimulator::s_p_InjectSyntheticPointerInput   = nullptr;
+fn_DestroySyntheticPointerDevice InputSimulator::s_p_DestroySyntheticPointerDevice = nullptr;
+
+InputSimulator::InputSimulator()
 {
     RefreshScreenOffsets();
+
+    //Try to init pen functions if they're not loaded yet
+    if (!IsPenSimulationSupported())
+    {
+        LoadPenFunctions();
+    }
+
+    //Init pen state (rest can stay at default 0)
+    m_PenState.type = PT_PEN;
+    m_PenState.penInfo.pointerInfo.pointerType = PT_PEN;
+    m_PenState.penInfo.pressure = 1024;                     //Full pressure
+    m_PenState.penInfo.penMask = PEN_MASK_PRESSURE;         //Marked as optional, but without, applications expecting it may read 0 pressure still
+}
+
+InputSimulator::~InputSimulator()
+{
+    if (m_PenDevice != nullptr)
+    {
+        s_p_DestroySyntheticPointerDevice(m_PenDevice);
+    }
 }
 
 void InputSimulator::SetEventForMouseKeyCode(INPUT& input_event, unsigned char keycode, bool down)
@@ -123,6 +146,26 @@ bool InputSimulator::SetEventForKeyCode(INPUT& input_event, unsigned char keycod
     return true;
 }
 
+void InputSimulator::LoadPenFunctions()
+{
+    HMODULE h_user32 = ::LoadLibraryW(L"user32.dll");
+
+    if (h_user32 != nullptr)
+    {
+        s_p_CreateSyntheticPointerDevice  = (fn_CreateSyntheticPointerDevice) GetProcAddress(h_user32, "CreateSyntheticPointerDevice");
+        s_p_InjectSyntheticPointerInput   = (fn_InjectSyntheticPointerInput)  GetProcAddress(h_user32, "InjectSyntheticPointerInput");
+        s_p_DestroySyntheticPointerDevice = (fn_DestroySyntheticPointerDevice)GetProcAddress(h_user32, "DestroySyntheticPointerDevice");
+    }
+}
+
+void InputSimulator::CreatePenDeviceIfNeeded()
+{
+    if (m_PenDevice == nullptr)
+    {
+        m_PenDevice = s_p_CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_INDIRECT);
+    }
+}
+
 void InputSimulator::RefreshScreenOffsets()
 {
     if (m_ForwardToElevatedModeProcess)
@@ -130,8 +173,11 @@ void InputSimulator::RefreshScreenOffsets()
         IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_refresh);
     }
 
-    m_SpaceMultiplierX = 65536.0f / GetSystemMetrics(SM_CXVIRTUALSCREEN);
-    m_SpaceMultiplierY = 65536.0f / GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    m_SpaceMaxX = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    m_SpaceMaxY = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+
+    m_SpaceMultiplierX = 65536.0f / m_SpaceMaxX;
+    m_SpaceMultiplierY = 65536.0f / m_SpaceMaxY;
 
     m_SpaceOffsetX = GetSystemMetrics(SM_XVIRTUALSCREEN) * -1;
     m_SpaceOffsetY = GetSystemMetrics(SM_YVIRTUALSCREEN) * -1;
@@ -202,6 +248,119 @@ void InputSimulator::MouseWheelVertical(float delta)
     input_event.mi.mouseData = DWORD(WHEEL_DELTA * delta);
 
     ::SendInput(1, &input_event, sizeof(INPUT));
+}
+
+void InputSimulator::PenMove(int x, int y)
+{
+    if (!IsPenSimulationSupported())
+        return;
+
+    if (m_ForwardToElevatedModeProcess)
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_pen_move, MAKELPARAM(x, y));
+        return;
+    }
+
+    CreatePenDeviceIfNeeded();
+
+    m_PenState.penInfo.pointerInfo.pointerFlags |= POINTER_FLAG_INRANGE | POINTER_FLAG_UPDATE;
+
+    //Pen input position doesn't appear to be clamped by OS like mouse input and can do weird things if it goes out of range
+    m_PenState.penInfo.pointerInfo.ptPixelLocation.x = clamp(x, -m_SpaceOffsetX, m_SpaceMaxX - m_SpaceOffsetX);
+    m_PenState.penInfo.pointerInfo.ptPixelLocation.y = clamp(y, -m_SpaceOffsetY, m_SpaceMaxY - m_SpaceOffsetY);
+
+    s_p_InjectSyntheticPointerInput(m_PenDevice, &m_PenState, 1);
+}
+
+void InputSimulator::PenSetPrimaryDown(bool down)
+{
+    if (!IsPenSimulationSupported())
+        return;
+
+    if (m_ForwardToElevatedModeProcess)
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, (down) ? ipceact_pen_button_down : ipceact_pen_button_up, 0);
+        return;
+    }
+
+    CreatePenDeviceIfNeeded();
+
+    if (down)
+    {
+        m_PenState.penInfo.pointerInfo.pointerFlags |= POINTER_FLAG_INCONTACT | POINTER_FLAG_DOWN | POINTER_FLAG_FIRSTBUTTON;
+        m_PenState.penInfo.pointerInfo.ButtonChangeType = POINTER_CHANGE_FIRSTBUTTON_DOWN;
+    }
+    else
+    {
+        m_PenState.penInfo.pointerInfo.pointerFlags &= ~(POINTER_FLAG_INCONTACT | POINTER_FLAG_DOWN | POINTER_FLAG_FIRSTBUTTON);
+        m_PenState.penInfo.pointerInfo.pointerFlags |= POINTER_FLAG_UP;
+        m_PenState.penInfo.pointerInfo.ButtonChangeType = POINTER_CHANGE_FIRSTBUTTON_UP;
+    }
+
+    m_PenState.penInfo.pointerInfo.pointerFlags &= ~POINTER_FLAG_UPDATE;
+
+    s_p_InjectSyntheticPointerInput(m_PenDevice, &m_PenState, 1);
+
+    m_PenState.penInfo.pointerInfo.pointerFlags &= ~(POINTER_FLAG_DOWN | POINTER_FLAG_UP);
+    m_PenState.penInfo.pointerInfo.ButtonChangeType = POINTER_CHANGE_NONE;
+}
+
+void InputSimulator::PenSetSecondaryDown(bool down)
+{
+    if (!IsPenSimulationSupported())
+        return;
+
+    if (m_ForwardToElevatedModeProcess)
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, (down) ? ipceact_pen_button_down : ipceact_pen_button_up, 1);
+        return;
+    }
+
+    CreatePenDeviceIfNeeded();
+
+    if (down)
+    {
+        m_PenState.penInfo.pointerInfo.pointerFlags |= POINTER_FLAG_INCONTACT | POINTER_FLAG_DOWN | POINTER_FLAG_SECONDBUTTON;
+        m_PenState.penInfo.pointerInfo.ButtonChangeType = POINTER_CHANGE_SECONDBUTTON_DOWN;
+        m_PenState.penInfo.penFlags = PEN_FLAG_BARREL;
+    }
+    else
+    {
+        m_PenState.penInfo.pointerInfo.pointerFlags &= ~(POINTER_FLAG_INCONTACT | POINTER_FLAG_DOWN | POINTER_FLAG_SECONDBUTTON);
+        m_PenState.penInfo.pointerInfo.pointerFlags |= POINTER_FLAG_UP;
+        m_PenState.penInfo.pointerInfo.ButtonChangeType = POINTER_CHANGE_SECONDBUTTON_UP;
+        m_PenState.penInfo.penFlags = 0;
+    }
+
+    m_PenState.penInfo.pointerInfo.pointerFlags &= ~POINTER_FLAG_UPDATE;
+
+    s_p_InjectSyntheticPointerInput(m_PenDevice, &m_PenState, 1);
+
+    m_PenState.penInfo.pointerInfo.pointerFlags &= ~(POINTER_FLAG_DOWN | POINTER_FLAG_UP);
+    m_PenState.penInfo.pointerInfo.ButtonChangeType = POINTER_CHANGE_NONE;
+}
+
+void InputSimulator::PenLeave()
+{
+    if (!IsPenSimulationSupported())
+        return;
+
+    if (m_ForwardToElevatedModeProcess)
+    {
+        IPCManager::Get().PostMessageToElevatedModeProcess(ipcmsg_elevated_action, ipceact_pen_leave);
+        return;
+    }
+
+    CreatePenDeviceIfNeeded();
+
+    if (m_PenState.penInfo.pointerInfo.pointerFlags & POINTER_FLAG_INRANGE)
+    {
+        m_PenState.penInfo.pointerInfo.pointerFlags = POINTER_FLAG_UPDATE;
+        m_PenState.penInfo.pointerInfo.ButtonChangeType = POINTER_CHANGE_NONE;
+        m_PenState.penInfo.penFlags = 0;
+
+        s_p_InjectSyntheticPointerInput(m_PenDevice, &m_PenState, 1);
+    }
 }
 
 void InputSimulator::KeyboardSetDown(unsigned char keycode)
@@ -697,4 +856,9 @@ bool InputSimulator::IsKeyDown(unsigned char keycode)
     }
 
     return (::GetAsyncKeyState(keycode) < 0);
+}
+
+bool InputSimulator::IsPenSimulationSupported()
+{
+    return (s_p_CreateSyntheticPointerDevice != nullptr);
 }
