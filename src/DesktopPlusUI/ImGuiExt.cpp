@@ -23,12 +23,16 @@ namespace ImGui
     {
         //Hacky solution to make right mouse enable text input on the slider while not touching ImGui code or generalizing it as ctrl press
         ImGuiIO& io = ImGui::GetIO();
-        const bool mouse_left_clicked_old = io.MouseClicked[ImGuiMouseButton_Left];
+        const bool  mouse_left_clicked_old       = io.MouseClicked[ImGuiMouseButton_Left];
+        const bool  mouse_left_down_old          = io.MouseDown[ImGuiMouseButton_Left];
+        const float mouse_left_down_duration_old = io.MouseDownDuration[ImGuiMouseButton_Left];
         const bool key_ctrl_old = io.KeyCtrl;
 
         if (io.MouseClicked[ImGuiMouseButton_Right])
         {
-            io.MouseClicked[ImGuiMouseButton_Left] = true;
+            io.MouseClicked[ImGuiMouseButton_Left]      = true;
+            io.MouseDown[ImGuiMouseButton_Left]         = true;
+            io.MouseDownDuration[ImGuiMouseButton_Left] = 0.0f;
             io.KeyCtrl = true;
             io.KeyMods |= ImGuiMod_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
         }
@@ -113,7 +117,9 @@ namespace ImGui
             value = 0.0f;
 
         //Restore hack
-        io.MouseClicked[ImGuiMouseButton_Left] = mouse_left_clicked_old;
+        io.MouseClicked[ImGuiMouseButton_Left]      = mouse_left_clicked_old;
+        io.MouseDown[ImGuiMouseButton_Left]         = mouse_left_down_old;
+        io.MouseDownDuration[ImGuiMouseButton_Left] = mouse_left_down_duration_old;
         io.KeyCtrl = key_ctrl_old;
         if (!io.KeyCtrl)
         {
@@ -127,12 +133,16 @@ namespace ImGui
     {
         //Hacky solution to make right mouse enable text input on the slider while not touching ImGui code or generalizing it as ctrl press
         ImGuiIO& io = ImGui::GetIO();
-        const bool mouse_left_clicked_old = io.MouseClicked[ImGuiMouseButton_Left];
+        const bool  mouse_left_clicked_old       = io.MouseClicked[ImGuiMouseButton_Left];
+        const bool  mouse_left_down_old          = io.MouseDown[ImGuiMouseButton_Left];
+        const float mouse_left_down_duration_old = io.MouseDownDuration[ImGuiMouseButton_Left];
         const bool key_ctrl_old = io.KeyCtrl;
 
         if (io.MouseClicked[ImGuiMouseButton_Right])
         {
-            io.MouseClicked[ImGuiMouseButton_Left] = true;
+            io.MouseClicked[ImGuiMouseButton_Left]      = true;
+            io.MouseDown[ImGuiMouseButton_Left]         = true;
+            io.MouseDownDuration[ImGuiMouseButton_Left] = 0.0f;
             io.KeyCtrl = true;
             io.KeyMods |= ImGuiMod_Ctrl; //KeyMods needs to stay consistent with KeyCtrl
         }
@@ -203,7 +213,9 @@ namespace ImGui
         }
 
         //Restore hack
-        io.MouseClicked[ImGuiMouseButton_Left] = mouse_left_clicked_old;
+        io.MouseClicked[ImGuiMouseButton_Left]      = mouse_left_clicked_old;
+        io.MouseDown[ImGuiMouseButton_Left]         = mouse_left_down_old;
+        io.MouseDownDuration[ImGuiMouseButton_Left] = mouse_left_down_duration_old;
         io.KeyCtrl = key_ctrl_old;
         if (!io.KeyCtrl)
         {
