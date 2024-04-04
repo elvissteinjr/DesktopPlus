@@ -62,6 +62,7 @@
     <ClCompile Include="..\Shared\OpenVRExt.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="RadialFollowSmoothing.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -133,6 +134,7 @@
     <ClInclude Include="..\Shared\OpenVRExt.h">
       <Filter>Shared</Filter>
     </ClInclude>
+    <ClInclude Include="RadialFollowSmoothing.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DesktopPlus.rc" />

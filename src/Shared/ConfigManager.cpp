@@ -524,10 +524,11 @@ bool ConfigManager::LoadConfigFromFile()
 
     m_ConfigBool[configid_bool_input_mouse_render_cursor]                   = config.ReadBool("Mouse", "RenderCursor", true);
     m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]        = config.ReadBool("Mouse", "RenderIntersectionBlob", false);
-    m_ConfigInt[configid_int_input_mouse_dbl_click_assist_duration_ms]      = config.ReadInt( "Mouse", "DoubleClickAssistDuration", -1);
     m_ConfigBool[configid_bool_input_mouse_scroll_smooth]                   = config.ReadBool("Mouse", "ScrollSmooth", false);
     m_ConfigBool[configid_bool_input_mouse_allow_pointer_override]          = config.ReadBool("Mouse", "AllowPointerOverride", true);
     m_ConfigBool[configid_bool_input_mouse_simulate_pen_input]              = config.ReadBool("Mouse", "SimulatePenInput", false);
+    m_ConfigInt[configid_int_input_mouse_dbl_click_assist_duration_ms]      = config.ReadInt( "Mouse", "DoubleClickAssistDuration", -1);
+    m_ConfigInt[configid_int_input_mouse_input_smoothing_level]             = config.ReadInt( "Mouse", "InputSmoothingLevel", 0);
 
     m_ConfigString[configid_str_input_keyboard_layout_file]                 = config.ReadString("Keyboard", "LayoutFile", "qwerty_usa.ini");
     m_ConfigBool[configid_bool_input_keyboard_cluster_function_enabled]     = config.ReadBool("Keyboard", "LayoutClusterFunction",   true);
@@ -1163,6 +1164,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Mouse", "AllowPointerOverride",      m_ConfigBool[configid_bool_input_mouse_allow_pointer_override]);
     config.WriteBool("Mouse", "SimulatePenInput",          m_ConfigBool[configid_bool_input_mouse_simulate_pen_input]);
     config.WriteInt( "Mouse", "DoubleClickAssistDuration", m_ConfigInt[configid_int_input_mouse_dbl_click_assist_duration_ms]);
+    config.WriteInt( "Mouse", "InputSmoothingLevel",       m_ConfigInt[configid_int_input_mouse_input_smoothing_level]);
 
     config.WriteString("Keyboard", "LayoutFile",                m_ConfigString[configid_str_input_keyboard_layout_file].c_str());
     config.WriteBool("Keyboard", "LayoutClusterFunction",       m_ConfigBool[configid_bool_input_keyboard_cluster_function_enabled]);

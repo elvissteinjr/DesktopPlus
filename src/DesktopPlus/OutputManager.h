@@ -8,6 +8,7 @@
 
 #include "openvr.h"
 #include "Matrices.h"
+#include "RadialFollowSmoothing.h"
 
 #include "OverlayManager.h"
 #include "ConfigManager.h"
@@ -230,6 +231,7 @@ class OutputManager
         int m_MouseLastLaserPointerY;
         int m_MouseIgnoreMoveEventMissCount;
         unsigned int m_MouseLeftDownOverlayID;
+        RadialFollowCore m_MouseLaserPointerSmoother;
 
         bool m_IsFirstLaunch;
         bool m_ComInitDone;

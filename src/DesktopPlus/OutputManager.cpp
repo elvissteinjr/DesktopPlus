@@ -4287,6 +4287,16 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 break;
             }
 
+            Vector2 event_mouse_pos(vr_event.data.mouse.x, vr_event.data.mouse.y);
+
+            //Smooth input
+            if (ConfigManager::GetValue(configid_int_input_mouse_input_smoothing_level) != 0)
+            {
+                m_MouseLaserPointerSmoother.ApplyPresetSettings(ConfigManager::GetValue(configid_int_input_mouse_input_smoothing_level));
+
+                event_mouse_pos = m_MouseLaserPointerSmoother.Filter(event_mouse_pos);
+            }
+
             //Offset depending on capture source
             int content_height = data.ConfigInt[configid_int_overlay_state_content_height];
             int offset_x = 0;
@@ -4352,8 +4362,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             }
 
             //GL space (0,0 is bottom left), so we need to flip that around (not correct for browser overlays, but also not relevant for how the values are used with them right now)
-            int pointer_x =   round(vr_event.data.mouse.x) + offset_x;
-            int pointer_y = (-round(vr_event.data.mouse.y) + content_height) + offset_y;
+            int pointer_x =   round(event_mouse_pos.x) + offset_x;
+            int pointer_y = (-round(event_mouse_pos.y) + content_height) + offset_y;
 
             //If double click assist is current active, check if there was an obviously deliberate movement and cancel it then
             if ( (ConfigManager::GetValue(configid_int_state_mouse_dbl_click_assist_duration_ms) != 0) &&
@@ -4373,7 +4383,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             //If browser overlay, pass event along and skip the rest
             if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
             {
-                DPBrowserAPIClient::Get().DPBrowser_MouseMove(overlay_current.GetHandle(), vr_event.data.mouse.x + offset_x, vr_event.data.mouse.y + offset_y);
+                DPBrowserAPIClient::Get().DPBrowser_MouseMove(overlay_current.GetHandle(), event_mouse_pos.x + offset_x, event_mouse_pos.y + offset_y);
                 m_MouseLastLaserPointerX = pointer_x;
                 m_MouseLastLaserPointerY = pointer_y;
 

@@ -150,6 +150,7 @@ enum ConfigID_Int
     configid_int_interface_background_color_display_mode,
     configid_int_interface_wmr_ignore_vscreens,             //-1 means auto/unset which is the value non-WMR users get
     configid_int_input_mouse_dbl_click_assist_duration_ms,
+    configid_int_input_mouse_input_smoothing_level,
     configid_int_input_drag_fixed_distance_shape,           //0 = Sphere, 1 = Cylinder
     configid_int_input_global_shortcuts_max_count,
     configid_int_windows_winrt_dragging_mode,

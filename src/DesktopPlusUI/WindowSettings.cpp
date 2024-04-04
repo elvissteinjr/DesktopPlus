@@ -1563,9 +1563,28 @@ void WindowSettings::UpdatePageMainCatInput()
             if (assist_duration_ui > assist_duration_max)
                 assist_duration = -1;
 
-            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_int_input_mouse_dbl_click_assist_duration_ms), assist_duration);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_mouse_dbl_click_assist_duration_ms, assist_duration);
         }
         vr_keyboard.VRKeyboardInputEnd();
+
+        ImGui::NextColumn();
+
+        //Input Smoothing
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsMouseSmoothing));
+        ImGui::NextColumn();
+
+        int& input_smoothing_level = ConfigManager::Get().GetRef(configid_int_input_mouse_input_smoothing_level);
+        const int input_smoothing_level_max = tstr_SettingsMouseSmoothingLevelVeryHigh - tstr_SettingsMouseSmoothingLevelNone;
+        input_smoothing_level = clamp(input_smoothing_level, 0, input_smoothing_level_max);
+
+        if (ImGui::SliderWithButtonsInt("SmoothingLevel", input_smoothing_level, 1, 1, 0, input_smoothing_level_max, "##%d", ImGuiSliderFlags_NoInput, nullptr, 
+                                        TranslationManager::GetString( (TRMGRStrID)(tstr_SettingsMouseSmoothingLevelNone + input_smoothing_level) )))
+        {
+            input_smoothing_level = clamp(input_smoothing_level, 0, input_smoothing_level_max);
+
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_mouse_input_smoothing_level, input_smoothing_level);
+        }
 
         ImGui::Columns(1);
     }

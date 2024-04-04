@@ -130,6 +130,7 @@
     <ClCompile Include="LaserPointer.cpp" />
     <ClCompile Include="OutputManager.cpp" />
     <ClCompile Include="Overlays.cpp" />
+    <ClCompile Include="RadialFollowSmoothing.cpp" />
     <ClCompile Include="ThreadManager.cpp" />
     <ClCompile Include="VRInput.cpp" />
   </ItemGroup>
@@ -162,6 +163,7 @@
     <ClInclude Include="LaserPointer.h" />
     <ClInclude Include="OutputManager.h" />
     <ClInclude Include="Overlays.h" />
+    <ClInclude Include="RadialFollowSmoothing.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ThreadManager.h" />
     <ClInclude Include="VRInput.h" />
