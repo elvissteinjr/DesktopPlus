@@ -266,8 +266,8 @@ void InputSimulator::PenMove(int x, int y)
     m_PenState.penInfo.pointerInfo.pointerFlags |= POINTER_FLAG_INRANGE | POINTER_FLAG_UPDATE;
 
     //Pen input position doesn't appear to be clamped by OS like mouse input and can do weird things if it goes out of range
-    m_PenState.penInfo.pointerInfo.ptPixelLocation.x = clamp(x, -m_SpaceOffsetX, m_SpaceMaxX - m_SpaceOffsetX);
-    m_PenState.penInfo.pointerInfo.ptPixelLocation.y = clamp(y, -m_SpaceOffsetY, m_SpaceMaxY - m_SpaceOffsetY);
+    m_PenState.penInfo.pointerInfo.ptPixelLocation.x = clamp(x + m_SpaceOffsetX, 0, m_SpaceMaxX);
+    m_PenState.penInfo.pointerInfo.ptPixelLocation.y = clamp(y + m_SpaceOffsetY, 0, m_SpaceMaxY);
 
     s_p_InjectSyntheticPointerInput(m_PenDevice, &m_PenState, 1);
 }
