@@ -5241,6 +5241,7 @@ void WindowSettings::UpdatePageKeyCodePicker(bool only_restore_settings)
 
             if ((ImGui::IsItemClicked()) && (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)))
             {
+                key_code_prev = m_KeyCodePickerID; //Prevent it from being reset
                 PageGoBack();
             }
 
