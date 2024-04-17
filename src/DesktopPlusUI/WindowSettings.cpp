@@ -1378,6 +1378,7 @@ void WindowSettings::UpdatePageMainCatInput()
     }
 
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
+    const ImGuiStyle& style = ImGui::GetStyle();
 
     //Keyboard
     {
@@ -1591,6 +1592,18 @@ void WindowSettings::UpdatePageMainCatInput()
 
     //Laser Pointer
     {
+        static ConfigID_Int edited_hmd_pointer_input_id = configid_int_MAX;
+
+        //Write changes if we're returning from a picker
+        if ((m_PageReturned == wndsettings_page_keycode_picker) && (edited_hmd_pointer_input_id != configid_int_MAX))
+        {
+            ConfigManager::SetValue(edited_hmd_pointer_input_id, m_KeyCodePickerID);
+            IPCManager::Get().PostConfigMessageToDashboardApp(edited_hmd_pointer_input_id, m_KeyCodePickerID);
+
+            m_PageReturned = wndsettings_page_none;
+            edited_hmd_pointer_input_id = configid_int_MAX;
+        }
+
         ImGui::Spacing();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatLaserPointer));
@@ -1628,6 +1641,68 @@ void WindowSettings::UpdatePageMainCatInput()
         vr_keyboard.VRKeyboardInputEnd();
 
         ImGui::Columns(1);
+        ImGui::Spacing();
+
+        ImGui::Indent();
+
+        bool& hmd_pointer = ConfigManager::GetRef(configid_bool_input_laser_pointer_hmd_device);
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointer), &hmd_pointer))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_laser_pointer_hmd_device, hmd_pointer);
+        }
+
+        ImGui::PushID("HMDPointer");
+
+        ImGui::Indent(ImGui::GetFrameHeightWithSpacing());
+
+        const ImVec2 table_size(-style.IndentSpacing - 1.0f, 0.0f);                                                    //Replicate padding from columns
+        const float table_column_width = m_Column0Width - style.IndentSpacing - ImGui::GetFrameHeightWithSpacing();    //Align with width of other columns 
+
+        if (BeginCompactTable("TableHMDPointerInput", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit, table_size))
+        {
+            ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointerTableHeaderInputAction), 0, table_column_width);
+            ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointerTableHeaderBinding), ImGuiTableColumnFlags_WidthStretch);
+            CompactTableHeadersRow();
+
+            const int key_count = configid_int_input_laser_pointer_hmd_device_keycode_middle - configid_int_input_laser_pointer_hmd_device_keycode_toggle;
+            IM_ASSERT(configid_int_input_laser_pointer_hmd_device_keycode_toggle < configid_int_input_laser_pointer_hmd_device_keycode_middle);
+            IM_ASSERT(tstr_SettingsLaserPointerHMDPointerTableBindingToggle + key_count < tstr_MAX);
+
+            for (int i = 0; i < key_count + 1; ++i)
+            {
+                ConfigID_Int config_id = (ConfigID_Int)(configid_int_input_laser_pointer_hmd_device_keycode_toggle + i);
+
+                ImGui::PushID(i);
+
+                ImGui::TableNextColumn();
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString( (TRMGRStrID)(tstr_SettingsLaserPointerHMDPointerTableBindingToggle + i) ));
+                ImGui::SameLine();
+
+                ImGui::TableNextColumn();
+
+                if (ImGui::Selectable( GetStringForKeyCode(ConfigManager::GetValue(config_id)) ))
+                {
+                    m_KeyCodePickerNoMouse    = true;
+                    m_KeyCodePickerHotkeyMode = false;
+                    m_KeyCodePickerID = ConfigManager::GetValue(config_id);
+                    edited_hmd_pointer_input_id = config_id;
+
+                    PageGoForward(wndsettings_page_keycode_picker);
+                    m_PageReturned = wndsettings_page_none;
+                }
+
+                ImGui::PopID();
+            }
+
+            EndCompactTable();
+        }
+
+        ImGui::PopID();
+
+        ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
+        ImGui::Unindent();
     }
 }
 
@@ -4315,6 +4390,8 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
 
                 if (ImGui::Button( (command.UIntID == 0) ? TranslationManager::GetString(tstr_DialogKeyCodePickerKeyCodeNone) : GetStringForKeyCode(command.UIntID) ))
                 {
+                    m_KeyCodePickerNoMouse    = false;
+                    m_KeyCodePickerHotkeyMode = false;
                     m_KeyCodePickerID = (unsigned int)command.UIntID;
                     PageGoForward(wndsettings_page_keycode_picker);
                 }
@@ -5851,6 +5928,7 @@ void WindowSettings::SelectableHotkey(ConfigHotkey& hotkey, int id)
     ImGui::PushID("HotkeySelectable");
     if (ImGui::Selectable(hotkey.StateUIName.c_str()))
     {
+        m_KeyCodePickerNoMouse    = false;
         m_KeyCodePickerHotkeyMode = true;
         m_KeyCodePickerHotkeyFlags = hotkey.Modifiers;
         m_KeyCodePickerID = hotkey.KeyCode;

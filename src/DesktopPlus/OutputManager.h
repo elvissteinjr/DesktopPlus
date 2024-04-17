@@ -139,7 +139,6 @@ class OutputManager
         void DetachedInteractionAutoToggleAll();
         void DetachedOverlayGazeFade();
         void DetachedOverlayGazeFadeAutoConfigure();
-        void DetachedOverlayGlobalHMDPointerAll();
         void DetachedOverlayAutoDockingAll();
 
         void DetachedTempDragStart(unsigned int overlay_id, float offset_forward = 0.5f);

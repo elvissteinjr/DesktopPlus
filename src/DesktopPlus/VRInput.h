@@ -47,6 +47,15 @@ class VRInput
         bool m_IsLaserPointerInputActive;
         VRInputScrollMode m_LaserPointerScrollMode;
 
+        vr::VRInputValueHandle_t m_KeyboardDeviceInputValueHandle;
+        vr::InputDigitalActionData_t m_KeyboardDeviceToggleState;
+        bool m_KeyboardDeviceIsToggleKeyDown;
+        std::array<vr::InputDigitalActionData_t, 5> m_KeyboardDeviceClickState;
+
+        void UpdateKeyboardDeviceState();
+
+        static vr::InputDigitalActionData_t CombineDigitalActionData(vr::InputDigitalActionData_t data_a, vr::InputDigitalActionData_t data_b);
+
     public:
         VRInput();
         bool Init();
@@ -54,8 +63,8 @@ class VRInput
         void RefreshAnyGlobalActionBound();
         void HandleGlobalActionShortcuts(OutputManager& outmgr);
         void TriggerLaserPointerHaptics(vr::VRInputValueHandle_t restrict_to_device = vr::k_ulInvalidInputValueHandle) const;
+        vr::InputOriginInfo_t GetOriginTrackedDeviceInfoEx(vr::VRInputValueHandle_t origin) const; //Wraps GetOriginTrackedDeviceInfo() with keyboard device support
 
-        bool GetSetDetachedInteractiveDown() const;
         vr::InputDigitalActionData_t GetEnableGlobalLaserPointerState() const;
 
         std::vector<vr::InputOriginInfo_t> GetLaserPointerDevicesInfo() const;
@@ -69,6 +78,7 @@ class VRInput
         VRInputScrollMode GetLaserPointerScrollMode() const;
 
         bool IsAnyGlobalActionBound() const;
+        vr::VRInputValueHandle_t GetKeyboardDeviceInputValueHandle() const;
 };
 
 #endif

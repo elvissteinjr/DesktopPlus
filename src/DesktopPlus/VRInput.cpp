@@ -25,8 +25,106 @@ VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
                      m_IsAnyGlobalActionBound(false),
                      m_IsAnyGlobalActionBoundStateValid(false),
                      m_IsLaserPointerInputActive(false),
-                     m_LaserPointerScrollMode(vrinput_scroll_none)
+                     m_LaserPointerScrollMode(vrinput_scroll_none),
+                     m_KeyboardDeviceToggleState{0},
+                     m_KeyboardDeviceIsToggleKeyDown(false),
+                     m_KeyboardDeviceClickState{0}
 {
+}
+
+void VRInput::UpdateKeyboardDeviceState()
+{
+    auto update_input_data = [](vr::InputDigitalActionData_t& input_data, int keycode)
+    {
+        if (keycode != 0)
+        {
+            input_data.bActive  = true;
+            input_data.bChanged = false;
+
+            if (::GetAsyncKeyState(keycode) < 0)
+            {
+                if (!input_data.bState)
+                {
+                    input_data.bChanged = true;
+                    input_data.bState   = true;
+                }
+            }
+            else if (input_data.bState)
+            {
+                input_data.bChanged = true;
+                input_data.bState   = false;
+            }
+        }
+        else
+        {
+            input_data.bActive  = false;
+            input_data.bChanged = false;
+            input_data.bState   = false;
+        }
+    };
+
+    auto update_input_data_toggle = [](vr::InputDigitalActionData_t& input_data, int keycode, bool& is_key_down)
+    {
+        if (keycode != 0)
+        {
+            input_data.bActive  = true;
+            input_data.bChanged = false;
+
+            if (::GetAsyncKeyState(keycode) < 0)
+            {
+                if (!is_key_down)
+                {
+                    input_data.bChanged = true;
+                    input_data.bState   = !input_data.bState;
+                }
+
+                is_key_down = true;
+            }
+            else
+            {
+                is_key_down = false;
+            }
+        }
+        else
+        {
+            input_data.bActive  = false;
+            input_data.bChanged = false;
+            input_data.bState   = false;
+        }
+    };
+
+    if (!ConfigManager::GetValue(configid_bool_input_laser_pointer_hmd_device))
+    {
+        m_KeyboardDeviceToggleState.bActive = false;
+
+        for (auto& input_data : m_KeyboardDeviceClickState)
+        {
+            input_data.bActive = false;
+        }
+
+        return;
+    }
+
+    //Toggle action state is always set up as a toggle binding
+    update_input_data_toggle(m_KeyboardDeviceToggleState, ConfigManager::GetValue(configid_int_input_laser_pointer_hmd_device_keycode_toggle), m_KeyboardDeviceIsToggleKeyDown);
+
+    update_input_data(m_KeyboardDeviceClickState[0], ConfigManager::GetValue(configid_int_input_laser_pointer_hmd_device_keycode_left));
+    update_input_data(m_KeyboardDeviceClickState[1], ConfigManager::GetValue(configid_int_input_laser_pointer_hmd_device_keycode_right));
+    update_input_data(m_KeyboardDeviceClickState[2], ConfigManager::GetValue(configid_int_input_laser_pointer_hmd_device_keycode_middle));
+    //Aux01/02 are not configurable but fields exist for parity with the regular action data array (they can still be pressed via actions if really needed)
+}
+
+vr::InputDigitalActionData_t VRInput::CombineDigitalActionData(vr::InputDigitalActionData_t data_a, vr::InputDigitalActionData_t data_b)
+{
+    //Trying to make sense of having multiple action data sources at once, with some bias towards data_a
+    vr::InputDigitalActionData_t data_out = {0};
+
+    data_out.bActive  = data_a.bActive  || data_b.bActive;
+    data_out.bChanged = data_a.bChanged || data_b.bChanged;
+    data_out.bState   = data_a.bState   || data_b.bState;
+    data_out.activeOrigin = (data_a.bState == data_out.bState) ? data_a.activeOrigin : ((data_b.bState == data_out.bState) ? data_b.activeOrigin : data_a.activeOrigin);
+
+    return data_out;
 }
 
 bool VRInput::Init()
@@ -82,6 +180,15 @@ bool VRInput::Init()
         vr::VRInput()->GetActionSetHandle("/actions/scroll_smooth",                &m_HandleActionsetScrollSmooth);
         vr::VRInput()->GetActionHandle("/actions/scroll_smooth/in/ScrollSmooth",   &m_HandleActionLaserPointerScrollSmooth);
 
+        //This mimics OpenXR device path pattern but isn't actually formally defined (and this is OpenVR anyhow)
+        vr::VRInput()->GetInputSourceHandle("/user/keyboard", &m_KeyboardDeviceInputValueHandle);
+
+        m_KeyboardDeviceToggleState.activeOrigin = m_KeyboardDeviceInputValueHandle;
+        for (auto& input_data : m_KeyboardDeviceClickState)
+        {
+            input_data.activeOrigin = m_KeyboardDeviceInputValueHandle;
+        }
+
         return true;
     }
 
@@ -117,6 +224,7 @@ void VRInput::Update()
     }
 
     vr::VRInput()->UpdateActionState(actionset_desc, sizeof(vr::VRActiveActionSet_t), actionset_active_count);
+    UpdateKeyboardDeviceState();
 
     //SteamVR Input is incredibly weird with the initial action state. The first couple attempts at getting any action state will fail. Probably some async loading stuff
     //However, SteamVR also does not send any events once the initial state goes valid (it does for binding state changes after this)
@@ -200,23 +308,33 @@ void VRInput::TriggerLaserPointerHaptics(vr::VRInputValueHandle_t restrict_to_de
     vr::VRInput()->TriggerHapticVibrationAction(m_HandleActionLaserPointerHaptic, 0.0f, 0.0f, 1.0f, 0.16f, restrict_to_device);
 }
 
-bool VRInput::GetSetDetachedInteractiveDown() const
+vr::InputOriginInfo_t VRInput::GetOriginTrackedDeviceInfoEx(vr::VRInputValueHandle_t origin) const
 {
-    vr::InputDigitalActionData_t data;
-    vr::EVRInputError input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionEnableGlobalLaserPointer, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
+    vr::InputOriginInfo_t origin_info = {0};
+    origin_info.trackedDeviceIndex = vr::k_unTrackedDeviceIndexInvalid;
 
-    if (input_error == vr::VRInputError_None)
+    if (origin == m_KeyboardDeviceInputValueHandle)
     {
-        return data.bState;
+        origin_info.trackedDeviceIndex = vr::k_unTrackedDeviceIndex_Hmd;
+        origin_info.devicePath = origin;
+    }
+    else
+    {
+        vr::VRInput()->GetOriginTrackedDeviceInfo(origin, &origin_info, sizeof(vr::InputOriginInfo_t));
     }
 
-    return false;
+    return origin_info;
 }
 
 vr::InputDigitalActionData_t VRInput::GetEnableGlobalLaserPointerState() const
 {
     vr::InputDigitalActionData_t data;
     vr::VRInput()->GetDigitalActionData(m_HandleActionEnableGlobalLaserPointer, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
+
+    if (ConfigManager::GetValue(configid_bool_input_laser_pointer_hmd_device))
+    {
+        data = CombineDigitalActionData(data, m_KeyboardDeviceToggleState);
+    }
 
     return data;
 }
@@ -255,13 +373,30 @@ std::vector<vr::InputOriginInfo_t> VRInput::GetLaserPointerDevicesInfo() const
         }
     }
 
+    if (ConfigManager::GetValue(configid_bool_input_laser_pointer_hmd_device))
+    {
+        vr::InputOriginInfo_t origin_info = {0};
+        origin_info.trackedDeviceIndex = vr::k_unTrackedDeviceIndex_Hmd;    //Simulated Keyboard device is used for HMD interaction only so we use that
+        origin_info.devicePath = m_KeyboardDeviceInputValueHandle;
+
+        devices_info.push_back(origin_info);
+    }
+
     return devices_info;
 }
 
 vr::InputDigitalActionData_t VRInput::GetLaserPointerLeftClickState(vr::VRInputValueHandle_t restrict_to_device) const
 {
-    vr::InputDigitalActionData_t data;
+    vr::InputDigitalActionData_t data = {0};
     vr::VRInput()->GetDigitalActionData(m_HandleActionLaserPointerLeftClick, &data, sizeof(data), restrict_to_device);
+
+    if (ConfigManager::GetValue(configid_bool_input_laser_pointer_hmd_device))
+    {
+        if ((restrict_to_device == vr::k_ulInvalidInputValueHandle) || (restrict_to_device == m_KeyboardDeviceInputValueHandle))
+        {
+            data = CombineDigitalActionData(data, m_KeyboardDeviceClickState[0]);
+        }
+    }
 
     return data;
 }
@@ -275,6 +410,17 @@ std::array<vr::InputDigitalActionData_t, 5> VRInput::GetLaserPointerClickState(v
     vr::VRInput()->GetDigitalActionData(m_HandleActionLaserPointerMiddleClick, &data[2], sizeof(vr::InputDigitalActionData_t), restrict_to_device);
     vr::VRInput()->GetDigitalActionData(m_HandleActionLaserPointerAux01Click,  &data[3], sizeof(vr::InputDigitalActionData_t), restrict_to_device);
     vr::VRInput()->GetDigitalActionData(m_HandleActionLaserPointerAux02Click,  &data[4], sizeof(vr::InputDigitalActionData_t), restrict_to_device);
+
+    if (ConfigManager::GetValue(configid_bool_input_laser_pointer_hmd_device))
+    {
+        if ((restrict_to_device == vr::k_ulInvalidInputValueHandle) || (restrict_to_device == m_KeyboardDeviceInputValueHandle))
+        {
+            for (int i = 0; i < data.size(); ++i)
+            {
+                data[i] = CombineDigitalActionData(data[i], m_KeyboardDeviceClickState[i]);
+            }
+        }
+    }
 
     return data;
 }
@@ -313,4 +459,9 @@ VRInputScrollMode VRInput::GetLaserPointerScrollMode() const
 bool VRInput::IsAnyGlobalActionBound() const
 {
     return m_IsAnyGlobalActionBound;
+}
+
+vr::VRInputValueHandle_t VRInput::GetKeyboardDeviceInputValueHandle() const
+{
+    return m_KeyboardDeviceInputValueHandle;
 }

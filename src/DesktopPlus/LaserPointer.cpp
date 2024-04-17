@@ -554,12 +554,12 @@ void LaserPointer::Update()
     //Primary device switching
     if (!vr::IVROverlayEx::IsSystemLaserPointerActive())
     {
-        vr::InputOriginInfo_t origin_info = {0};
         vr::InputDigitalActionData_t left_click_state = vr_input.GetLaserPointerLeftClickState();
 
-        if ( (left_click_state.bChanged) && (left_click_state.bState) &&
-             (vr::VRInput()->GetOriginTrackedDeviceInfo(left_click_state.activeOrigin, &origin_info, sizeof(vr::InputOriginInfo_t)) == vr::VRInputError_None))
+        if ( (left_click_state.bChanged) && (left_click_state.bState) )
         {
+            vr::InputOriginInfo_t origin_info = vr_input.GetOriginTrackedDeviceInfoEx(left_click_state.activeOrigin);
+
             if ( (origin_info.trackedDeviceIndex < vr::k_unMaxTrackedDeviceCount) && (origin_info.trackedDeviceIndex != primary_pointer_device) &&
                  (!m_Devices[origin_info.trackedDeviceIndex].IsActiveForMultiLaserInput))
             {
@@ -834,12 +834,21 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
     }
     else //...otherwise check all possible overlays
     {
-        //Check left and right hand controller
-        for (int i = vr::TrackedControllerRole_LeftHand; i <= vr::TrackedControllerRole_RightHand; ++i)
+        //Check left and right hand controller and HMD if setting is enabled
+        const bool lp_hmd_enabled_and_toggle_unbound = ((ConfigManager::GetValue(configid_bool_input_laser_pointer_hmd_device)) && 
+                                                        (ConfigManager::GetValue(configid_int_input_laser_pointer_hmd_device_keycode_toggle) == 0));
+
+        const vr::TrackedDeviceIndex_t devices[] = 
         {
-            vr::ETrackedControllerRole controller_role = (vr::ETrackedControllerRole)i;
-            vr::TrackedDeviceIndex_t device_index = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(controller_role);
-            OverlayOrigin origin_avoid = (OverlayOrigin)(ovrl_origin_left_hand + i - vr::TrackedControllerRole_LeftHand);       //Role_*Hand matches origin_*_hand
+            (lp_hmd_enabled_and_toggle_unbound) ? vr::k_unTrackedDeviceIndex_Hmd : vr::k_unTrackedDeviceIndexInvalid,
+            vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand),
+            vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand),
+        };
+
+        for (int i = 0; i < sizeof(devices)/sizeof(*devices); ++i)
+        {
+            const vr::TrackedDeviceIndex_t device_index = devices[i];
+            OverlayOrigin origin_avoid = (OverlayOrigin)(ovrl_origin_hmd+i);
 
             //Set up intersection test
             vr::VROverlayIntersectionParams_t  params  = {0};

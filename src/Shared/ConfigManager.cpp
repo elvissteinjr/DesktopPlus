@@ -509,9 +509,13 @@ bool ConfigManager::LoadConfigFromFile()
     }
 
     m_ConfigFloat[configid_float_input_detached_interaction_max_distance]   = config.ReadInt( "Input", "DetachedInteractionMaxDistance", 200) / 100.0f;
-    m_ConfigBool[configid_bool_input_global_hmd_pointer]                    = config.ReadBool("Input", "GlobalHMDPointer", false);
-    m_ConfigFloat[configid_float_input_global_hmd_pointer_max_distance]     = config.ReadInt( "Input", "GlobalHMDPointerMaxDistance", 0) / 100.0f;
     m_ConfigBool[configid_bool_input_laser_pointer_block_input]             = config.ReadBool("Input", "LaserPointerBlockInput", false);
+    m_ConfigBool[configid_bool_input_laser_pointer_hmd_device]              = config.ReadBool("Input", "GlobalHMDPointer", false);
+    m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_toggle] = config.ReadInt( "Input", "LaserPointerHMDKeyCodeToggle", 0);
+    m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_left]   = config.ReadInt( "Input", "LaserPointerHMDKeyCodeLeft",   0);
+    m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_right]  = config.ReadInt( "Input", "LaserPointerHMDKeyCodeRight",  0);
+    m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_middle] = config.ReadInt( "Input", "LaserPointerHMDKeyCodeMiddle", 0);
+
     m_ConfigBool[configid_bool_input_drag_auto_docking]                     = config.ReadBool("Input", "DragAutoDocking", true);
     m_ConfigBool[configid_bool_input_drag_force_upright]                    = config.ReadBool("Input", "DragForceUpright", false);
     m_ConfigBool[configid_bool_input_drag_fixed_distance]                   = config.ReadBool("Input", "DragFixedDistance", false);
@@ -1144,19 +1148,23 @@ void ConfigManager::SaveConfigToFile()
         ++hotkey_id;
     }
 
-    config.WriteInt( "Input",  "DetachedInteractionMaxDistance", int(m_ConfigFloat[configid_float_input_detached_interaction_max_distance] * 100.0f));
-    config.WriteBool("Input",  "GlobalHMDPointer",                   m_ConfigBool[configid_bool_input_global_hmd_pointer]);
-    config.WriteInt( "Input",  "GlobalHMDPointerMaxDistance",    int(m_ConfigFloat[configid_float_input_global_hmd_pointer_max_distance] * 100.0f));
-    config.WriteBool("Input",  "LaserPointerBlockInput",             m_ConfigBool[configid_bool_input_laser_pointer_block_input]);
-    config.WriteBool("Input",  "DragAutoDocking",                    m_ConfigBool[configid_bool_input_drag_auto_docking]);
-    config.WriteBool("Input",  "DragForceUpright",                   m_ConfigBool[configid_bool_input_drag_force_upright]);
-    config.WriteBool("Input",  "DragFixedDistance",                  m_ConfigBool[configid_bool_input_drag_fixed_distance]);
-    config.WriteInt( "Input",  "DragFixedDistanceCM",            int(m_ConfigFloat[configid_float_input_drag_fixed_distance_m] * 100.0f));
-    config.WriteInt( "Input",  "DragFixedDistanceShape",             m_ConfigInt[configid_int_input_drag_fixed_distance_shape]);
-    config.WriteBool("Input",  "DragFixedDistanceAutoCurve",         m_ConfigBool[configid_bool_input_drag_fixed_distance_auto_curve]);
-    config.WriteBool("Input",  "DragFixedDistanceAutoTilt",          m_ConfigBool[configid_bool_input_drag_fixed_distance_auto_tilt]);
-    config.WriteBool("Input",  "DragSnapPosition",                   m_ConfigBool[configid_bool_input_drag_snap_position]);
-    config.WriteInt( "Input",  "DragSnapPositionSize",           int(m_ConfigFloat[configid_float_input_drag_snap_position_size] * 100.0f));
+    config.WriteInt( "Input", "DetachedInteractionMaxDistance", int(m_ConfigFloat[configid_float_input_detached_interaction_max_distance] * 100.0f));
+    config.WriteBool("Input", "LaserPointerBlockInput",             m_ConfigBool[configid_bool_input_laser_pointer_block_input]);
+    config.WriteBool("Input", "GlobalHMDPointer",                   m_ConfigBool[configid_bool_input_laser_pointer_hmd_device]);
+    config.WriteInt( "Input", "LaserPointerHMDKeyCodeToggle",       m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_toggle]);
+    config.WriteInt( "Input", "LaserPointerHMDKeyCodeLeft",         m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_left]);
+    config.WriteInt( "Input", "LaserPointerHMDKeyCodeRight",        m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_right]);
+    config.WriteInt( "Input", "LaserPointerHMDKeyCodeMiddle",       m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_middle]);
+
+    config.WriteBool("Input", "DragAutoDocking",                    m_ConfigBool[configid_bool_input_drag_auto_docking]);
+    config.WriteBool("Input", "DragForceUpright",                   m_ConfigBool[configid_bool_input_drag_force_upright]);
+    config.WriteBool("Input", "DragFixedDistance",                  m_ConfigBool[configid_bool_input_drag_fixed_distance]);
+    config.WriteInt( "Input", "DragFixedDistanceCM",            int(m_ConfigFloat[configid_float_input_drag_fixed_distance_m] * 100.0f));
+    config.WriteInt( "Input", "DragFixedDistanceShape",             m_ConfigInt[configid_int_input_drag_fixed_distance_shape]);
+    config.WriteBool("Input", "DragFixedDistanceAutoCurve",         m_ConfigBool[configid_bool_input_drag_fixed_distance_auto_curve]);
+    config.WriteBool("Input", "DragFixedDistanceAutoTilt",          m_ConfigBool[configid_bool_input_drag_fixed_distance_auto_tilt]);
+    config.WriteBool("Input", "DragSnapPosition",                   m_ConfigBool[configid_bool_input_drag_snap_position]);
+    config.WriteInt( "Input", "DragSnapPositionSize",           int(m_ConfigFloat[configid_float_input_drag_snap_position_size] * 100.0f));
 
     config.WriteBool("Mouse", "RenderCursor",              m_ConfigBool[configid_bool_input_mouse_render_cursor]);
     config.WriteBool("Mouse", "RenderIntersectionBlob",    m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]);

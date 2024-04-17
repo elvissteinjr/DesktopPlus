@@ -76,7 +76,6 @@ enum ConfigID_Bool
     configid_bool_performance_monitor_show_trackers,
     configid_bool_performance_monitor_show_vive_wireless,
     configid_bool_performance_monitor_disable_gpu_counters,
-    configid_bool_input_global_hmd_pointer,
     configid_bool_input_mouse_render_cursor,
     configid_bool_input_mouse_render_intersection_blob,
     configid_bool_input_mouse_scroll_smooth,
@@ -91,6 +90,7 @@ enum ConfigID_Bool
     configid_bool_input_keyboard_auto_show_desktop,
     configid_bool_input_keyboard_auto_show_browser,
     configid_bool_input_laser_pointer_block_input,
+    configid_bool_input_laser_pointer_hmd_device,
     configid_bool_input_drag_auto_docking,
     configid_bool_input_drag_force_upright,
     configid_bool_input_drag_fixed_distance,
@@ -153,6 +153,10 @@ enum ConfigID_Int
     configid_int_input_mouse_input_smoothing_level,
     configid_int_input_drag_fixed_distance_shape,           //0 = Sphere, 1 = Cylinder
     configid_int_input_global_shortcuts_max_count,
+    configid_int_input_laser_pointer_hmd_device_keycode_toggle,
+    configid_int_input_laser_pointer_hmd_device_keycode_left,
+    configid_int_input_laser_pointer_hmd_device_keycode_right,
+    configid_int_input_laser_pointer_hmd_device_keycode_middle,
     configid_int_windows_winrt_dragging_mode,
     configid_int_windows_winrt_capture_lost_behavior,
     configid_int_browser_max_fps,                           //Browser overlays use this instead of update limits

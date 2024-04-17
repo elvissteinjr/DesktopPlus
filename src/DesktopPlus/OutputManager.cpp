@@ -1543,6 +1543,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         }
                         break;
                     }
+                    case configid_bool_input_laser_pointer_hmd_device:
+                    {
+                        //Laser pointer keyboard input hotkeys should be disabled if this setting is off
+                        RegisterHotkeys();
+                        break;
+                    }
                     case configid_bool_windows_winrt_keep_on_screen:
                     {
                         WindowManager::Get().UpdateConfigState();
@@ -1729,6 +1735,14 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_int_input_mouse_dbl_click_assist_duration_ms:
                     {
                         ApplySettingMouseInput();
+                        break;
+                    }
+                    case configid_int_input_laser_pointer_hmd_device_keycode_toggle:
+                    case configid_int_input_laser_pointer_hmd_device_keycode_left:
+                    case configid_int_input_laser_pointer_hmd_device_keycode_right:
+                    case configid_int_input_laser_pointer_hmd_device_keycode_middle:
+                    {
+                        RegisterHotkeys();
                         break;
                     }
                     case configid_int_windows_winrt_dragging_mode:
@@ -4155,9 +4169,9 @@ bool OutputManager::HandleOpenVREvents()
             if (!m_LaserPointer.IsActive())  //Don't switch devices if the pointer is already active
             {
                 //Get tracked device index from origin
-                vr::InputOriginInfo_t origin_info = {0};
+                vr::InputOriginInfo_t origin_info = m_VRInput.GetOriginTrackedDeviceInfoEx(enable_laser_pointer_state.activeOrigin);
 
-                if (vr::VRInput()->GetOriginTrackedDeviceInfo(enable_laser_pointer_state.activeOrigin, &origin_info, sizeof(vr::InputOriginInfo_t)) == vr::VRInputError_None)
+                if (origin_info.trackedDeviceIndex != vr::k_unTrackedDeviceIndexInvalid)
                 {
                     m_LaserPointer.SetActiveDevice(origin_info.trackedDeviceIndex, dplp_activation_origin_input_binding);
                 }
@@ -4224,7 +4238,6 @@ bool OutputManager::HandleOpenVREvents()
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
     DetachedInteractionAutoToggleAll();
-    DetachedOverlayGlobalHMDPointerAll();
     DetachedOverlayAutoDockingAll();
 
     m_LaserPointer.Update();
@@ -6603,114 +6616,6 @@ void OutputManager::DetachedOverlayGazeFadeAutoConfigure()
     }
 }
 
-void OutputManager::DetachedOverlayGlobalHMDPointerAll()
-{
-    //Don't do anything if setting disabled or a dashboard pointer is active
-    if ( (!ConfigManager::GetValue(configid_bool_input_global_hmd_pointer)) || (ConfigManager::Get().GetPrimaryLaserPointerDevice() != vr::k_unTrackedDeviceIndexInvalid) )
-        return;
-
-    static vr::VROverlayHandle_t ovrl_last_enter = vr::k_ulOverlayHandleInvalid;
-
-    vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
-    vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
-    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(universe_origin, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
-
-    if (!poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
-        return;
-
-    //Set up intersection test
-    bool hit_nothing = true;
-    Matrix4 mat_hmd = poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
-    Vector3 v_pos = mat_hmd.getTranslation();
-    Vector3 forward = {mat_hmd[8], mat_hmd[9], mat_hmd[10]};
-    forward *= -1.0f;
-
-    vr::VROverlayIntersectionResults_t results;
-    vr::VROverlayIntersectionParams_t params;
-    params.eOrigin = vr::TrackingUniverseStanding;
-    params.vSource = {v_pos.x, v_pos.y, v_pos.z};
-    params.vDirection = {forward.x, forward.y, forward.z};
-
-    //Find the nearest intersecting overlay
-    vr::VROverlayHandle_t nearest_target_overlay = vr::k_ulOverlayHandleInvalid;
-    vr::VROverlayIntersectionResults_t nearest_results = {0};
-    nearest_results.fDistance = FLT_MAX;
-    float max_distance = ConfigManager::GetValue(configid_float_input_global_hmd_pointer_max_distance);
-    max_distance = (max_distance != 0.0f) ? max_distance + 0.20f /* HMD origin is inside the headset */ : FLT_MAX /* 0 == infinite */; 
-
-    unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
-
-    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
-    {
-        OverlayManager::Get().SetCurrentOverlayID(i);
-        Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
-        const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
-
-        if (overlay.IsVisible())
-        {
-            if ( (vr::VROverlay()->ComputeOverlayIntersection(OverlayManager::Get().GetCurrentOverlay().GetHandle(), &params, &results)) && (results.fDistance <= max_distance) &&
-                 (results.fDistance < nearest_results.fDistance) )
-            {
-                hit_nothing = false;
-                nearest_target_overlay = OverlayManager::Get().GetCurrentOverlay().GetHandle();
-                nearest_results = results;
-            }  
-        }
-    }
-
-    OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
-
-    //If we hit a different overlay (or lack thereof)...
-    if (nearest_target_overlay != ovrl_last_enter)
-    {
-        //...send focus leave event to last entered overlay
-        if (ovrl_last_enter != vr::k_ulOverlayHandleInvalid)
-        {
-            vr::VREvent_t vr_event = {0};
-            vr_event.trackedDeviceIndex = vr::k_unTrackedDeviceIndex_Hmd;
-            vr_event.eventType = vr::VREvent_FocusLeave;
-
-            vr::VROverlayView()->PostOverlayEvent(ovrl_last_enter, &vr_event);
-        }
-
-        //...and enter to the new one, if any
-        if (nearest_target_overlay != vr::k_ulOverlayHandleInvalid)
-        {
-            vr::VREvent_t vr_event = {0};
-            vr_event.trackedDeviceIndex = vr::k_unTrackedDeviceIndex_Hmd;
-            vr_event.eventType = vr::VREvent_FocusEnter;
-
-            vr::VROverlayView()->PostOverlayEvent(nearest_target_overlay, &vr_event);
-
-            //Reset HMD-Pointer override
-            if (m_MouseIgnoreMoveEvent)
-            {
-                m_MouseIgnoreMoveEvent = false;
-
-                ResetMouseLastLaserPointerPos();
-                ApplySettingMouseInput();
-            }
-        }
-    }
-
-    //Send mouse move event if we hit an overlay
-    if (nearest_target_overlay != vr::k_ulOverlayHandleInvalid)
-    {
-        vr::HmdVector2_t mouse_scale;
-        vr::VROverlay()->GetOverlayMouseScale(nearest_target_overlay, &mouse_scale);
-
-        vr::VREvent_t vr_event = {0};
-        vr_event.trackedDeviceIndex = vr::k_unTrackedDeviceIndex_Hmd;
-        vr_event.eventType = vr::VREvent_MouseMove;
-        vr_event.data.mouse.x = nearest_results.vUVs.v[0] * mouse_scale.v[0];
-        vr_event.data.mouse.y = nearest_results.vUVs.v[1] * mouse_scale.v[1];
-
-        vr::VROverlayView()->PostOverlayEvent(nearest_target_overlay, &vr_event);
-    }
-
-    ovrl_last_enter = nearest_target_overlay;
-}
-
 void OutputManager::DetachedOverlayAutoDockingAll()
 {
     if ( (!m_OverlayDragger.IsDragActive()) || (!ConfigManager::Get().GetValue(configid_bool_input_drag_auto_docking)) )
@@ -7030,6 +6935,24 @@ void OutputManager::RegisterHotkeys()
     }
 
     m_RegisteredHotkeyCount = id;
+
+    //Laser Pointer HMD Device uses hotkeys just as means to block key input to other applications
+    //Actual inputs are checked via VRInput::UpdateKeyboardDeviceState(), so they do not need any handling in HandleHotkeys() or HandleHotkeyMessage()
+    const int hmd_device_hotkey_count = configid_int_input_laser_pointer_hmd_device_keycode_middle - configid_int_input_laser_pointer_hmd_device_keycode_toggle;
+    for (int i = 0; i < hmd_device_hotkey_count + 1; ++i)
+    {
+        ConfigID_Int config_id = (ConfigID_Int)(configid_int_input_laser_pointer_hmd_device_keycode_toggle + i);
+        ::UnregisterHotKey(nullptr, 0xBFFF - i);  //0xBFFF is max allowed id, we count down from that to avoid conflicts
+    }
+
+    if (ConfigManager::GetValue(configid_bool_input_laser_pointer_hmd_device))  //No need to block these keys when the feature is disabled
+    {
+        for (int i = 0; i < hmd_device_hotkey_count + 1; ++i)
+        {
+            ConfigID_Int config_id = (ConfigID_Int)(configid_int_input_laser_pointer_hmd_device_keycode_toggle + i);
+            ::RegisterHotKey(nullptr, 0xBFFF - i, MOD_NOREPEAT, ConfigManager::GetValue(config_id));
+        }
+    }
 }
 
 void OutputManager::HandleHotkeys()
