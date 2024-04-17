@@ -122,6 +122,12 @@ OutputManager::~OutputManager()
 //
 void OutputManager::CleanRefs()
 {
+    //Release the shared desktop overlay texture since we're destroying the D3D11 device it's attached to (don't need this after shutting down OpenVR though)
+    if (vr::VROverlay() != nullptr)
+    {
+        vr::VROverlayEx()->ReleaseSharedOverlayTexture(m_OvrlHandleDesktopTexture);
+    }
+
     if (m_VertexShader)
     {
         m_VertexShader->Release();
