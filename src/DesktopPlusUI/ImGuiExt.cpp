@@ -432,6 +432,7 @@ namespace ImGui
         //Otherwise exactly the same as ImGui::BeginCombo() of ImGui v1.82
         static float animation_progress = 0.0f;
         static float scrollbar_alpha = 0.0f;
+        float popup_expected_width = FLT_MAX;
         float popup_height = 0.0f;
         //-
 
@@ -559,11 +560,21 @@ namespace ImGui
                 popup_height = IM_ROUND(smoothstep(animation_progress, 0.0f, size_expected.y)); //popup_height grows to full size in animation
 
                 //Offset position by animation progress
-                pos.y += (popup_window->AutoPosLastDirection == ImGuiDir_Down) ? -size_expected.y + popup_height : size_expected.y - popup_height;
+                const bool pos_goes_down = (popup_window->AutoPosLastDirection == ImGuiDir_Down) || (popup_window->AutoPosLastDirection == ImGuiDir_Left);
+                pos.y += (pos_goes_down) ? -size_expected.y + popup_height : size_expected.y - popup_height;
+
+                popup_expected_width = size_expected.x;
                 //-
 
                 SetNextWindowPos(pos);
             }
+            //-
+            else
+            {
+                //Expected width is not calculated in the first frame, having it default to larger than w is avoids flicker if it is the next frame. Kinda hacky to be fair
+                popup_expected_width = FLT_MAX;
+            }
+            //-
 
         //-
         //Hide background and border while animating since they don't get clipped (they're drawn manually below)
@@ -589,7 +600,10 @@ namespace ImGui
         //-
         if (scrollbar_alpha == 0.0f)
         {
-            window_flags |= ImGuiWindowFlags_NoScrollbar; //Disable scrollbar when not visible so it can't be clicked accidentally
+            if (popup_expected_width <= w)  //With popups wider than the widget, we run into resize issues when toggling the scrollbar. So we skip it there as it's the lesser evil
+            {
+                window_flags |= ImGuiWindowFlags_NoScrollbar; //Disable scrollbar when not visible so it can't be clicked accidentally
+            }
         }
         //-
 
@@ -618,7 +632,7 @@ namespace ImGui
             clip_max.x += popup_window->Size.x;
 
             //Popup open direction
-            if (popup_window->AutoPosLastDirection == ImGuiDir_Down)
+            if ((popup_window->AutoPosLastDirection == ImGuiDir_Down) || (popup_window->AutoPosLastDirection == ImGuiDir_Left)) //ImGuiDir_Left is left aligned but still down
             {
                 clip_max.y += popup_height + style.PopupBorderSize;
 
