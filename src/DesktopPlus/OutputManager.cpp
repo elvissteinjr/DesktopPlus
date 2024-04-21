@@ -2111,7 +2111,9 @@ void OutputManager::ResetOverlays()
 
 void OutputManager::ResetCurrentOverlay()
 {
-    //Reset current overlay
+    if ((OverlayManager::Get().GetCurrentOverlayID() == k_ulOverlayID_None) || (OverlayManager::Get().GetCurrentOverlay().GetID() == k_ulOverlayID_None))
+        return;
+
     ApplySettingCrop();
     ApplySettingTransform();
     ApplySettingCaptureSource();
