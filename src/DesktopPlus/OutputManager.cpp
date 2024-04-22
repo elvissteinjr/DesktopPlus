@@ -813,43 +813,43 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     //Check all overlays for overlap and collect clipping region from matches
     DPRect clipping_region(-1, -1, -1, -1);
 
-    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    if (!m_OutputPendingFullRefresh)
     {
-        const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
-
-        if ( (overlay.IsVisible()) && ( (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication) || (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication_3dou_converted) ) )
+        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
         {
-            const DPRect& cropping_region = overlay.GetValidatedCropRect();
+            const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
 
-            if (DirtyRectTotal.Overlaps(cropping_region))
+            if ( (overlay.IsVisible()) && ( (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication) || (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication_3dou_converted) ) )
             {
-                if (clipping_region.GetTL().x != -1)
+                const DPRect& cropping_region = overlay.GetValidatedCropRect();
+
+                if (DirtyRectTotal.Overlaps(cropping_region))
                 {
-                    clipping_region.Add(cropping_region);
-                }
-                else
-                {
-                    clipping_region = cropping_region;
+                    if (clipping_region.GetTL().x != -1)
+                    {
+                        clipping_region.Add(cropping_region);
+                    }
+                    else
+                    {
+                        clipping_region = cropping_region;
+                    }
                 }
             }
         }
+
+        DirtyRectTotal.ClipWithFull(clipping_region);
+    }
+    else   //Set dirty & clipping rect to total surface for full refresh
+    {
+        DirtyRectTotal = {0, 0, m_DesktopWidth, m_DesktopHeight};
+        clipping_region = DirtyRectTotal;
+        m_OutputPendingFullRefresh = false;
     }
 
     m_OutputLastClippingRect = clipping_region;
 
     if (clipping_region.GetTL().x != -1) //Overlapped with at least one overlay
     {
-        //Clip unless it's a pending full refresh
-        if (m_OutputPendingFullRefresh)
-        {
-            DirtyRectTotal = {0, 0, m_DesktopWidth, m_DesktopHeight};
-            m_OutputPendingFullRefresh = false;
-        }
-        else
-        {
-            DirtyRectTotal.ClipWithFull(clipping_region);
-        }
-
         //Set scissor rect for overlay drawing function
         const D3D11_RECT rect_scissor = { DirtyRectTotal.GetTL().x, DirtyRectTotal.GetTL().y, DirtyRectTotal.GetBR().x, DirtyRectTotal.GetBR().y };
         m_DeviceContext->RSSetScissorRects(1, &rect_scissor);
