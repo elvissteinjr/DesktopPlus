@@ -250,6 +250,31 @@ void UIManager::SetOverlayInputEnabled(bool is_enabled)
     vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleAuxUI,             input_method);
 }
 
+void UIManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
+{
+    IPCActionOverlayProfileLoadArg profile_load_arg = (IPCActionOverlayProfileLoadArg)LOWORD(lparam);
+    int profile_overlay_id = GET_Y_LPARAM(lparam);
+
+    const std::string& profile_name = ConfigManager::GetValue(configid_str_state_profile_name_load);
+
+    if (profile_overlay_id == -2)
+    {
+        ConfigManager::Get().LoadOverlayProfileDefault(true);
+    }
+    else if (profile_load_arg == ipcactv_ovrl_profile_multi)
+    {
+        ConfigManager::Get().LoadMultiOverlayProfileFromFile(profile_name + ".ini", true);
+    }
+    else if (profile_load_arg == ipcactv_ovrl_profile_multi_add)
+    {
+        IM_ASSERT(profile_overlay_id != -1);   //Exclusion is unhandled for now. Shouldn't be sent anyways
+
+        ConfigManager::Get().LoadMultiOverlayProfileFromFile(profile_name + ".ini", false);
+    }
+
+    OnProfileLoaded();
+}
+
 UIManager* UIManager::Get()
 {
     return g_UIManagerPtr;
@@ -502,6 +527,11 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                 case ipcact_overlays_ui_reset:
                 {
                     m_WindowPerformance.ScheduleOverlaySharedTextureUpdate();
+                    break;
+                }
+                case ipcact_overlay_profile_load:
+                {
+                    HandleOverlayProfileLoadMessage(msg.lParam);
                     break;
                 }
                 case ipcact_overlay_new_drag:

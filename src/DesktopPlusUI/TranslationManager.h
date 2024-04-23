@@ -32,13 +32,13 @@ enum TRMGRStrID
     tstr_SettingsWarningBrowserMismatch,
     tstr_SettingsWarningUIAccessLost,
     tstr_SettingsWarningOverlayCreationErrorLimit,
-    tstr_SettingsWarningOverlayCreationErrorOther,   //%ERRORNAME% == VROverlay::GetOverlayErrorNameFromEnum()
-    tstr_SettingsWarningGraphicsCaptureError,        //%ERRORCODE% == WinRT HRESULT in hex notation
-    tstr_SettingsWarningAppProfileActive,            //%APPNAME% == name of active application
+    tstr_SettingsWarningOverlayCreationErrorOther,              //%ERRORNAME% == VROverlay::GetOverlayErrorNameFromEnum()
+    tstr_SettingsWarningGraphicsCaptureError,                   //%ERRORCODE% == WinRT HRESULT in hex notation
+    tstr_SettingsWarningAppProfileActive,                       //%APPNAME% == name of active application
     tstr_SettingsWarningMenuDontShowAgain,
     tstr_SettingsWarningMenuDismiss,
     tstr_SettingsInterfaceLanguage,
-    tstr_SettingsInterfaceLanguageCommunity,         //%AUTHOR% == Language Author string
+    tstr_SettingsInterfaceLanguageCommunity,                    //%AUTHOR% == Language Author string
     tstr_SettingsInterfaceLanguageIncompleteWarning,
     tstr_SettingsInterfaceAdvancedSettings,
     tstr_SettingsInterfaceAdvancedSettingsTip,
@@ -76,7 +76,7 @@ enum TRMGRStrID
     tstr_SettingsProfilesOverlaysHeader,
     tstr_SettingsProfilesOverlaysNameDefault,
     tstr_SettingsProfilesOverlaysNameNew,
-    tstr_SettingsProfilesOverlaysNameNewBase,        //%ID% == ID of profile, increased if previous number is already taken
+    tstr_SettingsProfilesOverlaysNameNewBase,                   //%ID% == ID of profile, increased if previous number is already taken
     tstr_SettingsProfilesOverlaysProfileLoad,
     tstr_SettingsProfilesOverlaysProfileAdd,
     tstr_SettingsProfilesOverlaysProfileSave,
@@ -160,6 +160,7 @@ enum TRMGRStrID
     tstr_SettingsActionsEditCommandTypeCropActiveWindow,
     tstr_SettingsActionsEditCommandTypeShowOverlay,
     tstr_SettingsActionsEditCommandTypeSwitchTask,
+    tstr_SettingsActionsEditCommandTypeLoadOverlayProfile,
     tstr_SettingsActionsEditCommandTypeUnknown,
     tstr_SettingsActionsEditCommandVisibilityToggle,
     tstr_SettingsActionsEditCommandVisibilityShow,
@@ -182,27 +183,31 @@ enum TRMGRStrID
     tstr_SettingsActionsEditCommandWindow,
     tstr_SettingsActionsEditCommandWindowNone,
     tstr_SettingsActionsEditCommandCursorWarp,
+    tstr_SettingsActionsEditCommandProfile,
+    tstr_SettingsActionsEditCommandProfileClear,
     tstr_SettingsActionsEditCommandDescNone,
-    tstr_SettingsActionsEditCommandDescKey,               //%KEYNAME% == key name
-    tstr_SettingsActionsEditCommandDescKeyToggle,         //^
-    tstr_SettingsActionsEditCommandDescMousePos,          //%X% & %Y% == position coordinates
-    tstr_SettingsActionsEditCommandDescString,            //%STRING% == command string
-    tstr_SettingsActionsEditCommandDescLaunchApp,         //%APP% == app path, %ARGSOPT% == tstr_SettingsActionsEditCommandDescLaunchAppArgsOpt or blank if app args are empty
-    tstr_SettingsActionsEditCommandDescLaunchAppArgsOpt,  //%ARGS% == app arguments
+    tstr_SettingsActionsEditCommandDescKey,                     //%KEYNAME% == key name
+    tstr_SettingsActionsEditCommandDescKeyToggle,               //^
+    tstr_SettingsActionsEditCommandDescMousePos,                //%X% & %Y% == position coordinates
+    tstr_SettingsActionsEditCommandDescString,                  //%STRING% == command string
+    tstr_SettingsActionsEditCommandDescLaunchApp,               //%APP% == app path, %ARGSOPT% == tstr_SettingsActionsEditCommandDescLaunchAppArgsOpt or blank if app args are empty
+    tstr_SettingsActionsEditCommandDescLaunchAppArgsOpt,        //%ARGS% == app arguments
     tstr_SettingsActionsEditCommandDescKeyboardToggle,
     tstr_SettingsActionsEditCommandDescKeyboardShow,
     tstr_SettingsActionsEditCommandDescKeyboardHide,
     tstr_SettingsActionsEditCommandDescCropWindow,
-    tstr_SettingsActionsEditCommandDescOverlayToggle,     //%TAGS% == target tags
-    tstr_SettingsActionsEditCommandDescOverlayShow,       //^
-    tstr_SettingsActionsEditCommandDescOverlayHide,       //^
+    tstr_SettingsActionsEditCommandDescOverlayToggle,           //%TAGS% == target tags
+    tstr_SettingsActionsEditCommandDescOverlayShow,             //^
+    tstr_SettingsActionsEditCommandDescOverlayHide,             //^
     tstr_SettingsActionsEditCommandDescOverlayTargetDefault,
     tstr_SettingsActionsEditCommandDescSwitchTask,
-    tstr_SettingsActionsEditCommandDescSwitchTaskWindow,  //%WINDOW% == window title string
+    tstr_SettingsActionsEditCommandDescSwitchTaskWindow,        //%WINDOW% == window title string
+    tstr_SettingsActionsEditCommandDescLoadOverlayProfile,      //%PROFILE% == profile name string
+    tstr_SettingsActionsEditCommandDescLoadOverlayProfileAdd,   //^
     tstr_SettingsActionsEditCommandDescUnknown,
     tstr_SettingsActionsOrderHeader,
-    tstr_SettingsActionsOrderButtonLabel,                 //%COUNT% == Action count
-    tstr_SettingsActionsOrderButtonLabelSingular,         //^
+    tstr_SettingsActionsOrderButtonLabel,                       //%COUNT% == Action count
+    tstr_SettingsActionsOrderButtonLabelSingular,               //^
     tstr_SettingsActionsOrderNoActions,
     tstr_SettingsActionsOrderAdd,
     tstr_SettingsActionsOrderRemove,
@@ -218,7 +223,7 @@ enum TRMGRStrID
     tstr_SettingsKeyboardAutoShowDesktop,
     tstr_SettingsKeyboardAutoShowDesktopTip,
     tstr_SettingsKeyboardAutoShowBrowser,
-    tstr_SettingsKeyboardLayoutAuthor,                    //%AUTHOR% == Layout Author string
+    tstr_SettingsKeyboardLayoutAuthor,                          //%AUTHOR% == Layout Author string
     tstr_SettingsKeyboardKeyClusters,
     tstr_SettingsKeyboardKeyClusterBase,
     tstr_SettingsKeyboardKeyClusterFunction,

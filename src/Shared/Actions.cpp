@@ -52,6 +52,7 @@ const char* ActionCommand::s_CommandTypeNames[ActionCommand::command_MAX] =
     "CropActiveWindow",
     "ShowOverlay",
     "SwitchTask",
+    "LoadOverlayProfile",
     "Unknown"
 };
 
@@ -477,6 +478,38 @@ void ActionManager::DoSwitchTaskCommand(const ActionCommand& command, OverlayIDL
     }
 }
 
+void ActionManager::DoLoadOverlayProfileCommand(const ActionCommand& command, OverlayIDList& /*overlay_targets*/) const
+{
+    const bool clear_existing = (command.UIntID == 1);
+
+    LOG_F(INFO, "Command LoadOverlayProfile:");
+
+    if (command.StrMain.empty())
+    {
+        ConfigManager::Get().LoadOverlayProfileDefault(true);
+
+        //Tell UI app to load the profile as well
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlay_profile_load, MAKELPARAM(ipcactv_ovrl_profile_multi, -2));
+
+        OutputManager::Get()->ResetOverlays();
+    }
+    else
+    {
+        const bool has_loaded_profile = ConfigManager::Get().LoadMultiOverlayProfileFromFile(command.StrMain + ".ini");
+
+        if (has_loaded_profile)
+        {
+            //Tell UI app to load the profile as well
+            HWND window = (OutputManager::Get() != nullptr) ? OutputManager::Get()->GetWindowHandle() : nullptr;
+
+            IPCManager::Get().SendStringToUIApp(configid_str_state_profile_name_load, command.StrMain, window);
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlay_profile_load, (clear_existing) ? ipcactv_ovrl_profile_multi : ipcactv_ovrl_profile_multi_add);
+
+            OutputManager::Get()->ResetOverlays();
+        }
+    }
+}
+
 #endif //ifdef DPLUS_UI
 
 #ifdef DPLUS_UI
@@ -743,15 +776,16 @@ void ActionManager::StartAction(ActionUID action_uid, unsigned int overlay_sourc
         {
             switch (command.Type)
             {
-                case ActionCommand::command_key:                DoKeyCommand(             command, overlay_targets, true);  break;
-                case ActionCommand::command_mouse_pos:          DoMousePosCommand(        command, overlay_targets);        break;
-                case ActionCommand::command_string:             DoStringCommand(          command, overlay_targets);        break;
-                case ActionCommand::command_launch_app:         DoLaunchAppCommand(       command, overlay_targets);        break;
-                case ActionCommand::command_show_keyboard:      DoShowKeyboardCommand(    command, overlay_targets);        break;
-                case ActionCommand::command_crop_active_window: DoCropActiveWindowCommand(command, overlay_targets);        break;
-                case ActionCommand::command_show_overlay:       DoShowOverlayCommand(     command, overlay_targets, false); break;
-                case ActionCommand::command_switch_task:        DoSwitchTaskCommand(      command, overlay_targets);        break;
-                default:                                        break;
+                case ActionCommand::command_key:                  DoKeyCommand(               command, overlay_targets, true);  break;
+                case ActionCommand::command_mouse_pos:            DoMousePosCommand(          command, overlay_targets);        break;
+                case ActionCommand::command_string:               DoStringCommand(            command, overlay_targets);        break;
+                case ActionCommand::command_launch_app:           DoLaunchAppCommand(         command, overlay_targets);        break;
+                case ActionCommand::command_show_keyboard:        DoShowKeyboardCommand(      command, overlay_targets);        break;
+                case ActionCommand::command_crop_active_window:   DoCropActiveWindowCommand(  command, overlay_targets);        break;
+                case ActionCommand::command_show_overlay:         DoShowOverlayCommand(       command, overlay_targets, false); break;
+                case ActionCommand::command_switch_task:          DoSwitchTaskCommand(        command, overlay_targets);        break;
+                case ActionCommand::command_load_overlay_profile: DoLoadOverlayProfileCommand(command, overlay_targets);        break;
+                default:                                          break;
             }
         }
     #endif
@@ -1088,6 +1122,21 @@ std::string ActionManager::GetCommandDescription(const ActionCommand& command, f
                 str = TranslationManager::GetString(tstr_SettingsActionsEditCommandDescSwitchTaskWindow);
                 StringReplaceAll(str, "%WINDOW%", (!command.StrMain.empty()) ? command.StrMain : TranslationManager::GetString(tstr_SettingsActionsEditCommandWindowNone));
             }
+            break;
+        }
+        case ActionCommand::command_load_overlay_profile:
+        {
+            if (command.UIntID == 0)
+            {
+                str = TranslationManager::GetString(tstr_SettingsActionsEditCommandDescLoadOverlayProfileAdd);
+            }
+            else
+            {
+                str = TranslationManager::GetString(tstr_SettingsActionsEditCommandDescLoadOverlayProfile);
+            }
+
+            StringReplaceAll(str, "%PROFILE%", (!command.StrMain.empty()) ? command.StrMain : TranslationManager::GetString(tstr_SettingsProfilesOverlaysNameDefault));
+
             break;
         }
         default: str = TranslationManager::GetString(tstr_SettingsActionsEditCommandDescUnknown); break;

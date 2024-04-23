@@ -126,6 +126,8 @@ class UIManager
         void DisplayInitialSetupNotification();
         void SetOverlayInputEnabled(bool is_enabled);
 
+        void HandleOverlayProfileLoadMessage(LPARAM lparam);
+
     public:
         static UIManager* Get();
 

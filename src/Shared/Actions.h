@@ -22,6 +22,7 @@ struct ActionCommand
         command_crop_active_window,
         command_show_overlay,
         command_switch_task,
+        command_load_overlay_profile,
         command_unknown,                                //Set when loading unrecognized command
         command_MAX
     };
@@ -94,14 +95,15 @@ class ActionManager
         #endif
 
         #ifndef DPLUS_UI
-            void DoKeyCommand(             const ActionCommand& command, OverlayIDList& overlay_targets, bool down) const;
-            void DoMousePosCommand(        const ActionCommand& command, OverlayIDList& overlay_targets)            const;
-            void DoStringCommand(          const ActionCommand& command, OverlayIDList& overlay_targets)            const;
-            void DoLaunchAppCommand(       const ActionCommand& command, OverlayIDList& overlay_targets)            const;
-            void DoShowKeyboardCommand(    const ActionCommand& command, OverlayIDList& overlay_targets)            const;
-            void DoCropActiveWindowCommand(const ActionCommand& command, OverlayIDList& overlay_targets)            const;
-            void DoShowOverlayCommand(     const ActionCommand& command, OverlayIDList& overlay_targets, bool undo) const;
-            void DoSwitchTaskCommand(      const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoKeyCommand(               const ActionCommand& command, OverlayIDList& overlay_targets, bool down) const;
+            void DoMousePosCommand(          const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoStringCommand(            const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoLaunchAppCommand(         const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoShowKeyboardCommand(      const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoCropActiveWindowCommand(  const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoShowOverlayCommand(       const ActionCommand& command, OverlayIDList& overlay_targets, bool undo) const;
+            void DoSwitchTaskCommand(        const ActionCommand& command, OverlayIDList& overlay_targets)            const;
+            void DoLoadOverlayProfileCommand(const ActionCommand& command, OverlayIDList& overlay_targets)            const;
         #endif
 
         #ifdef DPLUS_UI

@@ -3937,6 +3937,9 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
         reload_icon = true;
         input_tags_state.PopupShow = false;
 
+        //Make sure profile list is ready
+        m_ProfileList = ConfigManager::Get().GetOverlayProfileList();
+
         //Create from scratch if selected UID is 0
         if (m_ActionSelectionUID == k_ActionUID_Invalid)
         {
@@ -4353,7 +4356,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
 
         int command_type_temp = command.Type;
         ImGui::SetNextItemWidth(-1);
-        if (TranslatedComboAnimated("##ComboCommandType", command_type_temp, tstr_SettingsActionsEditCommandTypeNone, tstr_SettingsActionsEditCommandTypeSwitchTask))
+        if (TranslatedComboAnimated("##ComboCommandType", command_type_temp, tstr_SettingsActionsEditCommandTypeNone, tstr_SettingsActionsEditCommandTypeLoadOverlayProfile))
         {
             //Reset command values, then set type
             command = ActionCommand();
@@ -4363,6 +4366,12 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
             ui_state.buffer_str_arg[0]  = '\0';
             ui_state.temp_int_1 = 0;
             ui_state.temp_int_2 = 0;
+
+            //Set command specific default values
+            if (command.Type == ActionCommand::command_load_overlay_profile)
+            {
+                command.UIntID = 1; //Clear existing overlays: true
+            }
 
             has_value_changed = true;
         }
@@ -4722,6 +4731,79 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
                 }
 
                 if (command.UIntID == 0)
+                    ImGui::PopItemDisabled();
+
+                break;
+            }
+            case ActionCommand::command_load_overlay_profile:
+            {
+                bool clear_existing = (command.UIntID == 1);
+
+                int& list_id = ui_state.temp_int_1;
+
+                //Find current selection index if needed
+                if ((list_id == 0) && (!command.StrMain.empty()))
+                {
+                    const auto it = std::find(m_ProfileList.begin(), m_ProfileList.end(), command.StrMain);
+                    list_id = (it != m_ProfileList.end()) ? (int)std::distance(m_ProfileList.begin(), it) : -1;
+                }
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandProfile));
+
+                ImGui::NextColumn();
+
+                ImGui::PushItemWidth(-1);
+                ImGui::SetNextItemWidth(-1);
+                if (ImGui::BeginComboAnimated("##ComboLang", (!command.StrMain.empty()) ? command.StrMain.c_str() : TranslationManager::GetString(tstr_SettingsProfilesOverlaysNameDefault) ))
+                {
+                    int index = 0;
+                    for (const auto& name : m_ProfileList)
+                    {
+                        //Skip [New Profile] which is always at the end of the list
+                        if (index == m_ProfileList.size() - 1)
+                        {
+                            break;
+                        }
+
+                        ImGui::PushID(index);
+                        if (ImGui::Selectable(name.c_str(), (index == list_id)))
+                        {
+                            list_id = index;
+
+                            if (list_id == 0)
+                            {
+                                command.StrMain = "";
+                                command.UIntID  = 1;
+                            }
+                            else
+                            {
+                                command.StrMain = m_ProfileList[list_id];
+                            }
+
+                            has_value_changed = true;
+                        }
+                        ImGui::PopID();
+
+                        index++;
+                    }
+
+                    ImGui::EndCombo();
+                }
+
+                ImGui::NextColumn();
+
+                //"Default Profile" is always clearing overlays
+                if (list_id == 0)
+                    ImGui::PushItemDisabled();
+
+                if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsActionsEditCommandProfileClear), &clear_existing))
+                {
+                    command.UIntID = clear_existing;
+                    has_value_changed = true;
+                }
+
+                if (list_id == 0)
                     ImGui::PopItemDisabled();
 
                 break;
