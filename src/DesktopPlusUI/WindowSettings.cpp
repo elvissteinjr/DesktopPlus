@@ -1643,66 +1643,69 @@ void WindowSettings::UpdatePageMainCatInput()
         ImGui::Columns(1);
         ImGui::Spacing();
 
-        ImGui::Indent();
-
-        bool& hmd_pointer = ConfigManager::GetRef(configid_bool_input_laser_pointer_hmd_device);
-        if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointer), &hmd_pointer))
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
         {
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_laser_pointer_hmd_device, hmd_pointer);
-        }
+            ImGui::Indent();
 
-        ImGui::PushID("HMDPointer");
-
-        ImGui::Indent(ImGui::GetFrameHeightWithSpacing());
-
-        const ImVec2 table_size(-style.IndentSpacing - 1.0f, 0.0f);                                                    //Replicate padding from columns
-        const float table_column_width = m_Column0Width - style.IndentSpacing - ImGui::GetFrameHeightWithSpacing();    //Align with width of other columns 
-
-        if (BeginCompactTable("TableHMDPointerInput", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit, table_size))
-        {
-            ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointerTableHeaderInputAction), 0, table_column_width);
-            ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointerTableHeaderBinding), ImGuiTableColumnFlags_WidthStretch);
-            CompactTableHeadersRow();
-
-            const int key_count = configid_int_input_laser_pointer_hmd_device_keycode_middle - configid_int_input_laser_pointer_hmd_device_keycode_toggle;
-            IM_ASSERT(configid_int_input_laser_pointer_hmd_device_keycode_toggle < configid_int_input_laser_pointer_hmd_device_keycode_middle);
-            IM_ASSERT(tstr_SettingsLaserPointerHMDPointerTableBindingToggle + key_count < tstr_MAX);
-
-            for (int i = 0; i < key_count + 1; ++i)
+            bool& hmd_pointer = ConfigManager::GetRef(configid_bool_input_laser_pointer_hmd_device);
+            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointer), &hmd_pointer))
             {
-                ConfigID_Int config_id = (ConfigID_Int)(configid_int_input_laser_pointer_hmd_device_keycode_toggle + i);
-
-                ImGui::PushID(i);
-
-                ImGui::TableNextColumn();
-
-                ImGui::AlignTextToFramePadding();
-                ImGui::TextUnformatted(TranslationManager::GetString( (TRMGRStrID)(tstr_SettingsLaserPointerHMDPointerTableBindingToggle + i) ));
-                ImGui::SameLine();
-
-                ImGui::TableNextColumn();
-
-                if (ImGui::Selectable( GetStringForKeyCode(ConfigManager::GetValue(config_id)) ))
-                {
-                    m_KeyCodePickerNoMouse    = true;
-                    m_KeyCodePickerHotkeyMode = false;
-                    m_KeyCodePickerID = ConfigManager::GetValue(config_id);
-                    edited_hmd_pointer_input_id = config_id;
-
-                    PageGoForward(wndsettings_page_keycode_picker);
-                    m_PageReturned = wndsettings_page_none;
-                }
-
-                ImGui::PopID();
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_laser_pointer_hmd_device, hmd_pointer);
             }
 
-            EndCompactTable();
+            ImGui::PushID("HMDPointer");
+
+            ImGui::Indent(ImGui::GetFrameHeightWithSpacing());
+
+            const ImVec2 table_size(-style.IndentSpacing - 1.0f, 0.0f);                                                    //Replicate padding from columns
+            const float table_column_width = m_Column0Width - style.IndentSpacing - ImGui::GetFrameHeightWithSpacing();    //Align with width of other columns 
+
+            if (BeginCompactTable("TableHMDPointerInput", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit, table_size))
+            {
+                ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointerTableHeaderInputAction), 0, table_column_width);
+                ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointerTableHeaderBinding), ImGuiTableColumnFlags_WidthStretch);
+                CompactTableHeadersRow();
+
+                const int key_count = configid_int_input_laser_pointer_hmd_device_keycode_middle - configid_int_input_laser_pointer_hmd_device_keycode_toggle;
+                IM_ASSERT(configid_int_input_laser_pointer_hmd_device_keycode_toggle < configid_int_input_laser_pointer_hmd_device_keycode_middle);
+                IM_ASSERT(tstr_SettingsLaserPointerHMDPointerTableBindingToggle + key_count < tstr_MAX);
+
+                for (int i = 0; i < key_count + 1; ++i)
+                {
+                    ConfigID_Int config_id = (ConfigID_Int)(configid_int_input_laser_pointer_hmd_device_keycode_toggle + i);
+
+                    ImGui::PushID(i);
+
+                    ImGui::TableNextColumn();
+
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::TextUnformatted(TranslationManager::GetString( (TRMGRStrID)(tstr_SettingsLaserPointerHMDPointerTableBindingToggle + i) ));
+                    ImGui::SameLine();
+
+                    ImGui::TableNextColumn();
+
+                    if (ImGui::Selectable( GetStringForKeyCode(ConfigManager::GetValue(config_id)) ))
+                    {
+                        m_KeyCodePickerNoMouse    = true;
+                        m_KeyCodePickerHotkeyMode = false;
+                        m_KeyCodePickerID = ConfigManager::GetValue(config_id);
+                        edited_hmd_pointer_input_id = config_id;
+
+                        PageGoForward(wndsettings_page_keycode_picker);
+                        m_PageReturned = wndsettings_page_none;
+                    }
+
+                    ImGui::PopID();
+                }
+
+                EndCompactTable();
+            }
+
+            ImGui::PopID();
+
+            ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
+            ImGui::Unindent();
         }
-
-        ImGui::PopID();
-
-        ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
-        ImGui::Unindent();
     }
 }
 
