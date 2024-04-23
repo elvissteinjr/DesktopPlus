@@ -2432,7 +2432,8 @@ void WindowSettings::UpdatePageKeyboardLayout(bool only_restore_settings)
     ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
-    ImGui::BeginChild("LayoutList", ImVec2(0.0f, (item_height * 13.0f) + inner_padding - m_WarningHeight), true);
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? 19.0f : 15.0f;
+    ImGui::BeginChild("LayoutList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
     //List layouts
     int index = 0;
@@ -2666,7 +2667,7 @@ void WindowSettings::UpdatePageProfiles()
     ImGui::SetNextItemWidth(-1.0f);
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
-    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? ( (is_root_page) ? 22.0f : 20.0f ) : 15.0f;
+    const float item_count = (UIManager::Get()->IsInDesktopMode()) ? ( (is_root_page) ? 22.0f : 20.0f ) : 16.0f;
     ImGui::BeginChild("ProfileList", ImVec2(0.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
     //List profiles
@@ -5365,7 +5366,7 @@ void WindowSettings::UpdatePageKeyCodePicker(bool only_restore_settings)
 
     const float item_height = ImGui::GetFontSize() + style.ItemSpacing.y;
     const float inner_padding = style.FramePadding.y + style.FramePadding.y + style.ItemInnerSpacing.y;
-    const float item_count_offset = (m_KeyCodePickerHotkeyMode) ? -2.5f : 0.0f;
+    const float item_count_offset = (m_KeyCodePickerHotkeyMode) ? ((UIManager::Get()->IsInDesktopMode()) ? -2.5f : -2.0f) : 0.0f;
     const float item_count = ((UIManager::Get()->IsInDesktopMode()) ? 21.0f : 16.0f) + item_count_offset;
     ImGui::BeginChild("KeyCodePickerList", ImVec2(-1.0f, (item_height * item_count) + inner_padding - m_WarningHeight), true);
 
