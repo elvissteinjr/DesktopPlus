@@ -1279,10 +1279,14 @@ bool ConfigManager::SaveMultiOverlayProfileToFile(const std::string& filename, s
 
 bool ConfigManager::DeleteOverlayProfile(const std::string& filename)
 {
-    LOG_F(INFO, "Deleted overlay profile \"%s\"...", filename.c_str());
+    LOG_F(INFO, "Deleting overlay profile \"%s\"...", filename.c_str());
 
     std::string path = m_ApplicationPath + "profiles/" + filename;
-    return (::DeleteFileW(WStringConvertFromUTF8(path.c_str()).c_str()) != 0);
+    bool ret = (::DeleteFileW(WStringConvertFromUTF8(path.c_str()).c_str()) != 0);
+
+    LOG_IF_F(WARNING, !ret, "Failed to delete overlay profile!");
+
+    return ret;
 }
 
 void ConfigManager::DeleteAllOverlayProfiles()
