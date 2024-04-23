@@ -2811,8 +2811,8 @@ void WindowSettings::UpdatePageProfiles()
             if (!has_deletion_failed)
             {
                 m_ProfileList = ConfigManager::Get().GetOverlayProfileList();
-                m_ProfileSelectionName = m_ProfileList[list_id];
                 list_id--;
+                m_ProfileSelectionName = m_ProfileList[list_id];
 
                 UIManager::Get()->RepeatFrame();
             }
