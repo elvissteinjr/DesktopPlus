@@ -672,6 +672,10 @@ void ConfigManager::LoadMultiOverlayProfile(const Ini& config, bool clear_existi
     if (clear_existing_overlays)
     {
         OverlayManager::Get().RemoveAllOverlays();
+
+        //Reset browser missing warning. It'll get set again if appropriate.
+        //Other cases are unhandled (e.g. only removing offending overlay) as it'd require littering checks everywhere for little use
+        m_ConfigBool[configid_bool_state_misc_browser_used_but_missing] = false;
     }
 
     unsigned int overlay_id = 0;
