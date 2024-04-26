@@ -143,10 +143,8 @@ void FloatingUI::UpdateUITargetState()
         ovrl_handle_hover_target = ovrl_handle_floating_ui;
     }
 
-    //Don't show UI if ImGui popup is open (which blocks all input so just hide this)
-    //ImGui::IsPopupOpen() doesn't just check for modals though so it could get in the way at some point
-    //Also don't show while reordering overlays since config changes may cause the UI to jump around while doing that
-    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) && (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) &&
+    //Don't show while reordering overlays since config changes may cause the UI to jump around while doing that
+    if ( (ovrl_handle_hover_target == vr::k_ulOverlayHandleInvalid) && (!ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp)) &&
          (!UIManager::Get()->GetOverlayBarWindow().IsDraggingOverlayButtons()) )
     {
         if (has_pointer_device)
