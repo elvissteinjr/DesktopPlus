@@ -8,6 +8,7 @@
 
 #include "ConfigManager.h"
 #include "OutputManager.h"
+#include "OpenVRExt.h"
 
 VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionsetLaserPointer(vr::k_ulInvalidActionSetHandle),
@@ -38,20 +39,30 @@ void VRInput::UpdateKeyboardDeviceState()
     {
         if (keycode != 0)
         {
-            input_data.bActive  = true;
-            input_data.bChanged = false;
-
-            if (::GetAsyncKeyState(keycode) < 0)
+            if ((ConfigManager::GetValue(configid_bool_input_laser_pointer_hmd_device)) && (!vr::IVROverlayEx::IsSystemLaserPointerActive()))
             {
-                if (!input_data.bState)
+                input_data.bActive = true;
+                input_data.bChanged = false;
+
+                if (::GetAsyncKeyState(keycode) < 0)
+                {
+                    if (!input_data.bState)
+                    {
+                        input_data.bChanged = true;
+                        input_data.bState = true;
+                    }
+                }
+                else if (input_data.bState)
                 {
                     input_data.bChanged = true;
-                    input_data.bState   = true;
+                    input_data.bState = false;
                 }
             }
-            else if (input_data.bState)
+            else
             {
-                input_data.bChanged = true;
+                //Drop inputs if settings disabled or system laser pointer is active
+                input_data.bActive  = input_data.bState;    //true for one frame before we set it inactive
+                input_data.bChanged = input_data.bState;
                 input_data.bState   = false;
             }
         }
@@ -67,22 +78,32 @@ void VRInput::UpdateKeyboardDeviceState()
     {
         if (keycode != 0)
         {
-            input_data.bActive  = true;
-            input_data.bChanged = false;
-
-            if (::GetAsyncKeyState(keycode) < 0)
+            if ((ConfigManager::GetValue(configid_bool_input_laser_pointer_hmd_device)) && (!vr::IVROverlayEx::IsSystemLaserPointerActive()))
             {
-                if (!is_key_down)
-                {
-                    input_data.bChanged = true;
-                    input_data.bState   = !input_data.bState;
-                }
+                input_data.bActive  = true;
+                input_data.bChanged = false;
 
-                is_key_down = true;
+                if (::GetAsyncKeyState(keycode) < 0)
+                {
+                    if (!is_key_down)
+                    {
+                        input_data.bChanged = true;
+                        input_data.bState   = !input_data.bState;
+                    }
+
+                    is_key_down = true;
+                }
+                else
+                {
+                    is_key_down = false;
+                }
             }
             else
             {
-                is_key_down = false;
+                //Drop inputs if settings disabled or system laser pointer is active (Desktop+ pointer won't be doing anything either way, but the toggle key should reset at least)
+                input_data.bActive  = input_data.bState;    //true for one frame before we set it inactive
+                input_data.bChanged = input_data.bState;
+                input_data.bState   = false;
             }
         }
         else
@@ -92,18 +113,6 @@ void VRInput::UpdateKeyboardDeviceState()
             input_data.bState   = false;
         }
     };
-
-    if (!ConfigManager::GetValue(configid_bool_input_laser_pointer_hmd_device))
-    {
-        m_KeyboardDeviceToggleState.bActive = false;
-
-        for (auto& input_data : m_KeyboardDeviceClickState)
-        {
-            input_data.bActive = false;
-        }
-
-        return;
-    }
 
     //Toggle action state is always set up as a toggle binding
     update_input_data_toggle(m_KeyboardDeviceToggleState, ConfigManager::GetValue(configid_int_input_laser_pointer_hmd_device_keycode_toggle), m_KeyboardDeviceIsToggleKeyDown);
