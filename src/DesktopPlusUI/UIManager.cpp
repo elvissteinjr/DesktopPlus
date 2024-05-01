@@ -1907,7 +1907,7 @@ void UIManager::PositionOverlay()
                 UpdateOverlayDimming();
                 m_OverlayDragger.UpdateTempStandingPosition();
 
-                //We prevent the fade-out when Overlay Bar is newly visible while the dashboard SystemUI is being hovered until ithe pointer leaves that overlay at least once
+                //We prevent the fade-out when Overlay Bar is newly visible while the dashboard SystemUI is being hovered until the pointer leaves that overlay at least once
                 if (is_systemui_hovered)
                 {
                     m_IsSystemUIHoveredFromSwitch = true;
@@ -2036,8 +2036,11 @@ void UIManager::UpdateOverlayDrag()
             }
         }
 
-        //Prevent widget input during active drag
-        ImGui::BlockWidgetInput();
+        //Prevent widget input during active drag, except for the keyboard where this doesn't matter and would unfocus active InputTexts
+        if (drag_overlay_handle != m_OvrlHandleKeyboard)
+        {
+            ImGui::BlockWidgetInput();
+        }
     }
     else if (m_OverlayDragger.IsDragGestureActive())
     {

@@ -203,7 +203,7 @@ void WindowKeyboard::Hide(bool skip_fade)
 {
     m_IsAutoVisible = false;
 
-    //Refuse to hide if window is currently being dragged or hovered and remove assignment
+    //Refuse to hide if window is currently being dragged and remove assignment
     if ( (UIManager::Get()->GetOverlayDragger().IsDragActive()) && (UIManager::Get()->GetOverlayDragger().GetDragOverlayHandle() == GetOverlayHandle()) )
     {
         SetAssignedOverlayID(-1);
@@ -233,6 +233,12 @@ bool WindowKeyboard::SetAutoVisibility(int assigned_overlay_id, bool show)
     }
     else if ( (m_IsAutoVisible) && (GetAssignedOverlayID() == assigned_overlay_id) )
     {
+        //Don't auto-hide while any buttons are being hovered, mostly relevant for the title bar buttons
+        if ((assigned_overlay_id == -2) && (m_IsAnyButtonHovered))
+        {
+            return false;
+        }
+
         SetAssignedOverlayID(-1);
         Hide();
 
@@ -334,8 +340,11 @@ void WindowKeyboard::WindowUpdate()
     io.KeyRepeatDelay = 0.5f;
     io.KeyRepeatRate  = 0.025f;
 
-    m_IsHovered = ((ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | ImGuiHoveredFlags_AllowWhenBlockedByPopup)) && 
-                   (io.MousePos.y >= ImGui::GetCursorScreenPos().y - style.WindowPadding.y));
+    //Exclude title bar buttons from hovered state to get regular widget focus behavior on them
+    const bool is_hovering_titlebar_buttons = ((ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | ImGuiHoveredFlags_AllowWhenBlockedByPopup)) && 
+                                               (io.MousePos.y < ImGui::GetCursorScreenPos().y - style.WindowPadding.y) && (!m_IsTitleBarHovered));
+
+    m_IsHovered = ((ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | ImGuiHoveredFlags_AllowWhenBlockedByPopup)) && (!is_hovering_titlebar_buttons));
 
     //Keyboard buttons use their own window-local active widget state in order to not interrupt active InputText() widgets. This is a dirty hack, but works for now
     ImGui::ActiveWidgetStateStorage widget_state_back;
@@ -470,7 +479,8 @@ void WindowKeyboard::WindowUpdate()
         m_UnstickModifiersLater = false;
     }
 
-    m_IsAnyButtonHovered = false;
+    //Default to title bar button hover state as m_IsAnyButtonHovered is checked for blocking auto-hiding
+    m_IsAnyButtonHovered = is_hovering_titlebar_buttons;
 
     int key_index = 0;
     ImVec2 cursor_pos = ImGui::GetCursorPos();
@@ -844,6 +854,14 @@ void WindowKeyboard::WindowUpdate()
 
     io.KeyRepeatDelay = key_repeat_delay_old;
     io.KeyRepeatRate  = key_repeat_delay_rate;
+}
+
+void WindowKeyboard::OnWindowPinButtonPressed()
+{
+    FloatingWindow::OnWindowPinButtonPressed();
+
+    //Disable auto-hiding that may happen when the keyboard is no longer hovered after pressing this
+    m_IsAutoVisible = false;
 }
 
 void WindowKeyboard::OnWindowCloseButtonPressed()
