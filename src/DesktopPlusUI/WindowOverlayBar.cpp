@@ -371,7 +371,7 @@ void WindowOverlayBar::MenuOverlayButton(unsigned int overlay_id, ImVec2 pos, bo
                 if (properties_window.GetActiveOverlayID() == overlay_id)
                 {
                     properties_window.SetActiveOverlayID(k_ulOverlayID_None, true);
-                    properties_window.Hide();
+                    properties_window.HideAll();
                 }
                 else if (properties_window.GetActiveOverlayID() > overlay_id) //Adjust properties window active overlay ID if it's open for an overlay that had its ID shifted
                 {

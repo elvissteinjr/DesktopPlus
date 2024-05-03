@@ -1398,6 +1398,14 @@ void FloatingWindow::Hide(bool skip_fade)
     }
 }
 
+void FloatingWindow::HideAll(bool skip_fade)
+{
+    Hide(skip_fade);
+
+    m_OverlayStateRoom.IsVisible         = false;
+    m_OverlayStateDashboardTab.IsVisible = false;
+}
+
 bool FloatingWindow::IsVisible() const
 {
     return m_OverlayStateCurrent->IsVisible;

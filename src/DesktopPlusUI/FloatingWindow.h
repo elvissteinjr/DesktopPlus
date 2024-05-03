@@ -135,6 +135,7 @@ class FloatingWindow
 
         virtual void Show(bool skip_fade = false);
         virtual void Hide(bool skip_fade = false);
+        void HideAll(bool skip_fade = false);       //Hide(), but applies to all overlay visibility states
         bool IsVisible() const;
         bool IsVisibleOrFading() const;  //Returns true if m_Visible is true *or* m_Alpha isn't 0 yet
         float GetAlpha() const;
