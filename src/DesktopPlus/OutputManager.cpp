@@ -805,7 +805,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     }
     else if (m_OutputPendingDirtyRect.GetTL().x != -1) //Add previously collected dirty rects if there are any
     {
-        DirtyRectTotal.Add(m_OutputPendingDirtyRect);
+        (DirtyRectTotal.GetTL().x == -1) ? DirtyRectTotal = m_OutputPendingDirtyRect : DirtyRectTotal.Add(m_OutputPendingDirtyRect);
     }
 
     bool has_updated_overlay = false;
@@ -876,6 +876,10 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         m_DeviceContext->RSSetScissorRects(1, &rect_scissor_full);
 
         has_updated_overlay = (ret == DUPL_RETURN_UPD_SUCCESS_REFRESHED_OVERLAY);
+    }
+    else if (PointerInfo->CursorShapeChanged) //But remember if the cursor changed for next time
+    {
+        m_MouseCursorNeedsUpdate = true;
     }
 
     //Set cached mouse values
