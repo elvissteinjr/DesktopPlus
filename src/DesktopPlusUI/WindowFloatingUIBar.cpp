@@ -701,8 +701,8 @@ void WindowFloatingUIActionBar::Update(unsigned int overlay_id)
             m_Alpha = 0.0f;
     }
 
-    //We need to not skip on alpha 0.0 at least twice to get the real height of the bar. 32.0f is the placeholder width ImGui seems to use until then
-    if ( (m_Alpha == 0.0f) && (m_Size.x != 32.0f) )
+    //We need to not skip on alpha 0.0 at least twice to get the real height of the bar. 32.0f (and sometimes 16.0f) is the placeholder width ImGui seems to use until then
+    if ( (m_Alpha == 0.0f) && (m_Size.x > 32.0f) )
         return;
 
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_Alpha);
