@@ -1501,6 +1501,10 @@ void UIManager::OnTranslationChanged()
     m_WindowSettings.ClearCachedTranslationStrings();
     m_WindowOverlayProperties.SetActiveOverlayID(m_WindowOverlayProperties.GetActiveOverlayID(), true);
 
+    DPBrowserAPIClient::Get().DPBrowser_ErrorPageSetStrings(TranslationManager::GetString(tstr_BrowserErrorPageTitle), 
+                                                            TranslationManager::GetString(tstr_BrowserErrorPageHeading), 
+                                                            TranslationManager::GetString(tstr_BrowserErrorPageMessage));
+
     RepeatFrame();
 }
 

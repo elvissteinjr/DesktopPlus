@@ -8,6 +8,7 @@
 #ifdef DPLUS_UI
     #include "UIManager.h"
     #include "OverlayManager.h"
+    #include "TranslationManager.h"
 #else
     #include "OutputManager.h"
 #endif
@@ -21,9 +22,7 @@ bool DPBrowserAPIClient::LaunchServerIfNotRunning()
         return false;
 
     //Check if it's already running and update cached handle just in case
-    m_ServerWindowHandle = ::FindWindow(g_WindowClassNameBrowserApp, nullptr);
-
-    if (m_ServerWindowHandle != nullptr)
+    if (IsServerRunning())
         return true;
 
     //Prepare command-line
@@ -113,22 +112,58 @@ bool DPBrowserAPIClient::LaunchServerIfNotRunning()
         }
     }
 
-    //Apply pending settings, if there are any
-    if (m_PendingSettingGlobalFPS != -1)
-    {
-        DPBrowser_GlobalSetFPS(m_PendingSettingGlobalFPS);
-        m_PendingSettingGlobalFPS = -1;
-    }
-
-    if (m_PendingSettingContentBlockEnabled != -1)
-    {
-        DPBrowser_ContentBlockSetEnabled( (m_PendingSettingContentBlockEnabled != 0) );
-        m_PendingSettingContentBlockEnabled = -1;
-    }
+    ApplyPendingSettings();
 
     LOG_F(INFO, "Launched Desktop+ Browser process");
 
     return true;
+}
+
+bool DPBrowserAPIClient::IsServerRunning()
+{
+    //This is not going to work with the executable missing or previously discovered API mismatch
+    if ( (!m_IsServerAvailable) || (m_HasServerAPIMismatch) )
+        return false;
+
+    //Check if it's already running and update cached handle
+    HWND window_handle = ::FindWindow(g_WindowClassNameBrowserApp, nullptr);
+
+    //Apply pending settings if window handle changed (only really useful after restarting UI process)
+    if (m_ServerWindowHandle != window_handle)
+    {
+        m_ServerWindowHandle = window_handle;
+        ApplyPendingSettings();
+    }
+
+    return (m_ServerWindowHandle != nullptr);
+}
+
+void DPBrowserAPIClient::ApplyPendingSettings()
+{
+    //Apply pending settings, if there are any
+    if (m_PendingSettingGlobalFPS != -1)
+    {
+        m_PendingSettingGlobalFPS = -1;                     //Important: Set these before calling the API function to avoid re-entrancy
+        DPBrowser_GlobalSetFPS(m_PendingSettingGlobalFPS);
+    }
+
+    if (m_PendingSettingContentBlockEnabled != -1)
+    {
+        m_PendingSettingContentBlockEnabled = -1;
+        DPBrowser_ContentBlockSetEnabled((m_PendingSettingContentBlockEnabled != 0));
+    }
+
+    //Send translation strings
+    #ifdef DPLUS_UI
+        if (m_PendingTranslationStrings)
+        {
+            m_PendingTranslationStrings = false;
+
+            DPBrowser_ErrorPageSetStrings(TranslationManager::GetString(tstr_BrowserErrorPageTitle), 
+                                          TranslationManager::GetString(tstr_BrowserErrorPageHeading), 
+                                          TranslationManager::GetString(tstr_BrowserErrorPageMessage));
+        }
+    #endif
 }
 
 void DPBrowserAPIClient::SendStringMessage(DPBrowserICPStringID str_id, const std::string& str) const
@@ -184,7 +219,7 @@ bool DPBrowserAPIClient::Init()
 void DPBrowserAPIClient::Quit()
 {
     //We're not going to launch the server for this, but passing nullptr will send quit to ourselves, so don't do that
-    if (m_ServerWindowHandle == nullptr)
+    if (!IsServerRunning())
         return;
 
     //Ask browser process to quit cleanly
@@ -243,6 +278,11 @@ void DPBrowserAPIClient::HandleIPCMessage(const MSG& msg)
         case dpbrowser_ipccmd_set_overlay_target:
         {
             m_IPCOverlayTarget = msg.lParam;
+            break;
+        }
+        case dpbrowser_ipccmd_notify_ready:
+        {
+            ApplyPendingSettings();
             break;
         }
         case dpbrowser_ipccmd_notify_nav_state:
@@ -401,7 +441,7 @@ void DPBrowserAPIClient::DPBrowser_RecreateBrowser(vr::VROverlayHandle_t overlay
 
 void DPBrowserAPIClient::DPBrowser_StopBrowser(vr::VROverlayHandle_t overlay_handle)
 {
-    if (m_ServerWindowHandle == nullptr)
+    if (!IsServerRunning())
         return;
 
     ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_stop_browser, overlay_handle);
@@ -463,7 +503,7 @@ void DPBrowserAPIClient::DPBrowser_SetOverUnder3D(vr::VROverlayHandle_t overlay_
 
 void DPBrowserAPIClient::DPBrowser_MouseMove(vr::VROverlayHandle_t overlay_handle, int x, int y)
 {
-    if (m_ServerWindowHandle == nullptr)
+    if (!IsServerRunning())
         return;
 
     ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_set_overlay_target, overlay_handle);
@@ -472,7 +512,7 @@ void DPBrowserAPIClient::DPBrowser_MouseMove(vr::VROverlayHandle_t overlay_handl
 
 void DPBrowserAPIClient::DPBrowser_MouseLeave(vr::VROverlayHandle_t overlay_handle)
 {
-    if (m_ServerWindowHandle == nullptr)
+    if (!IsServerRunning())
         return;
 
     ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_mouse_leave, overlay_handle);
@@ -480,7 +520,7 @@ void DPBrowserAPIClient::DPBrowser_MouseLeave(vr::VROverlayHandle_t overlay_hand
 
 void DPBrowserAPIClient::DPBrowser_MouseDown(vr::VROverlayHandle_t overlay_handle, vr::EVRMouseButton button)
 {
-    if (m_ServerWindowHandle == nullptr)
+    if (!IsServerRunning())
         return;
 
     ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_set_overlay_target, overlay_handle);
@@ -489,7 +529,7 @@ void DPBrowserAPIClient::DPBrowser_MouseDown(vr::VROverlayHandle_t overlay_handl
 
 void DPBrowserAPIClient::DPBrowser_MouseUp(vr::VROverlayHandle_t overlay_handle, vr::EVRMouseButton button)
 {
-    if (m_ServerWindowHandle == nullptr)
+    if (!IsServerRunning())
         return;
 
     ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_set_overlay_target, overlay_handle);
@@ -498,7 +538,7 @@ void DPBrowserAPIClient::DPBrowser_MouseUp(vr::VROverlayHandle_t overlay_handle,
 
 void DPBrowserAPIClient::DPBrowser_Scroll(vr::VROverlayHandle_t overlay_handle, float x_delta, float y_delta)
 {
-    if (m_ServerWindowHandle == nullptr)
+    if (!IsServerRunning())
         return;
 
     //Squeeze the floats into DWORDs so they'll survive MAKEQWORD
@@ -568,7 +608,7 @@ void DPBrowserAPIClient::DPBrowser_Refresh(vr::VROverlayHandle_t overlay_handle)
 
 void DPBrowserAPIClient::DPBrowser_GlobalSetFPS(int fps)
 {
-    if (m_ServerWindowHandle == nullptr)
+    if (!IsServerRunning())
     {
         m_PendingSettingGlobalFPS = fps;    //Will be applied after launching the server instead
         return;
@@ -579,11 +619,26 @@ void DPBrowserAPIClient::DPBrowser_GlobalSetFPS(int fps)
 
 void DPBrowserAPIClient::DPBrowser_ContentBlockSetEnabled(bool enable)
 {
-    if (m_ServerWindowHandle == nullptr)
+    if (!IsServerRunning())
     {
         m_PendingSettingContentBlockEnabled = enable;    //Will be applied after launching the server instead
         return;
     }
 
     ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_cblock_set_enabled, enable);
+}
+
+void DPBrowserAPIClient::DPBrowser_ErrorPageSetStrings(const std::string& title, const std::string& heading, const std::string& message)
+{
+    if (!IsServerRunning())
+    {
+        m_PendingTranslationStrings = true;
+        return;
+    }
+
+    SendStringMessage(dpbrowser_ipcstr_tstr_error_title,   title);
+    SendStringMessage(dpbrowser_ipcstr_tstr_error_heading, heading);
+    SendStringMessage(dpbrowser_ipcstr_tstr_error_message, message);
+
+    ::PostMessage(m_ServerWindowHandle, m_Win32MessageID, dpbrowser_ipccmd_error_set_strings, 0);
 }

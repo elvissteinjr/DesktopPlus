@@ -634,7 +634,10 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_NotificationIconQuit",
     "tstr_NotificationInitialStartupTitleVR",
     "tstr_NotificationInitialStartupTitleDesktop",
-    "tstr_NotificationInitialStartupMessage"
+    "tstr_NotificationInitialStartupMessage",
+    "tstr_BrowserErrorPageTitle",
+    "tstr_BrowserErrorPageHeading",
+    "tstr_BrowserErrorPageMessage",
 };
 
 static TranslationManager g_TranslationManager;

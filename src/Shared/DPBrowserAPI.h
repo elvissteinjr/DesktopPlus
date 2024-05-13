@@ -7,7 +7,7 @@
 
 #include "openvr.h"
 
-static const int k_lDPBrowserAPIVersion = 3;
+static const int k_lDPBrowserAPIVersion = 4;
 LPCWSTR const g_WindowClassNameBrowserApp        = L"elvdesktopbrowser";
 LPCWSTR const g_WindowMessageNameBrowserApp      = L"WMIPC_DPLUS_BrowserCommand";
 const char* const g_AppKeyBrowserApp             = "elvissteinjr.DesktopPlusBrowser";
@@ -42,6 +42,8 @@ enum DPBrowserICPCommandID
     dpbrowser_ipccmd_refresh,                   //lParam = overlay_handle, will stop if the page is currently loading
     dpbrowser_ipccmd_global_set_fps,            //lParam = fps, global setting
     dpbrowser_ipccmd_cblock_set_enabled,        //lParam = enabled bool
+    dpbrowser_ipccmd_error_set_strings,         //No value in lParam, uses dpbrowser_ipcstr_tstr_error_* args
+    dpbrowser_ipccmd_notify_ready,              //No value in lParam | Sent by browser process to dashboard & UI process
     dpbrowser_ipccmd_notify_nav_state,          //lParam = DPBrowserIPCNavStateFlags, uses set_overlay_target arg | Sent by browser process to UI process
     dpbrowser_ipccmd_notify_url_changed,        //lParam = overlay_handle, uses dpbrowser_ipcstr_url arg | Sent by browser process to UI process
     dpbrowser_ipccmd_notify_title_changed,      //lParam = overlay_handle, uses dpbrowser_ipcstr_title arg | Sent by browser process to UI process
@@ -57,6 +59,9 @@ enum DPBrowserICPStringID
     dpbrowser_ipcstr_url = 1000,                //URL string for upcoming command/notification
     dpbrowser_ipcstr_title,                     //Title string for upcoming notification
     dpbrowser_ipcstr_keyboard_string,           //Keyboard string for upcoming command
+    dpbrowser_ipcstr_tstr_error_title,          //Error page translation string
+    dpbrowser_ipcstr_tstr_error_heading,        //Error page translation string
+    dpbrowser_ipcstr_tstr_error_message,        //Error page translation string
     dpbrowser_ipcstr_MAX
 };
 
@@ -114,4 +119,5 @@ class DPBrowserAPI
 
         virtual void DPBrowser_GlobalSetFPS(int fps) = 0;
         virtual void DPBrowser_ContentBlockSetEnabled(bool enable) = 0;
+        virtual void DPBrowser_ErrorPageSetStrings(const std::string& title, const std::string& heading, const std::string& message) = 0;
 };

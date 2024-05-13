@@ -633,6 +633,9 @@ enum TRMGRStrID
     tstr_NotificationInitialStartupTitleVR,
     tstr_NotificationInitialStartupTitleDesktop,
     tstr_NotificationInitialStartupMessage,
+    tstr_BrowserErrorPageTitle,
+    tstr_BrowserErrorPageHeading,
+    tstr_BrowserErrorPageMessage,
     tstr_MAX,
     tstr_NONE = tstr_MAX //Don't pass this into GetString()
 };
