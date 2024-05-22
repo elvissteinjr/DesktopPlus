@@ -44,6 +44,7 @@ class LaserPointer
         bool m_HadPrimaryPointerDevice;
         vr::TrackedDeviceIndex_t m_DeviceMaxActiveID;
         ULONGLONG m_LastPrimaryDeviceSwitchTick;
+        ULONGLONG m_LastScrollTick;
         vr::TrackedDeviceIndex_t m_DeviceHapticPending;
 
         //State set by ForceTargetOverlay()
@@ -80,4 +81,5 @@ class LaserPointer
         LaserPointerActivationOrigin GetActivationOrigin() const;
         bool IsActive() const;
         vr::TrackedDeviceIndex_t IsAnyOverlayHovered(float max_distance) const; //Returns hovering device_index (or invalid if none). Only checks for LaserPointer supported overlays
+        bool IsScrolling() const;
 };

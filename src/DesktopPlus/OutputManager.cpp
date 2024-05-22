@@ -86,6 +86,8 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MouseLastLaserPointerY(-1),
     m_MouseIgnoreMoveEventMissCount(0),
     m_MouseLeftDownOverlayID(k_ulOverlayID_None),
+    m_MouseLaserPointerScrollDeltaStart{0},
+    m_MouseLaserPointerScrollDeltaFrequency{0},
     m_IsFirstLaunch(false),
     m_ComInitDone(false),
     m_DashboardActivatedOnce(false),
@@ -101,6 +103,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
 {
     m_MouseLastInfo = {0};
     m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
+    ::QueryPerformanceFrequency(&m_MouseLaserPointerScrollDeltaFrequency);
 
     //Initialize ConfigManager and set first launch state based on existence of config file (used to detect first launch in Steam version)
     m_IsFirstLaunch = !ConfigManager::Get().LoadConfigFromFile();
@@ -746,7 +749,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     }
 
     // Try and acquire sync on common display buffer (needed to safely access the PointerInfo)
-    HRESULT hr = m_KeyMutex->AcquireSync(sync_key, m_MaxActiveRefreshDelay);
+    HRESULT hr = m_KeyMutex->AcquireSync(sync_key, GetMaxRefreshDelay());
     if (hr == static_cast<HRESULT>(WAIT_TIMEOUT))
     {
         // Another thread has the keyed mutex so try again later
@@ -2170,6 +2173,11 @@ DWORD OutputManager::GetMaxRefreshDelay() const
         if ( (m_OvrlInputActive) && (ConfigManager::GetValue(configid_bool_performance_rapid_laser_pointer_updates)) )
         {
             return 0;
+        }
+        else if (m_LaserPointer.IsScrolling())
+        {
+            //While scrolling with the Desktop+ Laser Pointer, we actually need to update frequently to keep scroll speeds and generated haptic feedback at the usual pace
+            return 3;
         }
         else
         {
@@ -4815,12 +4823,41 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
         case vr::VREvent_ScrollDiscrete:
         case vr::VREvent_ScrollSmooth:
         {
+            //Discrete scroll events are sent at a fixed frame interval for the system laser pointer and at a fixed interval relative to SteamVR Input action set update calls for Desktop+ pointer
+            //This can result in vastly different scroll rates at different frame or update rates
+            //We counteract this by scaling the sent scroll values by the delta between the events to achieve a constant scroll rate
+            float scroll_step_multiplier = 1.0f;
+
+            if (vr_event.eventType == vr::VREvent_ScrollDiscrete)
+            {
+                LARGE_INTEGER scroll_delta = {0};
+                const float scroll_step_ms = 58.31f; //7 frame tick of a 120 Hz HMD... hardly universal, but going with that for now.
+
+                ::QueryPerformanceCounter(&scroll_delta);
+                scroll_delta.QuadPart -= m_MouseLaserPointerScrollDeltaStart.QuadPart;
+                scroll_delta.QuadPart *= 1000000;
+                scroll_delta.QuadPart /= m_MouseLaserPointerScrollDeltaFrequency.QuadPart;
+
+                scroll_step_multiplier = scroll_delta.QuadPart / (1000.0f * scroll_step_ms);
+
+                //We typically don't need more than 2x, so treat everything higher as interrupted scrolling and use 1x for them
+                if (scroll_step_multiplier > 2.0f)
+                {
+                    scroll_step_multiplier = 1.0f;
+                }
+
+                ::QueryPerformanceCounter(&m_MouseLaserPointerScrollDeltaStart);
+            }
+
+            const float xdelta = vr_event.data.scroll.xdelta * scroll_step_multiplier;  //Discrete scrolling will never have X as non-0, but just in case this ever changes
+            const float ydelta = vr_event.data.scroll.ydelta * scroll_step_multiplier;
+
             //Check deadzone
-            const float xdelta_abs = fabs(vr_event.data.scroll.xdelta);
-            const float ydelta_abs = fabs(vr_event.data.scroll.ydelta);
+            const float xdelta_abs = fabs(xdelta);
+            const float ydelta_abs = fabs(ydelta);
             const bool do_scroll_h = (xdelta_abs > 0.025f);
             const bool do_scroll_v = (ydelta_abs > 0.025f);
-            
+
             //Drag-mode scroll
             if (m_OverlayDragger.IsDragActive())
             {
@@ -4834,11 +4871,11 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                     //Add distance as long as y-delta input is bigger
                     if (xdelta_abs < ydelta_abs)
                     {
-                        m_OverlayDragger.DragAddDistance(vr_event.data.scroll.ydelta);
+                        m_OverlayDragger.DragAddDistance(ydelta);
                     }
                     else
                     {
-                        m_OverlayDragger.DragAddWidth(vr_event.data.scroll.xdelta * -0.25f);
+                        m_OverlayDragger.DragAddWidth(xdelta * -0.25f);
                     }
                 }
 
@@ -4855,7 +4892,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             {
                 if ((do_scroll_h) || (do_scroll_v))
                 {
-                    DPBrowserAPIClient::Get().DPBrowser_Scroll(overlay_current.GetHandle(), (do_scroll_h) ? vr_event.data.scroll.xdelta : 0.0f, (do_scroll_v) ? vr_event.data.scroll.ydelta : 0.0f);
+                    DPBrowserAPIClient::Get().DPBrowser_Scroll(overlay_current.GetHandle(), (do_scroll_h) ? xdelta : 0.0f, (do_scroll_v) ? ydelta : 0.0f);
                 }
                 break;
             }
@@ -4867,8 +4904,8 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                                             ((data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] == 0)) );
 
                 const float delta_trigger_min = (ConfigManager::GetValue(configid_bool_input_mouse_scroll_smooth)) ? -0.16f : 0.9f;
-                
-                if ( (is_desktop_overlay) && (m_MouseLeftDownOverlayID == overlay_current.GetID()) && (vr_event.data.scroll.ydelta <= delta_trigger_min) )
+
+                if ( (is_desktop_overlay) && (m_MouseLeftDownOverlayID == overlay_current.GetID()) && (ydelta <= delta_trigger_min) )
                 {
                     HWND current_window = ::GetForegroundWindow();
 
@@ -4924,12 +4961,12 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             //Normal scrolling
             if (do_scroll_v)
             {
-                m_InputSim.MouseWheelVertical(vr_event.data.scroll.ydelta);
+                m_InputSim.MouseWheelVertical(ydelta);
             }
 
             if (do_scroll_h)
             {
-                m_InputSim.MouseWheelHorizontal(-vr_event.data.scroll.xdelta);
+                m_InputSim.MouseWheelHorizontal(-xdelta);
             }
 
             break;

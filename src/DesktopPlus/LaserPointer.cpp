@@ -13,6 +13,7 @@ LaserPointer::LaserPointer() : m_ActivationOrigin(dplp_activation_origin_none),
                                m_HadPrimaryPointerDevice(false), 
                                m_DeviceMaxActiveID(0), 
                                m_LastPrimaryDeviceSwitchTick(0),
+                               m_LastScrollTick(0),
                                m_DeviceHapticPending(vr::k_unTrackedDeviceIndexInvalid),
                                m_IsForceTargetOverlayActive(false),
                                m_ForceTargetOverlayHandle(vr::k_ulOverlayHandleInvalid)
@@ -477,6 +478,8 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     vr_event.data.scroll.ydelta = input_data.y;
 
                     vr::VROverlayView()->PostOverlayEvent(nearest_target_overlay, &vr_event);
+
+                    m_LastScrollTick = ::GetTickCount64();
                 }
 
                 break;
@@ -495,6 +498,8 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
                     vr_event.data.scroll.ydelta = input_data.y;
 
                     vr::VROverlayView()->PostOverlayEvent(nearest_target_overlay, &vr_event);
+
+                    m_LastScrollTick = ::GetTickCount64();
                 }
 
                 break;
@@ -917,6 +922,12 @@ vr::TrackedDeviceIndex_t LaserPointer::IsAnyOverlayHovered(float max_distance) c
     }
 
     return vr::k_unTrackedDeviceIndexInvalid;
+}
+
+bool LaserPointer::IsScrolling() const
+{
+    //Treat a 500ms window after the last scroll event as active scrolling (discrete scroll events aren't a constant stream when active)
+    return (m_LastScrollTick + 500 > ::GetTickCount64());
 }
 
 bool LaserPointer::IntersectionMaskHitTest(OverlayTextureSource texsource, vr::HmdVector2_t& uv) const

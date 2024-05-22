@@ -231,6 +231,8 @@ class OutputManager
         int m_MouseIgnoreMoveEventMissCount;
         unsigned int m_MouseLeftDownOverlayID;
         RadialFollowCore m_MouseLaserPointerSmoother;
+        LARGE_INTEGER m_MouseLaserPointerScrollDeltaStart;
+        LARGE_INTEGER m_MouseLaserPointerScrollDeltaFrequency;
 
         bool m_IsFirstLaunch;
         bool m_ComInitDone;
