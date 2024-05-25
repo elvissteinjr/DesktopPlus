@@ -101,6 +101,10 @@ bool DPBrowserAPIClient::LaunchServerIfNotRunning()
         if (server_api_version != k_lDPBrowserAPIVersion)
         {
             m_HasServerAPIMismatch = true;
+
+            //Send quit message so the process doesn't linger around
+            ::PostMessage(m_ServerWindowHandle, WM_QUIT, 0, 0);
+
             m_ServerWindowHandle = nullptr;
 
             //Post config state to UI to allow displaying a warning since the UI doesn't try to launch the browser process on its own in most cases
