@@ -250,6 +250,25 @@ void UIManager::SetOverlayInputEnabled(bool is_enabled)
     vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleAuxUI,             input_method);
 }
 
+UITexspaceID UIManager::GetTexspaceIDForOverlayHandle(vr::VROverlayHandle_t overlay_handle) const
+{
+    UITexspaceID overlay_texspace = ui_texspace_total;
+    if (overlay_handle == m_OvrlHandleOverlayBar)
+        overlay_texspace = ui_texspace_overlay_bar;
+    else if (overlay_handle == m_OvrlHandleFloatingUI)
+        overlay_texspace = ui_texspace_floating_ui;
+    else if (overlay_handle == m_OvrlHandleSettings)
+        overlay_texspace = ui_texspace_settings;
+    else if (overlay_handle == m_OvrlHandleOverlayProperties)
+        overlay_texspace = ui_texspace_overlay_properties;
+    else if (overlay_handle == m_OvrlHandleKeyboard)
+        overlay_texspace = ui_texspace_keyboard;
+    else if (overlay_handle == m_OvrlHandleAuxUI)
+        overlay_texspace = ui_texspace_aux_ui;
+    
+    return overlay_texspace;
+}
+
 void UIManager::HandleOverlayProfileLoadMessage(LPARAM lparam)
 {
     IPCActionOverlayProfileLoadArg profile_load_arg = (IPCActionOverlayProfileLoadArg)LOWORD(lparam);
@@ -2119,26 +2138,40 @@ float UIManager::GetOverlayHeight(vr::VROverlayHandle_t overlay_handle) const
     float overlay_width = 1.0f;
     vr::VROverlay()->GetOverlayWidthInMeters(overlay_handle, &overlay_width);
 
-    UITexspaceID overlay_texspace = ui_texspace_total;
-    if (overlay_handle == m_OvrlHandleSettings)
-    {
-        overlay_texspace = ui_texspace_settings;
-    }
-    else if (overlay_handle == m_OvrlHandleOverlayProperties)
-    {
-        overlay_texspace = ui_texspace_overlay_properties;
-    }
-    else if (overlay_handle == m_OvrlHandleKeyboard)
-    {
-        overlay_texspace = ui_texspace_keyboard;
-    }
-    else
+    const UITexspaceID overlay_texspace = GetTexspaceIDForOverlayHandle(overlay_handle);
+    if (overlay_texspace == ui_texspace_total)
     {
         return -1.0f;
     }
 
     const DPRect& rect_tex = UITextureSpaces::Get().GetRect(overlay_texspace);
     return ((float)rect_tex.GetHeight() / (float)rect_tex.GetWidth()) * overlay_width;
+}
+
+Matrix4 UIManager::GetOverlay2DPointTransform(Vector2 point_2d, vr::VROverlayHandle_t overlay_handle) const
+{
+    //GetTransformForOverlayCoordinates() appears to be pretty much just offset from the center point of the overlay (well, that is the 0-point for the transform position anyways)
+    //It doesn't account for UV coordinates though, so it can be a bit messy to set up. That's why it's wrapped up for UI overlay usage
+    //The 2D coordinates it expects are also in GL-space (y+ is up)
+    const DPRect& rect_tex = UITextureSpaces::Get().GetRect( GetTexspaceIDForOverlayHandle(overlay_handle) );
+
+    float tex_y = UITextureSpaces::Get().GetRect(ui_texspace_total).GetHeight() / 2.0f; //Middle of overlay (UV is unaccounted for, so half of total texture height)
+    tex_y += rect_tex.GetHeight() / 2.0f;                                               //Offset from the middle however, so adding half of the texspace height gets us to the zero top point
+    tex_y -= point_2d.y;                                                                //Then we can substract the passed coordinate (not adding as y+ is up)
+
+    //Now we can get the coordinates as intended
+    vr::HmdMatrix34_t hmd_mat = {};
+    vr::VROverlay()->GetTransformForOverlayCoordinates(overlay_handle, vr::TrackingUniverseStanding, {rect_tex.GetTL().x + point_2d.x, tex_y}, &hmd_mat);
+
+    //Returned matrix usually contains dashboard scale, so undo it
+    Vector3 row_1(hmd_mat.m[0][0], hmd_mat.m[1][0], hmd_mat.m[2][0]);
+    Matrix4 mat(hmd_mat);
+    Vector3 pos = mat.getTranslation();
+    mat.setTranslation({0.0f, 0.0f, 0.0f});
+    mat.scale(1.0f / row_1.length());
+    mat.setTranslation(pos);
+
+    return mat;
 }
 
 void UIManager::TriggerLaserPointerHaptics(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index) const

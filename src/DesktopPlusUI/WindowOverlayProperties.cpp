@@ -277,6 +277,15 @@ void WindowOverlayProperties::WindowUpdate()
                 {
                     m_PageStack.pop_back();
                 }
+
+                m_PageAnimationDir = 0;
+
+                //Add pending pages now that we don't have an active animation
+                while (!m_PageStackPending.empty())
+                {
+                    PageGoForward(m_PageStackPending[0]);
+                    m_PageStackPending.erase(m_PageStackPending.begin());
+                }
             }
 
             m_PageAnimationProgress = 1.0f;
@@ -296,7 +305,17 @@ void WindowOverlayProperties::WindowUpdate()
             m_PageAppearing = m_PageStack.back();
         }
     }
-    else if (ImGui::IsWindowAppearing()) //Set appearing value when the whole window appeared again
+    else if ((m_PageStackPosAnimation == m_PageStackPos) && ((int)m_PageStack.size() > m_PageStackPos + 1))
+    {
+        //Remove pages that were added and left again while there was no chance to animate anything
+        while ((int)m_PageStack.size() > m_PageStackPos + 1)
+        {
+            m_PageStack.pop_back();
+        }
+    }
+    
+    //Set appearing value when the whole window appeared again
+    if ((m_PageAnimationDir == 0) && (ImGui::IsWindowAppearing()))
     {
         m_PageAppearing = m_PageStack.back();
     }
@@ -3099,6 +3118,13 @@ std::string WindowOverlayProperties::GetStringForWinRTSource(HWND source_window,
 
 void WindowOverlayProperties::PageGoForward(WindowOverlayPropertiesPage new_page)
 {
+    //We can't just mess with the stack while a backwards animation is going, so we save this for later
+    if (m_PageAnimationDir == 1)
+    {
+        m_PageStackPending.push_back(new_page);
+        return;
+    }
+
     m_PageStack.push_back(new_page);
     m_PageStackPos++;
 }

@@ -29,6 +29,7 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
 {
     private:
         std::vector<WindowSettingsPage> m_PageStack;
+        std::vector<WindowSettingsPage> m_PageStackPending; //Stores pending page forward calls that they were requested during an active backwards animation
         int m_PageStackPos;
         int m_PageStackPosAnimation;
         WindowSettingsPage m_PageAppearing; //Similar to ImGui::IsWindowAppearing(), equals the current page ID for a single frame if it or the window is newly appearing
@@ -137,6 +138,8 @@ class WindowSettings : public FloatingWindow, public FloatingWindowDesktopModeIn
         virtual const char* DesktopModeGetTitle() const;
         virtual bool DesktopModeGetIconTextureInfo(ImVec2& size, ImVec2& uv_min, ImVec2& uv_max) const;
         virtual bool DesktopModeGoBack();
+
+        void QuickStartGuideGoToPage(WindowSettingsPage new_page);
 
         void ClearCachedTranslationStrings();
 };

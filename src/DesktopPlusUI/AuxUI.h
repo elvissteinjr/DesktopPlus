@@ -14,6 +14,7 @@
 enum AuxUIID
 {
     auxui_none,
+    auxui_window_welcome,
     auxui_drag_hint,
     auxui_gazefade_auto_hint,
     auxui_window_select
@@ -93,6 +94,55 @@ class WindowGazeFadeAutoHint : public AuxUIWindow
         void SetTargetOverlay(unsigned int overlay_id);
 };
 
+class WindowQuickStart : public AuxUIWindow
+{
+    private:
+        enum PageID : int
+        {
+            pageid_Welcome,
+            pageid_Overlays,
+            pageid_Overlays_2,
+            pageid_OverlayProperties,
+            pageid_OverlayProperties_2,
+            pageid_Settings,
+            pageid_Profiles,
+            pageid_Actions,
+            pageid_Actions_2,
+            pageid_OverlayTags,
+            pageid_Settings_End,
+            pageid_FloatingUI,
+            pageid_DesktopMode,
+            pageid_ReadMe,
+            pageid_MAX = pageid_ReadMe,
+        };
+
+        int m_CurrentPage             = 0;
+        int m_CurrentPageAnimation    = 0;
+        int m_CurrentPageAnimationMax = 0;
+
+        int m_PageAnimationDir        = 0;
+        float m_PageAnimationProgress = 0.0f;
+        float m_PageAnimationStartPos = 0.0f;
+        float m_PageAnimationOffset   = 0.0f;
+
+        Matrix4 m_Transform;
+        Matrix4 m_TransformAnimationStart;
+        Matrix4 m_TransformAnimationEnd;
+        float m_TransformAnimationProgress = 0.0f;
+
+        void SetUpOverlay();
+        void UpdateOverlayPos();
+        void OnPageChange(int page_id);
+
+    public:
+        WindowQuickStart();
+
+        virtual bool Show();
+        virtual void Hide();
+        void Update();
+        void Reset();
+};
+
 class WindowCaptureWindowSelect : public AuxUIWindow
 {
     private:
@@ -123,6 +173,7 @@ class AuxUI
         WindowDragHint m_WindowDragHint;
         WindowGazeFadeAutoHint m_WindowGazeFadeAutoHint;
         WindowCaptureWindowSelect m_WindowCaptureWindowSelect;
+        WindowQuickStart m_WindowQuickStart;
 
         bool SetActiveUI(AuxUIID new_ui_id);        //May return false if higher priority UI is active
         AuxUIID GetActiveUI() const;
@@ -141,4 +192,5 @@ class AuxUI
         WindowDragHint& GetDragHintWindow();
         WindowGazeFadeAutoHint& GetGazeFadeAutoHintWindow();
         WindowCaptureWindowSelect& GetCaptureWindowSelectWindow();
+        WindowQuickStart& GetQuickStartWindow();
 };

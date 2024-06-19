@@ -63,6 +63,7 @@ enum ConfigID_Bool
     configid_bool_interface_window_settings_restore_state,
     configid_bool_interface_window_properties_restore_state,
     configid_bool_interface_window_keyboard_restore_state,
+    configid_bool_interface_quick_start_hidden,
     configid_bool_performance_rapid_laser_pointer_updates,
     configid_bool_performance_single_desktop_mirroring,
     configid_bool_performance_show_fps,

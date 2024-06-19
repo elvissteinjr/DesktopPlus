@@ -313,7 +313,7 @@ void WindowGazeFadeAutoHint::SetUpOverlay()
 
 void WindowGazeFadeAutoHint::UpdateOverlayPos()
 {
-    //Initial offset (somewhat centered inside controller model, for Index at least)
+    //Initial offset
     Matrix4 mat;
     mat.translate_relative(0.0f, 0.0f, -1.00f);
 
@@ -406,6 +406,554 @@ void WindowGazeFadeAutoHint::Update()
 void WindowGazeFadeAutoHint::SetTargetOverlay(unsigned int overlay_id)
 {
     m_TargetOverlay = overlay_id;
+}
+
+
+//--WindowQuickStart
+WindowQuickStart::WindowQuickStart() : AuxUIWindow(auxui_window_welcome), m_CurrentPage(0)
+{
+    //Leave 2 pixel padding around so interpolation doesn't cut off the pixel border
+    const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_aux_ui);
+    m_Pos  = {float(rect.GetTL().x + 2), float(rect.GetTL().y + 2)};
+    m_Size = {-1.0f, -1.0f};
+
+    m_Transform.zero();
+}
+
+void WindowQuickStart::SetUpOverlay()
+{
+    vr::VROverlayHandle_t overlay_handle = UIManager::Get()->GetOverlayHandleAuxUI();
+
+    vr::VROverlay()->SetOverlayWidthInMeters(overlay_handle, OVERLAY_WIDTH_METERS_AUXUI_WINDOW_QUICKSTART);
+    vr::VROverlay()->SetOverlaySortOrder(overlay_handle, 2);
+    vr::VROverlay()->SetOverlayAlpha(overlay_handle, 0.0f);
+    vr::VROverlay()->SetOverlayInputMethod(overlay_handle, vr::VROverlayInputMethod_Mouse);
+
+    SetUpTextureBounds();
+    UpdateOverlayPos();
+
+    vr::VROverlay()->ShowOverlay(overlay_handle);
+}
+
+void WindowQuickStart::UpdateOverlayPos()
+{
+    const float auxui_ovrl_width  = OVERLAY_WIDTH_METERS_AUXUI_WINDOW_QUICKSTART;
+    const float auxui_ovrl_height = OVERLAY_WIDTH_METERS_AUXUI_WINDOW_QUICKSTART * (m_Size.y / m_Size.x);
+
+    //Set initial transform to zoom in from the first time this is called while visible
+    if ((m_Visible) && (m_Transform.isZero()))
+    {
+        m_Transform = vr::IVRSystemEx::ComputeHMDFacingTransform(1.0);
+
+        Vector3 pos = m_Transform.getTranslation();
+        m_Transform.setTranslation({0.0f, 0.0f, 0.0f});
+        m_Transform.scale(0.0f);
+        m_Transform.setTranslation(pos);
+
+        return;
+    }
+
+    //Set target transform based on page (may update while animating)
+    switch (m_CurrentPage)
+    {
+        case pageid_Welcome:
+        {
+            m_TransformAnimationEnd = vr::IVRSystemEx::ComputeHMDFacingTransform(1.0f);
+            break;
+        }
+        case pageid_Overlays:
+        {
+            //Aim for top right side of overlay bar (doesn't obscure the overlay menu mentioned on the page)
+            const auto& window = UIManager::Get()->GetOverlayBarWindow();
+            const DPRect& rect_tex = UITextureSpaces::Get().GetRect(ui_texspace_overlay_bar);
+
+            //Default to top left of window relative to texspace (note that AuxUI overlay is centered on that spot)
+            Vector2 point_2d(window.GetPos().x - rect_tex.GetTL().x, window.GetPos().y - rect_tex.GetTL().y);
+            point_2d.x += window.GetSize().x;
+
+            m_TransformAnimationEnd = UIManager::Get()->GetOverlay2DPointTransform(point_2d, UIManager::Get()->GetOverlayHandleOverlayBar());
+            m_TransformAnimationEnd.translate_relative(0.0f, auxui_ovrl_height / 2.0f, 0.0f);
+
+            Vector3 pos = m_TransformAnimationEnd.getTranslation();
+            m_TransformAnimationEnd.setTranslation({0.0f, 0.0f, 0.0f});
+            m_TransformAnimationEnd.rotateY(-10.0f);
+            m_TransformAnimationEnd.setTranslation(pos);
+
+            m_TransformAnimationEnd.translate_relative(0.0f, 0.0f, 0.05f);
+            break;
+        }
+        case pageid_Overlays_2:
+        {
+            //Aim for top left side of overlay bar (doesn't obscure the add overlay menu mentioned on the page)
+            const auto& window = UIManager::Get()->GetOverlayBarWindow();
+            const DPRect& rect_tex = UITextureSpaces::Get().GetRect(ui_texspace_overlay_bar);
+
+            //Default to top left of window relative to texspace (note that AuxUI overlay is centered on that spot)
+            Vector2 point_2d(window.GetPos().x - rect_tex.GetTL().x, window.GetPos().y - rect_tex.GetTL().y);
+
+            m_TransformAnimationEnd = UIManager::Get()->GetOverlay2DPointTransform(point_2d, UIManager::Get()->GetOverlayHandleOverlayBar());
+            m_TransformAnimationEnd.translate_relative(0.0f, auxui_ovrl_height / 2.0f, 0.0f);
+
+            Vector3 pos = m_TransformAnimationEnd.getTranslation();
+            m_TransformAnimationEnd.setTranslation({0.0f, 0.0f, 0.0f});
+            m_TransformAnimationEnd.rotateY(12.5f);
+            m_TransformAnimationEnd.setTranslation(pos);
+
+            m_TransformAnimationEnd.translate_relative(0.0f, 0.0f, 0.05f);
+            break;
+        }
+        case pageid_OverlayProperties:
+        case pageid_OverlayProperties_2:
+        {
+            const auto& window = UIManager::Get()->GetOverlayPropertiesWindow();
+            const DPRect& rect_tex = UITextureSpaces::Get().GetRect(ui_texspace_overlay_properties);
+
+            //Top left of window relative to texspace
+            Vector2 point_2d(window.GetPos().x - rect_tex.GetTL().x, window.GetPos().y - rect_tex.GetTL().y);
+            point_2d.y += window.GetSize().y;
+
+            m_TransformAnimationEnd = UIManager::Get()->GetOverlay2DPointTransform(point_2d, window.GetOverlayHandle());
+            m_TransformAnimationEnd.translate_relative(auxui_ovrl_width * 1.52f, auxui_ovrl_height / 4.0f, 0.05f);
+
+            Vector3 pos = m_TransformAnimationEnd.getTranslation();
+            m_TransformAnimationEnd.setTranslation({0.0f, 0.0f, 0.0f});
+            m_TransformAnimationEnd.rotateY(-25.0f);
+            m_TransformAnimationEnd.setTranslation(pos);
+
+            m_TransformAnimationEnd.translate_relative(0.0f, 0.0f, 0.125f);
+            break;
+        }
+        case pageid_Settings:
+        case pageid_Profiles:
+        case pageid_Actions:
+        case pageid_Actions_2:
+        case pageid_OverlayTags:
+        case pageid_Settings_End:
+        {
+            const auto& window = UIManager::Get()->GetSettingsWindow();
+            const DPRect& rect_tex = UITextureSpaces::Get().GetRect(ui_texspace_settings);
+
+            //Top left of window relative to texspace
+            Vector2 point_2d(window.GetPos().x - rect_tex.GetTL().x, window.GetPos().y - rect_tex.GetTL().y);
+            point_2d.y += window.GetSize().y;
+
+            m_TransformAnimationEnd = UIManager::Get()->GetOverlay2DPointTransform(point_2d, UIManager::Get()->GetOverlayHandleSettings());
+            m_TransformAnimationEnd.translate_relative(auxui_ovrl_width * -1.02f, auxui_ovrl_height / 4.0f, 0.05f);
+
+            Vector3 pos = m_TransformAnimationEnd.getTranslation();
+            m_TransformAnimationEnd.setTranslation({0.0f, 0.0f, 0.0f});
+            m_TransformAnimationEnd.rotateY(25.0f);
+            m_TransformAnimationEnd.setTranslation(pos);
+
+            m_TransformAnimationEnd.translate_relative(0.0f, 0.0f, 0.125f);
+            break;
+        }
+        case pageid_FloatingUI:
+        {
+            const auto& window = UIManager::Get()->GetFloatingUI().GetActionBarWindow();
+            const DPRect& rect_tex = UITextureSpaces::Get().GetRect(ui_texspace_floating_ui);
+
+            //Top left of window relative to texspace
+            Vector2 point_2d(window.GetPos().x - rect_tex.GetTL().x, window.GetPos().y - rect_tex.GetTL().y);
+            point_2d.x += window.GetSize().x / 2.0f;
+
+            m_TransformAnimationEnd = UIManager::Get()->GetOverlay2DPointTransform(point_2d, UIManager::Get()->GetOverlayHandleFloatingUI());
+            m_TransformAnimationEnd.translate_relative(0.0f, (auxui_ovrl_height / 2.0f) + 0.05f, 0.0f);
+
+            m_TransformAnimationEnd.translate_relative(0.0f, 0.0f, 0.05f);
+            break;
+        }
+        case pageid_DesktopMode:
+        case pageid_ReadMe:
+        {
+            m_TransformAnimationEnd = vr::IVRSystemEx::ComputeHMDFacingTransform(1.0f);
+            break;
+        }
+    }
+
+    //Set start point if this animation is just starting
+    if (m_TransformAnimationProgress == 0.0f)
+    {
+        m_TransformAnimationStart = m_Transform;
+    }
+
+    //Smoothstep over each matrix component and set the result
+    float mat_array[16] = {};
+    for (int i = 0; i < 16; ++i)
+    {
+        mat_array[i] = smoothstep(m_TransformAnimationProgress, m_TransformAnimationStart.get()[i], m_TransformAnimationEnd.get()[i]);
+    }
+
+    m_Transform.set(mat_array);
+
+    //Progress animation step
+    const float time_step = ImGui::GetIO().DeltaTime * 3.0f;
+    m_TransformAnimationProgress += time_step;
+
+    if (m_TransformAnimationProgress > 1.0f)
+    {
+        m_TransformAnimationProgress = 1.0f;
+    }
+
+    //Set transform
+    vr::HmdMatrix34_t mat_ovr = m_Transform.toOpenVR34();
+    vr::VROverlay()->SetOverlayTransformAbsolute(UIManager::Get()->GetOverlayHandleAuxUI(), vr::TrackingUniverseStanding, &mat_ovr);
+}
+
+void WindowQuickStart::OnPageChange(int page_id)
+{
+    //Set window visibility and scrolls as they should be for the page
+    WindowSettings& window_settings = UIManager::Get()->GetSettingsWindow();
+    WindowOverlayProperties& window_overlay_properties = UIManager::Get()->GetOverlayPropertiesWindow();
+
+    switch (page_id)
+    {
+        case pageid_Welcome:
+        case pageid_Overlays:
+        case pageid_Overlays_2:
+        {
+            window_settings.Hide();
+            window_overlay_properties.Hide();
+            break;
+        }
+        case pageid_OverlayProperties:
+        case pageid_OverlayProperties_2:
+        {
+            window_settings.Hide();
+            window_overlay_properties.Show();
+            break;
+        }
+        case pageid_Settings:
+        case pageid_Profiles:
+        {
+            window_settings.Show();
+            window_settings.QuickStartGuideGoToPage(wndsettings_page_main);
+            window_overlay_properties.Hide();
+            break;
+        }
+        case pageid_Actions:
+        {
+            window_settings.Show();
+            window_settings.QuickStartGuideGoToPage(wndsettings_page_actions);
+            window_overlay_properties.Hide();
+            break;
+        }
+        case pageid_Actions_2:
+        case pageid_OverlayTags:
+        {
+            window_settings.Show();
+            window_settings.QuickStartGuideGoToPage(wndsettings_page_actions_edit);
+            window_overlay_properties.Hide();
+            break;
+        }
+        case pageid_Settings_End:
+        {
+            window_settings.Show();
+            window_settings.QuickStartGuideGoToPage(wndsettings_page_main);
+            window_overlay_properties.Hide();
+            break;
+        }
+        case pageid_FloatingUI:
+        case pageid_DesktopMode:
+        case pageid_ReadMe:
+        {
+            window_settings.Hide();
+            window_overlay_properties.Hide();
+            break;
+        }
+    }
+
+    m_TransformAnimationProgress = 0.0f;
+}
+
+bool WindowQuickStart::Show()
+{
+    return AuxUIWindow::Show();
+}
+
+void WindowQuickStart::Hide()
+{
+    AuxUIWindow::Hide();
+}
+
+void WindowQuickStart::Update()
+{
+    //Temporarily hide when leaving dashboard tab
+    if (!ConfigManager::GetValue(configid_bool_interface_quick_start_hidden))
+    {
+        if (UIManager::Get()->IsOverlayBarOverlayVisible())
+        {
+            if (!m_Visible)
+            {
+                //We need to wait a bit or else we might get old overlay transform data when calling UpdateOverlayPos() after this
+                //Waiting two frames seems to be sufficient and isn't much of an issue
+                vr::VROverlay()->WaitFrameSync(100);
+                vr::VROverlay()->WaitFrameSync(100);
+
+                Show();
+                m_TransformAnimationProgress = 0.0f;
+            }
+        }
+        else
+        {
+            Hide();
+        }
+    }
+
+    bool render_window = WindowUpdateBase() || m_Size.x == -1.0f;
+
+    if (!render_window)
+        return;
+
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
+
+    if (!m_Visible)
+        flags |= ImGuiWindowFlags_NoInputs;
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_aux_ui);
+
+    ImGui::SetNextWindowPos(m_Pos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize({(float)rect.GetWidth() - 4.0f, (float)rect.GetHeight() * 0.85f});
+    ImGui::Begin("WindowQuickStart", nullptr, flags);
+
+    const float page_width = m_Size.x - style.WindowBorderSize - style.WindowPadding.x - style.WindowPadding.x;
+
+    //Page animation
+    if (m_PageAnimationDir != 0)
+    {
+        m_PageAnimationProgress += ImGui::GetIO().DeltaTime * 3.0f;
+
+        if (m_PageAnimationProgress >= 1.0f)
+        {
+            m_PageAnimationProgress   = 1.0f;
+            m_PageAnimationDir        = 0;
+            m_CurrentPageAnimationMax = m_CurrentPageAnimation;
+        }
+    }
+    else if (m_CurrentPageAnimation != m_CurrentPage) //Only start new animation if none is running
+    {
+        m_PageAnimationDir        = (m_CurrentPageAnimation < m_CurrentPage) ? -1 : 1;
+        m_CurrentPageAnimation    = m_CurrentPage;
+        m_PageAnimationStartPos   = m_PageAnimationOffset;
+        m_PageAnimationProgress   = 0.0f;
+        m_CurrentPageAnimationMax = std::max(m_CurrentPage, m_CurrentPageAnimationMax);
+    }
+
+    const float target_x = (page_width + style.ItemSpacing.x) * -m_CurrentPageAnimation;
+    m_PageAnimationOffset = smoothstep(m_PageAnimationProgress, m_PageAnimationStartPos, target_x);
+
+    //Set up page offset and clipping
+    ImGui::SetCursorPosX( (ImGui::GetCursorPosX() + m_PageAnimationOffset) );
+
+    const ImVec2 child_size = {page_width, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() - style.ItemSpacing.y};
+    const int active_page_count = m_CurrentPageAnimationMax + 1;
+    for (int i = 0; i < active_page_count; ++i)
+    {
+        //Disable items when the page isn't active
+        const bool is_inactive_page = (i + 1 < active_page_count);
+
+        if (is_inactive_page)
+        {
+            ImGui::PushItemDisabledNoVisual();
+        }
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+
+        if ( (ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)i), child_size, false, ImGuiWindowFlags_NavFlattened)) )
+        {
+            ImGui::PopStyleColor(); //ImGuiCol_ChildBg
+
+            ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+
+            switch (i)
+            {
+                case pageid_Welcome:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartWelcomeHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartWelcomeBody));
+                    break;
+                }
+                case pageid_Overlays:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartOverlaysHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartOverlaysBody));
+                    break;
+                }
+                case pageid_Overlays_2:
+                {
+
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartOverlaysHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartOverlaysBody2));
+                    break;
+                }
+                case pageid_OverlayProperties:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartOverlayPropertiesHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartOverlayPropertiesBody));
+                    break;
+                }
+                case pageid_OverlayProperties_2:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartOverlayPropertiesHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartOverlayPropertiesBody2));
+                    break;
+                }
+                case pageid_Settings:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartSettingsHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartSettingsBody));
+                    break;
+                }
+                case pageid_Profiles:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartProfilesHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartProfilesBody));
+                    break;
+                }
+                case pageid_Actions:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartActionsHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartActionsBody));
+                    break;
+                }
+                case pageid_Actions_2:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartActionsHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartActionsBody2));
+                    break;
+                }
+                case pageid_OverlayTags:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartOverlayTagsHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartOverlayTagsBody));
+                    break;
+                }
+                case pageid_Settings_End:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartSettingsHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartSettingsEndBody));
+                    break;
+                }
+                case pageid_FloatingUI:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartFloatingUIHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartFloatingUIBody));
+                    break;
+                }
+                case pageid_DesktopMode:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartDesktopModeHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartDesktopModeBody));
+                    break;
+                }
+                case pageid_ReadMe:
+                {
+                    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartEndHeader));
+                    ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartEndBody));
+                    break;
+                }
+            }
+
+            ImGui::PopTextWrapPos();
+        }
+        else
+        {
+            ImGui::PopStyleColor(); //ImGuiCol_ChildBg
+        }
+
+        if (is_inactive_page)
+        {
+            ImGui::PopItemDisabledNoVisual();
+        }
+
+        ImGui::EndChild();
+
+        if (is_inactive_page)
+        {
+            ImGui::SameLine();
+        }
+    }
+
+    //Bottom buttons
+    ImGui::Separator();
+
+    int current_page_prev = m_CurrentPage;
+
+    if (current_page_prev == 0)
+        ImGui::PushItemDisabled();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_AuxUIQuickStartButtonPrev)))
+    {
+        m_CurrentPage--;
+        OnPageChange(m_CurrentPage);
+
+        UIManager::Get()->RepeatFrame();
+    }
+
+    if (current_page_prev == 0)
+        ImGui::PopItemDisabled();
+
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+    if (current_page_prev == pageid_MAX)
+        ImGui::PushItemDisabled();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_AuxUIQuickStartButtonNext))) 
+    {
+        m_CurrentPage++;
+        OnPageChange(m_CurrentPage);
+
+        UIManager::Get()->RepeatFrame();
+    }
+
+    if (current_page_prev == pageid_MAX)
+        ImGui::PopItemDisabled();
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_AuxUIQuickStartButtonClose))) 
+    {
+        ConfigManager::SetValue(configid_bool_interface_quick_start_hidden, true);
+        Hide();
+    }
+
+    m_Size = ImGui::GetWindowSize();
+    ImGui::End();
+
+    if ( (!UIManager::Get()->IsInDesktopMode()) && (m_Visible) && (!m_IsTransitionFading) && (m_TransformAnimationProgress != 1.0f) )
+    {
+        UpdateOverlayPos();
+    }
+
+    if (m_AutoSizeFrames > 0)
+    {
+        m_AutoSizeFrames--;
+
+        if (m_AutoSizeFrames == 0)
+        {
+            if (!UIManager::Get()->IsInDesktopMode())
+                SetUpOverlay();
+        }
+    }
+}
+
+void WindowQuickStart::Reset()
+{
+    Hide();
+    ConfigManager::SetValue(configid_bool_interface_quick_start_hidden, false);
+    UIManager::Get()->GetSettingsWindow().QuickStartGuideGoToPage(wndsettings_page_main);
+    m_Transform.zero();
+
+    m_CurrentPage = 0;
+    OnPageChange(m_CurrentPage);
+
+    if (m_Alpha == 0.0f)
+    {
+        m_PageAnimationProgress = 1.0f;
+    }
+
+    UIManager::Get()->RepeatFrame();
 }
 
 
@@ -597,6 +1145,7 @@ void AuxUI::Update()
     m_WindowDragHint.Update();
     m_WindowGazeFadeAutoHint.Update();
     m_WindowCaptureWindowSelect.Update();
+    m_WindowQuickStart.Update();
 }
 
 bool AuxUI::IsActive() const
@@ -670,4 +1219,9 @@ WindowGazeFadeAutoHint& AuxUI::GetGazeFadeAutoHintWindow()
 WindowCaptureWindowSelect& AuxUI::GetCaptureWindowSelectWindow()
 {
     return m_WindowCaptureWindowSelect;
+}
+
+WindowQuickStart& AuxUI::GetQuickStartWindow()
+{
+    return m_WindowQuickStart;
 }

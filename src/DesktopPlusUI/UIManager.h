@@ -33,6 +33,7 @@
 #define OVERLAY_WIDTH_METERS_AUXUI_DRAG_HINT 0.12f
 #define OVERLAY_WIDTH_METERS_AUXUI_GAZEFADE_AUTO_HINT 0.75f
 #define OVERLAY_WIDTH_METERS_AUXUI_WINDOW_SELECT 0.75f
+#define OVERLAY_WIDTH_METERS_AUXUI_WINDOW_QUICKSTART 0.75f
 
 enum UITexspaceID
 {
@@ -125,6 +126,8 @@ class UIManager
         void DisplayDashboardAppError(const std::string& str);
         void DisplayInitialSetupNotification();
         void SetOverlayInputEnabled(bool is_enabled);
+
+        UITexspaceID GetTexspaceIDForOverlayHandle(vr::VROverlayHandle_t overlay_handle) const;
 
         void HandleOverlayProfileLoadMessage(LPARAM lparam);
 
@@ -219,6 +222,7 @@ class UIManager
         void UpdateOverlayDrag();
         void HighlightOverlay(unsigned int overlay_id);
         float GetOverlayHeight(vr::VROverlayHandle_t overlay_handle) const;
+        Matrix4 GetOverlay2DPointTransform(Vector2 point_2d, vr::VROverlayHandle_t overlay_handle) const; //GetTransformForOverlayCoordinates() but works with cropped UVs (UI overlays only)
 
         //Invalid device index triggers on current primary device
         void TriggerLaserPointerHaptics(vr::VROverlayHandle_t overlay_handle, vr::TrackedDeviceIndex_t device_index = vr::k_unTrackedDeviceIndexInvalid) const;

@@ -18,6 +18,7 @@ class WindowOverlayProperties : public FloatingWindow, public FloatingWindowDesk
 {
     private:
         std::vector<WindowOverlayPropertiesPage> m_PageStack;
+        std::vector<WindowOverlayPropertiesPage> m_PageStackPending; //Stores pending page forward calls that they were requested during an active backwards animation
         int m_PageStackPos;
         int m_PageStackPosAnimation;
         WindowOverlayPropertiesPage m_PageAppearing; //Similar to ImGui::IsWindowAppearing(), equals the current page ID for a single frame if it or the window is newly appearing

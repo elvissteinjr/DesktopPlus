@@ -125,6 +125,47 @@ bool WindowSettings::DesktopModeGoBack()
     return false;
 }
 
+void WindowSettings::QuickStartGuideGoToPage(WindowSettingsPage new_page)
+{
+    //This is only meant to be used by the Quick Start Guide window so it's not very flexible
+    const WindowSettingsPage current_top_page = m_PageStack[m_PageStackPos];
+
+    if (current_top_page == new_page)
+        return;
+
+    switch (new_page)
+    {
+        case wndsettings_page_main:
+        {
+            PageGoHome();
+            break;
+        }
+        case wndsettings_page_actions:
+        {
+            if (current_top_page == wndsettings_page_actions_edit)
+            {
+                PageGoBack();
+            }
+            else
+            {
+                PageGoForward(wndsettings_page_actions);
+            }
+            break;
+        }
+        case wndsettings_page_actions_edit:
+        {
+            if (current_top_page != wndsettings_page_actions)
+            {
+                PageGoForward(wndsettings_page_actions);
+            }
+
+            m_ActionSelectionUID = 0;
+            PageGoForward(wndsettings_page_actions_edit);
+            break;
+        }
+    }
+}
+
 void WindowSettings::ClearCachedTranslationStrings()
 {
     m_WarningTextOverlayError.clear();
@@ -173,6 +214,15 @@ void WindowSettings::WindowUpdate()
                 {
                     m_PageStack.pop_back();
                 }
+
+                m_PageAnimationDir = 0;
+
+                //Add pending pages now that we don't have an active animation
+                while (!m_PageStackPending.empty())
+                {
+                    PageGoForward(m_PageStackPending[0]);
+                    m_PageStackPending.erase(m_PageStackPending.begin());
+                }
             }
 
             m_PageAnimationProgress = 1.0f;
@@ -192,7 +242,17 @@ void WindowSettings::WindowUpdate()
             m_PageAppearing = m_PageStack.back();
         }
     }
-    else if (m_IsWindowAppearing) //Set appearing value when the whole window appeared again
+    else if ((m_PageStackPosAnimation == m_PageStackPos) && ((int)m_PageStack.size() > m_PageStackPos + 1))
+    {
+        //Remove pages that were added and left again while there was no chance to animate anything
+        while ((int)m_PageStack.size() > m_PageStackPos + 1)
+        {
+            m_PageStack.pop_back();
+        }
+    }
+    
+    //Set appearing value when the whole window appeared again
+    if ((m_PageAnimationDir == 0) && (m_IsWindowAppearing))
     {
         m_PageAppearing = m_PageStack.back();
     }
@@ -5847,10 +5907,35 @@ void WindowSettings::UpdatePageResetConfirm()
     {
         PageGoBack();
     }
+
+    //Show Quick-Start Guide
+    static float button_quick_start_width = -1.0f;
+    const bool button_quick_start_enabled = ConfigManager::GetValue(configid_bool_interface_quick_start_hidden);
+
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x - button_quick_start_width);
+
+    if (!button_quick_start_enabled)
+        ImGui::PushItemDisabled();
+
+    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsResetShowQuickStart))) 
+    {
+        UIManager::Get()->GetAuxUI().GetQuickStartWindow().Reset();
+    }
+    button_quick_start_width = ImGui::GetItemRectSize().x;
+
+    if (!button_quick_start_enabled)
+        ImGui::PopItemDisabled();
 }
 
 void WindowSettings::PageGoForward(WindowSettingsPage new_page)
 {
+    //We can't just mess with the stack while a backwards animation is going, so we save this for later
+    if (m_PageAnimationDir == 1)
+    {
+        m_PageStackPending.push_back(new_page);
+        return;
+    }
+
     m_PageStack.push_back(new_page);
     m_PageStackPos++;
 }
