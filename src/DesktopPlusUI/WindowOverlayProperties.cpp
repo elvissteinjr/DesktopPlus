@@ -2557,8 +2557,17 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
         //Figure out sizing for the draggable rect area
         const float region_width = ImGui::GetContentRegionAvail().x - style.IndentSpacing - 2.0f;   //The -2 comes from ceiling the area floats for slight oversizing
         const float region_height = (UIManager::Get()->IsInDesktopMode()) ? ImGui::GetFontSize() * 16.0f : ImGui::GetFontSize() * 10.5f;
-        draggable_rect_scale = std::min(region_width / ovrl_width, region_height / ovrl_height);
-        draggable_rect_area = {std::max(8.0f, ceilf(ovrl_width * draggable_rect_scale)), std::max(8.0f, ceilf(ovrl_height * draggable_rect_scale))};
+
+        if (!disable_crop_edit)
+        {
+            draggable_rect_scale = std::min(region_width / ovrl_width, region_height / ovrl_height);
+            draggable_rect_area = {std::max(8.0f, ceilf(ovrl_width * draggable_rect_scale)), std::max(8.0f, ceilf(ovrl_height * draggable_rect_scale))};
+        }
+        else    //Don't break UI when we can't calculate a rect area
+        {
+            draggable_rect_scale = 1.0f;
+            draggable_rect_area = {region_width, region_height};
+        }
 
         draggable_rect_area_base_size = {(float)ovrl_width, (float)ovrl_height};
     }
