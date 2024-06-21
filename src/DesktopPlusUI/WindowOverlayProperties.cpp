@@ -2828,9 +2828,11 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
 
 void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_settings)
 {
-    int desktop_count           = ConfigManager::GetValue(configid_int_state_interface_desktop_count);
-    int& winrt_selected_desktop = ConfigManager::GetRef(configid_int_overlay_winrt_desktop_id);
-    HWND winrt_selected_window  = (HWND)ConfigManager::GetValue(configid_handle_overlay_state_winrt_hwnd);
+    int desktop_count            = ConfigManager::GetValue(configid_int_state_interface_desktop_count);
+    int& winrt_selected_desktop  = ConfigManager::GetRef(configid_int_overlay_winrt_desktop_id);
+    HWND winrt_selected_window   = (HWND)ConfigManager::GetValue(configid_handle_overlay_state_winrt_hwnd);
+    bool has_selection_changed   = false;
+    bool is_entry_double_clicked = false;
 
     if (only_restore_settings)
     {
@@ -2875,6 +2877,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
 
     if (ImGui::Selectable("", ((winrt_selected_desktop == -2) && (winrt_selected_window == nullptr))))
     {
+        has_selection_changed = ((winrt_selected_desktop != -2) || (winrt_selected_window != nullptr));
+
         winrt_selected_desktop = -2;
         winrt_selected_window = nullptr;
         ConfigManager::SetValue(configid_handle_overlay_state_winrt_hwnd, 0);
@@ -2890,6 +2894,11 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, 0);
 
         UIManager::Get()->RepeatFrame();
+    }
+
+    if ((!has_selection_changed) && (ImGui::IsItemClicked()) && (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)))
+    {
+        is_entry_double_clicked = true;
     }
 
     ImGui::SameLine(0.0f, 0.0f);
@@ -2911,6 +2920,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
 
         if (ImGui::Selectable("", (winrt_selected_desktop == -1)))
         {
+            has_selection_changed = (winrt_selected_desktop != -1);
+
             winrt_selected_desktop = -1;
             winrt_selected_window = nullptr;
             ConfigManager::SetValue(configid_handle_overlay_state_winrt_hwnd, 0);
@@ -2926,6 +2937,11 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id, winrt_selected_desktop);
 
             UIManager::Get()->RepeatFrame();
+        }
+
+        if ((!has_selection_changed) && (ImGui::IsItemClicked()) && (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)))
+        {
+            is_entry_double_clicked = true;
         }
 
         ImGui::SameLine(0.0f, 0.0f);
@@ -2946,6 +2962,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
 
         if (ImGui::Selectable("", (winrt_selected_desktop == i)))
         {
+            has_selection_changed = (winrt_selected_desktop == i);
+
             winrt_selected_desktop = i;
             winrt_selected_window = nullptr;
             ConfigManager::SetValue(configid_handle_overlay_state_winrt_hwnd, 0);
@@ -2961,6 +2979,11 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id, winrt_selected_desktop);
 
             UIManager::Get()->RepeatFrame();
+        }
+
+        if ((!has_selection_changed) && (ImGui::IsItemClicked()) && (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)))
+        {
+            is_entry_double_clicked = true;
         }
 
         ImGui::SameLine(0.0f, 0.0f);
@@ -2983,6 +3006,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
         ImGui::PushID(window_info.GetWindowHandle());
         if (ImGui::Selectable("", (winrt_selected_window == window_info.GetWindowHandle())))
         {
+            has_selection_changed = (winrt_selected_window != window_info.GetWindowHandle());
+
             winrt_selected_desktop = -2;
             winrt_selected_window = window_info.GetWindowHandle();
 
@@ -2996,6 +3021,13 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
 
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id, -2);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, (LPARAM)winrt_selected_window);
+
+            UIManager::Get()->RepeatFrame();
+        }
+
+        if ((!has_selection_changed) && (ImGui::IsItemClicked()) && (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)))
+        {
+            is_entry_double_clicked = true;
         }
 
         ImGui::SameLine(0.0f, 0.0f);
@@ -3024,7 +3056,7 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
     //--Confirmation buttons
     //No separator since this is right after a boxed child window
 
-    if (ImGui::Button(TranslationManager::GetString(tstr_DialogOk)))
+    if ((ImGui::Button(TranslationManager::GetString(tstr_DialogOk))) || (is_entry_double_clicked))
     {
         m_IsConfigDataModified = false; //Stops reset from being triggered on page leave
         PageGoBack();
