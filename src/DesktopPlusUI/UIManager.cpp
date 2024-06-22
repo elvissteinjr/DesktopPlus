@@ -1671,13 +1671,6 @@ void UIManager::UpdateAnyWarningDisplayedState()
         m_HasAnyWarning = true;
         return;
     }
-
-    //Welcome "warning" (currently not implemented in settings window)
-    /*if (!ConfigManager::GetValue(configid_bool_interface_warning_welcome_hidden))
-    {
-        m_HasAnyWarning = true;
-        return;
-    }*/
 }
 
 vr::EVROverlayError UIManager::GetOverlayErrorLast() const

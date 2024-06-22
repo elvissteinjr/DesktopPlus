@@ -2011,8 +2011,6 @@ void WindowSettings::UpdatePageMainCatMisc()
             warning_hidden_count++;
         if (ConfigManager::GetValue(configid_bool_interface_warning_browser_version_mismatch_hidden))
             warning_hidden_count++;
-        if (ConfigManager::GetValue(configid_bool_interface_warning_welcome_hidden))
-            warning_hidden_count++;
 
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsWarningsHidden));
@@ -2029,7 +2027,6 @@ void WindowSettings::UpdatePageMainCatMisc()
             ConfigManager::SetValue(configid_bool_interface_warning_elevated_mode_hidden,            false);
             ConfigManager::SetValue(configid_bool_interface_warning_browser_missing_hidden,          false);
             ConfigManager::SetValue(configid_bool_interface_warning_browser_version_mismatch_hidden, false);
-            ConfigManager::SetValue(configid_bool_interface_warning_welcome_hidden,                  false);
 
             UIManager::Get()->UpdateAnyWarningDisplayedState();
         }
