@@ -143,6 +143,14 @@ void AuxUIWindow::Hide()
 {
     m_Visible = false;
     m_IsTransitionFading = false;
+
+    //Clear right away if this window never had the chance to fade in
+    if (m_Alpha == 0.0f)
+    {
+        AuxUI& aux_ui = UIManager::Get()->GetAuxUI();
+        aux_ui.ClearActiveUI(m_AuxUIID);
+        aux_ui.SetFadeOutFinished();
+    }
 }
 
 bool AuxUIWindow::IsVisible()
