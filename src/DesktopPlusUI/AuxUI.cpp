@@ -418,7 +418,7 @@ void WindowGazeFadeAutoHint::SetTargetOverlay(unsigned int overlay_id)
 
 
 //--WindowQuickStart
-WindowQuickStart::WindowQuickStart() : AuxUIWindow(auxui_window_welcome), m_CurrentPage(0)
+WindowQuickStart::WindowQuickStart() : AuxUIWindow(auxui_window_quickstart), m_CurrentPage(0)
 {
     //Leave 2 pixel padding around so interpolation doesn't cut off the pixel border
     const DPRect& rect = UITextureSpaces::Get().GetRect(ui_texspace_aux_ui);

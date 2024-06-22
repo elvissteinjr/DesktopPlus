@@ -14,7 +14,7 @@
 enum AuxUIID
 {
     auxui_none,
-    auxui_window_welcome,
+    auxui_window_quickstart,
     auxui_drag_hint,
     auxui_gazefade_auto_hint,
     auxui_window_select
