@@ -128,6 +128,7 @@ UIManager::UIManager(bool desktop_mode, bool keyboard_editor_mode) :
     m_OvrlVisible(false),
     m_OvrlOverlayBarAlpha(0.0f),
     m_SystemUIActiveTick(0),
+    m_OverlayBarFadeInTick(0),
     m_OvrlPixelWidth(1),
     m_OvrlPixelHeight(1),
     m_TransformSyncValueCount(0),
@@ -1934,6 +1935,8 @@ void UIManager::PositionOverlay()
                 //Fade out Overlay Bar when the dashboard SystemUI is being used as overlay z-order isn't fine-grained enough for it to just work
                 if ( (!m_IsSystemUIHoveredFromSwitch) && (is_systemui_hovered) )
                 {
+                    m_OverlayBarFadeInTick = 0;
+
                     if (m_SystemUIActiveTick == 0)
                     {
                         m_SystemUIActiveTick = ::GetTickCount64();
@@ -1965,19 +1968,28 @@ void UIManager::PositionOverlay()
                 {
                     m_SystemUIActiveTick = 0;
 
-                    if (m_OvrlOverlayBarAlpha != 1.0f)
+                    //Add a small delay before fading in again so the grab handle can potentially be hovered before this happens
+                    if ((m_OverlayBarFadeInTick == 0) && (!m_IsSystemUIHoveredFromSwitch))
                     {
-                        m_OvrlOverlayBarAlpha += ImGui::GetIO().DeltaTime * 12.0f;
-
-                        if (m_OvrlOverlayBarAlpha > 1.0f)
-                            m_OvrlOverlayBarAlpha = 1.0f;
-
-                        vr::VROverlay()->SetOverlayAlpha(m_OvrlHandleOverlayBar, m_OvrlOverlayBarAlpha);
-                        vr::VROverlay()->ShowOverlay(m_OvrlHandleOverlayBar);
+                        m_OverlayBarFadeInTick = ::GetTickCount64();
                     }
-                    else if (!is_systemui_hovered)
+
+                    if (m_OverlayBarFadeInTick + 300 < ::GetTickCount64())
                     {
-                        m_IsSystemUIHoveredFromSwitch = false;
+                        if (m_OvrlOverlayBarAlpha != 1.0f)
+                        {
+                            m_OvrlOverlayBarAlpha += ImGui::GetIO().DeltaTime * 12.0f;
+
+                            if (m_OvrlOverlayBarAlpha > 1.0f)
+                                m_OvrlOverlayBarAlpha = 1.0f;
+
+                            vr::VROverlay()->SetOverlayAlpha(m_OvrlHandleOverlayBar, m_OvrlOverlayBarAlpha);
+                            vr::VROverlay()->ShowOverlay(m_OvrlHandleOverlayBar);
+                        }
+                        else if (!is_systemui_hovered)
+                        {
+                            m_IsSystemUIHoveredFromSwitch = false;
+                        }
                     }
                 }
             }

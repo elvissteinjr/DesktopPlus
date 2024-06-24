@@ -111,6 +111,7 @@ class UIManager
 
         float m_OvrlOverlayBarAlpha;
         ULONGLONG m_SystemUIActiveTick;
+        ULONGLONG m_OverlayBarFadeInTick;
         bool m_IsSystemUIHoveredFromSwitch;     //Set when the dashboard was hovered when dashboard tab was switched to prevent the UI overlay fading out right away
         bool m_IsDummyOverlayTransformUnstable;
 
