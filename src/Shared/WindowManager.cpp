@@ -148,6 +148,11 @@ const std::string& WindowInfo::GetListTitle() const
     return m_ListTitle;
 }
 
+const bool WindowInfo::IsClassNameMatching(const std::wstring& class_name) const
+{
+    return ((m_ClassName.empty()) || (class_name.empty()) || (m_ClassName == class_name));
+}
+
 bool WindowInfo::UpdateWindowTitle()
 {
     bool ret = false;
@@ -247,7 +252,7 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string& title_str, const s
 
     //Look for a complete match first
     auto it = std::find_if(window_list.begin(), window_list.end(), 
-                           [&](const auto& info){ return ( (info.GetWindowClassName() == class_wstr) && (info.GetExeName() == exe_str) && (info.GetTitle() == title_wstr) ); });
+                           [&](const auto& info){ return ( (info.IsClassNameMatching(class_wstr)) && (info.GetExeName() == exe_str) && (info.GetTitle() == title_wstr) ); });
 
     if (it != window_list.end())
     {
@@ -288,7 +293,7 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string& title_str, const s
         }
 
         auto it = std::find_if(window_list.begin(), window_list.end(), 
-                               [&](const auto& info){ return ( (info.GetWindowClassName() == class_wstr) && (info.GetExeName() == exe_str) && (info.GetTitle().find(title_search) != std::wstring::npos) ); });
+                               [&](const auto& info){ return ( (info.IsClassNameMatching(class_wstr)) && (info.GetExeName() == exe_str) && (info.GetTitle().find(title_search) != std::wstring::npos) ); });
 
         if (it != window_list.end())
         {
@@ -297,7 +302,7 @@ HWND WindowInfo::FindClosestWindowForTitle(const std::string& title_str, const s
     }
 
     //Nothing found, try to get a window from the same class and exe name at least
-    it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& info){ return (info.GetWindowClassName() == class_wstr) && (info.GetExeName() == exe_str); });
+    it = std::find_if(window_list.begin(), window_list.end(), [&](const auto& info){ return (info.IsClassNameMatching(class_wstr)) && (info.GetExeName() == exe_str); });
 
     if (it != window_list.end())
     {

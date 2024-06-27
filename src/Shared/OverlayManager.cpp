@@ -836,14 +836,22 @@ OverlayIDList OverlayManager::FindInactiveOverlaysForWindow(const WindowInfo& wi
 
     //Do the basically the same as in WindowManager::FindClosestWindowForTitle(), but matching overlays to one window instead
     const std::string title_str = StringConvertFromUTF16(window_info.GetTitle().c_str());
-    const std::string class_str = StringConvertFromUTF16(window_info.GetWindowClassName().c_str());
+
+    //Precompute UTF-16 window class names of candidate overlays (using total m_OverlayConfigData array size for direct indexing), as we're using WindowInfo's matching function
+    std::vector<std::wstring> overlay_class_name_wstr;
+    overlay_class_name_wstr.resize(m_OverlayConfigData.size());
+
+    for (auto i : candidate_overlay_ids)
+    {
+        overlay_class_name_wstr[i] = WStringConvertFromUTF8(m_OverlayConfigData[i].ConfigStr[configid_str_overlay_winrt_last_window_class_name].c_str());
+    }
 
     //Look for a complete match first 
     for (auto i : candidate_overlay_ids)
     {
         const OverlayConfigData& data = m_OverlayConfigData[i];
 
-        if ( (data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] == class_str) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) && 
+        if ( (window_info.IsClassNameMatching(overlay_class_name_wstr[i])) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) && 
              (data.ConfigStr[configid_str_overlay_winrt_last_window_title] == title_str) )
         {
             matching_overlay_ids.push_back(i);
@@ -891,8 +899,8 @@ OverlayIDList OverlayManager::FindInactiveOverlaysForWindow(const WindowInfo& wi
 
             //Check if class/exe name matches and search title can be found in the last stored window title (but just skip if overlay uses strict matching)
             if ( (!data.ConfigBool[configid_bool_overlay_winrt_window_matching_strict]) &&
-                  (data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] == class_str) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) &&
-                  (data.ConfigStr[configid_str_overlay_winrt_last_window_title].find(title_search) != std::string::npos) )
+                 (window_info.IsClassNameMatching(overlay_class_name_wstr[i])) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) &&
+                 (data.ConfigStr[configid_str_overlay_winrt_last_window_title].find(title_search) != std::string::npos) )
             {
                 matching_overlay_ids.push_back(i);
             }
@@ -913,7 +921,7 @@ OverlayIDList OverlayManager::FindInactiveOverlaysForWindow(const WindowInfo& wi
             const OverlayConfigData& data = m_OverlayConfigData[i];
 
             if ( (!data.ConfigBool[configid_bool_overlay_winrt_window_matching_strict]) &&
-                  (data.ConfigStr[configid_str_overlay_winrt_last_window_class_name] == class_str) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) )
+                 (window_info.IsClassNameMatching(overlay_class_name_wstr[i])) && (data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name] == window_info.GetExeName()) )
             {
                 matching_overlay_ids.push_back(i);
             }

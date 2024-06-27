@@ -27,6 +27,8 @@ class WindowInfo
         const std::wstring& GetWindowClassName() const;
         const std::string& GetExeName() const;
         const std::string& GetListTitle() const;
+        
+        const bool IsClassNameMatching(const std::wstring& class_name) const;    //Returns true if names match or either is empty
 
         bool UpdateWindowTitle();          //Returns if the title has changed
 
