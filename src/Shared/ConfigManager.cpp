@@ -161,19 +161,10 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
     unsigned int current_id = OverlayManager::Get().GetCurrentOverlayID();
 
-    std::string section;
+    std::stringstream ss;
+    ss << "Overlay" << overlay_id;
 
-    if (overlay_id != UINT_MAX)
-    {
-        std::stringstream ss;
-        ss << "Overlay" << overlay_id;
-
-        section = ss.str();
-    }
-    else
-    {
-        section = "Overlay";
-    }
+    std::string section = ss.str();
 
     data.ConfigNameStr = config.ReadString(section.c_str(), "Name");
 
@@ -305,19 +296,10 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
 {
     const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
-    std::string section;
+    std::stringstream ss;
+    ss << "Overlay" << overlay_id;
 
-    if (overlay_id != UINT_MAX)
-    {
-        std::stringstream ss;
-        ss << "Overlay" << overlay_id;
-
-        section = ss.str();
-    }
-    else
-    {
-        section = "Overlay";
-    }
+    std::string section = ss.str();
 
     config.WriteString(section.c_str(), "Name", data.ConfigNameStr.c_str());
 
@@ -410,8 +392,17 @@ bool ConfigManager::LoadConfigFromFile()
 {
     LOG_F(INFO, "Loading config...");
 
+    //Prioritize config_newui.ini if it exists (will be deleted on save to rename)
+    bool using_config_newui_file = true;
     std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
+
     bool existed = FileExists(wpath.c_str());
+    if (!existed)
+    {
+        wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config.ini").c_str() );
+        existed = FileExists(wpath.c_str());
+        using_config_newui_file = false;
+    }
 
     //If config.ini doesn't exist (yet), load from config_default.ini instead, which hopefully does (would still work to a lesser extent though)
     if (!existed)
@@ -422,14 +413,29 @@ bool ConfigManager::LoadConfigFromFile()
 
     Ini config(wpath.c_str());
 
-    m_ConfigBool[configid_bool_interface_no_ui]                              = config.ReadBool(  "Interface", "NoUIAutoLaunch", false);
-    m_ConfigBool[configid_bool_interface_no_notification_icon]               = config.ReadBool(  "Interface", "NoNotificationIcon", false);
-    m_ConfigString[configid_str_interface_language_file]                     = config.ReadString("Interface", "LanguageFile");
-    m_ConfigBool[configid_bool_interface_show_advanced_settings]             = config.ReadBool(  "Interface", "ShowAdvancedSettings", true);
-    m_ConfigBool[configid_bool_interface_large_style]                        = config.ReadBool(  "Interface", "DisplaySizeLarge", false);
-    m_ConfigInt[configid_int_interface_overlay_current_id]                   = config.ReadInt(   "Interface", "OverlayCurrentID", 0);
-    m_ConfigInt[configid_int_interface_desktop_listing_style]                = config.ReadInt(   "Interface", "DesktopButtonCyclingMode", desktop_listing_style_individual);
-    m_ConfigBool[configid_bool_interface_desktop_buttons_include_combined]   = config.ReadBool(  "Interface", "DesktopButtonIncludeAll", false);
+    const int config_version = config.ReadInt("Misc", "ConfigVersion", 1);
+
+    //If config is versioned below 2 (or unversioned, really), assume legacy config
+    //Though if we're loading from config_newui.ini (not legacy config but no version key yet), we're only doing the renaming, nothing else
+    if ((existed) && (config_version < 2))
+    {
+        #ifdef DPLUS_UI
+            MigrateLegacyConfig(config, using_config_newui_file);
+            //We need to save and restart dashboard process, but only after we read everything else
+        #else   //Only UI process writes files, so dashboard process will have to wait and restart later
+            LOG_IF_F(INFO, !using_config_newui_file, "Legacy config detected, expecting UI process to migrate and request restart...");
+        #endif
+    }
+
+    //Do the actual config reading
+    m_ConfigBool[configid_bool_interface_no_ui]                            = config.ReadBool(  "Interface", "NoUIAutoLaunch", false);
+    m_ConfigBool[configid_bool_interface_no_notification_icon]             = config.ReadBool(  "Interface", "NoNotificationIcon", false);
+    m_ConfigString[configid_str_interface_language_file]                   = config.ReadString("Interface", "LanguageFile");
+    m_ConfigBool[configid_bool_interface_show_advanced_settings]           = config.ReadBool(  "Interface", "ShowAdvancedSettings", true);
+    m_ConfigBool[configid_bool_interface_large_style]                      = config.ReadBool(  "Interface", "DisplaySizeLarge", false);
+    m_ConfigInt[configid_int_interface_overlay_current_id]                 = config.ReadInt(   "Interface", "OverlayCurrentID", 0);
+    m_ConfigInt[configid_int_interface_desktop_listing_style]              = config.ReadInt(   "Interface", "DesktopButtonCyclingMode", desktop_listing_style_individual);
+    m_ConfigBool[configid_bool_interface_desktop_buttons_include_combined] = config.ReadBool(  "Interface", "DesktopButtonIncludeAll", false);
 
     //Read color string as unsigned int but store it as signed
     m_ConfigInt[configid_int_interface_background_color] = pun_cast<unsigned int, int>( std::stoul(config.ReadString("Interface", "EnvironmentBackgroundColor", "00000080"), nullptr, 16) );
@@ -662,6 +668,24 @@ bool ConfigManager::LoadConfigFromFile()
 
     LOG_F(INFO, "Loaded config");
 
+    //Save after loading if we did a config migration
+    #ifdef DPLUS_UI
+        if (m_ConfigBool[configid_bool_state_misc_config_migrated])
+        {
+            if (IPCManager::Get().IsDashboardAppRunning())
+            {
+                LOG_F(INFO, "Legacy config migration finished, saving new config and restarting dashboard app...");
+                SaveConfigToFile();
+                UIManager::Get()->RestartDashboardApp();
+            }
+            else
+            {
+                LOG_F(INFO, "Legacy config migration finished, saving new config...");
+                SaveConfigToFile();
+            }
+        }
+    #endif
+
     return existed; //We use default values if it doesn't, but still return if the file existed
 }
 
@@ -677,6 +701,8 @@ void ConfigManager::LoadMultiOverlayProfile(const Ini& config, bool clear_existi
         //Other cases are unhandled (e.g. only removing offending overlay) as it'd require littering checks everywhere for little use
         m_ConfigBool[configid_bool_state_misc_browser_used_but_missing] = false;
     }
+
+    const int config_version = config.ReadInt("Misc", "ConfigVersion", 1);
 
     unsigned int overlay_id = 0;
 
@@ -723,6 +749,8 @@ void ConfigManager::SaveMultiOverlayProfile(Ini& config, std::vector<char>* ovrl
         ss = std::stringstream();
         ss << "Overlay" << overlay_id;
     }
+
+    config.WriteInt("Misc", "ConfigVersion", k_nDesktopPlusConfigVersion);
 
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     overlay_id = 0;
@@ -833,6 +861,236 @@ void ConfigManager::SaveConfigPersistentWindowState(Ini& config)
 
     //Only room state's is saved/restored here
     config.WriteInt("Interface", "WindowKeyboardLastAssignedOverlayID", UIManager::Get()->GetVRKeyboard().GetWindow().GetAssignedOverlayID(floating_window_ovrl_state_room));
+}
+
+void ConfigManager::MigrateLegacyConfig(Ini& config, bool only_rename_config_file)
+{
+    if (!only_rename_config_file)
+    {
+        LOG_F(INFO, "Migrating legacy config...");
+
+        //Nothing really has to be adapted from the global config, but we need to migrate every overlay profile
+        bool apply_steamvr2_dashboard_offset = config.ReadBool("Misc", "ApplySteamVR2DashboardOffset", true);
+
+        LOG_F(INFO, "Migrating legacy global overlay profile...");
+        MigrateLegacyOverlayProfileFromConfig(config, apply_steamvr2_dashboard_offset);
+
+        //We need to traverse all existing overlay profiles, migrate them and save them to the new file structure
+        const std::wstring wpath_dest   =  WStringConvertFromUTF8( std::string(m_ApplicationPath + "profiles/"               ).c_str() );
+        const std::wstring wpath_src[2] = {WStringConvertFromUTF8( std::string(m_ApplicationPath + "profiles/overlays/"      ).c_str() ),
+                                           WStringConvertFromUTF8( std::string(m_ApplicationPath + "profiles/multi-overlays/").c_str() )};
+        const std::wstring wpath_sub[2] = {L" (single-overlay)", L" (multi-overlay)"};
+
+        for (int i = 0; i < 2; ++i)
+        {
+            WIN32_FIND_DATA find_data = {};
+            HANDLE handle_find = ::FindFirstFileW((wpath_src[i] + L"*.ini").c_str(), &find_data);
+
+            if (handle_find != INVALID_HANDLE_VALUE)
+            {
+                do
+                {
+                    LOG_F(INFO, "Migrating legacy overlay profile \"%s\"...", StringConvertFromUTF16(find_data.cFileName).c_str());
+
+                    Ini config_profile(wpath_src[i] + find_data.cFileName);
+                    MigrateLegacyOverlayProfileFromConfig(config_profile, apply_steamvr2_dashboard_offset);
+
+                    std::wstring save_path = wpath_dest + find_data.cFileName;
+
+                    //Avoid overwriting anything existing
+                    if (FileExists(save_path.c_str()))
+                    {
+                        //Try just adding a subfolder identifier
+                        std::wstring profile_name_with_sub = std::wstring(find_data.cFileName).substr(0, save_path.size() - 4);
+                        profile_name_with_sub += wpath_sub[i];
+
+                        std::wstring filename_log = profile_name_with_sub + L".ini";
+                        std::wstring save_path_with_sub = wpath_dest + filename_log;
+
+                        int duplicate_count = 1;
+                        while (FileExists(save_path_with_sub.c_str()))
+                        {
+                            //Add numbers if we really still run into conflicts
+                            duplicate_count++;
+
+                            filename_log = profile_name_with_sub + L"(" + std::to_wstring(duplicate_count) + L")" + L".ini";
+                            save_path_with_sub = wpath_dest + filename_log;
+                        }
+
+                        save_path = save_path_with_sub;
+                        LOG_F(INFO, "Profile already existed in new location, saving as \"%s\" instead...", StringConvertFromUTF16(filename_log.c_str()).c_str());
+                    }
+
+                    config_profile.Save(save_path);
+                }
+                while (::FindNextFileW(handle_find, &find_data) != 0);
+
+                ::FindClose(handle_find);
+            }
+        }
+    }
+
+    //Rename old config.ini to config_legacy.ini, which has loading priority in 2.8+ versions
+    const std::wstring wpath_config = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config.ini").c_str() );
+    if (FileExists(wpath_config.c_str()))
+    {
+        ::MoveFileW(wpath_config.c_str(), WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_legacy.ini").c_str() ).c_str());
+        LOG_F(INFO, "Renamed legacy \"config.ini\" to \"config_legacy.ini\". Desktop+ 2.x will still be able to load this file");
+    }
+
+    if (!only_rename_config_file)
+    {
+        //Action migration is checked for every launch but we also do it here so the new saved config already has it
+        if (!m_ActionManager.LoadActionsFromFile())
+        {
+            MigrateLegacyActionsFromConfig(config);
+        }
+
+        m_ConfigBool[configid_bool_state_misc_config_migrated] = true;
+    }
+}
+
+void ConfigManager::MigrateLegacyOverlayProfileFromConfig(Ini& config, bool apply_steamvr2_dashboard_offset)
+{
+    //Rename unnumbered "Overlay" section if it exists (legacy single overlay profile)
+    config.RenameSection("Overlay", "Overlay0");
+
+    unsigned int overlay_id = 0;
+
+    std::stringstream ss;
+    ss << "Overlay" << overlay_id;
+
+    std::string section = ss.str();
+
+    //Migrate all sequential overlay sections that exist
+    while (config.SectionExists(section.c_str()))
+    {
+        //Set 3D enabled value to true if any 3D is active
+        config.WriteBool(section.c_str(), "3DEnabled", (config.ReadInt(section.c_str(), "3DMode", 0) != 0) );
+
+        //Create tag string for group ID
+        int overlay_group_id = config.ReadInt(section.c_str(), "GroupID", 0);
+        if (overlay_group_id != 0)
+        {
+            std::string tag_str = "OVRL_GROUP_" + std::to_string(overlay_group_id);
+            config.WriteString(section.c_str(), "Tags", tag_str.c_str());
+        }
+
+        //Write Display Mode to new config string (0 is always Desktop+ tab)
+        config.WriteInt(section.c_str(), "DisplayMode", (overlay_id == 0) ? ovrl_dispmode_dplustab : config.ReadInt(section.c_str(), "DetachedDisplayMode", ovrl_dispmode_always) );
+
+        //Write Origin to new config string in new format (0 is always dashboard)
+        const OverlayOrigin transform_origin = (overlay_id == 0) ? ovrl_origin_dashboard : GetOverlayOriginFromConfigString(config.ReadString(section.c_str(), "DetachedOrigin"));
+        config.WriteString(section.c_str(), "Origin", GetConfigStringForOverlayOrigin(transform_origin) );
+
+        //Write single transform string, chosen by active origin
+        std::string transform_str;
+
+        switch (transform_origin)
+        {
+            case ovrl_origin_room:
+            {
+                transform_str = config.ReadString(section.c_str(), "DetachedTransformPlaySpace");
+                break;
+            }
+            case ovrl_origin_hmd_floor:
+            {
+                transform_str = config.ReadString(section.c_str(), "DetachedTransformHMDFloor");
+                break;
+            }
+            case ovrl_origin_seated_universe:
+            {
+                transform_str = config.ReadString(section.c_str(), "DetachedTransformSeatedPosition");
+                break;
+            }
+            case ovrl_origin_dashboard:
+            {
+                //Overlay 0 is always dashboard with no transform saved, set to identity scaled to counteract dashboard scale
+                if (overlay_id == 0)
+                {
+                    Matrix4 matrix;
+                    matrix.scale(2.08464f);  //We don't have OpenVR initialized at this step, but this hardcoded value will do the job for the gamepadui dashboard
+                    transform_str = matrix.toString();
+                }
+                else
+                {
+                    transform_str = config.ReadString(section.c_str(), "DetachedTransformDashboard");
+
+                    //Try to convert transforms that have implicit offsets used with apply_steamvr2_dashboard_offset disabled
+                    if (!apply_steamvr2_dashboard_offset)
+                    {
+                        Matrix4 matrix(transform_str);
+
+                        //Magic number, from taking the difference of both version's dashboard origins at the same HMD position
+                        Matrix4 matrix_to_old_dash(1.14634132f,      3.725290300e-09f, -3.725290300e-09f, 0.00000000f,
+                                                   0.00000000f,      0.878148496f,      0.736854136f,     0.00000000f,
+                                                   7.45058060e-09f, -0.736854076f,      0.878148496f,     0.00000000f,
+                                                  -5.96046448e-08f,  2.174717430f,      0.123533726f,     1.00000000f);
+
+                        //Move transform roughly back to where it was in the old dashboard
+                        matrix_to_old_dash.invert();
+                        matrix = matrix_to_old_dash * matrix;
+
+                        //Try to compensate for origin point differences
+                        //Without being able to know the overlay content height this is only an approximation for 16:9 overlays
+                        float width = clamp(config.ReadInt(section.c_str(), "Width", 165) / 100.0f, 0.00001f, 1000.0f);
+                        matrix.translate_relative(0.00f, 1.22f - (width * 0.5625f * 0.5f), -0.12f);
+
+                        transform_str = matrix.toString();
+                    }
+                }
+
+                break;
+            }
+            case ovrl_origin_hmd:
+            {
+                transform_str = config.ReadString(section.c_str(), "DetachedTransformHMD");
+                break;
+            }
+            case ovrl_origin_left_hand:
+            {
+                transform_str = config.ReadString(section.c_str(), "DetachedTransformLeftHand");
+                break;
+            }
+            case ovrl_origin_right_hand:
+            {
+                transform_str = config.ReadString(section.c_str(), "DetachedTransformRightHand");
+                break;
+            }
+            case ovrl_origin_aux:
+            {
+                transform_str = config.ReadString(section.c_str(), "DetachedTransformAux");
+                break;
+            }
+        }
+
+        //Only write transform when it was really present in the file, or else it defaults to identity instead of zero
+        if (!transform_str.empty())
+        {
+            config.WriteString(section.c_str(), "Transform", transform_str.c_str());
+        }
+
+        overlay_id++;
+
+        std::stringstream ss;
+        ss << "Overlay" << overlay_id;
+
+        section = ss.str();
+    }
+
+    //Remove obsolte keys
+    //Other obsolete values may remain in the file but will be cleared the next time the profile is saved properly, so it's not really an issue
+    config.RemoveKey(section.c_str(), "GroupID");
+    config.RemoveKey(section.c_str(), "DetachedDisplayMode");
+    config.RemoveKey(section.c_str(), "DetachedOrigin");
+    config.RemoveKey(section.c_str(), "DetachedTransformPlaySpace");
+    config.RemoveKey(section.c_str(), "DetachedTransformHMDFloor");
+    config.RemoveKey(section.c_str(), "DetachedTransformSeatedPosition");
+    config.RemoveKey(section.c_str(), "DetachedTransformDashboard");
+    config.RemoveKey(section.c_str(), "DetachedTransformHMD");
+    config.RemoveKey(section.c_str(), "DetachedTransformLeftHand");
+    config.RemoveKey(section.c_str(), "DetachedTransformRightHand");
+    config.RemoveKey(section.c_str(), "DetachedTransformAux");
 }
 
 #endif //ifdef DPLUS_UI
@@ -1037,7 +1295,7 @@ void ConfigManager::RemoveScaleFromTransform(Matrix4& transform, float* width)
 
 void ConfigManager::SaveConfigToFile()
 {
-    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
+    const std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config.ini").c_str() );
     Ini config(wpath.c_str());
 
     //Only save overlay config if no app profile that has loaded an overlay profile is active
@@ -1216,13 +1474,22 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Performance", "PerformanceMonitorShowViveWireless",   m_ConfigBool[configid_bool_performance_monitor_show_vive_wireless]);
     config.WriteBool("Performance", "PerformanceMonitorDisableGPUCounters", m_ConfigBool[configid_bool_performance_monitor_disable_gpu_counters]);
 
+    config.WriteInt( "Misc", "ConfigVersion",      k_nDesktopPlusConfigVersion);
     config.WriteBool("Misc", "NoSteam",            m_ConfigBool[configid_bool_misc_no_steam]);
     config.WriteBool("Misc", "UIAccessWasEnabled", (m_ConfigBool[configid_bool_misc_uiaccess_was_enabled] || m_ConfigBool[configid_bool_state_misc_uiaccess_enabled]));
 
     //Remove old CustomSection section (actions are now saved separately)
     config.RemoveSection("CustomActions");
 
-    config.Save();
+    //Save config & if it succeeded, remove potential leftover unused config_newui.ini
+    if (config.Save())
+    {
+        std::wstring wpath_newui = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
+        if (FileExists(wpath_newui.c_str()))
+        {
+            ::DeleteFileW(wpath_newui.c_str());
+        }
+    }
 
     m_ActionManager.SaveActionsToFile();
     m_AppProfileManager.SaveProfilesToFile();
@@ -1250,7 +1517,7 @@ void ConfigManager::LoadOverlayProfileDefault(bool multi_overlay)
     else
     {
         Ini config(L"");
-        LoadOverlayProfile(config); //All read calls will fail end fill in default values as a result
+        LoadOverlayProfile(config, 0); //All read calls will fail end fill in default values as a result
     }
 }
 
@@ -1275,7 +1542,7 @@ bool ConfigManager::SaveMultiOverlayProfileToFile(const std::string& filename, s
     LOG_F(INFO, "Saving overlay profile \"%s\"...", filename.c_str());
 
     std::string path = m_ApplicationPath + "profiles/" + filename;
-    Ini config(WStringConvertFromUTF8(path.c_str()));
+    Ini config(WStringConvertFromUTF8(path.c_str()), true);
 
     SaveMultiOverlayProfile(config, ovrl_inclusion_list);
     return config.Save();

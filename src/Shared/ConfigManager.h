@@ -119,6 +119,7 @@ enum ConfigID_Bool
     configid_bool_state_misc_browser_version_mismatch,        //True if the browser is available, but the API version isn't compatible
     configid_bool_state_misc_process_started_by_steam,
     configid_bool_state_misc_uiaccess_enabled,
+    configid_bool_state_misc_config_migrated,                 //True if the config was migrated in the current session
     configid_bool_MAX
 };
 
@@ -391,17 +392,21 @@ class ConfigManager
         std::string m_ExecutableName;
         bool m_IsSteamInstall;
 
-        void LoadOverlayProfile(const Ini& config, unsigned int overlay_id = UINT_MAX);
-        void SaveOverlayProfile(Ini& config, unsigned int overlay_id = UINT_MAX);
+        void LoadOverlayProfile(const Ini& config, unsigned int overlay_id);
+        void SaveOverlayProfile(Ini& config, unsigned int overlay_id);
         void LoadMultiOverlayProfile(const Ini& config, bool clear_existing_overlays = true, std::vector<char>* ovrl_inclusion_list = nullptr);
         void SaveMultiOverlayProfile(Ini& config, std::vector<char>* ovrl_inclusion_list = nullptr);
 
         #ifdef DPLUS_UI
             void LoadConfigPersistentWindowState(Ini& config);
             void SaveConfigPersistentWindowState(Ini& config);
+
+            void MigrateLegacyConfig(Ini& config, bool only_rename_config_file);
+            void MigrateLegacyOverlayProfileFromConfig(Ini& config, bool apply_steamvr2_dashboard_offset);    //This writes to passed config, but doesn't save it
         #endif
 
         void MigrateLegacyActionsFromConfig(const Ini& config);
+
         OverlayOrigin GetOverlayOriginFromConfigString(const std::string& str);
         const char* GetConfigStringForOverlayOrigin(OverlayOrigin origin);
 

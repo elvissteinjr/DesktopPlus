@@ -12,6 +12,10 @@
 	static const char* const k_pch_DesktopPlusVersion = "Desktop+ NewUI Preview 14";
 #endif
 
+//Version written to config file
+//Only really increased when backward incompatible changes were made (we fall back to default values when things are missing usually)
+static const int k_nDesktopPlusConfigVersion = 2;
+
 void DPLog_Init(const char* name);
 void DPLog_SteamVR_SystemInfo();
 void DPLog_DPWinRT_SupportInfo();

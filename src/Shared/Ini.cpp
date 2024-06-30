@@ -226,6 +226,20 @@ bool Ini::KeyExists(const char* section, const char* key) const
     return (ini_find_property(m_IniPtr, section_id, key, 0) != INI_NOT_FOUND);
 }
 
+bool Ini::RenameSection(const char* section, const char* new_name)
+{
+    int section_id = ini_find_section(m_IniPtr, section, 0);
+
+    if (section_id == INI_NOT_FOUND)
+    {
+        return false;
+    }
+
+    ini_section_name_set(m_IniPtr, section_id, new_name, 0);
+
+    return true;
+}
+
 void Ini::RemoveSection(const char* section)
 {
     //There is a bug in ini_section_remove() which causes sections to not be removed properly under certain conditions

@@ -1672,6 +1672,13 @@ void UIManager::UpdateAnyWarningDisplayedState()
         m_HasAnyWarning = true;
         return;
     }
+
+    //App profile with overlay profile active warning
+    if (ConfigManager::GetValue(configid_bool_state_misc_config_migrated))
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
 }
 
 vr::EVROverlayError UIManager::GetOverlayErrorLast() const

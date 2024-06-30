@@ -35,6 +35,7 @@ enum TRMGRStrID
     tstr_SettingsWarningOverlayCreationErrorOther,              //%ERRORNAME% == VROverlay::GetOverlayErrorNameFromEnum()
     tstr_SettingsWarningGraphicsCaptureError,                   //%ERRORCODE% == WinRT HRESULT in hex notation
     tstr_SettingsWarningAppProfileActive,                       //%APPNAME% == name of active application
+    tstr_SettingsWarningConfigMigrated,
     tstr_SettingsWarningMenuDontShowAgain,
     tstr_SettingsWarningMenuDismiss,
     tstr_SettingsInterfaceLanguage,
@@ -311,6 +312,7 @@ enum TRMGRStrID
     tstr_SettingsTroubleshootingSettingsResetConfirmDescription,
     tstr_SettingsTroubleshootingSettingsResetConfirmButton,
     tstr_SettingsTroubleshootingSettingsResetConfirmElementOverlays,
+    tstr_SettingsTroubleshootingSettingsResetConfirmElementLegacyFiles,
     tstr_SettingsTroubleshootingSettingsResetShowQuickStart,
     tstr_KeyboardWindowTitle,
     tstr_KeyboardWindowTitleSettings,

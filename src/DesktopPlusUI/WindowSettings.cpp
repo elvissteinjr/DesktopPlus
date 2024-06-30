@@ -683,6 +683,29 @@ void WindowSettings::UpdateWarnings()
         }
     }
 
+    //Config migrated in current session "warning"
+    {
+        if (ConfigManager::GetValue(configid_bool_state_misc_config_migrated))
+        {
+            SelectableWarning("##WarningConfigMigrated", "DismissWarning3", TranslationManager::GetString(tstr_SettingsWarningConfigMigrated), false, &Style_ImGuiCol_TextNotification);
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DismissWarning3", ImGuiWindowFlags_NoMove))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDismiss)))
+                {
+                    ConfigManager::SetValue(configid_bool_state_misc_config_migrated, false);
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
     //Separate from the main content if a warning was actually displayed
     if (warning_displayed)
     {
@@ -5829,6 +5852,18 @@ void WindowSettings::UpdatePageWindowPicker()
 
 void WindowSettings::UpdatePageResetConfirm()
 {
+    //Check if it makes sense to show the checkbox for deleting legacy files
+    static bool show_delete_legacy_check = false;
+
+    if (m_PageAppearing == m_PageCurrent)
+    {
+        const std::wstring wpath_config          = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "config_legacy.ini"       ).c_str() );
+        const std::wstring wpath_profiles_single = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "profiles/overlays/"      ).c_str() );
+        const std::wstring wpath_profiles_multi  = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "profiles/multi-overlays/").c_str() );
+
+        show_delete_legacy_check = ( (FileExists(wpath_config.c_str())) || (DirectoryExists(wpath_profiles_single.c_str())) || (DirectoryExists(wpath_profiles_multi.c_str())) );
+    }
+
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsReset) ); 
     ImGui::Indent();
 
@@ -5836,7 +5871,7 @@ void WindowSettings::UpdatePageResetConfirm()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsResetConfirmDescription));
     ImGui::PopTextWrapPos();
 
-    static bool reset_settings = true, reset_current_profile = true, reset_profile_overlays = false, reset_profile_apps = false, reset_actions = false;
+    static bool reset_settings = true, reset_current_profile = true, reset_profile_overlays = false, reset_profile_apps = false, reset_actions = false, delete_legacy = false;
 
     //This uses existing translation strings to avoid duplication of strings that should reasonably stay the same for this context
     //Might come back to bite for some language but we'll see about that
@@ -5846,6 +5881,12 @@ void WindowSettings::UpdatePageResetConfirm()
     ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsProfilesOverlays), &reset_profile_overlays);
     ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsProfilesApps), &reset_profile_apps);
     ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsCatActions), &reset_actions);
+
+    if (show_delete_legacy_check)
+    {
+        ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsResetConfirmElementLegacyFiles), &delete_legacy);
+    }
+
     ImGui::Unindent();
 
     ImGui::Unindent();
@@ -5887,6 +5928,28 @@ void WindowSettings::UpdatePageResetConfirm()
         if (reset_actions)
         {
             ConfigManager::Get().GetActionManager().RestoreActionsFromDefault();
+        }
+
+        if (delete_legacy)
+        {
+            const std::wstring wpath_config = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "config_legacy.ini").c_str() );
+            //The folder paths are double-NUL terminated for SHFileOperationW()
+            const std::wstring wpath_profiles_single = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "profiles/overlays/"      ).c_str() ) + L'\0';
+            const std::wstring wpath_profiles_multi  = WStringConvertFromUTF8( std::string(ConfigManager::Get().GetApplicationPath() + "profiles/multi-overlays/").c_str() ) + L'\0';
+
+            //Delete config_legacy.ini
+            ::DeleteFileW(wpath_config.c_str());
+
+            //Delete folders recursively with contained files
+            SHFILEOPSTRUCTW fileop = {0};
+            fileop.wFunc  = FO_DELETE;
+            fileop.fFlags = FOF_NO_UI;
+
+            fileop.pFrom = wpath_profiles_single.c_str();
+            ::SHFileOperationW(&fileop);
+
+            fileop.pFrom = wpath_profiles_multi.c_str();
+            ::SHFileOperationW(&fileop);
         }
 
         UIManager::Get()->Restart(UIManager::Get()->IsInDesktopMode());

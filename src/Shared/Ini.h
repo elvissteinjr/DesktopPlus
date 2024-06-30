@@ -30,6 +30,7 @@ class Ini
 
         bool SectionExists(const char* section) const;
         bool KeyExists(const char* section, const char* key) const;
+        bool RenameSection(const char* section, const char* new_name);
         void RemoveSection(const char* section);
         void RemoveKey(const char* section, const char* key);
 
