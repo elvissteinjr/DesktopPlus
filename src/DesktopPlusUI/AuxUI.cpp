@@ -628,6 +628,7 @@ void WindowQuickStart::OnPageChange(int page_id)
         case pageid_OverlayProperties_2:
         {
             window_settings.Hide();
+            window_overlay_properties.SetActiveOverlayID(0);
             window_overlay_properties.Show();
             break;
         }
