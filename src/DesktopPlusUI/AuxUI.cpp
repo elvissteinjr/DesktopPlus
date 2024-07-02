@@ -779,12 +779,14 @@ void WindowQuickStart::Update()
                 case pageid_Welcome:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartWelcomeHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartWelcomeBody));
                     break;
                 }
                 case pageid_Overlays:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartOverlaysHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartOverlaysBody));
                     break;
                 }
@@ -792,77 +794,90 @@ void WindowQuickStart::Update()
                 {
 
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartOverlaysHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartOverlaysBody2));
                     break;
                 }
                 case pageid_OverlayProperties:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartOverlayPropertiesHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartOverlayPropertiesBody));
                     break;
                 }
                 case pageid_OverlayProperties_2:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartOverlayPropertiesHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartOverlayPropertiesBody2));
                     break;
                 }
                 case pageid_Settings:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartSettingsHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartSettingsBody));
                     break;
                 }
                 case pageid_Profiles:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartProfilesHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartProfilesBody));
                     break;
                 }
                 case pageid_Actions:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartActionsHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartActionsBody));
                     break;
                 }
                 case pageid_Actions_2:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartActionsHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartActionsBody2));
                     break;
                 }
                 case pageid_OverlayTags:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartOverlayTagsHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartOverlayTagsBody));
                     break;
                 }
                 case pageid_Settings_End:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartSettingsHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartSettingsEndBody));
                     break;
                 }
                 case pageid_FloatingUI:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartFloatingUIHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartFloatingUIBody));
                     break;
                 }
                 case pageid_DesktopMode:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartDesktopModeHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartDesktopModeBody));
                     break;
                 }
                 case pageid_ReadMe:
                 {
                     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_AuxUIQuickStartEndHeader));
+                    ImGui::Indent();
                     ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIQuickStartEndBody));
                     break;
                 }
             }
 
+            ImGui::Unindent();
             ImGui::PopTextWrapPos();
         }
         else
