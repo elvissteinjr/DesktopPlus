@@ -451,6 +451,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]            = config.ReadBool("Interface", "WarningElevatedModeHidden",           false);
     m_ConfigBool[configid_bool_interface_warning_browser_missing_hidden]          = config.ReadBool("Interface", "WarningBrowserMissingHidden",         false);
     m_ConfigBool[configid_bool_interface_warning_browser_version_mismatch_hidden] = config.ReadBool("Interface", "WarningBrowserVersionMismatchHidden", false);
+    m_ConfigBool[configid_bool_interface_warning_app_profile_active_hidden]       = config.ReadBool("Interface", "WarningAppProfileActiveHidden",       false);
     m_ConfigBool[configid_bool_interface_window_settings_restore_state]           = config.ReadBool("Interface", "WindowSettingsRestoreState",   false);
     m_ConfigBool[configid_bool_interface_window_properties_restore_state]         = config.ReadBool("Interface", "WindowPropertiesRestoreState", false);
     m_ConfigBool[configid_bool_interface_window_keyboard_restore_state]           = config.ReadBool("Interface", "WindowKeyboardRestoreState",   true);
@@ -1336,6 +1337,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Interface", "WarningElevatedModeHidden",             m_ConfigBool[configid_bool_interface_warning_elevated_mode_hidden]);
     config.WriteBool("Interface", "WarningBrowserMissingHidden",           m_ConfigBool[configid_bool_interface_warning_browser_missing_hidden]);
     config.WriteBool("Interface", "WarningBrowserVersionMismatchHidden",   m_ConfigBool[configid_bool_interface_warning_browser_version_mismatch_hidden]);
+    config.WriteBool("Interface", "WarningAppProfileActiveHidden",         m_ConfigBool[configid_bool_interface_warning_app_profile_active_hidden]);
     config.WriteBool("Interface", "WindowSettingsRestoreState",            m_ConfigBool[configid_bool_interface_window_settings_restore_state]);
     config.WriteBool("Interface", "WindowPropertiesRestoreState",          m_ConfigBool[configid_bool_interface_window_properties_restore_state]);
     config.WriteBool("Interface", "WindowKeyboardRestoreState",            m_ConfigBool[configid_bool_interface_window_keyboard_restore_state]);
