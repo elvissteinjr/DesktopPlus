@@ -431,7 +431,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_interface_no_ui]                            = config.ReadBool(  "Interface", "NoUIAutoLaunch", false);
     m_ConfigBool[configid_bool_interface_no_notification_icon]             = config.ReadBool(  "Interface", "NoNotificationIcon", false);
     m_ConfigString[configid_str_interface_language_file]                   = config.ReadString("Interface", "LanguageFile");
-    m_ConfigBool[configid_bool_interface_show_advanced_settings]           = config.ReadBool(  "Interface", "ShowAdvancedSettings", true);
+    m_ConfigBool[configid_bool_interface_show_advanced_settings]           = config.ReadBool(  "Interface", "ShowAdvancedSettings", false);
     m_ConfigBool[configid_bool_interface_large_style]                      = config.ReadBool(  "Interface", "DisplaySizeLarge", false);
     m_ConfigInt[configid_int_interface_overlay_current_id]                 = config.ReadInt(   "Interface", "OverlayCurrentID", 0);
     m_ConfigInt[configid_int_interface_desktop_listing_style]              = config.ReadInt(   "Interface", "DesktopButtonCyclingMode", desktop_listing_style_individual);
