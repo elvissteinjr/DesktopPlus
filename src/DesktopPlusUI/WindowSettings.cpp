@@ -1373,37 +1373,41 @@ void WindowSettings::UpdatePageMainCatActions()
                 {
                     ImGui::PopStyleColor();
 
-                    ImGui::SetNextItemAllowOverlap();
-                    ImGui::SameLine();
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - table_hotkeys_remove_button_width);
-
-                    if (ImGui::SmallButton(TranslationManager::GetString(tstr_SettingsActionsHotkeysRemove)))
+                    //Show remove button only if there's more than one hotkey or the single existing hotkey has properties set (basically no button that doesn't do anything)
+                    if ((hotkey_list.size() > 1) || (hotkey.KeyCode != 0) || (hotkey.ActionUID != k_ActionUID_Invalid))
                     {
-                        if (hotkey_list.size() > 1)
+                        ImGui::SetNextItemAllowOverlap();
+                        ImGui::SameLine();
+                        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - table_hotkeys_remove_button_width);
+
+                        if (ImGui::SmallButton(TranslationManager::GetString(tstr_SettingsActionsHotkeysRemove)))
                         {
-                            hotkey_list.erase(hotkey_list.begin() + hotkey_id);
-                            IPCManager::Get().SendStringToDashboardApp(configid_str_state_hotkey_data, "", UIManager::Get()->GetWindowHandle());
+                            if (hotkey_list.size() > 1)
+                            {
+                                hotkey_list.erase(hotkey_list.begin() + hotkey_id);
+                                IPCManager::Get().SendStringToDashboardApp(configid_str_state_hotkey_data, "", UIManager::Get()->GetWindowHandle());
+                            }
+                            else //If there's only one entry, clear it instead to not have a weird looking table
+                            {
+                                hotkey = ConfigHotkey();
+                                IPCManager::Get().SendStringToDashboardApp(configid_str_state_hotkey_data, hotkey.Serialize(), UIManager::Get()->GetWindowHandle());
+                            }
+
+                            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_hotkey_set, hotkey_id);
+
+                            //Erased something straight out of the list, get out of the loop and discard frame
+                            UIManager::Get()->RepeatFrame();
+                            ImGui::PopID();
+                            break;
                         }
-                        else //If there's only one entry, clear it instead to not have a weird looking table
+
+                        if (ImGui::IsItemHovered())
                         {
-                            hotkey = ConfigHotkey();
-                            IPCManager::Get().SendStringToDashboardApp(configid_str_state_hotkey_data, hotkey.Serialize(), UIManager::Get()->GetWindowHandle());
+                            hovered_row_new = hotkey_id;
                         }
 
-                        IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_hotkey_set, hotkey_id);
-
-                        //Erased something straight out of the list, get out of the loop and discard frame
-                        UIManager::Get()->RepeatFrame();
-                        ImGui::PopID();
-                        break;
+                        table_hotkeys_remove_button_width = ImGui::GetItemRectSize().x;
                     }
-
-                    if (ImGui::IsItemHovered())
-                    {
-                        hovered_row_new = hotkey_id;
-                    }
-
-                    table_hotkeys_remove_button_width = ImGui::GetItemRectSize().x;
                 }
 
                 ImGui::TableNextColumn();
