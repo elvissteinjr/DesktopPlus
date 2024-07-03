@@ -489,6 +489,11 @@ bool ConfigManager::LoadConfigFromFile()
         ++shortcut_id;
     }
 
+    if (m_ConfigGlobalShortcuts.empty())    //Enforce minimum one entry
+    {
+        m_ConfigGlobalShortcuts.emplace_back();
+    }
+
     //Hotkeys
     m_ConfigHotkey.clear();
     int hotkey_id = 0;
@@ -512,6 +517,11 @@ bool ConfigManager::LoadConfigFromFile()
         }
 
         ++hotkey_id;
+    }
+
+    if (m_ConfigHotkey.empty())    //Enforce minimum one entry
+    {
+        m_ConfigHotkey.emplace_back();
     }
 
     m_ConfigFloat[configid_float_input_detached_interaction_max_distance]   = config.ReadInt( "Input", "DetachedInteractionMaxDistance", 200) / 100.0f;
