@@ -75,9 +75,6 @@ void WindowPerformance::Update(bool show_as_popup)
             ImGui::PushFont(UIManager::Get()->GetFontCompact());
         }
 
-        //Setting the window size here is a workaround for an invalid clipping assert raised when switching columns in the compact layout
-        //Came with ImGui 1.80, but has quite a few variables involved, so I'm not even sure who's at fault here. This works, though.
-        ImGui::SetNextWindowSize({1.0f, -1.0f}, ImGuiCond_Appearing);
         ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 
         if (ImGui::BeginPopup("PopupPerformanceMonitor", ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize |
@@ -600,6 +597,14 @@ void WindowPerformance::DisplayStatsCompact()
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, 0.0f});
     ImGui::Dummy({width_total_fps, 0.0f});
     ImGui::PopStyleVar();
+
+    //Workaround for an invalid clipping assert raised when switching columns in the compact layout
+    //Came with ImGui 1.80/1.90 (required workaround changed with 1.90), but has quite a few variables involved, so I'm not even sure who's at fault here. This works, though.
+    if (ImGui::IsWindowAppearing())
+    {
+        ImGui::PopStyleVar();
+        return;
+    }
 
     //Align RAM and VRAM values even if they have different lengths
     static float text_ram_total_width  = 0.0f;
