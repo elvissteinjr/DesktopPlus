@@ -1016,7 +1016,7 @@ bool FloatingWindow::ActionOrderList(ActionManager::ActionList& list_actions_tar
                 state.SelectedIndex = index;
             }
 
-            if (ImGui::IsItemHovered())
+            if ( (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | ImGuiHoveredFlags_AllowWhenOverlappedByItem)) || ((io.NavVisible) && (ImGui::IsItemFocused())) )
             {
                 state.HoveredAction = entry.UID;
             }
