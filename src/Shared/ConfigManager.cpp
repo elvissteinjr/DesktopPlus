@@ -224,6 +224,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigBool[configid_bool_overlay_floatingui_extras_enabled]    = config.ReadBool(section.c_str(), "ShowExtraButtons", true);
     data.ConfigBool[configid_bool_overlay_actionbar_enabled]            = config.ReadBool(section.c_str(), "ShowActionBar", false);
     data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]   = config.ReadBool(section.c_str(), "ActionBarOrderUseGlobal", true);
+    data.ConfigActionBarOrder                                           = m_ActionManager.ActionOrderListFromString( config.ReadString(section.c_str(), "ActionBarOrderCustom") );
 
     bool do_set_auto_name = ( (!data.ConfigBool[configid_bool_overlay_name_custom]) && (data.ConfigNameStr.empty()) );
 
@@ -345,11 +346,12 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteString(section.c_str(), "Tags",                   data.ConfigStr[configid_str_overlay_tags].c_str());
     config.WriteBool(section.c_str(),   "UpdateInvisible",        data.ConfigBool[configid_bool_overlay_update_invisible]);
 
-    config.WriteBool(section.c_str(), "ShowFloatingUI",          data.ConfigBool[configid_bool_overlay_floatingui_enabled]);
-    config.WriteBool(section.c_str(), "ShowDesktopButtons",      data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled]);
-    config.WriteBool(section.c_str(), "ShowExtraButtons",        data.ConfigBool[configid_bool_overlay_floatingui_extras_enabled]);
-    config.WriteBool(section.c_str(), "ShowActionBar",           data.ConfigBool[configid_bool_overlay_actionbar_enabled]);
-    config.WriteBool(section.c_str(), "ActionBarOrderUseGlobal", data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]);
+    config.WriteBool(  section.c_str(), "ShowFloatingUI",          data.ConfigBool[configid_bool_overlay_floatingui_enabled]);
+    config.WriteBool(  section.c_str(), "ShowDesktopButtons",      data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled]);
+    config.WriteBool(  section.c_str(), "ShowExtraButtons",        data.ConfigBool[configid_bool_overlay_floatingui_extras_enabled]);
+    config.WriteBool(  section.c_str(), "ShowActionBar",           data.ConfigBool[configid_bool_overlay_actionbar_enabled]);
+    config.WriteBool(  section.c_str(), "ActionBarOrderUseGlobal", data.ConfigBool[configid_bool_overlay_actionbar_order_use_global]);
+    config.WriteString(section.c_str(), "ActionBarOrderCustom",    ActionManager::ActionOrderListToString(data.ConfigActionBarOrder).c_str());
 
     config.WriteString(section.c_str(), "Transform", data.ConfigTransform.toString().c_str());
 
@@ -384,8 +386,6 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteString(section.c_str(), "BrowserURLUserLast",       data.ConfigStr[configid_str_overlay_browser_url_user_last].c_str());
     config.WriteString(section.c_str(), "BrowserTitle",             data.ConfigStr[configid_str_overlay_browser_title].c_str());
     config.WriteBool(  section.c_str(), "BrowserAllowTransparency", data.ConfigBool[configid_bool_overlay_browser_allow_transparency]);
-
-    config.WriteString(section.c_str(), "ActionBarOrderCustom",     ActionManager::ActionOrderListToString(data.ConfigActionBarOrder).c_str());
 }
 
 bool ConfigManager::LoadConfigFromFile()
