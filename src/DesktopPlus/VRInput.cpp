@@ -27,6 +27,8 @@ VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
                      m_IsAnyGlobalActionBoundStateValid(false),
                      m_IsLaserPointerInputActive(false),
                      m_LaserPointerScrollMode(vrinput_scroll_none),
+                     m_KeyboardDeviceInputValueHandle(vr::k_ulInvalidInputValueHandle),
+                     m_GamepadDeviceInputValueHandle(vr::k_ulInvalidInputValueHandle),
                      m_KeyboardDeviceToggleState{0},
                      m_KeyboardDeviceIsToggleKeyDown(false),
                      m_KeyboardDeviceClickState{0}
@@ -191,6 +193,8 @@ bool VRInput::Init()
 
         //This mimics OpenXR device path pattern but isn't actually formally defined (and this is OpenVR anyhow)
         vr::VRInput()->GetInputSourceHandle("/user/keyboard", &m_KeyboardDeviceInputValueHandle);
+        //Frequently used gamepad device path
+        vr::VRInput()->GetInputSourceHandle("/user/gamepad", &m_GamepadDeviceInputValueHandle);
 
         m_KeyboardDeviceToggleState.activeOrigin = m_KeyboardDeviceInputValueHandle;
         for (auto& input_data : m_KeyboardDeviceClickState)
@@ -314,7 +318,36 @@ void VRInput::HandleGlobalActionShortcuts(OutputManager& outmgr)
 
 void VRInput::TriggerLaserPointerHaptics(vr::VRInputValueHandle_t restrict_to_device) const
 {
-    vr::VRInput()->TriggerHapticVibrationAction(m_HandleActionLaserPointerHaptic, 0.0f, 0.0f, 1.0f, 0.16f, restrict_to_device);
+    if (restrict_to_device == m_KeyboardDeviceInputValueHandle)
+        return;
+
+    //There have been problems with rumble getting stuck indefinitely when calling TriggerHapticVibrationAction() on a gamepad device (even though haptics aren't even bound)
+    //Unsure if this an isolated issue, we're just avoid calling this function on gamepads altogether... this could be a one-liner otherwise
+    if (restrict_to_device == vr::k_ulInvalidInputValueHandle)
+    {
+        //All devices, but we're going to exclude the gamepad one and trigger manually for the rest
+        //Asking for haptic action origin doesn't seem to work, but GetLaserPointerDevicesInfo() gets every device with left click bound, which is good enough
+        //This function is usually not called with this value either way
+        std::vector<vr::InputOriginInfo_t> lp_devices_info = GetLaserPointerDevicesInfo();
+
+        for (vr::InputOriginInfo_t device_info : lp_devices_info)
+        {
+            if (device_info.devicePath != m_GamepadDeviceInputValueHandle)
+            {
+                vr::VRInput()->TriggerHapticVibrationAction(m_HandleActionLaserPointerHaptic, 0.0f, 0.0f, 1.0f, 0.16f, device_info.devicePath);
+            }
+        }
+    }
+    else
+    {
+        //Don't trigger the vibration if this was called for the gamepad
+        vr::InputOriginInfo_t device_info = GetOriginTrackedDeviceInfoEx(restrict_to_device);
+
+        if (device_info.devicePath != m_GamepadDeviceInputValueHandle)
+        {
+            vr::VRInput()->TriggerHapticVibrationAction(m_HandleActionLaserPointerHaptic, 0.0f, 0.0f, 1.0f, 0.16f, restrict_to_device);
+        }
+    }
 }
 
 vr::InputOriginInfo_t VRInput::GetOriginTrackedDeviceInfoEx(vr::VRInputValueHandle_t origin) const

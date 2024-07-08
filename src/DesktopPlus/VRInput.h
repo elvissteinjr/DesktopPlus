@@ -48,6 +48,7 @@ class VRInput
         VRInputScrollMode m_LaserPointerScrollMode;
 
         vr::VRInputValueHandle_t m_KeyboardDeviceInputValueHandle;
+        vr::VRInputValueHandle_t m_GamepadDeviceInputValueHandle;
         vr::InputDigitalActionData_t m_KeyboardDeviceToggleState;
         bool m_KeyboardDeviceIsToggleKeyDown;
         std::array<vr::InputDigitalActionData_t, 5> m_KeyboardDeviceClickState;
