@@ -2649,6 +2649,12 @@ void WindowSettings::UpdatePageKeyboardLayout(bool only_restore_settings)
 
     if (ImGui::Button(TranslationManager::GetString(tstr_DialogOk))) 
     {
+        //Prevent them from being reset
+        cluster_enabled_prev[kbdlayout_cluster_function]   = function_enabled;
+        cluster_enabled_prev[kbdlayout_cluster_navigation] = navigation_enabled;
+        cluster_enabled_prev[kbdlayout_cluster_numpad]     = numpad_enabled;
+        cluster_enabled_prev[kbdlayout_cluster_extra]      = extra_enabled;
+
         if (list_id != -1)
         {
             ConfigManager::SetValue(configid_str_input_keyboard_layout_file, list_layouts[list_id].FileName);
