@@ -2369,7 +2369,8 @@ void WindowSettings::UpdatePagePersistentUI()
                     window.ApplyCurrentOverlayState();
                 }
             }
-            else if ( (ImGui::IsItemDeactivated()) && (use_lazy_resize) && (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_room) )
+            
+            if ( (ImGui::IsItemDeactivated()) && (use_lazy_resize) && (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_room) )
             {
                 window.ApplyCurrentOverlayState();
             }
@@ -2387,7 +2388,8 @@ void WindowSettings::UpdatePagePersistentUI()
                     window.ApplyCurrentOverlayState();
                 }
             }
-            else if ( (ImGui::IsItemDeactivated()) && (use_lazy_resize) && (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_dashboard_tab) )
+            
+            if ( (ImGui::IsItemDeactivated()) && (use_lazy_resize) && (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_dashboard_tab) )
             {
                 window.ApplyCurrentOverlayState();
             }
