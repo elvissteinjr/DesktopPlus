@@ -890,10 +890,11 @@ bool WindowFloatingUIActionBar::ButtonAction(const Action& action, const ImVec2&
         const char* label_end = label + strlen(label);
         const char* line_start = label;
         const char* line_end = nullptr;
-        ImVec2 label_size = ImGui::CalcTextSize(label, label_end);
-    
-        const float pos_x = ImGui::GetCursorPosX() - size.x - style.FramePadding.x;
-        float pos_y = ImGui::GetCursorPosY() + int( (size.y / 2.0f) - (label_size.y / 2.0f) );
+        const ImVec2 label_size = ImGui::CalcTextSize(label, label_end);
+        const ImU32 col = ImGui::GetColorU32(ImGui::GetStyleColorVec4(ImGuiCol_Text));
+
+        const float pos_x = ImGui::GetCursorScreenPos().x - size.x - style.FramePadding.x;
+        float pos_y = ImGui::GetCursorScreenPos().y + int( (size.y / 2.0f) - (label_size.y / 2.0f) );
 
         while (line_start < label_end)
         {
@@ -908,11 +909,8 @@ bool WindowFloatingUIActionBar::ButtonAction(const Action& action, const ImVec2&
             if (line_xscale > 1.0f)
                 line_xscale = 1.0f;
 
-            ImGui::SetCursorPosX( pos_x + int( ((size.x / 2.0f) - (line_size.x * line_xscale) / 2.0f) ) );
-            ImGui::SetCursorPosY(pos_y);
-
             ImGui::BeginStretched();
-            ImGui::TextUnformatted(line_start, line_end);
+            ImGui::GetWindowDrawList()->AddText({pos_x + int( ((size.x / 2.0f) - (line_size.x * line_xscale) / 2.0f) ), pos_y}, col, line_start, line_end);
             ImGui::EndStretched(line_xscale);
 
             line_start = line_end + 1;
