@@ -75,6 +75,7 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
                                                      ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {style.ItemSpacing.y, style.ItemSpacing.y});
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 
     //Show Action-Bar Button (this is a per-overlay state)
@@ -287,6 +288,7 @@ void WindowFloatingUIMainBar::Update(float actionbar_height, unsigned int overla
     //
 
     ImGui::PopStyleColor(); //ImGuiCol_Button
+    ImGui::PopStyleVar();   //ImGuiStyleVar_ItemSpacing
     ImGui::PopStyleVar();   //ImGuiStyleVar_FrameRounding
 
     m_Pos  = ImGui::GetWindowPos();
@@ -730,6 +732,7 @@ void WindowFloatingUIActionBar::Update(unsigned int overlay_id)
     }
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {style.ItemSpacing.y, style.ItemSpacing.y});
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 
     const ImVec2 cursor_pos = ImGui::GetCursorPos();
@@ -757,6 +760,7 @@ void WindowFloatingUIActionBar::Update(unsigned int overlay_id)
     }
 
     ImGui::PopStyleColor(); //ImGuiCol_Button
+    ImGui::PopStyleVar();   //ImGuiStyleVar_ItemSpacing
     ImGui::PopStyleVar();   //ImGuiStyleVar_FrameRounding
 
     m_Pos  = ImGui::GetWindowPos();
