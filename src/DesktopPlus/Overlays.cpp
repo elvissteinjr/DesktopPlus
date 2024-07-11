@@ -380,9 +380,10 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
             }
             break;
         }
-        case ovrl_texsource_desktop_duplication: AssignDesktopDuplicationTexture();                                                                        break;
-        case ovrl_texsource_ui:                  vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, IPCManager::GetUIAppProcessID());                   break;
-        case ovrl_texsource_browser:             vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, DPBrowserAPIClient::Get().GetServerAppProcessID()); break;
+        case ovrl_texsource_desktop_duplication:                /*fallthrough*/
+        case ovrl_texsource_desktop_duplication_3dou_converted: AssignDesktopDuplicationTexture();                                                                        break;
+        case ovrl_texsource_ui:                                 vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, IPCManager::GetUIAppProcessID());                   break;
+        case ovrl_texsource_browser:                            vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, DPBrowserAPIClient::Get().GetServerAppProcessID()); break;
         default: break;
     }
 
