@@ -111,6 +111,7 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
     m_CropButtonLabel = "";
     m_WinRTSourceButtonLabel = "";
     m_ActionButtonsLabel = "";
+    m_BrowserMaxFPSValueText = "";
     MarkBrowserURLChanged();
     m_CachedSizes = {};
 
@@ -1659,19 +1660,29 @@ void WindowOverlayProperties::UpdatePageMainCatPerformance()
         OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
         VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
+        ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsBrowserMaxFrameRate));
         ImGui::NextColumn();
 
         int& max_fps = data.ConfigInt[configid_int_overlay_browser_max_fps_override];
-        const char* alt_text = (max_fps < 1) ? TranslationManager::GetString(tstr_SettingsBrowserMaxFrameRateOverrideOff) : nullptr;
+
+        if (m_BrowserMaxFPSValueText.empty())
+        {
+            m_BrowserMaxFPSValueText = TranslationManager::GetString(tstr_SettingsPerformanceUpdateLimiterFPSValue);
+            StringReplaceAll(m_BrowserMaxFPSValueText, "%FPS%", std::to_string(max_fps));
+        }
+
+        const char* alt_text = (max_fps < 1) ? TranslationManager::GetString(tstr_SettingsBrowserMaxFrameRateOverrideOff) : m_BrowserMaxFPSValueText.c_str();
 
         vr_keyboard.VRKeyboardInputBegin(ImGui::SliderWithButtonsGetSliderID("MaxFPS"));
-        if (ImGui::SliderWithButtonsInt("MaxFPS", max_fps, 5, 1, 0, 144, (max_fps < 1) ? "" : "%d", 0, nullptr, alt_text))
+        if (ImGui::SliderWithButtonsInt("MaxFPS", max_fps, 5, 1, 0, 144, "##%d", 0, nullptr, alt_text))
         {
             if (max_fps < 1)
                 max_fps = -1;
 
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_browser_max_fps_override, max_fps);
+
+            m_BrowserMaxFPSValueText = "";
         }
         vr_keyboard.VRKeyboardInputEnd();
 

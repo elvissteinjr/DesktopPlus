@@ -43,6 +43,7 @@ class WindowOverlayProperties : public FloatingWindow, public FloatingWindowDesk
         std::string m_CropButtonLabel;
         std::string m_WinRTSourceButtonLabel;
         std::string m_ActionButtonsLabel;
+        std::string m_BrowserMaxFPSValueText;
         char m_BufferOverlayName[1024];
         char m_BufferOverlayTags[1024];
         bool m_IsBrowserURLChanged;
