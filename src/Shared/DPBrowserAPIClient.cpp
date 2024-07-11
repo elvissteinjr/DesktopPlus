@@ -147,14 +147,16 @@ void DPBrowserAPIClient::ApplyPendingSettings()
     //Apply pending settings, if there are any
     if (m_PendingSettingGlobalFPS != -1)
     {
+        int pending_fps = m_PendingSettingGlobalFPS;
         m_PendingSettingGlobalFPS = -1;                     //Important: Set these before calling the API function to avoid re-entrancy
-        DPBrowser_GlobalSetFPS(m_PendingSettingGlobalFPS);
+        DPBrowser_GlobalSetFPS(pending_fps);
     }
 
     if (m_PendingSettingContentBlockEnabled != -1)
     {
+        bool is_content_block_enabled = (m_PendingSettingContentBlockEnabled != 0);
         m_PendingSettingContentBlockEnabled = -1;
-        DPBrowser_ContentBlockSetEnabled((m_PendingSettingContentBlockEnabled != 0));
+        DPBrowser_ContentBlockSetEnabled(is_content_block_enabled);
     }
 
     //Send translation strings
