@@ -4788,10 +4788,13 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                         case VRMouseButton_DP_Aux02: action_manager.StopAction(ConfigManager::GetValue(configid_handle_input_go_home_action_uid), overlay_current.GetID()); break;
                     }
                 }
+
+                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 0);
                 break;
             }
             else if ((overlay_current.GetTextureSource() == ovrl_texsource_none) || (overlay_current.GetTextureSource() == ovrl_texsource_ui))
             {
+                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 0);
                 break;
             }
 
