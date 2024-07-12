@@ -973,6 +973,12 @@ void UIManager::OnProfileLoaded()
         m_WindowOverlayProperties.SetActiveOverlayID(m_WindowOverlayProperties.GetActiveOverlayID(), true);
     }
 
+    //Check if new overlays have any unmapped characters
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        AddFontBuilderStringIfAnyUnmappedCharacters(OverlayManager::Get().GetConfigData(i).ConfigNameStr.c_str());
+    }
+
     RepeatFrame();
 }
 
