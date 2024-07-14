@@ -1285,16 +1285,18 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
 
                     //Global config state
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_interface_desktop_count,             ConfigManager::GetValue(configid_int_state_interface_desktop_count));
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_dragmode,                   ConfigManager::GetValue(configid_bool_state_overlay_dragmode));
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_selectmode,                 ConfigManager::GetValue(configid_bool_state_overlay_selectmode));
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_dragselectmode_show_hidden, ConfigManager::GetValue(configid_bool_state_overlay_dragselectmode_show_hidden));
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_dragmode_temp,              ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp));
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_pen_simulation_supported,           ConfigManager::GetValue(configid_bool_state_pen_simulation_supported));
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_window_focused_process_elevated,    ConfigManager::GetValue(configid_bool_state_window_focused_process_elevated));
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_elevated,              ConfigManager::GetValue(configid_bool_state_misc_process_elevated));
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_started_by_steam,      ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam));
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_dplus_laser_pointer_device,          ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_interface_desktop_count,               ConfigManager::GetValue(configid_int_state_interface_desktop_count));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_dragmode,                     ConfigManager::GetValue(configid_bool_state_overlay_dragmode));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_selectmode,                   ConfigManager::GetValue(configid_bool_state_overlay_selectmode));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_dragselectmode_show_hidden,   ConfigManager::GetValue(configid_bool_state_overlay_dragselectmode_show_hidden));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_dragmode_temp,                ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_pen_simulation_supported,             ConfigManager::GetValue(configid_bool_state_pen_simulation_supported));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_window_focused_process_elevated,      ConfigManager::GetValue(configid_bool_state_window_focused_process_elevated));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_elevated,                ConfigManager::GetValue(configid_bool_state_misc_process_elevated));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_started_by_steam,        ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_dplus_laser_pointer_device,            ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_dplus_laser_pointer_target_overlay, ConfigManager::GetValue(configid_handle_state_dplus_laser_pointer_target_overlay));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_theater_orig_overlay_handle,        ConfigManager::GetValue(configid_handle_state_theater_orig_overlay_handle));
 
                     //Sync usually means new UI process, so get new handles
                     m_LaserPointer.RefreshCachedOverlayHandles();

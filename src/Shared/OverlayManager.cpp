@@ -472,11 +472,14 @@ void OverlayManager::SetTheaterOverlayID(unsigned int id)
         ovrl_source_prev.SetVisible(false);                                                             //Mark it as invisible and have OutputManager reset it later
 
         m_OverlayConfigData[m_CurrentTheaterOverlayID].ConfigHandle[configid_handle_overlay_state_overlay_handle] = m_CurrentTheaterOverlayOrigHandle;
+        ConfigManager::SetValue(configid_handle_state_theater_orig_overlay_handle, vr::k_ulOverlayHandleInvalid);
 
         //Send handle change over to UI
         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_CurrentTheaterOverlayID);
         IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, m_CurrentTheaterOverlayOrigHandle);
         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+
+        IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_theater_orig_overlay_handle, vr::k_ulOverlayHandleInvalid);
 
         TheaterOverlayReturnCapture(ovrl_source_prev);
     }
@@ -491,11 +494,14 @@ void OverlayManager::SetTheaterOverlayID(unsigned int id)
     if (m_CurrentTheaterOverlayID < m_OverlayConfigData.size())
     {
         m_OverlayConfigData[m_CurrentTheaterOverlayID].ConfigHandle[configid_handle_overlay_state_overlay_handle] = m_TheaterOverlayHandle;
+        ConfigManager::SetValue(configid_handle_state_theater_orig_overlay_handle, m_CurrentTheaterOverlayOrigHandle);
 
         //Send handle change over to UI
         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_CurrentTheaterOverlayID);
         IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, m_TheaterOverlayHandle);
         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+
+        IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_theater_orig_overlay_handle, m_CurrentTheaterOverlayOrigHandle);
 
         TheaterOverlayForwardCapture(ovrl_source);
     }
@@ -518,6 +524,7 @@ void OverlayManager::ClearTheaterOverlay(bool no_ui_update)
         ovrl_source_prev.SetVisible(false);                                                                  //Mark it as invisible and have OutputManager reset it later
 
         m_OverlayConfigData[m_CurrentTheaterOverlayID].ConfigHandle[configid_handle_overlay_state_overlay_handle] = m_CurrentTheaterOverlayOrigHandle;
+        ConfigManager::SetValue(configid_handle_state_theater_orig_overlay_handle, vr::k_ulOverlayHandleInvalid);
 
         //Send handle change over to UI (this should be skipped when the current theater overlay is in the process of being removed)
         if (!no_ui_update)
@@ -525,6 +532,8 @@ void OverlayManager::ClearTheaterOverlay(bool no_ui_update)
             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_CurrentTheaterOverlayID);
             IPCManager::Get().PostConfigMessageToUIApp(configid_handle_overlay_state_overlay_handle, m_CurrentTheaterOverlayOrigHandle);
             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+
+            IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_theater_orig_overlay_handle, vr::k_ulOverlayHandleInvalid);
         }
 
         TheaterOverlayReturnCapture(ovrl_source_prev);
@@ -600,7 +609,21 @@ unsigned int OverlayManager::FindOverlayID(vr::VROverlayHandle_t handle) const
 {
     const auto it = std::find_if(m_Overlays.cbegin(), m_Overlays.cend(), [&](const auto& overlay){ return (overlay.GetHandle() == handle); });
 
-    return (it != m_Overlays.cend()) ? it->GetID() : k_ulOverlayID_None;
+    if (it != m_Overlays.cend())
+    {
+        return it->GetID();
+    }
+    else if (handle == m_CurrentTheaterOverlayOrigHandle)
+    {
+        return m_CurrentTheaterOverlayID;
+    }
+
+    return k_ulOverlayID_None;
+}
+
+unsigned int OverlayManager::FindTheaterOverlayID() const
+{
+    return m_CurrentTheaterOverlayID;
 }
 
 #else
@@ -610,6 +633,26 @@ unsigned int OverlayManager::FindOverlayID(vr::VROverlayHandle_t handle) const
     for (unsigned int i = 0; i < m_OverlayConfigData.size(); ++i)
     {
         if (m_OverlayConfigData[i].ConfigHandle[configid_handle_overlay_state_overlay_handle] == handle)
+        {
+            return i;
+        }
+    }
+
+    //Theater overlay handle switcheroo is mostly transparent to the UI but in some instances it still needs to find the overlay based on its original handle while used in theater screen
+    if (handle == ConfigManager::GetValue(configid_handle_state_theater_orig_overlay_handle))
+    {
+        return FindTheaterOverlayID();
+    }
+
+    return k_ulOverlayID_None;
+}
+
+unsigned int OverlayManager::FindTheaterOverlayID() const
+{
+    for (unsigned int i = 0; i < m_OverlayConfigData.size(); ++i)
+    {
+        const OverlayConfigData& data = m_OverlayConfigData[i];
+        if ((data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen) && (data.ConfigBool[configid_bool_overlay_enabled]))
         {
             return i;
         }

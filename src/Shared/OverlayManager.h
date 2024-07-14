@@ -74,6 +74,7 @@ class OverlayManager
         void SetCurrentOverlayID(unsigned int id);
 
         unsigned int FindOverlayID(vr::VROverlayHandle_t handle) const; //Returns k_ulOverlayID_None on error
+        unsigned int FindTheaterOverlayID() const;                      //Returns k_ulOverlayID_None on error
         unsigned int GetOverlayCount() const;
         void SwapOverlays(unsigned int id, unsigned int id2);
         void RemoveOverlay(unsigned int id);
