@@ -760,7 +760,7 @@ void WindowQuickStart::Update()
     for (int i = 0; i < active_page_count; ++i)
     {
         //Disable items when the page isn't active
-        const bool is_inactive_page = (i + 1 < active_page_count);
+        const bool is_inactive_page = (i != m_CurrentPage);
 
         if (is_inactive_page)
         {
@@ -893,7 +893,7 @@ void WindowQuickStart::Update()
 
         ImGui::EndChild();
 
-        if (is_inactive_page)
+        if (i + 1 < active_page_count)
         {
             ImGui::SameLine();
         }

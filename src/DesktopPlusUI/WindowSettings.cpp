@@ -282,7 +282,7 @@ void WindowSettings::WindowUpdate()
         m_PageCurrent = page_id;
 
         //Disable items when the page isn't active
-        const bool is_inactive_page = (child_id + 1 < stack_size);
+        const bool is_inactive_page = (child_id != m_PageStackPos);
 
         if (is_inactive_page)
         {
@@ -329,7 +329,7 @@ void WindowSettings::WindowUpdate()
 
         ImGui::EndChild();
 
-        if (is_inactive_page)
+        if (child_id + 1 < stack_size)
         {
             ImGui::SameLine();
         }
