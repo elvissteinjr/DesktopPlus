@@ -480,7 +480,7 @@ void FloatingWindow::UpdateLimiterSetting(bool is_override) const
     ImGui::NextColumn();
 }
 
-bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, size_t buffer_tags_size, FloatingWindowInputOverlayTagsState& state, int clip_parent_depth)
+bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, size_t buffer_tags_size, FloatingWindowInputOverlayTagsState& state, int clip_parent_depth, bool show_auto_tags)
 {
     static const int single_tag_buffer_size = IM_ARRAYSIZE(state.TagEditBuffer);
 
@@ -820,6 +820,9 @@ bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, siz
     {
         if (state.KnownTagsFilter.PassFilter(list_entry.Tag.c_str()))
         {
+            if ((list_entry.IsAutoTag) && (!show_auto_tags))
+                continue;
+
             if (list_entry.IsAutoTag)
                 ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextNotification);
 

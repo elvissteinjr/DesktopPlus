@@ -1631,7 +1631,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
 
         ImGui::NextColumn();
 
-        if (InputOverlayTags("TargetTags", m_BufferOverlayTags, IM_ARRAYSIZE(m_BufferOverlayTags), input_tags_state))
+        if (InputOverlayTags("OverlayTags", m_BufferOverlayTags, IM_ARRAYSIZE(m_BufferOverlayTags), input_tags_state, 0, false))
         {
             OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 

@@ -114,7 +114,7 @@ class FloatingWindow
         void UpdateLimiterSetting(bool is_override) const;
 
         //Input widget for a collection of overlay tags. clip_parent_depth is the depth of parent window look up for popup's clipping rect, change when used in nested child windows
-        static bool InputOverlayTags(const char* str_id, char* buffer_tags, size_t buffer_tags_size, FloatingWindowInputOverlayTagsState& state, int clip_parent_depth = 0);
+        static bool InputOverlayTags(const char* str_id, char* buffer_tags, size_t buffer_tags_size, FloatingWindowInputOverlayTagsState& state, int clip_parent_depth = 0, bool show_auto_tags = true);
 
         //Almost entire pages but implemented here to be shared between multiple windows
         bool ActionOrderList(ActionManager::ActionList& list_actions_target, bool is_appearing, bool is_returning, FloatingWindowActionOrderListState& state, 
