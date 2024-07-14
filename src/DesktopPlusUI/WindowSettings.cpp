@@ -5614,6 +5614,11 @@ void WindowSettings::UpdatePageKeyCodePicker(bool only_restore_settings)
                         {
                             m_KeyCodePickerID = i;
 
+                            if (!m_KeyCodePickerHotkeyMode)
+                            {
+                                key_code_prev = m_KeyCodePickerID; //Prevent it from being reset
+                            }
+
                             for (int i = 0; i < 256; i++)
                             {
                                 if (GetKeyCodeForListID(i) == m_KeyCodePickerID)
