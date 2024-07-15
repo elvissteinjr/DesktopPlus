@@ -3629,11 +3629,10 @@ void WindowSettings::UpdatePageAppProfiles()
         }
     }
 
-    ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
-
     //Confirmation buttons (don't show when used as root page)
     if (!is_root_page)
     {
+        ImGui::SetCursorPosY( ImGui::GetCursorPosY() + (ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()) );
         ImGui::Separator();
 
         if (ImGui::Button(TranslationManager::GetString(tstr_DialogDone))) 
