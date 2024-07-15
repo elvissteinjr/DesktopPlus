@@ -1734,15 +1734,18 @@ void WindowSettings::UpdatePageMainCatInput()
         {
             ImGui::Indent();
 
-            bool& hmd_pointer = ConfigManager::GetRef(configid_bool_input_laser_pointer_hmd_device);
-            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointer), &hmd_pointer))
+            bool& hmd_pointer_enabled = ConfigManager::GetRef(configid_bool_input_laser_pointer_hmd_device);
+            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointer), &hmd_pointer_enabled))
             {
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_laser_pointer_hmd_device, hmd_pointer);
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_laser_pointer_hmd_device, hmd_pointer_enabled);
             }
 
-            ImGui::PushID("HMDPointer");
-
             ImGui::Indent(ImGui::GetFrameHeightWithSpacing());
+
+            if (!hmd_pointer_enabled)
+                ImGui::PushItemDisabled();
+
+            ImGui::PushID("HMDPointer");
 
             const ImVec2 table_size(-style.IndentSpacing - 1.0f, 0.0f);                                                    //Replicate padding from columns
             const float table_column_width = m_Column0Width - style.IndentSpacing - ImGui::GetFrameHeightWithSpacing();    //Align with width of other columns 
@@ -1789,6 +1792,9 @@ void WindowSettings::UpdatePageMainCatInput()
             }
 
             ImGui::PopID();
+
+            if (!hmd_pointer_enabled)
+                ImGui::PopItemDisabled();
 
             ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
             ImGui::Unindent();
