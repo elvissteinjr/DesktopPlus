@@ -183,6 +183,7 @@ enum TRMGRStrID
     tstr_SettingsActionsEditCommandSwitchingMethodFocus,
     tstr_SettingsActionsEditCommandWindow,
     tstr_SettingsActionsEditCommandWindowNone,
+    tstr_SettingsActionsEditCommandWindowStrictMatchingTip,
     tstr_SettingsActionsEditCommandCursorWarp,
     tstr_SettingsActionsEditCommandProfile,
     tstr_SettingsActionsEditCommandProfileClear,
@@ -648,6 +649,7 @@ enum TRMGRStrID
     tstr_DialogKeyCodePickerFromInput,
     tstr_DialogKeyCodePickerFromInputPopup,
     tstr_DialogKeyCodePickerFromInputPopupNoMouse,
+    tstr_DialogWindowPickerHeader,
     tstr_DialogInputTagsHint,
     tstr_SourceDesktopAll,
     tstr_SourceDesktopID,   //%ID% == Desktop ID

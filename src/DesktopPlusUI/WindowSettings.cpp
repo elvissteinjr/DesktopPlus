@@ -4816,7 +4816,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
                     has_value_changed = true;
                 }
                 ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-                HelpMarker(TranslationManager::GetString(tstr_OvrlPropsCaptureGCStrictMatchingTip));
+                HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditCommandWindowStrictMatchingTip));
 
                 ImGui::NextColumn();
 
@@ -5803,7 +5803,7 @@ void WindowSettings::UpdatePageWindowPicker()
         is_nav_focus_entry_pending = ImGui::GetIO().NavVisible;
     }
 
-    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogActionPickerHeader)); 
+    ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogWindowPickerHeader)); 
     ImGui::Indent();
 
     ImGui::SetNextItemWidth(-1.0f);
