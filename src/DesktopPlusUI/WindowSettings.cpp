@@ -5995,22 +5995,25 @@ void WindowSettings::UpdatePageResetConfirm()
     }
 
     //Show Quick-Start Guide
-    static float button_quick_start_width = -1.0f;
-    const bool button_quick_start_enabled = ConfigManager::GetValue(configid_bool_interface_quick_start_hidden);
-
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x - button_quick_start_width);
-
-    if (!button_quick_start_enabled)
-        ImGui::PushItemDisabled();
-
-    if (ImGui::Button(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsResetShowQuickStart))) 
+    if (!UIManager::Get()->IsInDesktopMode())
     {
-        UIManager::Get()->GetAuxUI().GetQuickStartWindow().Reset();
-    }
-    button_quick_start_width = ImGui::GetItemRectSize().x;
+        static float button_quick_start_width = -1.0f;
+        const bool button_quick_start_enabled = ConfigManager::GetValue(configid_bool_interface_quick_start_hidden);
 
-    if (!button_quick_start_enabled)
-        ImGui::PopItemDisabled();
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x - button_quick_start_width);
+
+        if (!button_quick_start_enabled)
+            ImGui::PushItemDisabled();
+
+        if (ImGui::Button(TranslationManager::GetString(tstr_SettingsTroubleshootingSettingsResetShowQuickStart))) 
+        {
+            UIManager::Get()->GetAuxUI().GetQuickStartWindow().Reset();
+        }
+        button_quick_start_width = ImGui::GetItemRectSize().x;
+
+        if (!button_quick_start_enabled)
+            ImGui::PopItemDisabled();
+    }
 }
 
 void WindowSettings::PageGoForward(WindowSettingsPage new_page)
