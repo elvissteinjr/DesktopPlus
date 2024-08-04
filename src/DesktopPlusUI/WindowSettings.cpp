@@ -2136,13 +2136,12 @@ void WindowSettings::UpdatePageMainCatMisc()
 
         if (UIManager::Get()->IsElevatedTaskSetUp())
         {
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
             const bool dashboard_app_running  = IPCManager::IsDashboardAppRunning();
 
             if (!dashboard_app_running)
                 ImGui::PushItemDisabled();
-
-            if (!has_restart_steam_button)
-                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
             if (!ConfigManager::GetValue(configid_bool_state_misc_elevated_mode_active))
             {
