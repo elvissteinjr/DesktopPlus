@@ -1511,8 +1511,10 @@ void ConfigManager::SaveConfigToFile()
 
 void ConfigManager::RestoreConfigFromDefault()
 {
-    //Basically delete the config file and then load it again which will fall back to config_default.ini
-    std::wstring wpath = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
+    //Basically delete the config files and then load it again which will fall back to config_default.ini
+    const std::wstring wpath_newui = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config_newui.ini").c_str() );
+    const std::wstring wpath       = WStringConvertFromUTF8( std::string(m_ApplicationPath + "config.ini").c_str() );
+    ::DeleteFileW(wpath_newui.c_str());
     ::DeleteFileW(wpath.c_str());
 
     LoadConfigFromFile();
