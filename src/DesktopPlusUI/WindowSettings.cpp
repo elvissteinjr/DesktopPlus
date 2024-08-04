@@ -2246,6 +2246,7 @@ void WindowSettings::UpdatePagePersistentUI()
 
             //Visible
             ImGui::Spacing();
+            ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStateVisible));
             ImGui::NextColumn();
 
@@ -2290,6 +2291,7 @@ void WindowSettings::UpdatePagePersistentUI()
             ImGui::NextColumn();
 
             //Pinned
+            ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStatePinned));
             ImGui::NextColumn();
 
@@ -2327,6 +2329,7 @@ void WindowSettings::UpdatePagePersistentUI()
             ImGui::NextColumn();
 
             //Position
+            ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStatePosition));
             ImGui::NextColumn();
 
@@ -2360,6 +2363,7 @@ void WindowSettings::UpdatePagePersistentUI()
             ImGui::NextColumn();
 
             //Size
+            ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStateSize));
             ImGui::NextColumn();
 
