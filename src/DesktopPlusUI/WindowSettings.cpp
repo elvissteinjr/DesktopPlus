@@ -1841,6 +1841,15 @@ void WindowSettings::UpdatePageMainCatWindows()
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_windows_winrt_auto_focus_scene_app, focus_scene_app);
         }
 
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
+        {
+            bool& auto_focus_scene_app_dashboard = ConfigManager::GetRef(configid_bool_windows_auto_focus_scene_app_dashboard);
+            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsWindowOverlaysFocusSceneAppDashboard), &auto_focus_scene_app_dashboard))
+            {
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_windows_auto_focus_scene_app_dashboard, auto_focus_scene_app_dashboard);
+            }
+        }
+
         ImGui::Unindent();
 
         if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))

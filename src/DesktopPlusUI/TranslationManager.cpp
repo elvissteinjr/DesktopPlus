@@ -270,6 +270,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsWindowOverlaysKeepOnScreenTip",
     "tstr_SettingsWindowOverlaysAutoSizeOverlay",
     "tstr_SettingsWindowOverlaysFocusSceneApp",
+    "tstr_SettingsWindowOverlaysFocusSceneAppDashboard",
     "tstr_SettingsWindowOverlaysOnWindowDrag",
     "tstr_SettingsWindowOverlaysOnWindowDragDoNothing",
     "tstr_SettingsWindowOverlaysOnWindowDragBlock",
