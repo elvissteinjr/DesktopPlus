@@ -97,9 +97,11 @@ void DPLog_DPWinRT_SupportInfo()
     if (DPWinRT_IsCaptureSupported())
     {
         LOG_SCOPE_F(INFO, "Graphics Capture Support");
-        LOG_F(INFO, "Combined Desktop: %s", (DPWinRT_IsCaptureFromCombinedDesktopSupported())   ? "Yes" : "No");
-        LOG_F(INFO, "Disabling Cursor: %s", (DPWinRT_IsCaptureCursorEnabledPropertySupported()) ? "Yes" : "No");
-        LOG_F(INFO, "Disabling Border: %s", (DPWinRT_IsBorderRequiredPropertySupported())       ? "Yes" : "No");
+        LOG_F(INFO, "Combined Desktop: %s",          (DPWinRT_IsCaptureFromCombinedDesktopSupported())      ? "Yes" : "No");
+        LOG_F(INFO, "Disabling Cursor: %s",          (DPWinRT_IsCaptureCursorEnabledPropertySupported())    ? "Yes" : "No");
+        LOG_F(INFO, "Disabling Border: %s",          (DPWinRT_IsBorderRequiredPropertySupported())          ? "Yes" : "No");
+        LOG_F(INFO, "Capture Secondary Windows: %s", (DPWinRT_IsIncludeSecondaryWindowsPropertySupported()) ? "Yes" : "No");
+        LOG_F(INFO, "Native Update Limiter: %s",     (DPWinRT_IsMinUpdateIntervalPropertySupported())       ? "Yes" : "No");
     }
     else
     {

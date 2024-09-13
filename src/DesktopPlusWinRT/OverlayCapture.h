@@ -63,6 +63,7 @@ private:
     winrt::Windows::Graphics::SizeInt32 m_LastTextureSize { 0, 0 };
     bool m_RestartPending = false;
 
+    bool m_UseMinIntervalLimiter = false;   //True if MinUpdateInterval is being used instead of our own limiter
     LARGE_INTEGER m_UpdateLimiterStartingTime = {INT_MAX, INT_MAX}; //Init to high value so the first frame is never falls below the minimum interval
     LARGE_INTEGER m_UpdateLimiterFrequency = {0, 0};
     LARGE_INTEGER m_UpdateLimiterDelay = {0, 0};

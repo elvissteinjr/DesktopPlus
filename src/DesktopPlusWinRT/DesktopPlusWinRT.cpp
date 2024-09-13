@@ -210,7 +210,35 @@ bool DPWinRT_IsBorderRequiredPropertySupported()
 {
     #ifndef DPLUSWINRT_STUB
         #if WINDOWS_FOUNDATION_UNIVERSALAPICONTRACT_VERSION >= 0xc0000
-        if (winrt::Metadata::ApiInformation::IsPropertyPresent(L"Windows.Graphics.Capture.GraphicsCaptureSession", L"IsBorderRequired"))
+        if (winrt::Metadata::ApiInformation::IsPropertyPresent(winrt::name_of<winrt::GraphicsCaptureSession>(), L"IsBorderRequired"))
+        {
+            return true;
+        }
+        #endif
+    #endif
+
+    return false;
+}
+
+bool DPWinRT_IsIncludeSecondaryWindowsPropertySupported()
+{
+    #ifndef DPLUSWINRT_STUB
+        #if WINDOWS_FOUNDATION_UNIVERSALAPICONTRACT_VERSION >= 0x130000
+        if (winrt::Metadata::ApiInformation::IsPropertyPresent(winrt::name_of<winrt::GraphicsCaptureSession>(), L"IncludeSecondaryWindows"))
+        {
+            return true;
+        }
+        #endif
+    #endif
+
+    return false;
+}
+
+bool DPWinRT_IsMinUpdateIntervalPropertySupported()
+{
+    #ifndef DPLUSWINRT_STUB
+        #if WINDOWS_FOUNDATION_UNIVERSALAPICONTRACT_VERSION >= 0x130000
+        if (winrt::Metadata::ApiInformation::IsPropertyPresent(winrt::name_of<winrt::GraphicsCaptureSession>(), L"MinUpdateInterval"))
         {
             return true;
         }

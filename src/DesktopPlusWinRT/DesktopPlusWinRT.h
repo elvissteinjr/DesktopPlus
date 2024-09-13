@@ -3,6 +3,9 @@
 //This is the part of Desktop+ using Windows Runtime functions, separated from rest of the codebase as a DLL
 //Windows SDK 10.0.19041.0 or newer is required to build this, 10.0.20348.0 or newer recommended to allow removing the capture border
 //
+//Windows SDK 10.0.26100.0 or newer is required for Windows 11 24H2 features, but not selected by default, as it appears incompatible with the VS2019/v142 compiler
+//So while official builds do include the features, nightly builds do not, and they need to be manually enabled by selecting the SDK and platform toolset version before building
+//
 //If you wish to build Desktop+ without support for the functionality provided by this library, define DPLUSWINRT_STUB for the project,
 //remove the package references and adjust the project's Windows SDK version if needed
 
@@ -44,11 +47,13 @@ extern "C" {
 
 DPLUSWINRT_API void DPWinRT_Init();
 
-DPLUSWINRT_API bool DPWinRT_IsCaptureSupported();                      //Build 1903 (1803 in theory, but picker is no longer supported by this library)
-DPLUSWINRT_API bool DPWinRT_IsCaptureFromHandleSupported();            //Build 1903
-DPLUSWINRT_API bool DPWinRT_IsCaptureFromCombinedDesktopSupported();   //Build 2004
-DPLUSWINRT_API bool DPWinRT_IsCaptureCursorEnabledPropertySupported(); //Build 2004
-DPLUSWINRT_API bool DPWinRT_IsBorderRequiredPropertySupported();       //Windows 11
+DPLUSWINRT_API bool DPWinRT_IsCaptureSupported();                         //Build 1903 (1803 in theory, but picker is no longer supported by this library)
+DPLUSWINRT_API bool DPWinRT_IsCaptureFromHandleSupported();               //Build 1903
+DPLUSWINRT_API bool DPWinRT_IsCaptureFromCombinedDesktopSupported();      //Build 2004
+DPLUSWINRT_API bool DPWinRT_IsCaptureCursorEnabledPropertySupported();    //Build 2004
+DPLUSWINRT_API bool DPWinRT_IsBorderRequiredPropertySupported();          //Windows 11
+DPLUSWINRT_API bool DPWinRT_IsIncludeSecondaryWindowsPropertySupported(); //Windows 11 24H2
+DPLUSWINRT_API bool DPWinRT_IsMinUpdateIntervalPropertySupported();       //Windows 11 24H2
 
 DPLUSWINRT_API bool DPWinRT_StartCaptureFromHWND(vr::VROverlayHandle_t overlay_handle, HWND handle);
 DPLUSWINRT_API bool DPWinRT_StartCaptureFromDesktop(vr::VROverlayHandle_t overlay_handle, int desktop_id); //-1 is combined desktop, as usual

@@ -43,7 +43,7 @@ OverlayCapture::OverlayCapture(winrt::IDirect3DDevice const& device, winrt::Grap
 
     //Disable yellow capture border if possible (Windows SDK 10.0.20348.0 or newer + running on Windows 11)
     #if WINDOWS_FOUNDATION_UNIVERSALAPICONTRACT_VERSION >= 0xc0000
-        if (winrt::Metadata::ApiInformation::IsPropertyPresent(L"Windows.Graphics.Capture.GraphicsCaptureSession", L"IsBorderRequired"))
+        if (DPWinRT_IsBorderRequiredPropertySupported())
         {
             //Request access... except it doesn't appear to prompt the user at all and just returns AppCapabilityAccessStatus_Allowed straight away when supported
             //Still need to do it though
@@ -51,6 +51,17 @@ OverlayCapture::OverlayCapture(winrt::IDirect3DDevice const& device, winrt::Grap
             m_Session.IsBorderRequired(false);
         }
     #endif
+
+    //Include secondary windows if possible (Windows SDK 10.0.26100.0 or newer + running on Windows 11 24H2)
+    #if WINDOWS_FOUNDATION_UNIVERSALAPICONTRACT_VERSION >= 0x130000
+        if (DPWinRT_IsIncludeSecondaryWindowsPropertySupported())
+        {
+            m_Session.IncludeSecondaryWindows(true);
+        }
+    #endif
+
+    //Use native GraphicsCapture API update limiter if possible (Windows SDK 10.0.26100.0 or newer + running on Windows 11 24H2)
+    m_UseMinIntervalLimiter = DPWinRT_IsMinUpdateIntervalPropertySupported();
 
     //Send size updates for all overlays to default them to -1 until we get the real size on the first frame update
     for (const auto& overlay : m_Overlays)
@@ -135,6 +146,14 @@ void OverlayCapture::OnOverlayDataRefresh()
         }
     }
 
+    //Apply delay right away if we're using the GraphicsCapture limiter
+    #if WINDOWS_FOUNDATION_UNIVERSALAPICONTRACT_VERSION >= 0x130000
+        if (m_UseMinIntervalLimiter)
+        {
+            m_Session.MinUpdateInterval(std::chrono::microseconds(m_UpdateLimiterDelay.QuadPart));
+        }
+    #endif
+
     //Adjust OUConverter cache size as needed
     m_OUConverters.resize(ou_count);
 
@@ -176,8 +195,8 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
         return;
 
     //Update limiter/skipper
-    bool update_limiter_active = (m_UpdateLimiterDelay.QuadPart != 0);
-    
+    bool update_limiter_active = ((!m_UseMinIntervalLimiter) && (m_UpdateLimiterDelay.QuadPart != 0));
+
     if (update_limiter_active)
     {
         LARGE_INTEGER UpdateLimiterEndingTime, UpdateLimiterElapsedMicroseconds;
