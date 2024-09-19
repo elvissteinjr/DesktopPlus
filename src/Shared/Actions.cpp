@@ -39,6 +39,7 @@ command_show_keyboard: UIntArg = CommandToggleArg
 command_crop_active_window: no data
 command_show_overlay: StrMain = tags string, UIntID = UseTargetTags bool & UndoOnRelease bool (in low/high word order), UIntArg = CommandToggleArg
 command_switch_task: no data
+command_load_overlay_profile: StrMain = profile name (empty = default), UIntID = ClearExisting bool
 */
 
 const char* ActionCommand::s_CommandTypeNames[ActionCommand::command_MAX] = 
