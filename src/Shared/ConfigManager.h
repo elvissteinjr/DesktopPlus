@@ -378,6 +378,8 @@ class Ini;
 class ConfigManager
 {
     private:
+        typedef std::unordered_map<int, ActionUID> LegacyActionIDtoActionUID;
+
         bool m_ConfigBool[configid_bool_MAX];
         int m_ConfigInt[configid_int_MAX];
         float m_ConfigFloat[configid_float_MAX];
@@ -403,10 +405,11 @@ class ConfigManager
             void SaveConfigPersistentWindowState(Ini& config);
 
             void MigrateLegacyConfig(Ini& config, bool only_rename_config_file);
-            void MigrateLegacyOverlayProfileFromConfig(Ini& config, bool apply_steamvr2_dashboard_offset);    //This writes to passed config, but doesn't save it
+            void MigrateLegacyOverlayProfileFromConfig(Ini& config, bool apply_steamvr2_dashboard_offset, LegacyActionIDtoActionUID& legacy_id_to_uid); //This writes to passed config, but doesn't save it
+            std::string MigrateLegacyActionOrderString(const std::string& order_str, LegacyActionIDtoActionUID& legacy_id_to_uid);
         #endif
 
-        void MigrateLegacyActionsFromConfig(const Ini& config);
+        LegacyActionIDtoActionUID MigrateLegacyActionsFromConfig(const Ini& config);   //Returns post-migration legacy ActionID to ActionUID mapping
 
         OverlayOrigin GetOverlayOriginFromConfigString(const std::string& str);
         const char* GetConfigStringForOverlayOrigin(OverlayOrigin origin);

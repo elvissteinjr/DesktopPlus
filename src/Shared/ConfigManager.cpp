@@ -880,11 +880,22 @@ void ConfigManager::MigrateLegacyConfig(Ini& config, bool only_rename_config_fil
     {
         LOG_F(INFO, "Migrating legacy config...");
 
-        //Nothing really has to be adapted from the global config, but we need to migrate every overlay profile
+        //Do action migration first so we have the legacy ActionID to ActionUID mapping from it
+        LegacyActionIDtoActionUID legacy_id_to_uid;
+        if (!m_ActionManager.LoadActionsFromFile())
+        {
+            legacy_id_to_uid = MigrateLegacyActionsFromConfig(config);
+        }
+
+        //Rename and migrate action order key
+        config.WriteString("Interface", "ActionOrderBarDefault", MigrateLegacyActionOrderString(config.ReadString("Interface", "ActionOrder"), legacy_id_to_uid).c_str() );
+        config.RemoveKey("Interface", "ActionOrder");
+
+        //Nothing else really has to be adapted from the global config, but we need to migrate every overlay profile
         bool apply_steamvr2_dashboard_offset = config.ReadBool("Misc", "ApplySteamVR2DashboardOffset", true);
 
         LOG_F(INFO, "Migrating legacy global overlay profile...");
-        MigrateLegacyOverlayProfileFromConfig(config, apply_steamvr2_dashboard_offset);
+        MigrateLegacyOverlayProfileFromConfig(config, apply_steamvr2_dashboard_offset, legacy_id_to_uid);
 
         //We need to traverse all existing overlay profiles, migrate them and save them to the new file structure
         const std::wstring wpath_dest   =  WStringConvertFromUTF8( std::string(m_ApplicationPath + "profiles/"               ).c_str() );
@@ -904,7 +915,7 @@ void ConfigManager::MigrateLegacyConfig(Ini& config, bool only_rename_config_fil
                     LOG_F(INFO, "Migrating legacy overlay profile \"%s\"...", StringConvertFromUTF16(find_data.cFileName).c_str());
 
                     Ini config_profile(wpath_src[i] + find_data.cFileName);
-                    MigrateLegacyOverlayProfileFromConfig(config_profile, apply_steamvr2_dashboard_offset);
+                    MigrateLegacyOverlayProfileFromConfig(config_profile, apply_steamvr2_dashboard_offset, legacy_id_to_uid);
 
                     std::wstring save_path = wpath_dest + find_data.cFileName;
 
@@ -951,17 +962,11 @@ void ConfigManager::MigrateLegacyConfig(Ini& config, bool only_rename_config_fil
 
     if (!only_rename_config_file)
     {
-        //Action migration is checked for every launch but we also do it here so the new saved config already has it
-        if (!m_ActionManager.LoadActionsFromFile())
-        {
-            MigrateLegacyActionsFromConfig(config);
-        }
-
         m_ConfigBool[configid_bool_state_misc_config_migrated] = true;
     }
 }
 
-void ConfigManager::MigrateLegacyOverlayProfileFromConfig(Ini& config, bool apply_steamvr2_dashboard_offset)
+void ConfigManager::MigrateLegacyOverlayProfileFromConfig(Ini& config, bool apply_steamvr2_dashboard_offset, LegacyActionIDtoActionUID& legacy_id_to_uid)
 {
     //Rename unnumbered "Overlay" section if it exists (legacy single overlay profile)
     config.RenameSection("Overlay", "Overlay0");
@@ -1081,6 +1086,8 @@ void ConfigManager::MigrateLegacyOverlayProfileFromConfig(Ini& config, bool appl
             config.WriteString(section.c_str(), "Transform", transform_str.c_str());
         }
 
+        config.WriteString(section.c_str(), "ActionBarOrderCustom", MigrateLegacyActionOrderString(config.ReadString(section.c_str(), "ActionBarOrderCustom"), legacy_id_to_uid).c_str() );
+
         overlay_id++;
 
         std::stringstream ss;
@@ -1104,21 +1111,52 @@ void ConfigManager::MigrateLegacyOverlayProfileFromConfig(Ini& config, bool appl
     config.RemoveKey(section.c_str(), "DetachedTransformAux");
 }
 
+std::string ConfigManager::MigrateLegacyActionOrderString(const std::string& order_str, LegacyActionIDtoActionUID& legacy_id_to_uid)
+{
+    //Migrate action order legacy IDs to UIDs and new string format
+    std::stringstream ss(order_str);
+    std::stringstream ss_out;
+    int id;
+    bool visible;
+    char sep;
+
+    for (;;)
+    {
+        ss >> id >> visible >> sep;
+
+        if (ss.fail())
+            break;
+
+        //Invisible/unselected actions are omitted in the new format
+        if (visible)
+        {
+            const ActionUID uid = legacy_id_to_uid[id];
+
+            if (uid != k_ActionUID_Invalid)
+            {
+                ss_out << legacy_id_to_uid[id] << ';';
+            }
+        }
+    }
+
+    return ss_out.str();
+}
+
 #endif //ifdef DPLUS_UI
 
-void ConfigManager::MigrateLegacyActionsFromConfig(const Ini& config)
+ConfigManager::LegacyActionIDtoActionUID ConfigManager::MigrateLegacyActionsFromConfig(const Ini& config)
 {
     //Add new defaults first
     m_ActionManager.RestoreActionsFromDefault();
 
     //Skip rest if CustomActions section doesn't exist (nothing to migrate)
     if (!config.SectionExists("CustomActions"))
-        return;
+        return ConfigManager::LegacyActionIDtoActionUID();
 
     LOG_F(INFO, "Migrating legacy actions...");
 
-    //Read legacy custom actions and create actions with equivalent comands
-    std::unordered_map<int, ActionUID> legacy_id_to_uid;
+    //Read legacy custom actions and create actions with equivalent commands
+    ConfigManager::LegacyActionIDtoActionUID legacy_id_to_uid;
 
     //There's no surefire way to detect old default custom actions, but we at least match the old names and ignore them during migration to avoid double entries
     const char* default_names[] = 
@@ -1131,6 +1169,14 @@ void ConfigManager::MigrateLegacyActionsFromConfig(const Ini& config)
         "tstr_DefActionReadMe"
     };
 
+    //Map legacy built-in IDs to now default custom actions (same ID is still required as the mapping will default to 0 if unset)
+    legacy_id_to_uid.insert({1, 1}); //Show Keyboard
+    legacy_id_to_uid.insert({2, 2}); //Crop to Active Window
+    legacy_id_to_uid.insert({3, 4}); //Toggle Overlay Group 1 (these all just migrate to the "toggle all" default since they need manual setup anyhow)
+    legacy_id_to_uid.insert({4, 4}); //Toggle Overlay Group 2
+    legacy_id_to_uid.insert({5, 4}); //Toggle Overlay Group 3
+    legacy_id_to_uid.insert({6, 3}); //Switch Task
+
     int custom_action_count = config.ReadInt("CustomActions", "Count", 0);
 
     for (int i = 0; i < custom_action_count; ++i)
@@ -1141,8 +1187,26 @@ void ConfigManager::MigrateLegacyActionsFromConfig(const Ini& config)
         action.Name = config.ReadString("CustomActions", (action_ini_name + "Name").c_str(), action_ini_name.c_str());
 
         //Skip if name matches legacy default ones
-        if (std::find(std::begin(default_names), std::end(default_names), action.Name) != std::end(default_names))
+        const auto it = std::find(std::begin(default_names), std::end(default_names), action.Name);
+        if (it != std::end(default_names))
         {
+            //Map detected legacy default name to new default IDs (a bit flaky but the name array won't change)
+            size_t default_name_id = std::distance(std::begin(default_names), it);
+            const int action_id_custom_base = 1000; //Old value of action_custom, minimum custon ID
+
+            if ((default_name_id == 0) || (default_name_id == 3))
+            {
+                legacy_id_to_uid.insert({action_id_custom_base + i, 5});
+            }
+            else if ((default_name_id == 1) || (default_name_id == 4))
+            {
+                legacy_id_to_uid.insert({action_id_custom_base + i, 6});
+            }
+            else if ((default_name_id == 2) || (default_name_id == 5))
+            {
+                legacy_id_to_uid.insert({action_id_custom_base + i, 7});
+            }
+
             continue;
         }
 
@@ -1168,7 +1232,7 @@ void ConfigManager::MigrateLegacyActionsFromConfig(const Ini& config)
             ActionCommand command;
             command.Type = ActionCommand::command_string;
             command.StrMain = config.ReadString("CustomActions", (action_ini_name + "TypeString").c_str());
-            
+
             action.Commands.push_back(command);
         }
         else if (function_type_str == "LaunchApplication")
@@ -1208,9 +1272,9 @@ void ConfigManager::MigrateLegacyActionsFromConfig(const Ini& config)
         m_ActionManager.StoreAction(action);
     }
 
-    //Adapt references to legacy actions if possible (this will fail for the default ones though)
-    m_ConfigHandle[configid_handle_input_go_home_action_uid]    = legacy_id_to_uid[config.ReadInt("Input", "GoHomeButtonActionID",     0)];
-    m_ConfigHandle[configid_handle_input_go_back_action_uid]    = legacy_id_to_uid[config.ReadInt("Input", "GoBackButtonActionID",     0)];
+    //Adapt references to legacy actions if possible (this might fail for the default ones though)
+    m_ConfigHandle[configid_handle_input_go_home_action_uid] = legacy_id_to_uid[config.ReadInt("Input", "GoHomeButtonActionID", 0)];
+    m_ConfigHandle[configid_handle_input_go_back_action_uid] = legacy_id_to_uid[config.ReadInt("Input", "GoBackButtonActionID", 0)];
 
     for (size_t i = 0; i < 2; ++i)
     {
@@ -1229,6 +1293,9 @@ void ConfigManager::MigrateLegacyActionsFromConfig(const Ini& config)
             m_ConfigHotkey[i].ActionUID = legacy_id_to_uid[config.ReadInt("Input", config_name.c_str(), 0)];
         }
     }
+
+    //Return the action ID mapping so action order can be migrated from it
+    return legacy_id_to_uid;
 }
 
 OverlayOrigin ConfigManager::GetOverlayOriginFromConfigString(const std::string& str)
