@@ -3105,8 +3105,11 @@ void WindowOverlayProperties::UpdatePageActionsOrder(bool only_restore_settings)
         return;
     }
 
+    const float height_offset = (UIManager::Get()->IsInDesktopMode()) ? -UIManager::Get()->GetSettingsWindow().DesktopModeGetWarningHeight() : 0.0f;
+
     bool go_add_actions = false;
-    bool go_back = ActionOrderList(data.ConfigActionBarOrder, (m_PageAppearing == wndovrlprop_page_actions_order), (m_PageReturned == wndovrlprop_page_actions_order_add), page_state, go_add_actions);
+    bool go_back = ActionOrderList(data.ConfigActionBarOrder, (m_PageAppearing == wndovrlprop_page_actions_order), (m_PageReturned == wndovrlprop_page_actions_order_add), 
+                                   page_state, go_add_actions, height_offset);
 
     if (m_PageReturned == wndovrlprop_page_actions_order_add)
     {

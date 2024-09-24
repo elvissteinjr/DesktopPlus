@@ -125,6 +125,11 @@ bool WindowSettings::DesktopModeGoBack()
     return false;
 }
 
+float WindowSettings::DesktopModeGetWarningHeight() const
+{
+    return m_WarningHeight;
+}
+
 void WindowSettings::QuickStartGuideGoToPage(WindowSettingsPage new_page)
 {
     //This is only meant to be used by the Quick Start Guide window so it's not very flexible
