@@ -2585,14 +2585,15 @@ void OutputManager::CropToActiveWindowToggle(unsigned int overlay_id)
     unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
     OverlayManager::Get().SetCurrentOverlayID(overlay_id);
 
-    int& crop_x      = ConfigManager::GetRef(configid_int_overlay_crop_x);
-    int& crop_y      = ConfigManager::GetRef(configid_int_overlay_crop_y);
-    int& crop_width  = ConfigManager::GetRef(configid_int_overlay_crop_width);
-    int& crop_height = ConfigManager::GetRef(configid_int_overlay_crop_height);
+    bool& crop_enabled = ConfigManager::GetRef(configid_bool_overlay_crop_enabled);
+    int& crop_x        = ConfigManager::GetRef(configid_int_overlay_crop_x);
+    int& crop_y        = ConfigManager::GetRef(configid_int_overlay_crop_y);
+    int& crop_width    = ConfigManager::GetRef(configid_int_overlay_crop_width);
+    int& crop_height   = ConfigManager::GetRef(configid_int_overlay_crop_height);
 
     //Check if crop is just exactly the current desktop
     bool crop_equals_current_desktop = false;
-    int desktop_id = ConfigManager::GetValue(configid_int_overlay_desktop_id);
+    const int desktop_id = ConfigManager::GetValue(configid_int_overlay_desktop_id);
 
     if ( (desktop_id >= 0) && (desktop_id < m_DesktopRects.size()) )
     {
@@ -2601,14 +2602,31 @@ void OutputManager::CropToActiveWindowToggle(unsigned int overlay_id)
         crop_equals_current_desktop = (crop_rect == m_DesktopRects[desktop_id]);
     }
 
-    //If uncropped, crop to active window
-    if ( (crop_equals_current_desktop) || ((crop_x == 0) && (crop_y == 0) && (crop_width == -1) && (crop_height == -1)) )
+    //Check if crop already matches the active window
+    bool crop_equals_new_window_crop = false;
+    int crop_x_new      = crop_x;
+    int crop_y_new      = crop_y;
+    int crop_width_new  = crop_width;
+    int crop_height_new = crop_height;
+
+    if (CropToActiveWindow(crop_x_new, crop_y_new, crop_width_new, crop_height_new))
+    {
+        crop_equals_new_window_crop = ((crop_x == crop_x_new) && (crop_y == crop_y_new) && (crop_width == crop_width_new) && (crop_height == crop_height_new));
+    }
+
+    //If uncropped or different, crop to active window
+    if ( (!crop_enabled) || (!crop_equals_new_window_crop) )
     {
         CropToActiveWindow();
     }
-    else //If cropped in some way, active window or not, reset it
+    else //Otherwise, disable cropping (leaving the existing cropping values around)
     {
-        CropToDisplay(desktop_id);
+        crop_enabled = false;
+        IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_crop_enabled, crop_enabled);
+
+        ApplySettingCrop();
+        ApplySettingTransform();
+        ApplySettingMouseScale();
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
@@ -5093,18 +5111,22 @@ void OutputManager::ResetMouseLastLaserPointerPos()
 
 void OutputManager::CropToActiveWindow()
 {
-    int& crop_x      = ConfigManager::GetRef(configid_int_overlay_crop_x);
-    int& crop_y      = ConfigManager::GetRef(configid_int_overlay_crop_y);
-    int& crop_width  = ConfigManager::GetRef(configid_int_overlay_crop_width);
-    int& crop_height = ConfigManager::GetRef(configid_int_overlay_crop_height);
+    bool& crop_enabled = ConfigManager::GetRef(configid_bool_overlay_crop_enabled);
+    int& crop_x        = ConfigManager::GetRef(configid_int_overlay_crop_x);
+    int& crop_y        = ConfigManager::GetRef(configid_int_overlay_crop_y);
+    int& crop_width    = ConfigManager::GetRef(configid_int_overlay_crop_width);
+    int& crop_height   = ConfigManager::GetRef(configid_int_overlay_crop_height);
 
     if (CropToActiveWindow(crop_x, crop_y, crop_width, crop_height))
     {
+        crop_enabled = true;
+
         //Send them over to UI
-        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_x,      crop_x);
-        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_y,      crop_y);
-        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_width,  crop_width);
-        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_height, crop_height);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_crop_enabled, crop_enabled);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_x,        crop_x);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_y,        crop_y);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_width,    crop_width);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_crop_height,   crop_height);
 
         ApplySettingCrop();
         ApplySettingTransform();
