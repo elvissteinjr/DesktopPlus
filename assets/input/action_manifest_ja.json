@@ -1,0 +1,43 @@
+{
+    "language_tag": "ja_JP",
+
+    "/actions/shortcuts" : "グローバルショートカット",
+
+    "/actions/shortcuts/in/EnableGlobalLaserPointer" : "グローバルレーザーポインターを有効化",
+    "/actions/shortcuts/in/GlobalShortcut01" : "グローバルショートカットを実行 #1",
+    "/actions/shortcuts/in/GlobalShortcut02" : "グローバルショートカットを実行 #2",
+    "/actions/shortcuts/in/GlobalShortcut03" : "グローバルショートカットを実行 #3",
+    "/actions/shortcuts/in/GlobalShortcut04" : "グローバルショートカットを実行 #4",
+    "/actions/shortcuts/in/GlobalShortcut05" : "グローバルショートカットを実行 #5",
+    "/actions/shortcuts/in/GlobalShortcut06" : "グローバルショートカットを実行 #6",
+    "/actions/shortcuts/in/GlobalShortcut07" : "グローバルショートカットを実行 #7",
+    "/actions/shortcuts/in/GlobalShortcut08" : "グローバルショートカットを実行 #8",
+    "/actions/shortcuts/in/GlobalShortcut09" : "グローバルショートカットを実行 #9",
+    "/actions/shortcuts/in/GlobalShortcut10" : "グローバルショートカットを実行 #10",
+    "/actions/shortcuts/in/GlobalShortcut11" : "グローバルショートカットを実行 #11",
+    "/actions/shortcuts/in/GlobalShortcut12" : "グローバルショートカットを実行 #12",
+    "/actions/shortcuts/in/GlobalShortcut13" : "グローバルショートカットを実行 #13",
+    "/actions/shortcuts/in/GlobalShortcut14" : "グローバルショートカットを実行 #14",
+    "/actions/shortcuts/in/GlobalShortcut15" : "グローバルショートカットを実行 #15",
+    "/actions/shortcuts/in/GlobalShortcut16" : "グローバルショートカットを実行 #16",
+    "/actions/shortcuts/in/GlobalShortcut17" : "グローバルショートカットを実行 #17",
+    "/actions/shortcuts/in/GlobalShortcut18" : "グローバルショートカットを実行 #18",
+    "/actions/shortcuts/in/GlobalShortcut19" : "グローバルショートカットを実行 #19",
+    "/actions/shortcuts/in/GlobalShortcut20" : "グローバルショートカットを実行 #20",
+
+    "/actions/laserpointer" : "レーザーポインター",
+
+    "/actions/laserpointer/in/LeftClick"   : "左クリック",
+    "/actions/laserpointer/in/RightClick"  : "右クリック",
+    "/actions/laserpointer/in/MiddleClick" : "ホイールクリック",
+    "/actions/laserpointer/in/Aux01Click"  : "補助 1 クリック",
+    "/actions/laserpointer/in/Aux02Click"  : "補助 2 クリック",
+	
+	"/actions/scroll_discrete" : "マウスホイール スクロール",
+	
+    "/actions/scroll_discrete/in/ScrollDiscrete" : "スクロールオーバーレイ",
+	
+	"/actions/scroll_smooth" : "スムーズ スクロール",
+	
+    "/actions/scroll_smooth/in/ScrollSmooth" : "スクロールオーバーレイ"
+}
