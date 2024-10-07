@@ -12,7 +12,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{14405CEC-DF3D-435E-8F11-B79BAC56D7D8}</ProjectGuid>
-    <Keyword>Win32Proj</Keyword>
+    <ProjectName>DesktopPlusUI</ProjectName>
     <RootNamespace>DesktopPlusUI</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
