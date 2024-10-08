@@ -848,6 +848,9 @@ const std::string& TranslationManager::GetCurrentTranslationAuthor() const
 
 void TranslationManager::AddStringsToFontBuilder(ImFontGlyphRangesBuilder& builder) const
 {
+    builder.AddText(m_CurrentTranslationName.c_str());
+    builder.AddText(m_CurrentTranslationAuthor.c_str());
+
     for (const auto& str : m_Strings)
     {
         builder.AddText(str.c_str());
