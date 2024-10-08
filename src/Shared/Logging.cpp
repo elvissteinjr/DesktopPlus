@@ -20,37 +20,44 @@ void DPLog_Init(const char* name)
     //Check the creation time and rotate if it was created a week or longer ago
     HANDLE file_handle = ::CreateFileW(filename_u16.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
 
-    FILETIME ftime_log_create;
-    if (::GetFileTime(file_handle, &ftime_log_create, nullptr, nullptr))
+    if (file_handle != INVALID_HANDLE_VALUE)
     {
-        ::CloseHandle(file_handle);
-
-        FILETIME ftime_current;
-        ::GetSystemTimeAsFileTime(&ftime_current);
-
-        ULARGE_INTEGER time_current{ftime_current.dwLowDateTime, ftime_current.dwHighDateTime};
-        ULARGE_INTEGER time_create{ftime_log_create.dwLowDateTime, ftime_log_create.dwHighDateTime};
-        const ULONGLONG ftime_week = 7ULL * 24 * 60 * 60 * 10000000;
-
-        if (time_create.QuadPart + ftime_week <= time_current.QuadPart)
+        FILETIME ftime_log_create;
+        if (::GetFileTime(file_handle, &ftime_log_create, nullptr, nullptr))
         {
-            ::DeleteFileW(filename_prev_u16.c_str());
-            ::MoveFileW(filename_u16.c_str(), filename_prev_u16.c_str());
+            ::CloseHandle(file_handle);
 
-            //Windows' file system tunneling preserves the creation date between deleting and creating a new log file, so set it manually here
-            file_handle = ::CreateFileW(filename_u16.c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, 0, nullptr);
-            if (file_handle != INVALID_HANDLE_VALUE)
+            FILETIME ftime_current;
+            ::GetSystemTimeAsFileTime(&ftime_current);
+
+            ULARGE_INTEGER time_current{ftime_current.dwLowDateTime, ftime_current.dwHighDateTime};
+            ULARGE_INTEGER time_create{ftime_log_create.dwLowDateTime, ftime_log_create.dwHighDateTime};
+            const ULONGLONG ftime_week = 7ULL * 24 * 60 * 60 * 10000000;
+
+            if (time_create.QuadPart + ftime_week <= time_current.QuadPart)
             {
-                ::SetFileTime(file_handle, &ftime_current, nullptr, nullptr);
-                ::CloseHandle(file_handle);
-            }
+                ::DeleteFileW(filename_prev_u16.c_str());
+                ::MoveFileW(filename_u16.c_str(), filename_prev_u16.c_str());
 
-            log_file_mode = loguru::Truncate;
+                //Windows' file system tunneling preserves the creation date between deleting and creating a new log file, so set it manually here
+                file_handle = ::CreateFileW(filename_u16.c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, 0, nullptr);
+                if (file_handle != INVALID_HANDLE_VALUE)
+                {
+                    ::SetFileTime(file_handle, &ftime_current, nullptr, nullptr);
+                    ::CloseHandle(file_handle);
+                }
+
+                log_file_mode = loguru::Truncate;
+            }
+        }
+        else
+        {
+            ::CloseHandle(file_handle);
         }
     }
-    else
+    else  //Reading the file attributes failed, so we assume the file didn't exist and truncate
     {
-        ::CloseHandle(file_handle);
+        log_file_mode = loguru::Truncate;
     }
 
     //Set some Loguru settings
