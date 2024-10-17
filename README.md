@@ -9,16 +9,17 @@ Advanced desktop access for OpenVR.
 - Smooth, low-latency mirroring of desktops and windows
 - Low memory footprint and performance impact
 - Support for creating as many overlays as SteamVR allows at once
-- Customizable overlay settings (width, position, curvature, opacity), with switchable profiles
-- Overlay cropping
+- Customizable overlay settings (width, position, curvature, opacity, cropping), with switchable profiles
 - 3D support (SBS, HSBS, OU, HOU)
 - Overlay visibility and origin settings: Display a desktop/window during gameplay or attach it to a different origin (play space, dashboard, HMD, controllers, tracker)
 - Actions: User-definable functions (input simulation, running applications) which can be bound to controller inputs, hotkeys or UI buttons
-- Custom VR Keyboard with configurable layouts
+- Custom laser pointer implementation, allowing for non-blocking overlay interaction during gameplay
+- Configurable PC-style VR keyboard with various layouts and a keyboard layout editor for deeper customization, appearing automatically when detecting text input widget focus
 - Elevated access toggle, making it possible to deal with UAC prompts and other UIP-restricted UI in VR without using full admin-access at all times
 - Gaze Fade: Fade-out overlay when not looking at it
-- Window Management: Change window focus depending on overlay/dashboard state or drag overlays when dragging the title bar of a mirrored window
+- Window management: Change window focus depending on overlay/dashboard state or drag overlays when dragging the title bar of a mirrored window
 - Performance Monitor: View system performance in real time
+- Application profiles: Automatically switch overlay profiles when a specific VR application is being run
 - Browser overlays: View web pages independent from your desktop (CEF-based)
 
 ## Usage
@@ -49,8 +50,8 @@ Other compilers likely work as well, but are neither tested nor have a build con
 
 ## Demonstration
 
-The [Steam announcements](https://store.steampowered.com/news/app/1494460) for New UI Preview releases typically feature short video clips showing off new additions.  
-Please refer to those for now.
+The [Steam announcements](https://store.steampowered.com/news/app/1494460) for typically feature short video clips showing off new additions.  
+The trailer on the [Steam store page](https://store.steampowered.com/app/1494460) also shows off some functionality.
 
 ## Documentation
 
@@ -59,8 +60,8 @@ For more detailed information on each setting, step-by-step examples for a few c
 
 ## Notes
 
-Desktop+ only runs on Windows 8 or newer, as it uses the DXGI Desktop Duplication API which is not available on older versions of Windows.  
-Window mirroring through Graphics Capture requires at least Windows 10 1803 for basic support, Windows 10 2004 or newer for full support.
+Desktop+ only runs on Windows 8.1 or newer, as it uses the DXGI Desktop Duplication API which is not available on older versions of Windows.  
+Window mirroring through Graphics Capture requires at least Windows 10 1803 for basic support, Windows 10 2004 or newer for full support (some additional non-essential features require Windows 11 or Windows 11 24H2). 
 
 ## License
 
