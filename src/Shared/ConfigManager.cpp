@@ -992,6 +992,12 @@ void ConfigManager::MigrateLegacyOverlayProfileFromConfig(Ini& config, bool appl
             config.WriteString(section.c_str(), "Tags", tag_str.c_str());
         }
 
+        //0-Dashboard overlay had no Floating UI, always only showing the Action Bar, but didn't make use of the property value which defaulted and stayed false, so force it to true
+        if (overlay_id == 0)
+        {
+            config.WriteBool(section.c_str(), "ShowActionBar", true);
+        }
+
         //Write Display Mode to new config string (0 is always Desktop+ tab)
         config.WriteInt(section.c_str(), "DisplayMode", (overlay_id == 0) ? ovrl_dispmode_dplustab : config.ReadInt(section.c_str(), "DetachedDisplayMode", ovrl_dispmode_always) );
 
