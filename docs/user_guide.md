@@ -8,11 +8,11 @@ This guide does not touch upon all topics covered by the [readme file](../assets
 * [Glossary](#glossary)
 * [Interface](#interface)
   * [Overlay Bar](#overlay-bar)
-  
+
   * [Floating UI](#floating-ui)
     * [Main Bar](#main-bar)
     * [Action Bar](#action-bar)
-	
+
   * [Settings Window](#settings-window)
     * [Main Page](#main-page)
       * [Interface](#interface)
@@ -41,11 +41,12 @@ This guide does not touch upon all topics covered by the [readme file](../assets
     * [Keyboard Layout Page](#keyboard-layout-page)
       * [Key Clusters](#key-clusters)
     * [Restore Default Settings Page](#restore-default-settings-page)
-	
+
   * [Overlay Properties](#overlay-properties)
     * [Main Page](#main-page-1)
       * [Position](#position)
       * [Appearance](#appearance)
+      * [Capture](#capture)
       * [Performance Monitor](#performance-monitor)
       * [Browser](#browser-1)
       * [Advanced](#advanced)
@@ -61,13 +62,14 @@ This guide does not touch upon all topics covered by the [readme file](../assets
   * [Desktop Mode](#desktop-mode)
     * [Tools](#tools)
     * [Overlays](#overlays)
-	
+    * [Keyboard Controls](#keyboard-controls)
+
   * [Desktop+ Keyboard](#desktop-keyboard)
     * [Keyboard Layout Editor](#keyboard-layout-editor)
-	  * [Key List](#key-list)
-	  * [Key Properties](#key-properties)
-	  * [Layout Metadata](#layout-metadata)
-	  * [Keyboard Preview](#keyboard-preview)
+      * [Key List](#key-list)
+      * [Key Properties](#key-properties)
+      * [Layout Metadata](#layout-metadata)
+      * [Keyboard Preview](#keyboard-preview)
 
 * [Performance Considerations](#performance-considerations)
   * [Desktop Duplication](#desktop-duplication-1)
@@ -148,6 +150,8 @@ The Overlay Bar appears in the Desktop+ dashboard tab and allows managing all ac
 Click on the button to pop up a menu with options to show/hide, duplicate, remove the overlay, or to change the overlay's properties.  
 The Overlay Properties window can only be shown for one overlay at once. Trying to show it for another will make the existing window switch to that overlay.  
 The overlay buttons can also be double-clicked to toggle visibility, right-clicked to quickly access the overlay properties, and long-pressed for a few seconds to reset the Overlay Properties window position.
+
+Pointing at the SteamVR dashboard will result in the Overlay Bar to fade out temporarily. This is to allow using the dashboard's drag handle, as well as to make space for elements of the dashboard that may slide out on interaction.
 
 - **[+]**:  
 Adds a new overlay. A menu will pop up, listing the available overlay types/capture sources.  
@@ -860,7 +864,7 @@ Sets how bright the overlay appears. 100% is full brightness.
 Sets if the cropping area is applied.
   - **[X, Y | Width x Height]** (Cropping Area button):  
   Press this button to open the [Cropping Area page](#cropping-area-page) to change how the overlay is cropped.
-	
+
 #### Capture
 
 ![Overlay Properties Window, Main Page, Capture Section](images/overlay_properties_capture.png)
@@ -878,7 +882,7 @@ Click on the button to select the capture source for the overlay. The list on th
   - **[x] Use Strict Window Matching**:  
   Only allow exact window title matches when restoring the overlay's capture. By default Desktop+ uses a weak window title matching algorithm to account for document-style changing window titles.  
   Use this option if you experience false positives with specific applications.
-	
+
 #### Performance Monitor
 
 ![Overlay Properties Window, Main Page, Performance Monitor Section](images/overlay_properties_performance_monitor.png)
@@ -1107,7 +1111,7 @@ Desktop mode can be fully operated by keyboard alone and also has some mouse sho
 | **Keyboard**                | *(activate keyboard controls for these to work)*      |
 | :-------------------------- | :---------------------------------------------------- |
 | Arrow Keys                  | Navigate/Activate Keyboard Controls                   |
-| Spacebar    				  | Interact with Widgets                                 |
+| Spacebar                    | Interact with Widgets                                 |
 | Esc                         | Cancel Widget Selection                               |
 | Enter                       | Confirm Text Input                                    |
 | Menu Key                    | Context Menu on Overlay List                          |
