@@ -1577,8 +1577,9 @@ const ImVec2& FloatingWindow::GetSize() const
 bool FloatingWindow::TranslatedComboAnimated(const char* label, int& value, TRMGRStrID trstr_min, TRMGRStrID trstr_max)
 {
     bool ret = false;
+    const char* preview_value = ((trstr_min + value >= trstr_min) && (trstr_min + value <= trstr_max)) ? TranslationManager::GetString( (TRMGRStrID)(trstr_min + value) ) : "???";
 
-    if (ImGui::BeginComboAnimated(label, TranslationManager::GetString( (TRMGRStrID)(trstr_min + value) ) ))
+    if (ImGui::BeginComboAnimated(label, preview_value))
     {
         //Make use of the fact values and translation string IDs are laid out sequentially and shorten this to a nice loop
         const int value_max = (trstr_max - trstr_min) + 1;
