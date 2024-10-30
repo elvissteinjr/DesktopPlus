@@ -352,7 +352,7 @@ This enables gestures meant for pen inputs, such as click drag scrolling in many
 
   Some of the pen input behaviors are configurable on the OS-end, and may need to be enabled first.
   
-- **[x] Allow HMD-Pointer Override**:  
+- **[x] Allow Laser Pointer Override**:  
 Disables the laser pointer when the physical mouse is moved rapidly. Click the overlay to get the laser pointer back.  
 This option is primarily useful when sitting in front of the desk using the real mouse and keyboard while wearing the headset to view the desktop.
 
