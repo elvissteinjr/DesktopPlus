@@ -2181,6 +2181,11 @@ DWORD OutputManager::GetMaxRefreshDelay() const
             //While scrolling with the Desktop+ Laser Pointer, we actually need to update frequently to keep scroll speeds and generated haptic feedback at the usual pace
             return 3;
         }
+        else if (m_OvrlInputActive)
+        {
+            //While input is active, especially with the HMD pointer, we need to update more frequently to allow for smooth cursor movements
+            return m_MaxActiveRefreshDelay / 2;
+        }
         else
         {
             return m_MaxActiveRefreshDelay;
