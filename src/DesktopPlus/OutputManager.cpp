@@ -4218,6 +4218,10 @@ bool OutputManager::HandleOpenVREvents()
                 if (origin_info.trackedDeviceIndex != vr::k_unTrackedDeviceIndexInvalid)
                 {
                     m_LaserPointer.SetActiveDevice(origin_info.trackedDeviceIndex, dplp_activation_origin_input_binding);
+
+                    //Disable active laser pointer override so the device's pointer can be used right away
+                    m_MouseIgnoreMoveEvent = false;
+                    ResetMouseLastLaserPointerPos();
                 }
             }
         }
