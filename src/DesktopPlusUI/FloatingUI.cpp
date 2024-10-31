@@ -285,7 +285,7 @@ void FloatingUI::UpdateUITargetState()
                     m_TheaterOffsetAnimationProgress = 0.0f;
             }
 
-            matrix.translate_relative(0.0f, smoothstep(m_TheaterOffsetAnimationProgress, 0.0f, -0.19f), 0.0f);
+            matrix.translate_relative(0.0f, smoothstep(m_TheaterOffsetAnimationProgress, 0.0f, -0.29f), 0.0f);
         }
 
         //Don't update position if dummy transform is unstable unless it's target is not primary dashboard overlay or we're newly appearing
