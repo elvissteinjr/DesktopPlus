@@ -478,8 +478,6 @@ void DPWinRT_SetDesktopEnumerationFlags(bool ignore_wmr_screens)
     g_DesktopEnumFlagIgnoreWMRScreens = ignore_wmr_screens;
 }
 
-#undef _DEBUG
-
 #ifndef DPLUSWINRT_STUB
 
 DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
