@@ -14,6 +14,9 @@ enum IPCKeyboardKeystateFlags : unsigned char;
 
 //SyntheticPointer functions are loaded manually to not require OS support to run the application (Windows 10 1809+ should have them though)
 typedef HANDLE HSYNTHETICPOINTERDEVICE;
+#ifndef NTDDI_WIN10_RS5
+    typedef enum { POINTER_FEEDBACK_DEFAULT = 1, POINTER_FEEDBACK_INDIRECT = 2, POINTER_FEEDBACK_NONE = 3 } POINTER_FEEDBACK_MODE;
+#endif 
 
 typedef HSYNTHETICPOINTERDEVICE (WINAPI* fn_CreateSyntheticPointerDevice) (_In_ POINTER_INPUT_TYPE pointerType, _In_ ULONG maxCount, _In_ POINTER_FEEDBACK_MODE mode);
 typedef BOOL                    (WINAPI* fn_InjectSyntheticPointerInput)  (_In_ HSYNTHETICPOINTERDEVICE device, _In_reads_(count) CONST POINTER_TYPE_INFO* pointerInfo, _In_ UINT32 count);
