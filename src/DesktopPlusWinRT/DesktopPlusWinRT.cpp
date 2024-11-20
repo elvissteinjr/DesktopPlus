@@ -32,6 +32,7 @@ static std::vector<DPWinRTThreadData> g_Threads;
 static bool g_IsCursorEnabled;
 
 //- Rarely accessed atomics
+static std::atomic<bool> g_IsHDREnabled;
 static std::atomic<bool> g_DesktopEnumFlagIgnoreWMRScreens;
 
 namespace winrt
@@ -39,6 +40,7 @@ namespace winrt
     using namespace Windows::Foundation;
     using namespace Windows::Foundation::Metadata;
     using namespace Windows::Graphics::Capture;
+    using namespace Windows::Graphics::DirectX;
 }
 
 namespace util
@@ -165,6 +167,7 @@ void DPWinRT_Init()
     winrt::uninit_apartment();
 
     g_IsCursorEnabled = true;
+    g_IsHDREnabled = true;
     g_DesktopEnumFlagIgnoreWMRScreens = true;
 
     #endif
@@ -472,6 +475,25 @@ void DPWinRT_SetCaptureCursorEnabled(bool is_cursor_enabled)
     #endif //DPLUSWINRT_STUB
 }
 
+void DPWinRT_SetHDREnabled(bool is_hdr_enabled)
+{
+    #ifndef DPLUSWINRT_STUB
+
+    //Send enable cursor message to all threads if the value changed
+    if (g_IsHDREnabled != is_hdr_enabled)
+    {
+        std::lock_guard<std::mutex> lock(g_ThreadsMutex);
+
+        for (const auto& thread : g_Threads)
+        {
+            ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_ENABLE_HDR, is_hdr_enabled, 0);
+        }
+
+        g_IsHDREnabled = is_hdr_enabled;
+    }
+    #endif //DPLUSWINRT_STUB
+}
+
 void DPWinRT_SetDesktopEnumerationFlags(bool ignore_wmr_screens)
 {
     //This really is just a flag that could be hard coded to true in theory, but we keep our options open down the line even if it means carrying this everywhere
@@ -510,6 +532,7 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
 
         // Create the capture manager
         auto capture_manager = std::make_unique<CaptureManager>(data, g_MainThreadID);
+        capture_manager->PixelFormat( (g_IsHDREnabled) ? winrt::DirectXPixelFormat::R16G16B16A16Float : winrt::DirectXPixelFormat::B8G8R8A8UIntNormalized );
 
         //Start capture
         if (DPWinRT_IsCaptureFromHandleSupported())
@@ -613,6 +636,11 @@ DWORD WINAPI WinRTCaptureThreadEntry(_In_ void* Param)
                     case WM_DPLUSWINRT_ENABLE_CURSOR:
                     {
                         capture_manager->IsCursorEnabled(msg.wParam);
+                        break;
+                    }
+                    case WM_DPLUSWINRT_ENABLE_HDR:
+                    {
+                        capture_manager->PixelFormat( (msg.wParam) ? winrt::DirectXPixelFormat::R16G16B16A16Float : winrt::DirectXPixelFormat::B8G8R8A8UIntNormalized );
                         break;
                     }
                     case WM_DPLUSWINRT_THREAD_QUIT:

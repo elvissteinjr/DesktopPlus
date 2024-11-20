@@ -2005,7 +2005,18 @@ void WindowSettings::UpdatePageMainCatPerformance()
             HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceSingleDesktopMirrorTip));
 
             ImGui::NextColumn();
-            ImGui::Spacing();       //Only use additional spacing when this is visible since it looks odd with just 2 checkboxes
+            ImGui::Spacing();
+
+            bool& use_hdr = ConfigManager::Get().GetRef(configid_bool_performance_hdr_mirroring);
+            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceUseHDR), &use_hdr))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_performance_hdr_mirroring), use_hdr);
+            }
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceUseHDRTip));
+
+            ImGui::NextColumn();
+            ImGui::NextColumn();
         }
 
         bool& show_fps = ConfigManager::Get().GetRef(configid_bool_performance_show_fps);

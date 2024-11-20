@@ -258,7 +258,7 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
         //Set overlay textures
         vr::Texture_t vrtex = {};
         vrtex.eType = vr::TextureType_DirectX;
-        vrtex.eColorSpace = vr::ColorSpace_Gamma;
+        vrtex.eColorSpace = (m_PixelFormat == winrt::DirectXPixelFormat::R16G16B16A16Float) ? vr::ColorSpace_Linear : vr::ColorSpace_Gamma;
         vrtex.handle = surface_texture.get();
 
         size_t ou_count = 0;
@@ -274,9 +274,7 @@ void OverlayCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sen
 
                     if (hr == S_OK)
                     {
-                        vr::Texture_t vrtex_ou;
-                        vrtex_ou.eType = vr::TextureType_DirectX;
-                        vrtex_ou.eColorSpace = vr::ColorSpace_Gamma;
+                        vr::Texture_t vrtex_ou = vrtex;
                         vrtex_ou.handle = m_OUConverters[ou_count].GetTexture();
 
                         vr::VROverlayEx()->SetOverlayTextureEx(overlay.Handle, &vrtex_ou, m_OUConverters[ou_count].GetTextureSizeSBS());

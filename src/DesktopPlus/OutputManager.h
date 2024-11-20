@@ -194,6 +194,7 @@ class OutputManager
         std::vector<DPRect> m_DesktopRects;     //Cached position and size of available desktops
         DPRect m_DesktopRectTotal;              //Total rect of all available desktops (may not be the same as above Desktop Duplication rect if that's not using the combined desktop)
         DWORD m_MaxActiveRefreshDelay;
+        bool m_OutputHDRAvailable;              //False if OS doesn't support the required interface, regardless of hardware connected
         bool m_OutputInvalid;
         bool m_OutputPendingSkippedFrame;
         bool m_OutputPendingFullRefresh;
@@ -207,7 +208,6 @@ class OutputManager
         vr::VROverlayHandle_t m_OvrlHandleDesktopTexture;
         ID3D11Texture2D* m_OvrlTex;
         ID3D11RenderTargetView* m_OvrlRTV;
-        ID3D11ShaderResourceView* m_OvrlShaderResView;
         int m_OvrlActiveCount;
         int m_OvrlDesktopDuplActiveCount;
         bool m_OvrlDashboardActive;

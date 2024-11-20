@@ -13,6 +13,8 @@
 #include "Util.h"
 #include "OpenVRExt.h"
 #include "WindowManager.h"
+
+#include "DesktopPlusWinRT.h"
 #include "DPBrowserAPIClient.h"
 
 //This one holds mostly constant data, but depends on how the application was launched
@@ -2132,6 +2134,13 @@ void UIManager::HighlightOverlay(unsigned int overlay_id)
         {
             const OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)overlay_id);
             float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]);
+
+            //Apply HDR brightness multiplier if needed
+            if ((ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture))
+            {
+                brightness *= DPLUSWINRT_HDR_BRIGHTNESS_ADJUST;
+            }
+
             ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
 
             vr::VROverlay()->SetOverlayColor(ovrl_handle, col.x * brightness, col.y * brightness, col.z * brightness);
@@ -2142,6 +2151,12 @@ void UIManager::HighlightOverlay(unsigned int overlay_id)
         {
             const OverlayConfigData& data = OverlayManager::Get().GetConfigData(OverlayManager::Get().FindOverlayID(colored_handle));
             float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]);
+
+            //Apply HDR brightness multiplier if needed
+            if ((ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture))
+            {
+                brightness *= DPLUSWINRT_HDR_BRIGHTNESS_ADJUST;
+            }
 
             vr::VROverlay()->SetOverlayColor(colored_handle, brightness, brightness, brightness);
 

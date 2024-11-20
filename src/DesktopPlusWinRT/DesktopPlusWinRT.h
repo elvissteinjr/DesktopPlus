@@ -36,10 +36,15 @@
 #define WM_DPLUSWINRT_CAPTURE_PAUSE WM_DPLUSWINRT+2  //Sent to capture thread to pause/resume capture. wParam = overlay handle, lParam = pause bool
 #define WM_DPLUSWINRT_CAPTURE_LOST  WM_DPLUSWINRT+3  //Sent to main thread when capture item was closed, should call StopCapture() in response. wParam = overlay handle
 #define WM_DPLUSWINRT_ENABLE_CURSOR WM_DPLUSWINRT+4  //Sent to capture thread to change cursor enabled state, wParam = cursor enabled bool
-#define WM_DPLUSWINRT_THREAD_QUIT   WM_DPLUSWINRT+5  //Sent to capture thread to quit when no overlays are left to capture
-#define WM_DPLUSWINRT_THREAD_ERROR  WM_DPLUSWINRT+6  //Sent to main thread when an unexpected error occured in the capture thread. wParam = thread ID, lParam = hresult
-#define WM_DPLUSWINRT_THREAD_ACK    WM_DPLUSWINRT+7  //Sent to main thread to acknowledge thread messages from StopCapture() (main thread is blocked until this is received)
-#define WM_DPLUSWINRT_FPS           WM_DPLUSWINRT+8  //Sent to main thread when fps count has changed. wParam = overlay handle, lParam = frames per second
+#define WM_DPLUSWINRT_ENABLE_HDR    WM_DPLUSWINRT+5  //Sent to capture thread to change HDR enabled state, wParam = HDR enabled bool
+#define WM_DPLUSWINRT_THREAD_QUIT   WM_DPLUSWINRT+6  //Sent to capture thread to quit when no overlays are left to capture
+#define WM_DPLUSWINRT_THREAD_ERROR  WM_DPLUSWINRT+7  //Sent to main thread when an unexpected error occured in the capture thread. wParam = thread ID, lParam = hresult
+#define WM_DPLUSWINRT_THREAD_ACK    WM_DPLUSWINRT+8  //Sent to main thread to acknowledge thread messages from StopCapture() (main thread is blocked until this is received)
+#define WM_DPLUSWINRT_FPS           WM_DPLUSWINRT+9  //Sent to main thread when fps count has changed. wParam = overlay handle, lParam = frames per second
+
+//The HDR texture returned by Graphics Capture appears to need a fixed brightness adjustment to match expectations
+//Desktop Duplication doesn't require this, so perhaps there's more to it... or not
+#define DPLUSWINRT_HDR_BRIGHTNESS_ADJUST 0.5f
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,6 +69,7 @@ DPLUSWINRT_API bool DPWinRT_StopCapture(vr::VROverlayHandle_t overlay_handle);
 DPLUSWINRT_API bool DPWinRT_SetOverlayUpdateLimitDelay(vr::VROverlayHandle_t overlay_handle, LONGLONG delay_quadpart);
 DPLUSWINRT_API bool DPWinRT_SetOverlayOverUnder3D(vr::VROverlayHandle_t overlay_handle, bool is_over_under_3D, int crop_x, int crop_y, int crop_width, int crop_height);
 DPLUSWINRT_API void DPWinRT_SetCaptureCursorEnabled(bool is_cursor_enabled);
+DPLUSWINRT_API void DPWinRT_SetHDREnabled(bool is_hdr_enabled);
 DPLUSWINRT_API void DPWinRT_SetDesktopEnumerationFlags(bool ignore_wmr_screens);
 
 

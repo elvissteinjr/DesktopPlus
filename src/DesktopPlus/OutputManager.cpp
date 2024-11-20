@@ -1,5 +1,12 @@
 #include "OutputManager.h"
 
+//Keep building with 10.0.17763.0 / 1809 SDK optional
+#ifdef NTDDI_WIN10_RS5
+    #include <dxgi1_5.h>
+#else
+    #define DPLUS_DUP_NO_HDR
+#endif
+
 #include <dwmapi.h>
 #include <windowsx.h>
 #include <ShlDisp.h>
@@ -58,6 +65,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MaxActiveRefreshDelay(16),
     m_OutputPendingSkippedFrame(false),
     m_OutputPendingFullRefresh(false),
+    m_OutputHDRAvailable(false),
     m_OutputInvalid(false),
     m_OutputPendingDirtyRect{-1, -1, -1, -1},
     m_OutputAlphaCheckFailed(false),
@@ -67,7 +75,6 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlHandleDesktopTexture(vr::k_ulOverlayHandleInvalid),
     m_OvrlTex(nullptr),
     m_OvrlRTV(nullptr),
-    m_OvrlShaderResView(nullptr),
     m_OvrlActiveCount(0),
     m_OvrlDesktopDuplActiveCount(0),
     m_OvrlDashboardActive(false),
@@ -213,12 +220,6 @@ void OutputManager::CleanRefs()
     {
         m_OvrlRTV->Release();
         m_OvrlRTV = nullptr;
-    }
-
-    if (m_OvrlShaderResView)
-    {
-        m_OvrlShaderResView->Release();
-        m_OvrlShaderResView = nullptr;
     }
 
     if (m_MouseTex)
@@ -368,10 +369,6 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
             }
         }
     }
-    else
-    {
-        adapter_ptr_preferred = nullptr;
-    }
 
     if (FAILED(hr))
     {
@@ -393,6 +390,33 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
         LOG_F(INFO, "Using cross-GPU copy");
     }
+
+    //Check Desktop Duplication HDR support
+    m_OutputHDRAvailable = false;
+
+    #ifndef DPLUS_DUP_NO_HDR
+    {
+        Microsoft::WRL::ComPtr<IDXGIOutput> DxgiOutput;
+        hr = adapter_ptr_preferred->EnumOutputs(0, &DxgiOutput);
+        if (SUCCEEDED(hr))
+        {
+            Microsoft::WRL::ComPtr<IDXGIOutput5> DxgiOutput5;
+            hr = DxgiOutput.As(&DxgiOutput5);
+            m_OutputHDRAvailable = SUCCEEDED(hr);
+        }
+
+        if (m_OutputHDRAvailable)
+        {
+            LOG_F(INFO, "Desktop Duplication HDR mirroring is supported");
+        }
+        else
+        {
+            LOG_F(INFO, "Desktop Duplication HDR mirroring is not supported");
+        }
+    }
+    #else
+        LOG_F(INFO, "Desktop+ was not built with Desktop Duplication HDR support");
+    #endif
 
     // Create shared texture
     DUPL_RETURN Return = CreateTextures(SingleOutput, OutCount, DeskBounds);
@@ -1537,6 +1561,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         }
 
                         reset_mirroring = true;
+                        break;
+                    }
+                    case configid_bool_performance_hdr_mirroring:
+                    {
+                        reset_mirroring = true;
+                        DPWinRT_SetHDREnabled(msg.lParam);
                         break;
                     }
                     case configid_bool_input_mouse_render_cursor:
@@ -3100,23 +3130,17 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInf
 //
 DUPL_RETURN OutputManager::MakeRTV()
 {
-    // Create render target for overlay texture
-    D3D11_RENDER_TARGET_VIEW_DESC ovrl_tex_rtv_desc;
-    D3D11_SHADER_RESOURCE_VIEW_DESC ovrl_tex_shader_res_view_desc;
+    D3D11_TEXTURE2D_DESC desc_ovrl_tex;
+    m_OvrlTex->GetDesc(&desc_ovrl_tex);
 
-    ovrl_tex_rtv_desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    //Create render target view for overlay texture
+    D3D11_RENDER_TARGET_VIEW_DESC ovrl_tex_rtv_desc = {};
+
+    ovrl_tex_rtv_desc.Format = desc_ovrl_tex.Format;
     ovrl_tex_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
     ovrl_tex_rtv_desc.Texture2D.MipSlice = 0;
 
     m_Device->CreateRenderTargetView(m_OvrlTex, &ovrl_tex_rtv_desc, &m_OvrlRTV);
-
-    // Create the shader resource view for overlay texture while we're at it
-    ovrl_tex_shader_res_view_desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    ovrl_tex_shader_res_view_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    ovrl_tex_shader_res_view_desc.Texture2D.MostDetailedMip = 0;
-    ovrl_tex_shader_res_view_desc.Texture2D.MipLevels = 1;
-
-    m_Device->CreateShaderResourceView(m_OvrlTex, &ovrl_tex_shader_res_view_desc, &m_OvrlShaderResView);
 
     return DUPL_RETURN_SUCCESS;
 }
@@ -3256,7 +3280,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
     TexD.Height           = m_DesktopHeight;
     TexD.MipLevels        = 1;
     TexD.ArraySize        = 1;
-    TexD.Format           = DXGI_FORMAT_B8G8R8A8_UNORM;
+    TexD.Format           = ((m_OutputHDRAvailable) && (ConfigManager::GetValue(configid_bool_performance_hdr_mirroring))) ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_B8G8R8A8_UNORM;
     TexD.SampleDesc.Count = 1;
     TexD.Usage            = D3D11_USAGE_DEFAULT;
     TexD.BindFlags        = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
@@ -3614,7 +3638,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
     {
         vr::Texture_t vrtex;
         vrtex.eType       = vr::TextureType_DirectX;
-        vrtex.eColorSpace = vr::ColorSpace_Gamma;
+        vrtex.eColorSpace = ((m_OutputHDRAvailable) && (ConfigManager::GetValue(configid_bool_performance_hdr_mirroring))) ? vr::ColorSpace_Linear : vr::ColorSpace_Gamma;
         vrtex.handle      = m_OvrlTex;
 
         //The intermediate texture can be assumed to be not complete when a full copy is forced, so redraw that
@@ -3773,7 +3797,7 @@ bool OutputManager::DesktopTextureAlphaCheck()
     desc.Height             = 1;
     desc.MipLevels          = 1;
     desc.ArraySize          = 1;
-    desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM;
+    desc.Format             = desc_ovrl_tex.Format;
     desc.SampleDesc.Count   = 1;
     desc.SampleDesc.Quality = 0;
     desc.Usage              = D3D11_USAGE_STAGING;
@@ -5517,6 +5541,8 @@ void OutputManager::ApplySetting3DMode()
 void OutputManager::ApplySettingTransform()
 {
     Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+    const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
     vr::VROverlayHandle_t ovrl_handle = overlay.GetHandle();
 
     //Fixup overlay visibility if needed
@@ -5742,6 +5768,13 @@ void OutputManager::ApplySettingTransform()
     //Update Brightness
     //We use the logarithmic counterpart since the changes in higher steps are barely visible while the lower range can really use those additional steps
     float brightness = lin2log(ConfigManager::Get().GetValue(configid_float_overlay_brightness));
+
+    //Apply HDR brightness multiplier if needed
+    if ((ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture))
+    {
+        brightness *= DPLUSWINRT_HDR_BRIGHTNESS_ADJUST;
+    }
+
     vr::VROverlay()->SetOverlayColor(ovrl_handle, brightness, brightness, brightness);
 
     //Set last tick for dashboard dummy delayed update

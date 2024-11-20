@@ -301,6 +301,8 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsPerformanceRapidUpdatesTip",
     "tstr_SettingsPerformanceSingleDesktopMirror",
     "tstr_SettingsPerformanceSingleDesktopMirrorTip",
+    "tstr_SettingsPerformanceUseHDR",
+    "tstr_SettingsPerformanceUseHDRTip",
     "tstr_SettingsPerformanceShowFPS",
     "tstr_SettingsWarningsHidden",
     "tstr_SettingsWarningsReset",

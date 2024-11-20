@@ -1,6 +1,15 @@
 #include "DuplicationManager.h"
 #include <wrl/client.h>
 
+#include <sdkddkver.h>
+
+//Keep building with 10.0.17763.0 / 1809 SDK optional
+#ifdef NTDDI_WIN10_RS5
+    #include <dxgi1_5.h>
+#else
+    #define DPLUS_DUP_NO_HDR
+#endif
+
 //
 // Constructor sets up references / variables
 //
@@ -47,9 +56,13 @@ DUPLICATIONMANAGER::~DUPLICATIONMANAGER()
 //
 // Initialize duplication interfaces
 //
-DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output, bool WMRIgnoreVScreens)
+DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output, bool WMRIgnoreVScreens, bool UseHDR)
 {
     m_OutputNumber = Output;
+
+    #ifdef DPLUS_DUP_NO_HDR
+        UseHDR = false;
+    #endif
 
     // Take a reference on the device
     m_Device = Device;
@@ -119,23 +132,51 @@ DUPL_RETURN DUPLICATIONMANAGER::InitDupl(_In_ ID3D11Device* Device, UINT Output,
 
     DxgiOutput->GetDesc(&m_OutputDesc);
 
-    Microsoft::WRL::ComPtr<IDXGIOutput1> DxgiOutput1;
-    hr = DxgiOutput.As(&DxgiOutput1);
-    if (FAILED(hr))
-    {
-        return ProcessFailure(nullptr, L"Failed to get output as DxgiOutput1", L"Desktop+ Error", hr);
-    }
-
     //Create desktop duplication
-    hr = DxgiOutput1->DuplicateOutput(m_Device, &m_DeskDupl);
-    if (FAILED(hr))
+    if (!UseHDR)
     {
-        if (hr == DXGI_ERROR_NOT_CURRENTLY_AVAILABLE)
+        Microsoft::WRL::ComPtr<IDXGIOutput1> DxgiOutput1;
+        hr = DxgiOutput.As(&DxgiOutput1);
+        if (FAILED(hr))
         {
-            ProcessFailure(m_Device, L"There is already the maximum number of applications using the Desktop Duplication API running, please close one of those applications and then try again", L"Desktop+ Error", hr);
-            return DUPL_RETURN_ERROR_UNEXPECTED;
+            return ProcessFailure(nullptr, L"Failed to get output as DxgiOutput1", L"Desktop+ Error", hr);
         }
-        return ProcessFailure(m_Device, L"Failed to get duplicate output", L"Desktop+ Error", hr, CreateDuplicationExpectedErrors);
+
+        hr = DxgiOutput1->DuplicateOutput(m_Device, &m_DeskDupl);
+        if (FAILED(hr))
+        {
+            if (hr == DXGI_ERROR_NOT_CURRENTLY_AVAILABLE)
+            {
+                ProcessFailure(m_Device, L"There is already the maximum number of applications using the Desktop Duplication API running, please close one of those applications and then try again", L"Desktop+ Error", hr);
+                return DUPL_RETURN_ERROR_UNEXPECTED;
+            }
+            return ProcessFailure(m_Device, L"Failed to get duplicate output", L"Desktop+ Error", hr, CreateDuplicationExpectedErrors);
+        }
+    }
+    else
+    {
+        #ifndef DPLUS_DUP_NO_HDR
+
+        Microsoft::WRL::ComPtr<IDXGIOutput5> DxgiOutput5;
+        hr = DxgiOutput.As(&DxgiOutput5);
+        if (FAILED(hr))
+        {
+            return ProcessFailure(nullptr, L"Failed to get output as DxgiOutput5", L"Desktop+ Error", hr);
+        }
+
+        const DXGI_FORMAT supported_formats[] = {DXGI_FORMAT_R16G16B16A16_FLOAT};
+        hr = DxgiOutput5->DuplicateOutput1(m_Device, 0, 1, supported_formats, &m_DeskDupl);
+        if (FAILED(hr))
+        {
+            if (hr == DXGI_ERROR_NOT_CURRENTLY_AVAILABLE)
+            {
+                ProcessFailure(m_Device, L"There is already the maximum number of applications using the Desktop Duplication API running, please close one of those applications and then try again", L"Desktop+ Error", hr);
+                return DUPL_RETURN_ERROR_UNEXPECTED;
+            }
+            return ProcessFailure(m_Device, L"Failed to get duplicate output", L"Desktop+ Error", hr, CreateDuplicationExpectedErrors);
+        }
+
+        #endif
     }
 
     return DUPL_RETURN_SUCCESS;

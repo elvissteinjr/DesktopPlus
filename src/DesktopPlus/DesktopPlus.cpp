@@ -766,8 +766,11 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
         goto Exit;
     }
 
+    D3D11_TEXTURE2D_DESC SharedSurfDesc;
+    SharedSurf->GetDesc(&SharedSurfDesc);
+
     // Make duplication manager
-    Ret = DuplMgr.InitDupl(TData->DxRes.Device, TData->Output, TData->WMRIgnoreVScreens);
+    Ret = DuplMgr.InitDupl(TData->DxRes.Device, TData->Output, TData->WMRIgnoreVScreens, SharedSurfDesc.Format != DXGI_FORMAT_B8G8R8A8_UNORM);
     if (Ret != DUPL_RETURN_SUCCESS)
     {
         goto Exit;

@@ -13,7 +13,7 @@ class DUPLICATIONMANAGER
         ~DUPLICATIONMANAGER();
         _Success_(*Timeout == false && return == DUPL_RETURN_SUCCESS) DUPL_RETURN GetFrame(_Out_ FRAME_DATA* Data, _Out_ bool* Timeout);
         DUPL_RETURN DoneWithFrame();
-        DUPL_RETURN InitDupl(_In_ ID3D11Device* Device, UINT Output, bool WMRIgnoreVScreens);
+        DUPL_RETURN InitDupl(_In_ ID3D11Device* Device, UINT Output, bool WMRIgnoreVScreens, bool UseHDR);
         DUPL_RETURN GetMouse(_Inout_ PTR_INFO* PtrInfo, _In_ DXGI_OUTDUPL_FRAME_INFO* FrameInfo, INT OffsetX, INT OffsetY);
         void GetOutputDesc(_Out_ DXGI_OUTPUT_DESC* DescPtr);
 

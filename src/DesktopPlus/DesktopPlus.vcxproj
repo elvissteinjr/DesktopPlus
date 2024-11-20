@@ -68,7 +68,7 @@
       <AdditionalLibraryDirectories>$(SolutionDir)Shared;$(OutputPath)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
-      <EnableDpiAwareness>true</EnableDpiAwareness>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
       <AssemblyIdentity>"DesktopPlus_$([System.DateTime]::Now.ToFileTime()), version=1"</AssemblyIdentity>
     </Manifest>
   </ItemDefinitionGroup>
@@ -99,7 +99,7 @@
       <AdditionalLibraryDirectories>$(SolutionDir)Shared;$(OutputPath)</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
-      <EnableDpiAwareness>true</EnableDpiAwareness>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
       <AssemblyIdentity>"DesktopPlus_$([System.DateTime]::Now.ToFileTime()), version=1"</AssemblyIdentity>
     </Manifest>
   </ItemDefinitionGroup>

@@ -578,6 +578,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_performance_update_limit_fps]                  = config.ReadInt( "Performance", "UpdateLimitFPS", update_limit_fps_30);
     m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]     = config.ReadBool("Performance", "RapidLaserPointerUpdates", false);
     m_ConfigBool[configid_bool_performance_single_desktop_mirroring]        = config.ReadBool("Performance", "SingleDesktopMirroring", false);
+    m_ConfigBool[configid_bool_performance_hdr_mirroring]                   = config.ReadBool("Performance", "HDRMirroring", false);
     m_ConfigBool[configid_bool_performance_show_fps]                        = config.ReadBool("Performance", "ShowFPS", false);
     m_ConfigBool[configid_bool_performance_monitor_large_style]             = config.ReadBool("Performance", "PerformanceMonitorStyleLarge", true);
     m_ConfigBool[configid_bool_performance_monitor_show_graphs]             = config.ReadBool("Performance", "PerformanceMonitorShowGraphs", true);
@@ -647,6 +648,8 @@ bool ConfigManager::LoadConfigFromFile()
         {
             DPWinRT_SetCaptureCursorEnabled(m_ConfigBool[configid_bool_input_mouse_render_cursor]);
         }
+
+        DPWinRT_SetHDREnabled(m_ConfigBool[configid_bool_performance_hdr_mirroring]);
 
         //Apply global settings for DPBrowser
         if (DPBrowserAPIClient::Get().IsBrowserAvailable())
@@ -1547,6 +1550,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteInt( "Performance", "UpdateLimitFPS",                       m_ConfigInt[configid_int_performance_update_limit_fps]);
     config.WriteBool("Performance", "RapidLaserPointerUpdates",             m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]);
     config.WriteBool("Performance", "SingleDesktopMirroring",               m_ConfigBool[configid_bool_performance_single_desktop_mirroring]);
+    config.WriteBool("Performance", "HDRMirroring",                         m_ConfigBool[configid_bool_performance_hdr_mirroring]);
     config.WriteBool("Performance", "ShowFPS",                              m_ConfigBool[configid_bool_performance_show_fps]);
     config.WriteBool("Performance", "PerformanceMonitorStyleLarge",         m_ConfigBool[configid_bool_performance_monitor_large_style]);
     config.WriteBool("Performance", "PerformanceMonitorShowGraphs",         m_ConfigBool[configid_bool_performance_monitor_show_graphs]);
