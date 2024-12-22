@@ -1305,6 +1305,8 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                             IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_state_browser_nav_is_loading,     data.ConfigBool[configid_bool_overlay_state_browser_nav_is_loading]);
                         }
 
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_state_brightness_extra_multiplier, data.ConfigFloat[configid_float_overlay_state_brightness_extra_multiplier]);
+
                         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
                     }
 
@@ -1665,6 +1667,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                             ApplySettingCrop();
                             ApplySettingTransform();
                             ApplySettingMouseScale();
+                            ApplySettingExtraBrightness();
                         }
 
                         reset_mirroring = (ConfigManager::GetValue(configid_bool_performance_single_desktop_mirroring) && (msg.lParam != previous_value));
@@ -2249,6 +2252,193 @@ int OutputManager::GetDesktopHeight() const
 const std::vector<DPRect>& OutputManager::GetDesktopRects() const
 {
     return m_DesktopRects;
+}
+
+float OutputManager::GetDesktopHDRWhiteLevelAdjustment(int desktop_id, bool is_for_graphics_capture, bool wmr_ignore_vscreens) const
+{
+    #ifdef DPLUS_DUP_NO_HDR
+        return 1.0f;
+    #else
+
+    if (desktop_id == -1)
+        desktop_id = 0;
+
+    if ((!m_OutputHDRAvailable) && (!is_for_graphics_capture))
+        return 1.0f;
+
+    DXGI_OUTPUT_DESC output_desc = {};
+    Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
+
+    //This needs to go through DXGI as QueryDisplayConfig()'s order can be different
+    HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
+    if (!FAILED(hr))
+    {
+        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
+        UINT i = 0;
+        int output_count = 0;
+
+        while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
+        {
+            //Check if this a WMR virtual display adapter and skip it when the option is enabled
+            if (wmr_ignore_vscreens)
+            {
+                DXGI_ADAPTER_DESC adapter_desc;
+                adapter_ptr->GetDesc(&adapter_desc);
+
+                if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
+                {
+                    ++i;
+                    continue;
+                }
+            }
+
+            //Enum the available outputs
+            Microsoft::WRL::ComPtr<IDXGIOutput> output_ptr;
+            UINT output_index = 0;
+            while (adapter_ptr->EnumOutputs(output_index, &output_ptr) != DXGI_ERROR_NOT_FOUND)
+            {
+                //Check if this happens to be the output we're looking for
+                if (desktop_id == output_count)
+                {
+                    //Get output desc
+                    output_ptr->GetDesc(&output_desc);
+                }
+
+                ++output_index;
+                ++output_count;
+            }
+
+            ++i;
+        }
+    }
+
+    //Find display config with the same device path
+    std::vector<DISPLAYCONFIG_PATH_INFO> paths;
+    std::vector<DISPLAYCONFIG_MODE_INFO> modes;
+    const UINT32 flags = QDC_ONLY_ACTIVE_PATHS | QDC_VIRTUAL_MODE_AWARE;
+    LONG result = ERROR_SUCCESS;
+
+    //Loop until buffer allocation for paths match the requirements
+    do
+    {
+        UINT32 path_count, mode_count;
+        result = ::GetDisplayConfigBufferSizes(flags, &path_count, &mode_count);
+
+        if (result != ERROR_SUCCESS)
+        {
+            LOG_F(ERROR, "GetDisplayConfigBufferSizes() failed with %ld", result);
+            return 1.0f;
+        }
+
+        paths.resize(path_count);
+        modes.resize(mode_count);
+
+        result = ::QueryDisplayConfig(flags, &path_count, paths.data(), &mode_count, modes.data(), nullptr);
+
+        paths.resize(path_count);
+        modes.resize(mode_count);
+    } 
+    while (result == ERROR_INSUFFICIENT_BUFFER);
+
+    if (result != ERROR_SUCCESS)
+    {
+        LOG_F(ERROR, "QueryDisplayConfig() failed with %ld", result);
+        return 1.0f;
+    }
+
+    //Check each active path
+    for (auto& path : paths)
+    {
+        DISPLAYCONFIG_SOURCE_DEVICE_NAME source_name = {};
+        source_name.header.adapterId = path.sourceInfo.adapterId;
+        source_name.header.id = path.sourceInfo.id;
+        source_name.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+        source_name.header.size = sizeof(source_name);
+
+        result = ::DisplayConfigGetDeviceInfo(&source_name.header);
+
+        if (result == ERROR_SUCCESS)
+        {
+            if (wcscmp(source_name.viewGdiDeviceName, output_desc.DeviceName) == 0)
+            {
+                //Found the right display config path, time to grab the data
+                bool is_hdr_enabled = false;
+                bool is_8bit = true;
+                ULONG sdr_white_level = 1000;
+
+                #if (NTDDI_VERSION >= NTDDI_WIN11_GA)
+                    DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 adv_color_info_2 = {};
+                    adv_color_info_2.header.adapterId = path.targetInfo.adapterId;
+                    adv_color_info_2.header.id = path.targetInfo.id;
+                    adv_color_info_2.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO_2;
+                    adv_color_info_2.header.size = sizeof(adv_color_info_2);
+
+                    result = ::DisplayConfigGetDeviceInfo(&adv_color_info_2.header);
+
+                    if (result == ERROR_SUCCESS)
+                    {
+                        is_8bit = (adv_color_info_2.bitsPerColorChannel == 8);
+                        //DISPLAYCONFIG_ADVANCED_COLOR_MODE_WCG is still higher bit-depth but seems like it needs to be handled differently
+                        is_hdr_enabled = (adv_color_info_2.activeColorMode == DISPLAYCONFIG_ADVANCED_COLOR_MODE_HDR);
+                    }
+
+                    if (is_hdr_enabled)
+                    {
+                        DISPLAYCONFIG_SDR_WHITE_LEVEL config_sdr_white_level = {};
+                        config_sdr_white_level.header.adapterId = path.targetInfo.adapterId;
+                        config_sdr_white_level.header.id = path.targetInfo.id;
+                        config_sdr_white_level.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SDR_WHITE_LEVEL;
+                        config_sdr_white_level.header.size = sizeof(sdr_white_level);
+
+                        result = ::DisplayConfigGetDeviceInfo(&config_sdr_white_level.header);
+
+                        if (result == ERROR_SUCCESS)
+                        {
+                            sdr_white_level = config_sdr_white_level.SDRWhiteLevel;
+                        }
+                    }
+                #endif
+
+                DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO adv_color_info = {};
+                adv_color_info.header.adapterId = path.targetInfo.adapterId;
+                adv_color_info.header.id = path.targetInfo.id;
+                adv_color_info.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO;
+                adv_color_info.header.size = sizeof(adv_color_info);
+
+                result = ::DisplayConfigGetDeviceInfo(&adv_color_info.header);
+
+                if (result == ERROR_SUCCESS)
+                {
+                    is_8bit = (adv_color_info.bitsPerColorChannel == 8);
+                }
+
+                //The following is based on potentially incomplete observations and doesn't appear to be documented anywhere otherwise
+                //Checking different OS versions without access to a HDR display in a VM makes things a little bit messy... so this likely needs to be fixed up later
+                if (is_8bit)
+                {
+                    //This the easiest to check and has been observed across several Windows 10 and 11 versions, why it's like this I don't know
+                    return (is_for_graphics_capture) ? 0.5f : 1.0f;
+                }
+                else if (is_hdr_enabled)
+                {
+                    //Observed on Windows 11 24H2, but not on Windows 10 (DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 doesn't exist there so it won't hit this path)
+                    return 1000.0f / sdr_white_level;
+                }
+                else
+                {
+                    //Observed on Windows 10 20H2, but potentially always applies to DISPLAYCONFIG_ADVANCED_COLOR_MODE_WCG in general and DISPLAYCONFIG_ADVANCED_COLOR_MODE_HDR doesn't exist there?
+                    //However, also observed displays set to HDR get non-linear pixel data written by Desktop Duplication on there (Graphics Capture and Desktop Duplication non-HDR display pixels are correct)
+                    //Might have some unknown factor causing it, even if fixable with extra steps in theory... so it is what it is for now.
+                    return (is_for_graphics_capture) ? 0.5f : 1.0f;
+                }
+            }
+        }
+    }
+
+    LOG_F(WARNING, "Could not find display config for desktop %d, defaulting to 100% brightness adjustment", desktop_id);
+    return 1.0f;
+
+    #endif //DPLUS_DUP_NO_HDR
 }
 
 void OutputManager::ShowOverlay(unsigned int id)
@@ -5203,6 +5393,7 @@ void OutputManager::CropToDisplay(int display_id, bool do_not_apply_setting)
         ApplySettingCrop();
         ApplySettingTransform();
         ApplySettingMouseScale();
+        ApplySettingExtraBrightness();
     }
 }
 
@@ -5453,6 +5644,8 @@ void OutputManager::ApplySettingCaptureSource()
             overlay.SetTextureSource(ovrl_texsource_none);
         }
     }
+
+    ApplySettingExtraBrightness();
 }
 
 void OutputManager::ApplySetting3DMode()
@@ -5767,14 +5960,7 @@ void OutputManager::ApplySettingTransform()
 
     //Update Brightness
     //We use the logarithmic counterpart since the changes in higher steps are barely visible while the lower range can really use those additional steps
-    float brightness = lin2log(ConfigManager::Get().GetValue(configid_float_overlay_brightness));
-
-    //Apply HDR brightness multiplier if needed
-    if ((ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture))
-    {
-        brightness *= DPLUSWINRT_HDR_BRIGHTNESS_ADJUST;
-    }
-
+    float brightness = lin2log(ConfigManager::GetValue(configid_float_overlay_brightness)) * ConfigManager::GetValue(configid_float_overlay_state_brightness_extra_multiplier);
     vr::VROverlay()->SetOverlayColor(ovrl_handle, brightness, brightness, brightness);
 
     //Set last tick for dashboard dummy delayed update
@@ -6173,6 +6359,53 @@ void OutputManager::ApplySettingUpdateLimiter()
     }
 
     m_PerformanceUpdateLimiterDelay.QuadPart = 1000.0f * limit_ms;
+}
+
+void OutputManager::ApplySettingExtraBrightness()
+{
+    Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+    OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+    float extra_brightness_mulitplier = 1.0f;
+
+    if (ConfigManager::GetValue(configid_bool_performance_hdr_mirroring))
+    {
+        const bool ignore_wmr_vscreens = (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1);
+
+        switch (overlay.GetTextureSource())
+        {
+            case ovrl_texsource_desktop_duplication:
+            case ovrl_texsource_desktop_duplication_3dou_converted:
+            {
+                extra_brightness_mulitplier = GetDesktopHDRWhiteLevelAdjustment(data.ConfigInt[configid_int_overlay_desktop_id], false, ignore_wmr_vscreens);
+                break;
+            }
+            case ovrl_texsource_winrt_capture:
+            {
+                int desktop_id = data.ConfigInt[configid_int_overlay_winrt_desktop_id];
+
+                //Window capture, need to find the desktop ID it's on
+                if (desktop_id == -2)
+                {
+                    HMONITOR monitor_handle = ::MonitorFromWindow((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], MONITOR_DEFAULTTONEAREST);
+                    desktop_id = GetDisplayIDFromHMonitor(monitor_handle, ignore_wmr_vscreens);
+                }
+
+                extra_brightness_mulitplier = GetDesktopHDRWhiteLevelAdjustment(desktop_id, true, ignore_wmr_vscreens);
+            }
+            default: break;
+        }
+    }
+
+    if (data.ConfigFloat[configid_float_overlay_state_brightness_extra_multiplier] != extra_brightness_mulitplier)
+    {
+        data.ConfigFloat[configid_float_overlay_state_brightness_extra_multiplier] = extra_brightness_mulitplier;
+
+        //Send change over to UI
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)overlay.GetID());
+        IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_state_brightness_extra_multiplier, extra_brightness_mulitplier);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+    }
 }
 
 void OutputManager::DetachedTransformSync(unsigned int overlay_id)

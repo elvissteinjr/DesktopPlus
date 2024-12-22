@@ -60,6 +60,7 @@ class OutputManager
         int GetDesktopWidth() const;
         int GetDesktopHeight() const;
         const std::vector<DPRect>& GetDesktopRects() const;
+        float GetDesktopHDRWhiteLevelAdjustment(int desktop_id, bool is_for_graphics_capture, bool wmr_ignore_vscreens) const;
 
         void ShowOverlay(unsigned int id);
         void ShowTheaterOverlay(unsigned int id);
@@ -125,6 +126,7 @@ class OutputManager
         void ApplySettingMouseInput();
         void ApplySettingMouseScale();
         void ApplySettingUpdateLimiter();
+        void ApplySettingExtraBrightness();
 
         void DetachedTransformSync(unsigned int overlay_id);
         void DetachedTransformSyncAll();

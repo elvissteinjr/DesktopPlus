@@ -2148,13 +2148,7 @@ void UIManager::HighlightOverlay(unsigned int overlay_id)
         if ( (ovrl_handle != vr::k_ulOverlayHandleInvalid) && (colored_handle == vr::k_ulOverlayHandleInvalid) )
         {
             const OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)overlay_id);
-            float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]);
-
-            //Apply HDR brightness multiplier if needed
-            if ((ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture))
-            {
-                brightness *= DPLUSWINRT_HDR_BRIGHTNESS_ADJUST;
-            }
+            float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]) * data.ConfigFloat[configid_float_overlay_state_brightness_extra_multiplier];
 
             ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
 
@@ -2165,13 +2159,7 @@ void UIManager::HighlightOverlay(unsigned int overlay_id)
         else if ( (colored_handle != vr::k_ulOverlayHandleInvalid) && (colored_handle != ovrl_handle) ) //Remove tint if overlay handle is different or vr::k_ulOverlayHandleInvalid
         {
             const OverlayConfigData& data = OverlayManager::Get().GetConfigData(OverlayManager::Get().FindOverlayID(colored_handle));
-            float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]);
-
-            //Apply HDR brightness multiplier if needed
-            if ((ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture))
-            {
-                brightness *= DPLUSWINRT_HDR_BRIGHTNESS_ADJUST;
-            }
+            float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]) * data.ConfigFloat[configid_float_overlay_state_brightness_extra_multiplier];
 
             vr::VROverlay()->SetOverlayColor(colored_handle, brightness, brightness, brightness);
 

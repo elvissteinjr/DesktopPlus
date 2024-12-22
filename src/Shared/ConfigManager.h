@@ -194,6 +194,7 @@ enum ConfigID_Float
     configid_float_overlay_gazefade_rate,
     configid_float_overlay_gazefade_opacity,
     configid_float_overlay_update_limit_override_ms,
+    configid_float_overlay_state_brightness_extra_multiplier, //Multiplier applied on top of configid_float_overlay_brightness, currently used for HDR adjustment
     configid_float_overlay_MAX,
     configid_float_input_detached_interaction_max_distance,
     configid_float_input_global_hmd_pointer_max_distance,
@@ -202,7 +203,7 @@ enum ConfigID_Float
     configid_float_interface_desktop_ui_scale_override,
     configid_float_interface_last_vr_ui_scale,
     configid_float_performance_update_limit_ms,
-    configid_float_state_overlay_transform_sync_value,      //Used for sending overlay transforms asynchronously. This is done by sending 16 of these after setting the target id
+    configid_float_state_overlay_transform_sync_value,        //Used for sending overlay transforms asynchronously. This is done by sending 16 of these after setting the target id
     configid_float_MAX
 };
 

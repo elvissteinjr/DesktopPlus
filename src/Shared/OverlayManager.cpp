@@ -270,9 +270,10 @@ unsigned int OverlayManager::AddOverlay(OverlayCaptureSource capture_source, int
     m_CurrentOverlayID = current_id_old;
 
     //Apply additional defaults
-    data.ConfigInt[configid_int_overlay_capture_source]  = capture_source;
-    data.ConfigFloat[configid_float_overlay_width]       = 0.3f;
-    data.ConfigFloat[configid_float_overlay_curvature]   = 0.0f;
+    data.ConfigInt[configid_int_overlay_capture_source]                        = capture_source;
+    data.ConfigFloat[configid_float_overlay_width]                             = 0.3f;
+    data.ConfigFloat[configid_float_overlay_curvature]                         = 0.0f;
+    data.ConfigFloat[configid_float_overlay_state_brightness_extra_multiplier] = 1.0f;
 
     switch (capture_source)
     {

@@ -42,10 +42,6 @@
 #define WM_DPLUSWINRT_THREAD_ACK    WM_DPLUSWINRT+8  //Sent to main thread to acknowledge thread messages from StopCapture() (main thread is blocked until this is received)
 #define WM_DPLUSWINRT_FPS           WM_DPLUSWINRT+9  //Sent to main thread when fps count has changed. wParam = overlay handle, lParam = frames per second
 
-//The HDR texture returned by Graphics Capture appears to need a fixed brightness adjustment to match expectations
-//Desktop Duplication doesn't require this, so perhaps there's more to it... or not
-#define DPLUSWINRT_HDR_BRIGHTNESS_ADJUST 0.5f
-
 #ifdef __cplusplus
 extern "C" {
 #endif
