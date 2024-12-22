@@ -27,11 +27,12 @@ namespace vr
             uint32_t ovrl_height;
             uint32_t ovrl_native_format;
             ETextureType ovrl_api_type;
+            EColorSpace ovrl_color_space;
             VRTextureBounds_t ovrl_tex_bounds;
 
-            VROverlayError ovrl_error = VROverlayError_None;
+            VROverlayError ovrl_error = vr::VROverlayError_None;
             ovrl_error = VROverlay()->GetOverlayTexture(overlay_handle, (void**)&shared_tex.ShaderResourceView, device_texture_ref, &ovrl_width, &ovrl_height, &ovrl_native_format,
-                                                        &ovrl_api_type, &shared_tex.TextureColorSpace, &ovrl_tex_bounds);
+                                                        &ovrl_api_type, &ovrl_color_space, &ovrl_tex_bounds);
 
             //Shader Resource View set despite returning an error might not ever happen, but call release if it does
             if ((ovrl_error != VROverlayError_None) && (shared_tex.ShaderResourceView != nullptr))
