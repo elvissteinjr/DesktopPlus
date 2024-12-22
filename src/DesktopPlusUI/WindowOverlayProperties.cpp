@@ -732,7 +732,7 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayBrightness") );
     if (ImGui::SliderWithButtonsFloatPercentage("OverlayBrightness", brightness, 5, 1, 0, 100, "%d%%"))
     {
-        brightness = clamp(brightness, 0.0f, 1.0f);
+        brightness = clamp(brightness, 0.0f, (ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)) ? 10.0f : 1.0f);
 
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_brightness, brightness);
     }
