@@ -10,6 +10,7 @@
 #include <dwmapi.h>
 #include <windowsx.h>
 #include <ShlDisp.h>
+#include <DirectXPackedVector.h>
 using namespace DirectX;
 #include <sstream>
 
@@ -82,8 +83,6 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlTempDragStartTick(0),
     m_PendingDashboardDummyHeight(0.0f),
     m_LastApplyTransformTick(0),
-    m_MouseTex(nullptr),
-    m_MouseShaderRes(nullptr),
     m_MouseLastClickTick(0),
     m_MouseIgnoreMoveEvent(false),
     m_MouseCursorNeedsUpdate(false),
@@ -222,17 +221,8 @@ void OutputManager::CleanRefs()
         m_OvrlRTV = nullptr;
     }
 
-    if (m_MouseTex)
-    {
-        m_MouseTex->Release();
-        m_MouseTex = nullptr;
-    }
-
-    if (m_MouseShaderRes)
-    {
-        m_MouseShaderRes->Release();
-        m_MouseShaderRes = nullptr;
-    }
+    m_MouseTex.Reset();
+    m_MouseShaderRes.Reset();
 
     //Reset mouse state variables too
     m_MouseLastClickTick = 0;
@@ -2930,6 +2920,7 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
 
     m_DesktopRects.clear();
     m_DesktopRectTotal = DPRect();   //Figure out right dimensions for full size desktop rect (this is also done in CreateTextures() but for Desktop Duplication only)
+    m_DesktopHDRWhiteLevelAdjustments.clear();
 
     HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
     if (!FAILED(hr))
@@ -3005,6 +2996,9 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
                       output_desc.DesktopCoordinates.left, output_desc.DesktopCoordinates.top,
                       output_desc.DesktopCoordinates.right - output_desc.DesktopCoordinates.left, output_desc.DesktopCoordinates.bottom - output_desc.DesktopCoordinates.top,
                       StringConvertFromUTF16(output_desc.DeviceName).c_str());
+
+                //Cache HDR white level adjustment
+                m_DesktopHDRWhiteLevelAdjustments.push_back(GetDesktopHDRWhiteLevelAdjustment(output_count, false, wmr_ignore_vscreens));
 
                 ++output_count;
                 ++output_index;
@@ -3129,188 +3123,498 @@ void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter
 //
 // Process both masked and monochrome pointers
 //
-DUPL_RETURN OutputManager::ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInfo, _Out_ INT* PtrWidth, _Out_ INT* PtrHeight, _Out_ INT* PtrLeft, _Out_ INT* PtrTop, _Outptr_result_bytebuffer_(*PtrHeight * *PtrWidth * BPP) BYTE** InitBuffer, _Out_ D3D11_BOX* Box)
+DUPL_RETURN OutputManager::ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
+                                           Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box)
 {
+    out_tex_format = DXGI_FORMAT_UNKNOWN;
+
     //PtrShapeBuffer can sometimes be nullptr when the secure desktop is active, skip
-    if (PtrInfo->PtrShapeBuffer == nullptr)
+    if (ptr_info.PtrShapeBuffer == nullptr)
         return DUPL_RETURN_SUCCESS;
 
-    // Desktop dimensions
+    //Desktop dimensions
     D3D11_TEXTURE2D_DESC FullDesc;
     m_SharedSurf->GetDesc(&FullDesc);
-    INT DesktopWidth  = FullDesc.Width;
-    INT DesktopHeight = FullDesc.Height;
+    int desktop_width  = FullDesc.Width;
+    int desktop_height = FullDesc.Height;
 
-    // Pointer position
-    INT GivenLeft = PtrInfo->Position.x;
-    INT GivenTop  = PtrInfo->Position.y;
+    //Pointer position
+    int ptr_info_pos_left = ptr_info.Position.x;
+    int ptr_info_pos_top  = ptr_info.Position.y;
 
-    // Figure out if any adjustment is needed for out of bound positions
-    if (GivenLeft < 0)
+    //Figure out if any adjustment is needed for out of bound positions
+    if (ptr_info_pos_left < 0)
     {
-        *PtrWidth = GivenLeft + static_cast<INT>(PtrInfo->ShapeInfo.Width);
+        ptr_width = ptr_info_pos_left + (int)ptr_info.ShapeInfo.Width;
     }
-    else if ((GivenLeft + static_cast<INT>(PtrInfo->ShapeInfo.Width)) > DesktopWidth)
+    else if ((ptr_info_pos_left + (int)ptr_info.ShapeInfo.Width) > desktop_width)
     {
-        *PtrWidth = DesktopWidth - GivenLeft;
+        ptr_width = desktop_height - ptr_info_pos_left;
     }
     else
     {
-        *PtrWidth = static_cast<INT>(PtrInfo->ShapeInfo.Width);
+        ptr_width = (int)ptr_info.ShapeInfo.Width;
     }
 
-    if (IsMono)
+    if (is_mono)
     {
-        PtrInfo->ShapeInfo.Height = PtrInfo->ShapeInfo.Height / 2;
+        ptr_info.ShapeInfo.Height = ptr_info.ShapeInfo.Height / 2;
     }
 
-    if (GivenTop < 0)
+    if (ptr_info_pos_top < 0)
     {
-        *PtrHeight = GivenTop + static_cast<INT>(PtrInfo->ShapeInfo.Height);
+        ptr_height = ptr_info_pos_top + (int)ptr_info.ShapeInfo.Height;
     }
-    else if ((GivenTop + static_cast<INT>(PtrInfo->ShapeInfo.Height)) > DesktopHeight)
+    else if ((ptr_info_pos_top + (int)ptr_info.ShapeInfo.Height) > desktop_height)
     {
-        *PtrHeight = DesktopHeight - GivenTop;
+        ptr_height = desktop_height - ptr_info_pos_top;
     }
     else
     {
-        *PtrHeight = static_cast<INT>(PtrInfo->ShapeInfo.Height);
+        ptr_height = (int)ptr_info.ShapeInfo.Height;
     }
 
-    if (IsMono)
+    if (is_mono)
     {
-        PtrInfo->ShapeInfo.Height = PtrInfo->ShapeInfo.Height * 2;
+        ptr_info.ShapeInfo.Height = ptr_info.ShapeInfo.Height * 2;
     }
 
-    *PtrLeft = (GivenLeft < 0) ? 0 : GivenLeft;
-    *PtrTop  = (GivenTop < 0)  ? 0 : GivenTop;
+    ptr_left = (ptr_info_pos_left < 0) ? 0 : ptr_info_pos_left;
+    ptr_top  = (ptr_info_pos_top < 0)  ? 0 : ptr_info_pos_top;
 
     // Staging buffer/texture
-    D3D11_TEXTURE2D_DESC CopyBufferDesc;
-    CopyBufferDesc.Width              = *PtrWidth;
-    CopyBufferDesc.Height             = *PtrHeight;
-    CopyBufferDesc.MipLevels          = 1;
-    CopyBufferDesc.ArraySize          = 1;
-    CopyBufferDesc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM;
-    CopyBufferDesc.SampleDesc.Count   = 1;
-    CopyBufferDesc.SampleDesc.Quality = 0;
-    CopyBufferDesc.Usage              = D3D11_USAGE_STAGING;
-    CopyBufferDesc.BindFlags          = 0;
-    CopyBufferDesc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
-    CopyBufferDesc.MiscFlags          = 0;
+    D3D11_TEXTURE2D_DESC copy_buffer_desc = {};
+    copy_buffer_desc.Width              = ptr_width;
+    copy_buffer_desc.Height             = ptr_height;
+    copy_buffer_desc.MipLevels          = 1;
+    copy_buffer_desc.ArraySize          = 1;
+    copy_buffer_desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM;
+    copy_buffer_desc.SampleDesc.Count   = 1;
+    copy_buffer_desc.SampleDesc.Quality = 0;
+    copy_buffer_desc.Usage              = D3D11_USAGE_STAGING;
+    copy_buffer_desc.BindFlags          = 0;
+    copy_buffer_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
+    copy_buffer_desc.MiscFlags          = 0;
 
-    ID3D11Texture2D* CopyBuffer = nullptr;
-    HRESULT hr = m_Device->CreateTexture2D(&CopyBufferDesc, nullptr, &CopyBuffer);
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> copy_buffer;
+    HRESULT hr = m_Device->CreateTexture2D(&copy_buffer_desc, nullptr, &copy_buffer);
     if (FAILED(hr))
     {
         return ProcessFailure(m_Device, L"Failed creating staging texture for pointer", L"Desktop+ Error", S_OK, SystemTransitionsExpectedErrors); //Shouldn't be critical
     }
 
-    // Copy needed part of desktop image
-    Box->left   = *PtrLeft;
-    Box->top    = *PtrTop;
-    Box->right  = *PtrLeft + *PtrWidth;
-    Box->bottom = *PtrTop + *PtrHeight;
-    m_DeviceContext->CopySubresourceRegion(CopyBuffer, 0, 0, 0, 0, m_SharedSurf, 0, Box);
+    //Copy needed part of desktop image
+    box.left   = ptr_left;
+    box.top    = ptr_top;
+    box.right  = ptr_left + ptr_width;
+    box.bottom = ptr_top  + ptr_height;
+    m_DeviceContext->CopySubresourceRegion(copy_buffer.Get(), 0, 0, 0, 0, m_SharedSurf, 0, &box);
 
-    // QI for IDXGISurface
-    IDXGISurface* CopySurface = nullptr;
-    hr = CopyBuffer->QueryInterface(__uuidof(IDXGISurface), (void **)&CopySurface);
-    CopyBuffer->Release();
-    CopyBuffer = nullptr;
+    //QI for IDXGISurface
+    Microsoft::WRL::ComPtr<IDXGISurface> copy_surface;
+    hr = copy_buffer.As(&copy_surface);
     if (FAILED(hr))
     {
         return ProcessFailure(nullptr, L"Failed to QI staging texture into IDXGISurface for pointer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // Map pixels
-    DXGI_MAPPED_RECT MappedSurface;
-    hr = CopySurface->Map(&MappedSurface, DXGI_MAP_READ);
+    DXGI_MAPPED_RECT mapped_surface;
+    hr = copy_surface->Map(&mapped_surface, DXGI_MAP_READ);
     if (FAILED(hr))
     {
-        CopySurface->Release();
-        CopySurface = nullptr;
         return ProcessFailure(m_Device, L"Failed to map surface for pointer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
-    // New mouseshape buffer
-    *InitBuffer = new (std::nothrow) BYTE[*PtrWidth * *PtrHeight * BPP];
-    if (!(*InitBuffer))
+    //New mouseshape buffer
+    auto init_buffer = std::unique_ptr<BYTE[]>{new (std::nothrow)BYTE[ptr_width * ptr_height * 4]};
+    if (init_buffer == nullptr)
     {
         return ProcessFailure(nullptr, L"Failed to allocate memory for new mouse shape buffer.", L"Desktop+ Error", E_OUTOFMEMORY);
     }
 
-    UINT* InitBuffer32 = reinterpret_cast<UINT*>(*InitBuffer);
-    UINT* Desktop32 = reinterpret_cast<UINT*>(MappedSurface.pBits);
-    UINT  DesktopPitchInPixels = MappedSurface.Pitch / sizeof(UINT);
+    uint32_t* init_buffer_u32    = (uint32_t*)init_buffer.get();
+    uint32_t* desktop_buffer_u32 = (uint32_t*)mapped_surface.pBits;
+    int desktop_buffer_pitch     = mapped_surface.Pitch / sizeof(uint32_t);
 
     // What to skip (pixel offset)
-    UINT SkipX = (GivenLeft < 0) ? (-1 * GivenLeft) : (0);
-    UINT SkipY = (GivenTop < 0)  ? (-1 * GivenTop)  : (0);
+    unsigned int ptr_skip_x = (ptr_info_pos_left < 0) ? (-1 * ptr_info_pos_left) : (0);
+    unsigned int ptr_skip_y = (ptr_info_pos_top < 0)  ? (-1 * ptr_info_pos_top)  : (0);
+    int ptr_height_half = ptr_info.ShapeInfo.Height / 2;
 
-    if (IsMono)
+    if (is_mono)
     {
-        for (INT Row = 0; Row < *PtrHeight; ++Row)
+        //Iterate through pointer shape pixels
+        for (int ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
         {
-            // Set mask
-            BYTE Mask = 0x80;
-            Mask = Mask >> (SkipX % 8);
-            for (INT Col = 0; Col < *PtrWidth; ++Col)
+            //Set mask
+            uint8_t mask_base = 0x80;
+            mask_base = mask_base >> (ptr_skip_x % 8);
+            for (int ptr_pixel_col = 0; ptr_pixel_col < ptr_width; ++ptr_pixel_col)
             {
-                // Get masks using appropriate offsets
-                BYTE AndMask = PtrInfo->PtrShapeBuffer[((Col + SkipX) / 8) + ((Row + SkipY) * (PtrInfo->ShapeInfo.Pitch))] & Mask;
-                BYTE XorMask = PtrInfo->PtrShapeBuffer[((Col + SkipX) / 8) + ((Row + SkipY + (PtrInfo->ShapeInfo.Height / 2)) * (PtrInfo->ShapeInfo.Pitch))] & Mask;
-                UINT AndMask32 = (AndMask) ? 0xFFFFFFFF : 0xFF000000;
-                UINT XorMask32 = (XorMask) ? 0x00FFFFFF : 0x00000000;
+                //Get masks using appropriate offsets
+                int mask_offset_base = ((ptr_pixel_col + ptr_skip_x) / 8);
+                BYTE mask_and = ptr_info.PtrShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y) * ptr_info.ShapeInfo.Pitch)                  ] & mask_base;
+                BYTE mask_xor = ptr_info.PtrShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y + ptr_height_half) * ptr_info.ShapeInfo.Pitch)] & mask_base;
+                uint32_t mask_and_u32 = (mask_and) ? 0xFFFFFFFF : 0xFF000000;
+                uint32_t mask_xor_u32 = (mask_xor) ? 0x00FFFFFF : 0x00000000;
 
-                // Set new pixel
-                InitBuffer32[(Row * *PtrWidth) + Col] = (Desktop32[(Row * DesktopPitchInPixels) + Col] & AndMask32) ^ XorMask32;
+                //Set new pixel
+                init_buffer_u32[(ptr_pixel_row * ptr_width) + ptr_pixel_col] = (desktop_buffer_u32[(ptr_pixel_row * desktop_buffer_pitch) + ptr_pixel_col] & mask_and_u32) ^ mask_xor_u32;
 
-                // Adjust mask
-                if (Mask == 0x01)
-                {
-                    Mask = 0x80;
-                }
-                else
-                {
-                    Mask = Mask >> 1;
-                }
+                //Adjust mask
+                mask_base = (mask_base == 0x01) ? 0x80 : mask_base >> 1;
             }
         }
     }
     else
     {
-        UINT* Buffer32 = reinterpret_cast<UINT*>(PtrInfo->PtrShapeBuffer);
+        uint32_t* shape_buffer_u32 = (uint32_t*)ptr_info.PtrShapeBuffer;
 
-        // Iterate through pixels
-        for (INT Row = 0; Row < *PtrHeight; ++Row)
+        //Iterate through pointer shape pixels
+        for (unsigned int ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
         {
-            for (INT Col = 0; Col < *PtrWidth; ++Col)
+            for (unsigned int ptr_pixel_col = 0; ptr_pixel_col < ptr_width; ++ptr_pixel_col)
             {
                 // Set up mask
-                UINT MaskVal = 0xFF000000 & Buffer32[(Col + SkipX) + ((Row + SkipY) * (PtrInfo->ShapeInfo.Pitch / sizeof(UINT)))];
+                uint32_t MaskVal = 0xFF000000 & shape_buffer_u32[(ptr_pixel_col + ptr_skip_x) + ((ptr_pixel_row + ptr_skip_y) * uint32_t(ptr_info.ShapeInfo.Pitch / sizeof(uint32_t)))];
                 if (MaskVal)
                 {
-                    // Mask was 0xFF
-                    InitBuffer32[(Row * *PtrWidth) + Col] = (Desktop32[(Row * DesktopPitchInPixels) + Col] ^ Buffer32[(Col + SkipX) + ((Row + SkipY) * (PtrInfo->ShapeInfo.Pitch / sizeof(UINT)))]) | 0xFF000000;
+                    //mask_value was 0xFF
+                    init_buffer_u32[(ptr_pixel_row * ptr_width) + ptr_pixel_col] = (desktop_buffer_u32[(ptr_pixel_row * desktop_buffer_pitch) + ptr_pixel_col] ^ shape_buffer_u32[(ptr_pixel_col + ptr_skip_x) + 
+                                                                                    ((ptr_pixel_row + ptr_skip_y) * uint32_t(ptr_info.ShapeInfo.Pitch / sizeof(uint32_t)))]) | 0xFF000000;
                 }
                 else
                 {
-                    // Mask was 0x00
-                    InitBuffer32[(Row * *PtrWidth) + Col] = Buffer32[(Col + SkipX) + ((Row + SkipY) * (PtrInfo->ShapeInfo.Pitch / sizeof(UINT)))] | 0xFF000000;
+                    //mask_value was 0x00
+                    init_buffer_u32[(ptr_pixel_row * ptr_width) + ptr_pixel_col] = shape_buffer_u32[(ptr_pixel_col + ptr_skip_x) + 
+                                                                                   ((ptr_pixel_row + ptr_skip_y) * uint32_t(ptr_info.ShapeInfo.Pitch / sizeof(uint32_t)))] | 0xFF000000;
                 }
             }
         }
     }
 
-    // Done with resource
-    hr = CopySurface->Unmap();
-    CopySurface->Release();
-    CopySurface = nullptr;
+    //Unmap surface
+    hr = copy_surface->Unmap();
     if (FAILED(hr))
     {
         return ProcessFailure(m_Device, L"Failed to unmap surface for pointer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
+
+    //Create texture
+    D3D11_TEXTURE2D_DESC tex_desc = {};
+    tex_desc.Width  = ptr_width;
+    tex_desc.Height = ptr_height;
+    tex_desc.MipLevels          = 1;
+    tex_desc.ArraySize          = 1;
+    tex_desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM;
+    tex_desc.SampleDesc.Count   = 1;
+    tex_desc.SampleDesc.Quality = 0;
+    tex_desc.Usage              = D3D11_USAGE_DEFAULT;
+    tex_desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
+    tex_desc.CPUAccessFlags     = 0;
+    tex_desc.MiscFlags          = 0;
+
+    //Set shader resource properties
+    D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+    srv_desc.Format                    = tex_desc.Format;
+    srv_desc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srv_desc.Texture2D.MostDetailedMip = tex_desc.MipLevels - 1;
+    srv_desc.Texture2D.MipLevels       = tex_desc.MipLevels;
+
+    //Set up init data
+    D3D11_SUBRESOURCE_DATA init_data = {};
+    init_data.pSysMem     = init_buffer.get();
+    init_data.SysMemPitch = ptr_width * 4;
+
+    //Create mouse pointer texture
+    hr = m_Device->CreateTexture2D(&tex_desc, &init_data, &out_tex);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to create mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+    }
+
+    out_tex_format = tex_desc.Format;
+
+    return DUPL_RETURN_SUCCESS;
+}
+
+DUPL_RETURN OutputManager::ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
+                                                  Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box)
+{
+    out_tex_format = DXGI_FORMAT_UNKNOWN;
+
+    //PtrShapeBuffer can sometimes be nullptr when the secure desktop is active, skip
+    if (ptr_info.PtrShapeBuffer == nullptr)
+        return DUPL_RETURN_SUCCESS;
+
+    //Desktop dimensions
+    D3D11_TEXTURE2D_DESC FullDesc;
+    m_SharedSurf->GetDesc(&FullDesc);
+    int DesktopWidth  = FullDesc.Width;
+    int DesktopHeight = FullDesc.Height;
+
+    //Pointer position
+    int ptr_info_pos_left = ptr_info.Position.x;
+    int ptr_info_pos_top  = ptr_info.Position.y;
+
+    //Figure out if any adjustment is needed for out of bound positions
+    if (ptr_info_pos_left < 0)
+    {
+        ptr_width = ptr_info_pos_left + (int)ptr_info.ShapeInfo.Width;
+    }
+    else if ((ptr_info_pos_left + (int)ptr_info.ShapeInfo.Width) > DesktopWidth)
+    {
+        ptr_width = DesktopWidth - ptr_info_pos_left;
+    }
+    else
+    {
+        ptr_width = (int)ptr_info.ShapeInfo.Width;
+    }
+
+    if (is_mono)
+    {
+        ptr_info.ShapeInfo.Height = ptr_info.ShapeInfo.Height / 2;
+    }
+
+    if (ptr_info_pos_top < 0)
+    {
+        ptr_height = ptr_info_pos_top + (int)ptr_info.ShapeInfo.Height;
+    }
+    else if ((ptr_info_pos_top + (int)ptr_info.ShapeInfo.Height) > DesktopHeight)
+    {
+        ptr_height = DesktopHeight - ptr_info_pos_top;
+    }
+    else
+    {
+        ptr_height = (int)ptr_info.ShapeInfo.Height;
+    }
+
+    if (is_mono)
+    {
+        ptr_info.ShapeInfo.Height = ptr_info.ShapeInfo.Height * 2;
+    }
+
+    ptr_left = (ptr_info_pos_left < 0) ? 0 : ptr_info_pos_left;
+    ptr_top  = (ptr_info_pos_top < 0)  ? 0 : ptr_info_pos_top;
+
+    //Staging buffer/texture
+    D3D11_TEXTURE2D_DESC copy_buffer_desc = {};
+    copy_buffer_desc.Width              = ptr_width;
+    copy_buffer_desc.Height             = ptr_height;
+    copy_buffer_desc.MipLevels          = 1;
+    copy_buffer_desc.ArraySize          = 1;
+    copy_buffer_desc.Format             = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    copy_buffer_desc.SampleDesc.Count   = 1;
+    copy_buffer_desc.SampleDesc.Quality = 0;
+    copy_buffer_desc.Usage              = D3D11_USAGE_STAGING;
+    copy_buffer_desc.BindFlags          = 0;
+    copy_buffer_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
+    copy_buffer_desc.MiscFlags          = 0;
+
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> copy_buffer;
+    HRESULT hr = m_Device->CreateTexture2D(&copy_buffer_desc, nullptr, &copy_buffer);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed creating staging texture for pointer", L"Desktop+ Error", S_OK, SystemTransitionsExpectedErrors); //Shouldn't be critical
+    }
+
+    //Copy needed part of desktop image
+    box.left   = ptr_left;
+    box.top    = ptr_top;
+    box.right  = ptr_left + ptr_width;
+    box.bottom = ptr_top  + ptr_height;
+    m_DeviceContext->CopySubresourceRegion(copy_buffer.Get(), 0, 0, 0, 0, m_SharedSurf, 0, &box);
+
+    //QI for IDXGISurface
+    Microsoft::WRL::ComPtr<IDXGISurface> copy_surface;
+    hr = copy_buffer.As(&copy_surface);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(nullptr, L"Failed to QI staging texture into IDXGISurface for pointer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+    }
+
+    //Map pixels
+    DXGI_MAPPED_RECT mapped_surface;
+    hr = copy_surface->Map(&mapped_surface, DXGI_MAP_READ);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to map surface for pointer", L"Error", hr, SystemTransitionsExpectedErrors);
+    }
+
+    //New mouseshape buffer
+    auto init_buffer = std::unique_ptr<BYTE[]>{new (std::nothrow)BYTE[ptr_width * ptr_height * 4 * sizeof(PackedVector::HALF)]};
+    if (init_buffer == nullptr)
+    {
+        return ProcessFailure(nullptr, L"Failed to allocate memory for new mouse shape buffer.", L"Desktop+ Error", E_OUTOFMEMORY);
+    }
+
+    PackedVector::HALF* init_buffer_f16    = (PackedVector::HALF*)init_buffer.get();
+    PackedVector::HALF* desktop_buffer_f16 = (PackedVector::HALF*)mapped_surface.pBits;
+    int desktop_buffer_pitch               = mapped_surface.Pitch / sizeof(PackedVector::HALF);
+
+    //What to skip (pixel offset)
+    unsigned int ptr_skip_x = (ptr_info_pos_left < 0) ? (-1 * ptr_info_pos_left) : (0);
+    unsigned int ptr_skip_y = (ptr_info_pos_top < 0)  ? (-1 * ptr_info_pos_top)  : (0);
+    int ptr_height_half = ptr_info.ShapeInfo.Height / 2;
+
+    //While the float value of SDR white may not be 1.0 depending on OS and system settings, the cursor texture is always 8-bit per channel
+    //This might not be 100% accurate, but masked color cursors are also very rare, so we mostly care about XOR negative color effects working
+    const float sdr_white_level_adjustment = (m_DesktopHDRWhiteLevelAdjustments.empty()) ? 1.0f : 
+                                              m_DesktopHDRWhiteLevelAdjustments[clamp((size_t)ptr_info.WhoUpdatedPositionLast, (size_t)0, m_DesktopHDRWhiteLevelAdjustments.size()-1)];
+
+    if (is_mono)
+    {
+        //Iterate through pointer shape pixels
+        for (int ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
+        {
+            //Set mask
+            uint8_t mask_base = 0x80;
+            mask_base = mask_base >> (ptr_skip_x % 8);
+            for (int ptr_pixel_col = 0; ptr_pixel_col < ptr_width; ++ptr_pixel_col)
+            {
+                const int offset_in  = (ptr_pixel_row * desktop_buffer_pitch) + (ptr_pixel_col * 4);
+                const int offset_out = ((ptr_pixel_row * ptr_width) + (ptr_pixel_col)) * 4;
+
+                //Get masks using appropriate offsets
+                int mask_offset_base = ((ptr_pixel_col + ptr_skip_x) / 8);
+                BYTE mask_and = ptr_info.PtrShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y) * ptr_info.ShapeInfo.Pitch)                  ] & mask_base;
+                BYTE mask_xor = ptr_info.PtrShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y + ptr_height_half) * ptr_info.ShapeInfo.Pitch)] & mask_base;
+
+                //Set new pixel
+                float f32_value_r = (mask_and) ? PackedVector::XMConvertHalfToFloat(desktop_buffer_f16[offset_in])     : 0.0f;
+                float f32_value_g = (mask_and) ? PackedVector::XMConvertHalfToFloat(desktop_buffer_f16[offset_in + 1]) : 0.0f;
+                float f32_value_b = (mask_and) ? PackedVector::XMConvertHalfToFloat(desktop_buffer_f16[offset_in + 2]) : 0.0f;
+                float f32_value_a = (mask_and) ? PackedVector::XMConvertHalfToFloat(desktop_buffer_f16[offset_in + 3]) : 0.0f;
+
+                if (mask_xor)
+                {
+                    //Approximation for XOR negative color effect in non-linear space
+                    const float xor_neg = 0.77f / sdr_white_level_adjustment;
+                    init_buffer_f16[offset_out]     = PackedVector::XMConvertFloatToHalf( std::max(xor_neg - f32_value_r, 0.0f) );
+                    init_buffer_f16[offset_out + 1] = PackedVector::XMConvertFloatToHalf( std::max(xor_neg - f32_value_g, 0.0f) );
+                    init_buffer_f16[offset_out + 2] = PackedVector::XMConvertFloatToHalf( std::max(xor_neg - f32_value_b, 0.0f) );
+                }
+                else
+                {
+                    init_buffer_f16[offset_out]     = PackedVector::XMConvertFloatToHalf(f32_value_r);
+                    init_buffer_f16[offset_out + 1] = PackedVector::XMConvertFloatToHalf(f32_value_g);
+                    init_buffer_f16[offset_out + 2] = PackedVector::XMConvertFloatToHalf(f32_value_b);
+                }
+
+                init_buffer_f16[offset_out + 3] = desktop_buffer_f16[offset_in + 3];
+
+                //Adjust mask
+                mask_base = (mask_base == 0x01) ? 0x80 : mask_base >> 1;
+            }
+        }
+    }
+    else
+    {
+        uint32_t* shape_buffer_u32 = (uint32_t*)ptr_info.PtrShapeBuffer;
+
+        //Iterate through pointer shape pixels
+        for (unsigned int ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
+        {
+            for (unsigned int ptr_pixel_col = 0; ptr_pixel_col < ptr_width; ++ptr_pixel_col)
+            {
+                // Set up mask
+                const int offset_in  = (ptr_pixel_row * desktop_buffer_pitch) + (ptr_pixel_col * 4);
+                const int offset_out = ((ptr_pixel_row * ptr_width) + (ptr_pixel_col)) * 4;
+
+                uint32_t mask_value = 0xFF000000 & shape_buffer_u32[(ptr_pixel_col + ptr_skip_x) + ((ptr_pixel_row + ptr_skip_y) * uint32_t(ptr_info.ShapeInfo.Pitch / sizeof(uint32_t)))];
+                if (mask_value)
+                {
+                    //mask_value was 0xFF
+
+                    //Cast float values to regular RGB ones and XOR them as intended (though this is still in linear color space)
+                    float f32_value_r = PackedVector::XMConvertHalfToFloat(desktop_buffer_f16[offset_in]);
+                    float f32_value_g = PackedVector::XMConvertHalfToFloat(desktop_buffer_f16[offset_in + 1]);
+                    float f32_value_b = PackedVector::XMConvertHalfToFloat(desktop_buffer_f16[offset_in + 2]);
+                    float f32_value_a = PackedVector::XMConvertHalfToFloat(desktop_buffer_f16[offset_in + 3]);
+
+                    uint32_t u32_value_r = f32_value_r * 255.0f * sdr_white_level_adjustment;
+                    uint32_t u32_value_g = f32_value_g * 255.0f * sdr_white_level_adjustment;
+                    uint32_t u32_value_b = f32_value_b * 255.0f * sdr_white_level_adjustment;
+
+                    uint32_t ptr_rgba = shape_buffer_u32[(ptr_pixel_col + ptr_skip_x) + ((ptr_pixel_row + ptr_skip_y) * uint32_t(ptr_info.ShapeInfo.Pitch / sizeof(uint32_t)))];
+                    uint32_t u32_buff_r = (ptr_rgba >> 16) & 0xFF;
+                    uint32_t u32_buff_g = (ptr_rgba >>  8) & 0xFF;
+                    uint32_t u32_buff_b =  ptr_rgba        & 0xFF;
+
+                    u32_value_r ^= u32_buff_r;
+                    u32_value_g ^= u32_buff_g;
+                    u32_value_b ^= u32_buff_b;
+
+                    //Cast them back again
+                    f32_value_r = u32_value_r / 255.0f / sdr_white_level_adjustment;
+                    f32_value_g = u32_value_g / 255.0f / sdr_white_level_adjustment;
+                    f32_value_b = u32_value_b / 255.0f / sdr_white_level_adjustment;
+
+                    init_buffer_f16[offset_out]     = PackedVector::XMConvertFloatToHalf(f32_value_r);
+                    init_buffer_f16[offset_out + 1] = PackedVector::XMConvertFloatToHalf(f32_value_g);
+                    init_buffer_f16[offset_out + 2] = PackedVector::XMConvertFloatToHalf(f32_value_b);
+                    init_buffer_f16[offset_out + 3] = desktop_buffer_f16[offset_in + 3];
+                }
+                else
+                {
+                    //mask_value was 0x00
+                    uint32_t ptr_rgb = shape_buffer_u32[(ptr_pixel_col + ptr_skip_x) + ((ptr_pixel_row + ptr_skip_y) * uint32_t(ptr_info.ShapeInfo.Pitch / sizeof(UINT)))];
+
+                    float f32_value_r = ((ptr_rgb >> 16) & 0xFF) / 255.0f / sdr_white_level_adjustment;
+                    float f32_value_g = ((ptr_rgb >>  8) & 0xFF) / 255.0f / sdr_white_level_adjustment;
+                    float f32_value_b =  (ptr_rgb        & 0xFF) / 255.0f / sdr_white_level_adjustment;
+
+                    init_buffer_f16[offset_out]     = PackedVector::XMConvertFloatToHalf( f32_value_r );
+                    init_buffer_f16[offset_out + 1] = PackedVector::XMConvertFloatToHalf( f32_value_g );
+                    init_buffer_f16[offset_out + 2] = PackedVector::XMConvertFloatToHalf( f32_value_b );
+                    init_buffer_f16[offset_out + 3] = desktop_buffer_f16[offset_in + 3];
+                }
+            }
+        }
+    }
+
+    //Unmap surface
+    hr = copy_surface->Unmap();
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to unmap surface for pointer", L"Error", hr, SystemTransitionsExpectedErrors);
+    }
+
+    //Create texture
+    D3D11_TEXTURE2D_DESC tex_desc = {};
+    tex_desc.Width  = ptr_width;
+    tex_desc.Height = ptr_height;
+    tex_desc.MipLevels          = 1;
+    tex_desc.ArraySize          = 1;
+    tex_desc.Format             = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    tex_desc.SampleDesc.Count   = 1;
+    tex_desc.SampleDesc.Quality = 0;
+    tex_desc.Usage              = D3D11_USAGE_DEFAULT;
+    tex_desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
+    tex_desc.CPUAccessFlags     = 0;
+    tex_desc.MiscFlags          = 0;
+
+    //Set shader resource properties
+    D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+    srv_desc.Format                    = tex_desc.Format;
+    srv_desc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srv_desc.Texture2D.MostDetailedMip = tex_desc.MipLevels - 1;
+    srv_desc.Texture2D.MipLevels       = tex_desc.MipLevels;
+
+    //Set up init data
+    D3D11_SUBRESOURCE_DATA init_data = {};
+    init_data.pSysMem     = init_buffer.get();
+    init_data.SysMemPitch = ptr_width * 4 * (int)sizeof(PackedVector::HALF);
+
+    //Create mouse pointer texture
+    hr = m_Device->CreateTexture2D(&tex_desc, &init_data, &out_tex);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device, L"Failed to create mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+    }
+
+    out_tex_format = tex_desc.Format;
 
     return DUPL_RETURN_SUCCESS;
 }
@@ -3617,9 +3921,9 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     ID3D11Buffer* VertexBuffer = nullptr;
 
     // Vars to be used
-    D3D11_SUBRESOURCE_DATA InitData;
-    D3D11_TEXTURE2D_DESC Desc;
-    D3D11_SHADER_RESOURCE_VIEW_DESC SDesc;
+    D3D11_SUBRESOURCE_DATA InitData = {};
+    D3D11_TEXTURE2D_DESC Desc = {};
+    D3D11_SHADER_RESOURCE_VIEW_DESC SDesc = {};
 
     // Position will be changed based on mouse position
     VERTEX Vertices[NUMVERTICES] =
@@ -3643,10 +3947,11 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     INT PtrTop    = 0;
 
     // Buffer used if necessary (in case of monochrome or masked pointer)
-    BYTE* InitBuffer = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> CursorTexNew;
+    DXGI_FORMAT CursorTexNewFormat = DXGI_FORMAT_UNKNOWN;
 
     // Used for copying pixels if necessary
-    D3D11_BOX Box;
+    D3D11_BOX Box = {};
     Box.front = 0;
     Box.back  = 1;
 
@@ -3663,23 +3968,25 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
 
             break;
         }
-
         case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME:
-        {
-            PtrInfo->CursorShapeChanged = true; //Texture content is screen dependent
-            ProcessMonoMask(true, PtrInfo, &PtrWidth, &PtrHeight, &PtrLeft, &PtrTop, &InitBuffer, &Box);
-            break;
-        }
-
         case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MASKED_COLOR:
         {
             PtrInfo->CursorShapeChanged = true; //Texture content is screen dependent
-            ProcessMonoMask(false, PtrInfo, &PtrWidth, &PtrHeight, &PtrLeft, &PtrTop, &InitBuffer, &Box);
+            const bool is_mono_cursor = (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME);
+
+            //Process for HDR is needed
+            if ((m_OutputHDRAvailable) && (ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)))
+            {
+                ProcessMonoMaskFloat16(is_mono_cursor, *PtrInfo, PtrWidth, PtrHeight, PtrLeft, PtrTop, CursorTexNew, CursorTexNewFormat, Box);
+            }
+            else
+            {
+                ProcessMonoMask(is_mono_cursor, *PtrInfo, PtrWidth, PtrHeight, PtrLeft, PtrTop, CursorTexNew, CursorTexNewFormat, Box);
+            }
+            
             break;
         }
-
-        default:
-            break;
+        default: break;
     }
 
     if (m_MouseCursorNeedsUpdate)
@@ -3716,17 +4023,8 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     HRESULT hr = m_Device->CreateBuffer(&BDesc, &InitData, &VertexBuffer);
     if (FAILED(hr))
     {
-        if (m_MouseShaderRes)
-        {
-            m_MouseShaderRes->Release();
-            m_MouseShaderRes = nullptr;
-        }
-
-        if (m_MouseTex)
-        {
-            m_MouseTex->Release();
-            m_MouseTex = nullptr;
-        }
+        m_MouseShaderRes.Reset();
+        m_MouseTex.Reset();
 
         return ProcessFailure(m_Device, L"Failed to create mouse pointer vertex buffer in OutputManager", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
@@ -3734,65 +4032,54 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     //It can occasionally happen that no cursor shape update is detected after resetting duplication, so the m_MouseTex check is more of a workaround, but unproblematic
     if ( (PtrInfo->CursorShapeChanged) || (m_MouseTex == nullptr) ) 
     {
-        if (m_MouseTex)
+        //Only create a texture here for regular color cursors (mask/mono were already created)
+        if (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR)
         {
-            m_MouseTex->Release();
-            m_MouseTex = nullptr;
+            Desc.Width              = PtrWidth;
+            Desc.Height             = PtrHeight;
+            Desc.MipLevels          = 1;
+            Desc.ArraySize          = 1;
+            Desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM;
+            Desc.SampleDesc.Count   = 1;
+            Desc.SampleDesc.Quality = 0;
+            Desc.Usage              = D3D11_USAGE_DEFAULT;
+            Desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
+            Desc.CPUAccessFlags     = 0;
+            Desc.MiscFlags          = 0;
+
+            //Set up init data
+            InitData.pSysMem          = PtrInfo->PtrShapeBuffer;
+            InitData.SysMemPitch      = PtrInfo->ShapeInfo.Pitch;
+            InitData.SysMemSlicePitch = 0;
+
+            // Create mouseshape as texture
+            hr = m_Device->CreateTexture2D(&Desc, &InitData, &m_MouseTex);
+            if (FAILED(hr))
+            {
+                return ProcessFailure(m_Device, L"Failed to create mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+            }
+        }
+        else
+        {
+            m_MouseTex = CursorTexNew;
         }
 
-        if (m_MouseShaderRes)
+        if (m_MouseTex != nullptr)
         {
-            m_MouseShaderRes->Release();
-            m_MouseShaderRes = nullptr;
+            //Set shader resource properties
+            SDesc.Format                    = (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR) ? DXGI_FORMAT_B8G8R8A8_UNORM : CursorTexNewFormat;
+            SDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+            SDesc.Texture2D.MostDetailedMip = 0;
+            SDesc.Texture2D.MipLevels       = 1;
+
+            // Create shader resource from texture
+            hr = m_Device->CreateShaderResourceView(m_MouseTex.Get(), &SDesc, &m_MouseShaderRes);
+            if (FAILED(hr))
+            {
+                m_MouseTex.Reset();
+                return ProcessFailure(m_Device, L"Failed to create shader resource from mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+            }
         }
-
-        Desc.MipLevels          = 1;
-        Desc.ArraySize          = 1;
-        Desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM;
-        Desc.SampleDesc.Count   = 1;
-        Desc.SampleDesc.Quality = 0;
-        Desc.Usage              = D3D11_USAGE_DEFAULT;
-        Desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
-        Desc.CPUAccessFlags     = 0;
-        Desc.MiscFlags          = 0;
-
-        // Set shader resource properties
-        SDesc.Format                    = Desc.Format;
-        SDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
-        SDesc.Texture2D.MostDetailedMip = Desc.MipLevels - 1;
-        SDesc.Texture2D.MipLevels       = Desc.MipLevels;
-
-        // Set texture properties
-        Desc.Width  = PtrWidth;
-        Desc.Height = PtrHeight;
-
-        // Set up init data
-        InitData.pSysMem          = (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR) ? PtrInfo->PtrShapeBuffer  : InitBuffer;
-        InitData.SysMemPitch      = (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR) ? PtrInfo->ShapeInfo.Pitch : PtrWidth * BPP;
-        InitData.SysMemSlicePitch = 0;
-
-        // Create mouseshape as texture
-        hr = m_Device->CreateTexture2D(&Desc, &InitData, &m_MouseTex);
-        if (FAILED(hr))
-        {
-            return ProcessFailure(m_Device, L"Failed to create mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
-        }
-
-        // Create shader resource from texture
-        hr = m_Device->CreateShaderResourceView(m_MouseTex, &SDesc, &m_MouseShaderRes);
-        if (FAILED(hr))
-        {
-            m_MouseTex->Release();
-            m_MouseTex = nullptr;
-            return ProcessFailure(m_Device, L"Failed to create shader resource from mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
-        }
-    }
-
-    // Clean init buffer
-    if (InitBuffer)
-    {
-        delete[] InitBuffer;
-        InitBuffer = nullptr;
     }
 
     // Set resources
@@ -3804,7 +4091,7 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     m_DeviceContext->OMSetRenderTargets(1, &m_OvrlRTV, nullptr);
     m_DeviceContext->VSSetShader(m_VertexShader, nullptr, 0);
     m_DeviceContext->PSSetShader(m_PixelShaderCursor, nullptr, 0);
-    m_DeviceContext->PSSetShaderResources(0, 1, &m_MouseShaderRes);
+    m_DeviceContext->PSSetShaderResources(0, 1, m_MouseShaderRes.GetAddressOf());
     m_DeviceContext->PSSetSamplers(0, 1, &m_Sampler);
 
     // Draw

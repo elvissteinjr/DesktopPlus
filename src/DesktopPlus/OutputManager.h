@@ -97,7 +97,10 @@ class OutputManager
 
     private:
     // Methods
-        DUPL_RETURN ProcessMonoMask(bool IsMono, _Inout_ PTR_INFO* PtrInfo, _Out_ INT* PtrWidth, _Out_ INT* PtrHeight, _Out_ INT* PtrLeft, _Out_ INT* PtrTop, _Outptr_result_bytebuffer_(*PtrHeight * *PtrWidth * BPP) BYTE** InitBuffer, _Out_ D3D11_BOX* Box);
+        DUPL_RETURN ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
+                                    Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box);
+        DUPL_RETURN ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
+                                           Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box);
         DUPL_RETURN MakeRTV();
         DUPL_RETURN InitShaders();
         DUPL_RETURN CreateTextures(INT SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
@@ -195,6 +198,7 @@ class OutputManager
         int m_DesktopHeight;
         std::vector<DPRect> m_DesktopRects;     //Cached position and size of available desktops
         DPRect m_DesktopRectTotal;              //Total rect of all available desktops (may not be the same as above Desktop Duplication rect if that's not using the combined desktop)
+        std::vector<float> m_DesktopHDRWhiteLevelAdjustments; //Cached GetDesktopHDRWhiteLevelAdjustment() results used during cursor updates
         DWORD m_MaxActiveRefreshDelay;
         bool m_OutputHDRAvailable;              //False if OS doesn't support the required interface, regardless of hardware connected
         bool m_OutputInvalid;
@@ -218,8 +222,8 @@ class OutputManager
         float m_PendingDashboardDummyHeight;
         ULONGLONG m_LastApplyTransformTick;
 
-        ID3D11Texture2D* m_MouseTex;
-        ID3D11ShaderResourceView* m_MouseShaderRes;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_MouseTex;
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_MouseShaderRes;
 
         ULONGLONG m_MouseLastClickTick;
         bool m_MouseIgnoreMoveEvent;
