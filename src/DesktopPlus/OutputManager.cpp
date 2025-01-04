@@ -2922,6 +2922,8 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
     m_DesktopRectTotal = DPRect();   //Figure out right dimensions for full size desktop rect (this is also done in CreateTextures() but for Desktop Duplication only)
     m_DesktopHDRWhiteLevelAdjustments.clear();
 
+    const bool is_hdr_in_use = ((m_OutputHDRAvailable) && (ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)));
+
     HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
     if (!FAILED(hr))
     {
@@ -2992,13 +2994,22 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
 
                 (m_DesktopRectTotal.GetWidth() == 0) ? m_DesktopRectTotal = m_DesktopRects.back() : m_DesktopRectTotal.Add(m_DesktopRects.back());
 
-                LOG_F(INFO, "Desktop %u: %4d,%4d | %4dx%4d (%s)", output_count + 1, 
-                      output_desc.DesktopCoordinates.left, output_desc.DesktopCoordinates.top,
-                      output_desc.DesktopCoordinates.right - output_desc.DesktopCoordinates.left, output_desc.DesktopCoordinates.bottom - output_desc.DesktopCoordinates.top,
-                      StringConvertFromUTF16(output_desc.DeviceName).c_str());
 
                 //Cache HDR white level adjustment
-                m_DesktopHDRWhiteLevelAdjustments.push_back(GetDesktopHDRWhiteLevelAdjustment(output_count, false, wmr_ignore_vscreens));
+                const float white_level_adjust = GetDesktopHDRWhiteLevelAdjustment(output_count, false, wmr_ignore_vscreens);
+                m_DesktopHDRWhiteLevelAdjustments.push_back(white_level_adjust);
+
+                //Log display info, with white level adjustment if HDR is actually on
+                LOG_IF_F(INFO, !is_hdr_in_use, "Desktop %u: %4d,%4d | %4dx%4d (%s)", output_count + 1, 
+                         output_desc.DesktopCoordinates.left, output_desc.DesktopCoordinates.top,
+                         output_desc.DesktopCoordinates.right - output_desc.DesktopCoordinates.left, output_desc.DesktopCoordinates.bottom - output_desc.DesktopCoordinates.top,
+                         StringConvertFromUTF16(output_desc.DeviceName).c_str());
+
+                LOG_IF_F(INFO, is_hdr_in_use, "Desktop %u: %4d,%4d | %4dx%4d (%s) | %.2fx SDR Brightness", output_count + 1, 
+                         output_desc.DesktopCoordinates.left, output_desc.DesktopCoordinates.top,
+                         output_desc.DesktopCoordinates.right - output_desc.DesktopCoordinates.left, output_desc.DesktopCoordinates.bottom - output_desc.DesktopCoordinates.top,
+                         StringConvertFromUTF16(output_desc.DeviceName).c_str(), 1.0f / white_level_adjust);
+
 
                 ++output_count;
                 ++output_index;
