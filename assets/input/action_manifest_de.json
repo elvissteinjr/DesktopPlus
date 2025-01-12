@@ -32,6 +32,7 @@
     "/actions/laserpointer/in/MiddleClick" : "Mittelklick",
     "/actions/laserpointer/in/Aux01Click"  : "Extra 1-Klick",
     "/actions/laserpointer/in/Aux02Click"  : "Extra 2-Klick",
+    "/actions/laserpointer/in/Drag"        : "Overlay ziehen",
 	
 	"/actions/scroll_discrete" : "Mausrad-Bildlauf",
 	

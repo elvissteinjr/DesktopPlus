@@ -697,6 +697,11 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     }
                     break;
                 }
+                case ipcact_lpointer_ui_drag:
+                {
+                    (msg.lParam == 1) ? StartOverlayDrag(ConfigManager::GetValue(configid_handle_state_dplus_laser_pointer_target_overlay)) : FinishOverlayDrag();
+                    break;
+                }
             }
             break;
         }
@@ -2052,25 +2057,9 @@ void UIManager::UpdateOverlayDrag()
 
         vr::VROverlayHandle_t drag_overlay_handle = m_OverlayDragger.GetDragOverlayHandle();
 
-        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
         {
-            Matrix4 matrix_relative_offset = m_OverlayDragger.DragFinish();
-
-            //Store changed transform to the previously dragged overlay handle
-            if (drag_overlay_handle == m_OvrlHandleSettings)
-            {
-                m_WindowSettings.SetTransform(matrix_relative_offset);
-            }
-            else if (drag_overlay_handle == m_OvrlHandleOverlayProperties)
-            {
-                m_WindowOverlayProperties.SetTransform(matrix_relative_offset);
-            }
-            else if (drag_overlay_handle == m_OvrlHandleKeyboard)
-            {
-                m_VRKeyboard.GetWindow().SetTransform(matrix_relative_offset);
-                m_VRKeyboard.GetWindow().RebaseTransform();
-            }
-
+            FinishOverlayDrag();
             return;
         }
 
@@ -2132,6 +2121,43 @@ void UIManager::UpdateOverlayDrag()
             //Prevent widget input during active drag
             ImGui::BlockWidgetInput();
         }
+    }
+}
+
+void UIManager::StartOverlayDrag(vr::VROverlayHandle_t overlay_handle)
+{
+    if (overlay_handle == m_OvrlHandleSettings)
+    {
+        m_WindowSettings.StartDrag();
+    }
+    else if (overlay_handle == m_OvrlHandleOverlayProperties)
+    {
+        m_WindowOverlayProperties.StartDrag();
+    }
+    else if (overlay_handle == m_OvrlHandleKeyboard)
+    {
+        m_VRKeyboard.GetWindow().StartDrag();
+    }
+}
+
+void UIManager::FinishOverlayDrag()
+{
+    vr::VROverlayHandle_t drag_overlay_handle = m_OverlayDragger.GetDragOverlayHandle();
+    Matrix4 matrix_relative_offset = m_OverlayDragger.DragFinish();
+
+    //Store changed transform to the previously dragged overlay handle
+    if (drag_overlay_handle == m_OvrlHandleSettings)
+    {
+        m_WindowSettings.SetTransform(matrix_relative_offset);
+    }
+    else if (drag_overlay_handle == m_OvrlHandleOverlayProperties)
+    {
+        m_WindowOverlayProperties.SetTransform(matrix_relative_offset);
+    }
+    else if (drag_overlay_handle == m_OvrlHandleKeyboard)
+    {
+        m_VRKeyboard.GetWindow().SetTransform(matrix_relative_offset);
+        m_VRKeyboard.GetWindow().RebaseTransform();
     }
 }
 

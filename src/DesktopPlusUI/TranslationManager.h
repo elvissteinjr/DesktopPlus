@@ -263,6 +263,7 @@ enum TRMGRStrID
     tstr_SettingsLaserPointerHMDPointerTableBindingLeft,
     tstr_SettingsLaserPointerHMDPointerTableBindingRight,
     tstr_SettingsLaserPointerHMDPointerTableBindingMiddle,
+    tstr_SettingsLaserPointerHMDPointerTableBindingDrag,
     tstr_SettingsWindowOverlaysAutoFocus,
     tstr_SettingsWindowOverlaysKeepOnScreen,
     tstr_SettingsWindowOverlaysKeepOnScreenTip,

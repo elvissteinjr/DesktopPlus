@@ -371,6 +371,10 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
 
                 vr::VROverlay()->SetOverlayCursorPositionOverride(nearest_target_overlay, &pos);
             }
+            else
+            {
+                vr::VROverlay()->ClearOverlayCursorPositionOverride(nearest_target_overlay);
+            }
         }
 
         //Set pointer length to overlay distance
@@ -506,6 +510,24 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
             }
             default: break;
         }
+
+        //Direct Drag
+        {
+            vr::InputDigitalActionData_t input_data = vr_input.GetLaserPointerDragState(lp_device.InputValueHandle);
+            if (input_data.bActive)
+            {
+                if (input_data.bChanged)
+                {
+                    SendDirectDragCommand(nearest_target_overlay, input_data.bState);
+                    lp_device.IsDragDown = input_data.bState;
+                }
+
+                if (input_data.bState)
+                {
+                    lp_device.InputDownCount++;
+                }
+            }
+        }
     }
     else
     {
@@ -532,6 +554,28 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
     tex_bounds.vMax = lp_device.LaserLength / LASER_POINTER_OVERLAY_WIDTH;
 
     vr::VROverlay()->SetOverlayTextureBounds(lp_device.OvrlHandle, &tex_bounds);
+}
+
+void LaserPointer::SendDirectDragCommand(vr::VROverlayHandle_t overlay_handle_target, bool do_start_drag)
+{
+    unsigned int overlay_id = OverlayManager::Get().FindOverlayID(overlay_handle_target);
+
+    if (overlay_id == k_ulOverlayID_None)
+    {
+        //Check if target overlay is UI overlay
+        const bool is_ui = ( (std::find(m_OverlayHandlesUI.begin(), m_OverlayHandlesUI.end(), overlay_handle_target) != m_OverlayHandlesUI.end()) || 
+                             (std::find(m_OverlayHandlesMultiLaser.begin(), m_OverlayHandlesMultiLaser.end(), overlay_handle_target) != m_OverlayHandlesMultiLaser.end()) );
+
+        //Tell UI to start a drag on it if it is
+        if (is_ui)
+        {
+            IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_lpointer_ui_drag, (do_start_drag) ? 1 : 0);
+        }
+    }
+    else
+    {
+        (do_start_drag) ? OutputManager::Get()->OverlayDirectDragStart(overlay_id) : OutputManager::Get()->OverlayDirectDragFinish(overlay_id);
+    }
 }
 
 void LaserPointer::Update()
@@ -690,6 +734,13 @@ void LaserPointer::ClearActiveDevice()
         if (lp_device_prev.OvrlHandleTargetLast != vr::k_ulOverlayHandleInvalid)
         {
             vr::VROverlay()->ClearOverlayCursorPositionOverride(lp_device_prev.OvrlHandleTargetLast);
+        }
+
+        //Finish active direct drag
+        if (lp_device_prev.IsDragDown)
+        {
+            SendDirectDragCommand(lp_device_prev.OvrlHandleTargetLast, false);
+            lp_device_prev.IsDragDown = false;
         }
     }
 

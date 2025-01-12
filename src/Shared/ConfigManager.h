@@ -159,6 +159,7 @@ enum ConfigID_Int
     configid_int_input_laser_pointer_hmd_device_keycode_left,
     configid_int_input_laser_pointer_hmd_device_keycode_right,
     configid_int_input_laser_pointer_hmd_device_keycode_middle,
+    configid_int_input_laser_pointer_hmd_device_keycode_drag,
     configid_int_windows_winrt_dragging_mode,
     configid_int_windows_winrt_capture_lost_behavior,
     configid_int_browser_max_fps,                           //Browser overlays use this instead of update limits

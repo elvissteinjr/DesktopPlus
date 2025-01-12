@@ -1761,8 +1761,8 @@ void WindowSettings::UpdatePageMainCatInput()
                 ImGui::TableSetupColumn(TranslationManager::GetString(tstr_SettingsLaserPointerHMDPointerTableHeaderBinding), ImGuiTableColumnFlags_WidthStretch);
                 CompactTableHeadersRow();
 
-                const int key_count = configid_int_input_laser_pointer_hmd_device_keycode_middle - configid_int_input_laser_pointer_hmd_device_keycode_toggle;
-                IM_ASSERT(configid_int_input_laser_pointer_hmd_device_keycode_toggle < configid_int_input_laser_pointer_hmd_device_keycode_middle);
+                const int key_count = configid_int_input_laser_pointer_hmd_device_keycode_drag - configid_int_input_laser_pointer_hmd_device_keycode_toggle;
+                IM_ASSERT(configid_int_input_laser_pointer_hmd_device_keycode_toggle < configid_int_input_laser_pointer_hmd_device_keycode_drag);
                 IM_ASSERT(tstr_SettingsLaserPointerHMDPointerTableBindingToggle + key_count < tstr_MAX);
 
                 for (int i = 0; i < key_count + 1; ++i)

@@ -31,7 +31,8 @@ VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
                      m_GamepadDeviceInputValueHandle(vr::k_ulInvalidInputValueHandle),
                      m_KeyboardDeviceToggleState{0},
                      m_KeyboardDeviceIsToggleKeyDown(false),
-                     m_KeyboardDeviceClickState{0}
+                     m_KeyboardDeviceClickState{0},
+                     m_KeyboardDeviceDragState{0}
 {
 }
 
@@ -123,6 +124,8 @@ void VRInput::UpdateKeyboardDeviceState()
     update_input_data(m_KeyboardDeviceClickState[1], ConfigManager::GetValue(configid_int_input_laser_pointer_hmd_device_keycode_right));
     update_input_data(m_KeyboardDeviceClickState[2], ConfigManager::GetValue(configid_int_input_laser_pointer_hmd_device_keycode_middle));
     //Aux01/02 are not configurable but fields exist for parity with the regular action data array (they can still be pressed via actions if really needed)
+
+    update_input_data(m_KeyboardDeviceDragState, ConfigManager::GetValue(configid_int_input_laser_pointer_hmd_device_keycode_drag));
 }
 
 vr::InputDigitalActionData_t VRInput::CombineDigitalActionData(vr::InputDigitalActionData_t data_a, vr::InputDigitalActionData_t data_b)
@@ -183,6 +186,7 @@ bool VRInput::Init()
         vr::VRInput()->GetActionHandle("/actions/laserpointer/in/MiddleClick",    &m_HandleActionLaserPointerMiddleClick);
         vr::VRInput()->GetActionHandle("/actions/laserpointer/in/Aux01Click",     &m_HandleActionLaserPointerAux01Click);
         vr::VRInput()->GetActionHandle("/actions/laserpointer/in/Aux02Click",     &m_HandleActionLaserPointerAux02Click);
+        vr::VRInput()->GetActionHandle("/actions/laserpointer/in/Drag",           &m_HandleActionLaserPointerDrag);
         vr::VRInput()->GetActionHandle("/actions/laserpointer/out/Haptic",        &m_HandleActionLaserPointerHaptic);
 
         vr::VRInput()->GetActionSetHandle("/actions/scroll_discrete",                &m_HandleActionsetScrollDiscrete);
@@ -201,6 +205,7 @@ bool VRInput::Init()
         {
             input_data.activeOrigin = m_KeyboardDeviceInputValueHandle;
         }
+        m_KeyboardDeviceDragState.activeOrigin = m_KeyboardDeviceInputValueHandle;
 
         return true;
     }
@@ -479,6 +484,22 @@ vr::InputAnalogActionData_t VRInput::GetLaserPointerScrollSmoothState() const
 {
     vr::InputAnalogActionData_t data = {0};
     vr::VRInput()->GetAnalogActionData(m_HandleActionLaserPointerScrollSmooth, &data, sizeof(vr::InputAnalogActionData_t), vr::k_ulInvalidInputValueHandle);
+
+    return data;
+}
+
+vr::InputDigitalActionData_t VRInput::GetLaserPointerDragState(vr::VRInputValueHandle_t restrict_to_device) const
+{
+    vr::InputDigitalActionData_t data = {0};
+    vr::VRInput()->GetDigitalActionData(m_HandleActionLaserPointerDrag, &data, sizeof(data), restrict_to_device);
+
+    if (ConfigManager::GetValue(configid_bool_input_laser_pointer_hmd_device))
+    {
+        if ((restrict_to_device == vr::k_ulInvalidInputValueHandle) || (restrict_to_device == m_KeyboardDeviceInputValueHandle))
+        {
+            data = CombineDigitalActionData(data, m_KeyboardDeviceDragState);
+        }
+    }
 
     return data;
 }

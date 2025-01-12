@@ -80,6 +80,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlDesktopDuplActiveCount(0),
     m_OvrlDashboardActive(false),
     m_OvrlInputActive(false),
+    m_OvrlDirectDragActive(false),
     m_OvrlTempDragStartTick(0),
     m_PendingDashboardDummyHeight(0.0f),
     m_LastApplyTransformTick(0),
@@ -2880,6 +2881,64 @@ void OutputManager::SwitchToWindow(HWND window, bool warp_cursor)
     }
 }
 
+void OutputManager::OverlayDirectDragStart(unsigned int overlay_id)
+{
+    if (overlay_id == k_ulOverlayID_None)
+        return;
+
+    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+
+    if (m_OverlayDragger.GetDragDeviceID() == -1)
+    {
+        if (data.ConfigInt[configid_int_overlay_origin] != ovrl_origin_theater_screen)
+        {
+            if (!data.ConfigBool[configid_bool_overlay_transform_locked])
+            {
+                m_OverlayDragger.DragStart(overlay_id);
+
+                if (m_OverlayDragger.IsDragActive())
+                {
+                    m_OvrlDirectDragActive = true;
+                    ApplySettingInputMode();
+
+                    if (m_LaserPointer.IsActive())
+                    {
+                        m_LaserPointer.ForceTargetOverlay(OverlayManager::Get().GetOverlay(overlay_id).GetHandle());
+                    }
+                }
+            }
+            else
+            {
+                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
+                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 1);
+            }
+        }
+        else
+        {
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_device, ConfigManager::Get().GetPrimaryLaserPointerDevice());
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 2);
+        }
+    }
+}
+
+void OutputManager::OverlayDirectDragFinish(unsigned int overlay_id)
+{
+    if (overlay_id == k_ulOverlayID_None)
+        return;
+
+    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+
+    if ((m_OverlayDragger.GetDragOverlayID() == overlay_id) && (m_OverlayDragger.IsDragActive()))
+    {
+        OnDragFinish();
+        m_OverlayDragger.DragFinish();
+
+        ApplySettingTransform();
+    }
+
+    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 0);
+}
+
 VRInput& OutputManager::GetVRInput()
 {
     return m_VRInput;
@@ -4450,6 +4509,12 @@ bool OutputManager::HandleOpenVREvents()
                         ApplySettingTransform();
                         OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
                     }
+                }
+
+                //Finish a direct drag if one's going as the Desktop+ laser pointer will not be told inputs are released when the dashboard is up
+                if (m_OvrlDirectDragActive)
+                {
+                    OverlayDirectDragFinish(m_OverlayDragger.GetDragOverlayID());
                 }
 
                 break;
@@ -6403,7 +6468,7 @@ void OutputManager::ApplySettingMouseInput()
         ConfigManager::SetValue(configid_int_state_mouse_dbl_click_assist_duration_ms, ConfigManager::GetValue(configid_int_input_mouse_dbl_click_assist_duration_ms));
     }
 
-    const bool drag_mode_enabled   = ConfigManager::GetValue(configid_bool_state_overlay_dragmode);
+    const bool drag_mode_enabled = ((ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (m_OvrlDirectDragActive));
     const bool select_mode_enabled = ConfigManager::GetValue(configid_bool_state_overlay_selectmode);
     const bool drag_or_select_mode_enabled = ((drag_mode_enabled) || (select_mode_enabled));
     //Always applies to all overlays
@@ -7378,6 +7443,12 @@ void OutputManager::OnDragFinish()
     if (!m_OverlayDragger.IsDragActive())
         return;
 
+    if (m_OvrlDirectDragActive)
+    {
+        m_OvrlDirectDragActive = false;
+        ApplySettingMouseInput();
+    }
+
     ResetMouseLastLaserPointerPos();
 
     //Handle auto-docking
@@ -7591,7 +7662,7 @@ void OutputManager::RegisterHotkeys()
 
     //Laser Pointer HMD Device uses hotkeys just as means to block key input to other applications
     //Actual inputs are checked via VRInput::UpdateKeyboardDeviceState(), so they do not need any handling in HandleHotkeys() or HandleHotkeyMessage()
-    const int hmd_device_hotkey_count = configid_int_input_laser_pointer_hmd_device_keycode_middle - configid_int_input_laser_pointer_hmd_device_keycode_toggle;
+    const int hmd_device_hotkey_count = configid_int_input_laser_pointer_hmd_device_keycode_drag - configid_int_input_laser_pointer_hmd_device_keycode_toggle;
     for (int i = 0; i < hmd_device_hotkey_count + 1; ++i)
     {
         ConfigID_Int config_id = (ConfigID_Int)(configid_int_input_laser_pointer_hmd_device_keycode_toggle + i);

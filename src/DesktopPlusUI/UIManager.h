@@ -221,6 +221,8 @@ class UIManager
 
         void PositionOverlay();
         void UpdateOverlayDrag();
+        void StartOverlayDrag(vr::VROverlayHandle_t overlay_handle);
+        void FinishOverlayDrag();
         void HighlightOverlay(unsigned int overlay_id);
         float GetOverlayHeight(vr::VROverlayHandle_t overlay_handle) const;
         Matrix4 GetOverlay2DPointTransform(Vector2 point_2d, vr::VROverlayHandle_t overlay_handle) const; //GetTransformForOverlayCoordinates() but works with cropped UVs (UI overlays only)

@@ -81,6 +81,8 @@ class OutputManager
         void CropToActiveWindowToggle(unsigned int overlay_id);
         void ShowWindowSwitcher();
         void SwitchToWindow(HWND window, bool warp_cursor);
+        void OverlayDirectDragStart(unsigned int overlay_id);
+        void OverlayDirectDragFinish(unsigned int overlay_id);
 
         VRInput& GetVRInput();
         InputSimulator& GetInputSimulator();
@@ -218,6 +220,7 @@ class OutputManager
         int m_OvrlDesktopDuplActiveCount;
         bool m_OvrlDashboardActive;
         bool m_OvrlInputActive;
+        bool m_OvrlDirectDragActive;
         ULONGLONG m_OvrlTempDragStartTick;
         float m_PendingDashboardDummyHeight;
         ULONGLONG m_LastApplyTransformTick;

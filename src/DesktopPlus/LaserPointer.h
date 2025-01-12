@@ -18,6 +18,7 @@ struct LaserPointerDevice
     OverlayTextureSource OvrlHandleTargetLastTextureSource = ovrl_texsource_none;
     bool IsActiveForMultiLaserInput = false;
     int InputDownCount = 0;
+    bool IsDragDown = false;
 };
 
 //Optional origin that can be passed to SetActiveDevice() in order to keep track what activated the laser pointer (and thus should be responsible for deactivating)
@@ -58,6 +59,8 @@ class LaserPointer
         void CreateDeviceOverlay(vr::TrackedDeviceIndex_t device_index);
         void UpdateDeviceOverlay(vr::TrackedDeviceIndex_t device_index);
         void UpdateIntersection(vr::TrackedDeviceIndex_t device_index);
+
+        void SendDirectDragCommand(vr::VROverlayHandle_t overlay_handle_target, bool do_start_drag);
 
     public:
         LaserPointer();

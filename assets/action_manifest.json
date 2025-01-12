@@ -131,6 +131,11 @@
       "type": "boolean"
     },
     {
+      "name": "/actions/laserpointer/in/Drag",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
       "name": "/actions/scroll_discrete/in/ScrollDiscrete",
       "requirement": "suggested",
       "type": "vector2"
@@ -209,6 +214,6 @@
       "binding_url": "input/action_bindings_generic.json"
     }
   ],
-  "version": 4,
+  "version": 5,
   "minimum_required_version": 2
 }

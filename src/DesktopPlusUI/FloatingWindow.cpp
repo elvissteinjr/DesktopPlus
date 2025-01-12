@@ -1564,6 +1564,20 @@ void FloatingWindow::ResetTransform(FloatingWindowOverlayStateID state_id)
     }
 }
 
+void FloatingWindow::StartDrag()
+{
+    if (UIManager::Get()->IsOpenVRLoaded())
+    {
+        OverlayDragger& overlay_dragger = UIManager::Get()->GetOverlayDragger();
+
+        if ( (!overlay_dragger.IsDragActive()) && (!overlay_dragger.IsDragGestureActive()) )
+        {
+            overlay_dragger.DragStart(GetOverlayHandle(), m_DragOrigin);
+            overlay_dragger.DragSetMaxWidth(m_OvrlWidthMax);
+        }
+    }
+}
+
 const ImVec2& FloatingWindow::GetPos() const
 {
     return m_Pos;

@@ -532,6 +532,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_left]   = config.ReadInt( "Input", "LaserPointerHMDKeyCodeLeft",   0);
     m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_right]  = config.ReadInt( "Input", "LaserPointerHMDKeyCodeRight",  0);
     m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_middle] = config.ReadInt( "Input", "LaserPointerHMDKeyCodeMiddle", 0);
+    m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_drag]   = config.ReadInt( "Input", "LaserPointerHMDKeyCodeDrag",   0);
 
     m_ConfigBool[configid_bool_input_drag_auto_docking]                     = config.ReadBool("Input", "DragAutoDocking", true);
     m_ConfigBool[configid_bool_input_drag_force_upright]                    = config.ReadBool("Input", "DragForceUpright", false);
@@ -1505,6 +1506,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteInt( "Input", "LaserPointerHMDKeyCodeLeft",         m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_left]);
     config.WriteInt( "Input", "LaserPointerHMDKeyCodeRight",        m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_right]);
     config.WriteInt( "Input", "LaserPointerHMDKeyCodeMiddle",       m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_middle]);
+    config.WriteInt( "Input", "LaserPointerHMDKeyCodeDrag",         m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_drag]);
 
     config.WriteBool("Input", "DragAutoDocking",                    m_ConfigBool[configid_bool_input_drag_auto_docking]);
     config.WriteBool("Input", "DragForceUpright",                   m_ConfigBool[configid_bool_input_drag_force_upright]);
