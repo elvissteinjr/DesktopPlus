@@ -330,7 +330,7 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
     }
 
     //Send mouse move event if we hit an overlay
-    if (nearest_target_overlay != vr::k_ulOverlayHandleInvalid)
+    if ( (nearest_target_overlay != vr::k_ulOverlayHandleInvalid) && (IsActive()) ) //Check for IsActive() so we don't send mouse move events for 1 frame after deactivation
     {
         vr::HmdVector2_t mouse_scale;
         vr::VROverlay()->GetOverlayMouseScale(nearest_target_overlay, &mouse_scale);
@@ -731,16 +731,24 @@ void LaserPointer::ClearActiveDevice()
     {
         LaserPointerDevice& lp_device_prev = m_Devices[previous_active_device];
 
-        if (lp_device_prev.OvrlHandleTargetLast != vr::k_ulOverlayHandleInvalid)
-        {
-            vr::VROverlay()->ClearOverlayCursorPositionOverride(lp_device_prev.OvrlHandleTargetLast);
-        }
-
         //Finish active direct drag
         if (lp_device_prev.IsDragDown)
         {
             SendDirectDragCommand(lp_device_prev.OvrlHandleTargetLast, false);
             lp_device_prev.IsDragDown = false;
+        }
+
+        //Send focus leave event to last entered overlay if there is any
+        if (lp_device_prev.OvrlHandleTargetLast != vr::k_ulOverlayHandleInvalid)
+        {
+            vr::VREvent_t vr_event = {0};
+            vr_event.trackedDeviceIndex = previous_active_device;
+            vr_event.eventType = vr::VREvent_FocusLeave;
+
+            vr::VROverlayView()->PostOverlayEvent(lp_device_prev.OvrlHandleTargetLast, &vr_event);
+
+            //Also clear cursor override
+            vr::VROverlay()->ClearOverlayCursorPositionOverride(lp_device_prev.OvrlHandleTargetLast);
         }
     }
 
