@@ -284,6 +284,11 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
 
             matrix = m_DashboardMatLast;
 
+            //SteamVR 2.9.1 made changes that affected the dashboard matrix
+            //The changes themselves are odd as they add a control bar to *every* dashboard overlay
+            //Hopefully temporary, but for now fix this up when running those beta versions
+            const bool use_additional_offset = (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.9.") != nullptr);
+
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
                 //Magic number, from taking the difference of both version's dashboard origins at the same HMD position
@@ -297,11 +302,21 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
 
                 //Move matrix towards normal dashboard overlay position
                 matrix.translate_relative(0.0f, -0.57f, 0.32f);
+
+                if (use_additional_offset)
+                {
+                    matrix.translate_relative(0.0f, -0.073f, 0.22f);
+                }
             }
             else
             {
                 //Move matrix towards normal dashboard overlay position
                 matrix.translate_relative(0.0f, 1.09f, 0.0f);
+
+                if (use_additional_offset)
+                {
+                    matrix.translate_relative(0.0f, -2.5f, 0.0f);
+                }
             }
 
             break;

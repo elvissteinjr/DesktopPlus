@@ -75,6 +75,7 @@ enum IPCActionID
     ipcact_keyboard_ovrl_focus_leave,   //Sent by UI application in response to a VREvent_FocusLeave on the keyboard overlay. No data in lParam
     ipcact_lpointer_trigger_haptics,    //Sent by UI application to trigger laser pointer haptics (short UI interaction burst). lParam is tracked device index
     ipcact_lpointer_ui_mask_rect,       //Sent by UI application to update the UI intersection mask for the dplus laser pointer. lParam is DPRect packed with DPRect::Pack16() or -1 to finish the mask
+    ipcact_lpointer_ui_drag,            //Sent by dashboard application to start or finish an overlay drag of an UI laser pointer target overlay. lParam is 1 for start or 0 to finish
     ipcact_app_profile_remove,          //Sent by UI application to remove an app profile. No data in lParam, uses app key stored in configid_str_state_app_profile_key beforehand
     ipcact_global_shortcut_set,         //Sent by UI application to set a global shortcut. lParam is shortcut ID, uses Action UID stored in configid_handle_state_action_uid beforehand
     ipcact_hotkey_set,                  //Sent by UI application to set a hotkey. lParam is hotkey ID (out of range ID to create new), uses configid_str_state_hotkey_data as source (blank to delete)

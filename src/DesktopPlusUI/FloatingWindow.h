@@ -156,6 +156,8 @@ class FloatingWindow
         virtual void ResetTransformAll();
         virtual void ResetTransform(FloatingWindowOverlayStateID state_id);
 
+        virtual void StartDrag(); //Starts a regular laser pointer drag of the window with the necessary parameters
+
         const ImVec2& GetPos() const;
         const ImVec2& GetSize() const;
         virtual vr::VROverlayHandle_t GetOverlayHandle() const = 0;

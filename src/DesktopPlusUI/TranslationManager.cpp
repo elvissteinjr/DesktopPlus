@@ -265,6 +265,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsLaserPointerHMDPointerTableBindingLeft",
     "tstr_SettingsLaserPointerHMDPointerTableBindingRight",
     "tstr_SettingsLaserPointerHMDPointerTableBindingMiddle",
+    "tstr_SettingsLaserPointerHMDPointerTableBindingDrag",
     "tstr_SettingsWindowOverlaysAutoFocus",
     "tstr_SettingsWindowOverlaysKeepOnScreen",
     "tstr_SettingsWindowOverlaysKeepOnScreenTip",

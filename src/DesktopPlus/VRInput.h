@@ -37,6 +37,7 @@ class VRInput
         vr::VRActionHandle_t m_HandleActionLaserPointerMiddleClick;
         vr::VRActionHandle_t m_HandleActionLaserPointerAux01Click;
         vr::VRActionHandle_t m_HandleActionLaserPointerAux02Click;
+        vr::VRActionHandle_t m_HandleActionLaserPointerDrag;
         vr::VRActionHandle_t m_HandleActionLaserPointerScrollDiscrete;
         vr::VRActionHandle_t m_HandleActionLaserPointerScrollSmooth;
         vr::VRActionHandle_t m_HandleActionLaserPointerHaptic;
@@ -52,6 +53,7 @@ class VRInput
         vr::InputDigitalActionData_t m_KeyboardDeviceToggleState;
         bool m_KeyboardDeviceIsToggleKeyDown;
         std::array<vr::InputDigitalActionData_t, 5> m_KeyboardDeviceClickState;
+        vr::InputDigitalActionData_t m_KeyboardDeviceDragState;
 
         void UpdateKeyboardDeviceState();
 
@@ -71,8 +73,9 @@ class VRInput
         std::vector<vr::InputOriginInfo_t> GetLaserPointerDevicesInfo() const;
         vr::InputDigitalActionData_t GetLaserPointerLeftClickState(vr::VRInputValueHandle_t restrict_to_device = vr::k_ulInvalidInputValueHandle)  const;
         std::array<vr::InputDigitalActionData_t, 5> GetLaserPointerClickState(vr::VRInputValueHandle_t restrict_to_device = vr::k_ulInvalidInputValueHandle)  const;
-        vr::InputAnalogActionData_t GetLaserPointerScrollDiscreteState()         const;
-        vr::InputAnalogActionData_t GetLaserPointerScrollSmoothState()           const;
+        vr::InputAnalogActionData_t GetLaserPointerScrollDiscreteState() const;
+        vr::InputAnalogActionData_t GetLaserPointerScrollSmoothState()   const;
+        vr::InputDigitalActionData_t GetLaserPointerDragState(vr::VRInputValueHandle_t restrict_to_device = vr::k_ulInvalidInputValueHandle)  const;
 
         void SetLaserPointerActive(bool is_active);
         void SetLaserPointerScrollMode(VRInputScrollMode scroll_mode);

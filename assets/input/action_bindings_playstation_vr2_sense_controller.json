@@ -22,7 +22,11 @@
                   }
                },
                "mode" : "button",
-               "path" : "/user/hand/right/input/trigger"
+               "parameters" : {
+                  "click_activate_threshold" : "0.65",
+                  "click_deactivate_threshold" : "0.6"
+               },
+               "path" : "/user/hand/left/input/l2"
             },
             {
                "inputs" : {
@@ -31,43 +35,29 @@
                   }
                },
                "mode" : "button",
-               "path" : "/user/hand/left/input/trigger"
+               "parameters" : {
+                  "click_activate_threshold" : "0.65",
+                  "click_deactivate_threshold" : "0.6"
+               },
+               "path" : "/user/hand/right/input/r2"
             },
             {
                "inputs" : {
-                  "east" : {
+                  "click" : {
                      "output" : "/actions/laserpointer/in/RightClick"
                   }
                },
-               "mode" : "dpad_click",
-               "path" : "/user/hand/left/input/trackpad"
+               "mode" : "button",
+               "path" : "/user/hand/left/input/square"
             },
             {
                "inputs" : {
-                  "east" : {
+                  "click" : {
                      "output" : "/actions/laserpointer/in/RightClick"
                   }
                },
-               "mode" : "dpad_click",
-               "path" : "/user/hand/right/input/trackpad"
-            },
-			{
-               "inputs" : {
-                  "click" : {
-                     "output" : "/actions/laserpointer/in/Aux01Click"
-                  }
-               },
                "mode" : "button",
-               "path" : "/user/hand/left/input/grip"
-            },
-			{
-               "inputs" : {
-                  "click" : {
-                     "output" : "/actions/laserpointer/in/Aux01Click"
-                  }
-               },
-               "mode" : "button",
-               "path" : "/user/hand/right/input/grip"
+               "path" : "/user/hand/right/input/cross"
             },
             {
                "inputs" : {
@@ -76,7 +66,7 @@
                   }
                },
                "mode" : "button",
-               "path" : "/user/hand/left/input/application_menu"
+               "path" : "/user/hand/left/input/triangle"
             },
             {
                "inputs" : {
@@ -85,11 +75,11 @@
                   }
                },
                "mode" : "button",
-               "path" : "/user/hand/right/input/application_menu"
+               "path" : "/user/hand/right/input/circle"
             }
          ]
       },
-	  "/actions/scroll_discrete" : {
+      "/actions/scroll_discrete" : {
          "sources" : [
             {
                "inputs" : {
@@ -98,18 +88,7 @@
                   }
                },
                "mode" : "scroll",
-               "parameters" : {
-                  "discrete_scroll_trackpad_accumthreshold_onmove" : "0.224",
-                  "discrete_scroll_trackpad_accumthreshold_onreversal" : "0.672",
-                  "discrete_scroll_trackpad_accumthreshold_ontouch" : "0.624",
-                  "discrete_scroll_trackpad_noisethreshold_onmove" : "0.008",
-                  "discrete_scroll_trackpad_noisethreshold_onreversal" : "0.095",
-                  "discrete_scroll_trackpad_noisethreshold_ontouch" : "0.16",
-                  "discrete_scroll_trackpad_slideandhold_borderbottom" : "-0.60",
-                  "discrete_scroll_trackpad_slideandhold_bordertop" : "0.65",
-                  "scroll_mode" : "discrete"
-               },
-               "path" : "/user/hand/left/input/trackpad"
+               "path" : "/user/hand/left/input/left_stick"
             },
             {
                "inputs" : {
@@ -118,18 +97,7 @@
                   }
                },
                "mode" : "scroll",
-               "parameters" : {
-                  "discrete_scroll_trackpad_accumthreshold_onmove" : "0.224",
-                  "discrete_scroll_trackpad_accumthreshold_onreversal" : "0.672",
-                  "discrete_scroll_trackpad_accumthreshold_ontouch" : "0.624",
-                  "discrete_scroll_trackpad_noisethreshold_onmove" : "0.008",
-                  "discrete_scroll_trackpad_noisethreshold_onreversal" : "0.095",
-                  "discrete_scroll_trackpad_noisethreshold_ontouch" : "0.16",
-                  "discrete_scroll_trackpad_slideandhold_borderbottom" : "-0.60",
-                  "discrete_scroll_trackpad_slideandhold_bordertop" : "0.65",
-                  "scroll_mode" : "discrete"
-               },
-               "path" : "/user/hand/right/input/trackpad"
+               "path" : "/user/hand/right/input/right_stick"
             }
          ]
       },
@@ -145,7 +113,7 @@
                "parameters" : {
                   "scroll_mode" : "smooth"
                },
-               "path" : "/user/hand/left/input/trackpad"
+               "path" : "/user/hand/left/input/left_stick"
             },
             {
                "inputs" : {
@@ -157,15 +125,15 @@
                "parameters" : {
                   "scroll_mode" : "smooth"
                },
-               "path" : "/user/hand/right/input/trackpad"
+               "path" : "/user/hand/right/input/right_stick"
             }
          ]
       }
    },
    "category" : "steamvr_input",
-   "controller_type" : "generic",
+   "controller_type" : "playstation_vr2_sense",
    "description" : "",
-   "name" : "Default Desktop+ bindings for Generic Controllers",
+   "name" : "Default Desktop+ bindings for PS VR2 Sense Controllers",
    "options" : {},
    "simulated_actions" : []
 }

@@ -131,6 +131,11 @@
       "type": "boolean"
     },
     {
+      "name": "/actions/laserpointer/in/Drag",
+      "requirement": "optional",
+      "type": "boolean"
+    },
+    {
       "name": "/actions/scroll_discrete/in/ScrollDiscrete",
       "requirement": "suggested",
       "type": "vector2"
@@ -177,6 +182,10 @@
       "binding_url": "input/action_bindings_knuckles.json"
     },
     {
+      "controller_type": "playstation_vr2_sense",
+      "binding_url": "input/action_bindings_playstation_vr2_sense_controller.json"
+    },
+    {
       "controller_type": "hpmotioncontroller",
       "binding_url": "input/action_bindings_hpmotioncontroller.json"
     },
@@ -209,6 +218,6 @@
       "binding_url": "input/action_bindings_generic.json"
     }
   ],
-  "version": 4,
+  "version": 5,
   "minimum_required_version": 2
 }

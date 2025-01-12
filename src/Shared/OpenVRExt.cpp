@@ -26,15 +26,16 @@ namespace vr
             uint32_t ovrl_width;
             uint32_t ovrl_height;
             uint32_t ovrl_native_format;
-            vr::ETextureType ovrl_api_type;
-            vr::VRTextureBounds_t ovrl_tex_bounds;
+            ETextureType ovrl_api_type;
+            EColorSpace ovrl_color_space;
+            VRTextureBounds_t ovrl_tex_bounds;
 
-            vr::VROverlayError ovrl_error = vr::VROverlayError_None;
+            VROverlayError ovrl_error = vr::VROverlayError_None;
             ovrl_error = VROverlay()->GetOverlayTexture(overlay_handle, (void**)&shared_tex.ShaderResourceView, device_texture_ref, &ovrl_width, &ovrl_height, &ovrl_native_format,
-                                                        &ovrl_api_type, &shared_tex.TextureColorSpace, &ovrl_tex_bounds);
+                                                        &ovrl_api_type, &ovrl_color_space, &ovrl_tex_bounds);
 
             //Shader Resource View set despite returning an error might not ever happen, but call release if it does
-            if ((ovrl_error != vr::VROverlayError_None) && (shared_tex.ShaderResourceView != nullptr))
+            if ((ovrl_error != VROverlayError_None) && (shared_tex.ShaderResourceView != nullptr))
             {
                 VROverlay()->ReleaseNativeOverlayHandle(overlay_handle, it->second.ShaderResourceView);
                 shared_tex.ShaderResourceView = nullptr;
@@ -77,11 +78,11 @@ namespace vr
     bool IVROverlayEx::ComputeOverlayIntersectionForDevice(VROverlayHandle_t overlay_handle, TrackedDeviceIndex_t device_index, ETrackingUniverseOrigin tracking_origin, 
                                                            VROverlayIntersectionResults_t* results, bool use_tip_offset, bool front_face_only)
     {
-        vr::VROverlayIntersectionParams_t params = {0};
+        VROverlayIntersectionParams_t params = {0};
 
         if (GetOverlayIntersectionParamsForDevice(params, device_index, tracking_origin, use_tip_offset))
         {
-            if (vr::VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, results))
+            if (VROverlay()->ComputeOverlayIntersection(overlay_handle, &params, results))
             {
                 return ( (!front_face_only) || (IsOverlayIntersectionHitFrontFacing(params, *results)) );
             }
@@ -250,8 +251,8 @@ namespace vr
                 HANDLE ovrl_tex_handle = nullptr;
                 ovrl_dxgi_resource->GetSharedHandle(&ovrl_tex_handle);
 
-                vr::Texture_t vrtex_target = {};
-                vrtex_target.eType = vr::TextureType_DXGISharedHandle;
+                Texture_t vrtex_target = {};
+                vrtex_target.eType = TextureType_DXGISharedHandle;
                 vrtex_target.eColorSpace = m_SharedOverlayTextures[overlay_handle_source].TextureColorSpace;
                 vrtex_target.handle = ovrl_tex_handle;
 
@@ -266,7 +267,7 @@ namespace vr
     {
         const std::lock_guard<std::mutex> textures_lock(m_SharedOverlayTexuresMutex);
 
-        vr::EVROverlayError overlay_error = VROverlayError_None;
+        EVROverlayError overlay_error = VROverlayError_None;
 
         auto it = m_SharedOverlayTextures.find(overlay_handle);
         if (it != m_SharedOverlayTextures.end())

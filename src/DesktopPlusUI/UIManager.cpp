@@ -697,6 +697,11 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     }
                     break;
                 }
+                case ipcact_lpointer_ui_drag:
+                {
+                    (msg.lParam == 1) ? StartOverlayDrag(ConfigManager::GetValue(configid_handle_state_dplus_laser_pointer_target_overlay)) : FinishOverlayDrag();
+                    break;
+                }
             }
             break;
         }
@@ -1883,6 +1888,21 @@ void UIManager::PositionOverlay()
             }
         }
 
+        //SteamVR 2.9.1 made changes that affected the dashboard matrix
+        //The changes themselves are odd as they add a control bar to *every* dashboard overlay
+        //Hopefully temporary, but for now fix this up when running those beta versions
+        if (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.9.") != nullptr)
+        {
+            if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+            {
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.11f, -0.000f);
+            }
+            else
+            {
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.15f, -0.000f);
+            }
+        }
+
         //Rotate slightly forward (local rotation)
         Matrix4 mat_m4;                 //is identity
         mat_m4.rotateX(-14.0f);
@@ -2037,25 +2057,9 @@ void UIManager::UpdateOverlayDrag()
 
         vr::VROverlayHandle_t drag_overlay_handle = m_OverlayDragger.GetDragOverlayHandle();
 
-        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
         {
-            Matrix4 matrix_relative_offset = m_OverlayDragger.DragFinish();
-
-            //Store changed transform to the previously dragged overlay handle
-            if (drag_overlay_handle == m_OvrlHandleSettings)
-            {
-                m_WindowSettings.SetTransform(matrix_relative_offset);
-            }
-            else if (drag_overlay_handle == m_OvrlHandleOverlayProperties)
-            {
-                m_WindowOverlayProperties.SetTransform(matrix_relative_offset);
-            }
-            else if (drag_overlay_handle == m_OvrlHandleKeyboard)
-            {
-                m_VRKeyboard.GetWindow().SetTransform(matrix_relative_offset);
-                m_VRKeyboard.GetWindow().RebaseTransform();
-            }
-
+            FinishOverlayDrag();
             return;
         }
 
@@ -2120,6 +2124,43 @@ void UIManager::UpdateOverlayDrag()
     }
 }
 
+void UIManager::StartOverlayDrag(vr::VROverlayHandle_t overlay_handle)
+{
+    if (overlay_handle == m_OvrlHandleSettings)
+    {
+        m_WindowSettings.StartDrag();
+    }
+    else if (overlay_handle == m_OvrlHandleOverlayProperties)
+    {
+        m_WindowOverlayProperties.StartDrag();
+    }
+    else if (overlay_handle == m_OvrlHandleKeyboard)
+    {
+        m_VRKeyboard.GetWindow().StartDrag();
+    }
+}
+
+void UIManager::FinishOverlayDrag()
+{
+    vr::VROverlayHandle_t drag_overlay_handle = m_OverlayDragger.GetDragOverlayHandle();
+    Matrix4 matrix_relative_offset = m_OverlayDragger.DragFinish();
+
+    //Store changed transform to the previously dragged overlay handle
+    if (drag_overlay_handle == m_OvrlHandleSettings)
+    {
+        m_WindowSettings.SetTransform(matrix_relative_offset);
+    }
+    else if (drag_overlay_handle == m_OvrlHandleOverlayProperties)
+    {
+        m_WindowOverlayProperties.SetTransform(matrix_relative_offset);
+    }
+    else if (drag_overlay_handle == m_OvrlHandleKeyboard)
+    {
+        m_VRKeyboard.GetWindow().SetTransform(matrix_relative_offset);
+        m_VRKeyboard.GetWindow().RebaseTransform();
+    }
+}
+
 void UIManager::HighlightOverlay(unsigned int overlay_id)
 {
     //Indicate the current overlay by tinting it when hovering the overlay selector
@@ -2133,13 +2174,7 @@ void UIManager::HighlightOverlay(unsigned int overlay_id)
         if ( (ovrl_handle != vr::k_ulOverlayHandleInvalid) && (colored_handle == vr::k_ulOverlayHandleInvalid) )
         {
             const OverlayConfigData& data = OverlayManager::Get().GetConfigData((unsigned int)overlay_id);
-            float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]);
-
-            //Apply HDR brightness multiplier if needed
-            if ((ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture))
-            {
-                brightness *= DPLUSWINRT_HDR_BRIGHTNESS_ADJUST;
-            }
+            float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]) * data.ConfigFloat[configid_float_overlay_state_brightness_extra_multiplier];
 
             ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
 
@@ -2150,13 +2185,7 @@ void UIManager::HighlightOverlay(unsigned int overlay_id)
         else if ( (colored_handle != vr::k_ulOverlayHandleInvalid) && (colored_handle != ovrl_handle) ) //Remove tint if overlay handle is different or vr::k_ulOverlayHandleInvalid
         {
             const OverlayConfigData& data = OverlayManager::Get().GetConfigData(OverlayManager::Get().FindOverlayID(colored_handle));
-            float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]);
-
-            //Apply HDR brightness multiplier if needed
-            if ((ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)) && (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture))
-            {
-                brightness *= DPLUSWINRT_HDR_BRIGHTNESS_ADJUST;
-            }
+            float brightness = lin2log(data.ConfigFloat[configid_float_overlay_brightness]) * data.ConfigFloat[configid_float_overlay_state_brightness_extra_multiplier];
 
             vr::VROverlay()->SetOverlayColor(colored_handle, brightness, brightness, brightness);
 

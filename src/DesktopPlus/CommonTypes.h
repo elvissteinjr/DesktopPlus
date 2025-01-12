@@ -1,6 +1,17 @@
 #ifndef _COMMONTYPES_H_
 #define _COMMONTYPES_H_
 
+
+//If NTDDI_WIN11_GA is available, use it (optional requirement by OutputManager)
+//This *could* blow up if one of the few files that include windows.h itself comes first somehow but it's fine for now
+#include <sdkddkver.h>
+#ifdef NTDDI_WIN11_GA
+    #undef NTDDI_VERSION
+    #define NTDDI_VERSION NTDDI_WIN11_GA
+#else
+    #pragma message("Using older Windows SDK! Not all Desktop+ features will be available in this build.")
+#endif
+
 #define NOMINMAX
 #include <windows.h>
 #include <d3d11.h>

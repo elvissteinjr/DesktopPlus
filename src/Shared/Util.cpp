@@ -138,6 +138,58 @@ DEVMODE GetDevmodeForDisplayID(int display_id, bool wmr_ignore_vscreens, HMONITO
     return mode;
 }
 
+int GetDisplayIDFromHMonitor(HMONITOR monitor_handle, bool wmr_ignore_vscreens)
+{
+    Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
+
+    //We want the display/desktop ID as enumerated by DXGI
+    HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
+    if (!FAILED(hr))
+    {
+        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
+        UINT i = 0;
+        int output_count = 0;
+
+        while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
+        {
+            //Check if this a WMR virtual display adapter and skip it when the option is enabled
+            if (wmr_ignore_vscreens)
+            {
+                DXGI_ADAPTER_DESC adapter_desc;
+                adapter_ptr->GetDesc(&adapter_desc);
+
+                if (wcscmp(adapter_desc.Description, L"Virtual Display Adapter") == 0)
+                {
+                    ++i;
+                    continue;
+                }
+            }
+
+            //Enum the available outputs
+            Microsoft::WRL::ComPtr<IDXGIOutput> output_ptr;
+            UINT output_index = 0;
+            while (adapter_ptr->EnumOutputs(output_index, &output_ptr) != DXGI_ERROR_NOT_FOUND)
+            {
+                //Get hmonitor and compare
+                DXGI_OUTPUT_DESC output_desc;
+                output_ptr->GetDesc(&output_desc);
+
+                if (output_desc.Monitor == monitor_handle)
+                {
+                    return output_count;
+                }
+
+                ++output_index;
+                ++output_count;
+            }
+
+            ++i;
+        }
+    }
+
+    return -1;
+}
+
 int GetMonitorRefreshRate(int display_id, bool wmr_ignore_vscreens)
 {
     DEVMODE mode = GetDevmodeForDisplayID(display_id, wmr_ignore_vscreens);

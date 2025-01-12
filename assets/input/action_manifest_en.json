@@ -32,6 +32,7 @@
     "/actions/laserpointer/in/MiddleClick" : "Middle Click",
     "/actions/laserpointer/in/Aux01Click"  : "Auxiliary 1 Click",
     "/actions/laserpointer/in/Aux02Click"  : "Auxiliary 2 Click",
+    "/actions/laserpointer/in/Drag"        : "Drag Overlay",
 	
 	"/actions/scroll_discrete" : "Mousewheel Scrolling",
 	

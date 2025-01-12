@@ -262,10 +262,10 @@ bool AppProfileManager::ActivateProfile(const std::string& app_key)
             m_IsProfileActiveWithOverlayProfile = true;
         }
     }
-    
+
     if ((!loaded_overlay_profile) && (m_IsProfileActiveWithOverlayProfile))  //Restore normal overlay config if previous profile loaded an overlay profile
     {
-        ConfigManager::Get().LoadMultiOverlayProfileFromFile("../config_newui.ini");
+        ConfigManager::Get().LoadMultiOverlayProfileFromFile("../config.ini");
         loaded_overlay_profile = true;
 
         m_IsProfileActiveWithOverlayProfile = false;
