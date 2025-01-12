@@ -1,5 +1,5 @@
 {
-   "action_manifest_version" : 2,
+   "action_manifest_version" : 5,
    "alias_info" : {},
    "app_key" : "steam.overlay.1494460",
    "bindings" : {
