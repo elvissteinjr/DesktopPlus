@@ -7,7 +7,7 @@
 //Version string logged and displayed in the UI
 //DPLUS_SHA is set externally for nightly builds to use the commit hash in version string
 //DPLUS_SHA is also always defined but usually empty... so we detect this with some constexpr trickery instead of messing with the build system even more
-constexpr const char* const k_pch_DesktopPlusVersion = (sizeof("" DPLUS_SHA) <= 1) ? "Desktop+ 3.0.2" : "Desktop+ " DPLUS_SHA;
+constexpr const char* const k_pch_DesktopPlusVersion = (sizeof("" DPLUS_SHA) <= 1) ? "Desktop+ 3.0.3 Beta" : "Desktop+ " DPLUS_SHA;
 
 //Version written to config file
 //Only really increased when backward incompatible changes were made (we fall back to default values when things are missing usually)
