@@ -1174,7 +1174,8 @@ void WindowSettings::UpdatePageMainCatActions()
         ImGui::Indent();
 
         const ImVec2 table_size(-style.IndentSpacing - 1.0f, 0.0f);                                     //Replicate padding from columns
-        const float table_column_width = m_Column0Width - style.IndentSpacing - style.IndentSpacing;    //Align with width of other columns 
+        const float table_column_width = m_Column0Width - style.IndentSpacing - style.IndentSpacing;    //Align with width of other columns
+        const float table_cell_height = ImGui::GetFontSize() + style.ItemInnerSpacing.y;
 
         if (BeginCompactTable("TableActiveButtons", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit, table_size))
         {
@@ -1290,6 +1291,8 @@ void WindowSettings::UpdatePageMainCatActions()
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsGlobalShortcutsAdd)))
         {
             global_shortcut_list.push_back(k_ActionUID_Invalid);
+
+            ImGui::SetScrollY(ImGui::GetScrollY() + table_cell_height);
         }
 
         if (shortcuts_visible >= shortcuts_max)
@@ -1303,6 +1306,8 @@ void WindowSettings::UpdatePageMainCatActions()
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsGlobalShortcutsRemove)))
         {
             global_shortcut_list.pop_back();
+
+            ImGui::SetScrollY(ImGui::GetScrollY() - table_cell_height);
         }
 
         if (shortcuts_visible <= 1)
@@ -1400,6 +1405,9 @@ void WindowSettings::UpdatePageMainCatActions()
 
                             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_hotkey_set, hotkey_id);
 
+                            //Keep scroll position constant
+                            ImGui::SetScrollY(ImGui::GetScrollY() - table_cell_height);
+
                             //Erased something straight out of the list, get out of the loop and discard frame
                             UIManager::Get()->RepeatFrame();
                             ImGui::PopID();
@@ -1436,6 +1444,8 @@ void WindowSettings::UpdatePageMainCatActions()
 
             IPCManager::Get().SendStringToDashboardApp(configid_str_state_hotkey_data, hotkey_new.Serialize(), UIManager::Get()->GetWindowHandle());
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_hotkey_set, hotkey_list.size() - 1);
+
+            ImGui::SetScrollY(ImGui::GetScrollY() + table_cell_height);
 
             UIManager::Get()->RepeatFrame(3);   //Avoid some flicker from potentially hovering selectable + remove button appearing in the next few frames
         }
