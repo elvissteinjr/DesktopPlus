@@ -4386,14 +4386,32 @@ bool OutputManager::DesktopTextureAlphaCheck()
 
     //Check alpha value for anything between 0% and 100% transparency, which should not happen but apparently does
     bool ret = false;
-    for (int i = 0; i < pixel_count * 4; i += 4)
-    {
-        unsigned char a = ((unsigned char*)mapped_resource.pData)[i + 3];
 
-        if ((a > 0) && (a < 255))
+    if (desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM)
+    {
+        for (int i = 0; i < pixel_count * 4; i += 4)
         {
-            ret = true;
-            break;
+            unsigned char a = ((unsigned char*)mapped_resource.pData)[i + 3];
+
+            if ((a > 0) && (a < 255))
+            {
+                ret = true;
+                break;
+            }
+        }
+    }
+    else if (desc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT)
+    {
+        for (int i = 0; i < pixel_count * 4; i += 4)
+        {
+            PackedVector::HALF a_half = ((PackedVector::HALF*)mapped_resource.pData)[i + 3];
+            float a = PackedVector::XMConvertHalfToFloat(a_half);
+
+            if ((a > 0.0f) && (a < 1.0f))
+            {
+                ret = true;
+                break;
+            }
         }
     }
 
