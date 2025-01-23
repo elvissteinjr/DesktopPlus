@@ -5974,6 +5974,10 @@ void WindowSettings::UpdatePageResetConfirm()
                 ConfigManager::Get().DeleteOverlayProfile("../overlays_temp.ini");
             }
         }
+        else if (reset_current_profile)
+        {
+            ConfigManager::Get().LoadOverlayProfileDefault(true);
+        }
 
         if (reset_profile_overlays)
         {
