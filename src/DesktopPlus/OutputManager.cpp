@@ -2426,7 +2426,7 @@ float OutputManager::GetDesktopHDRWhiteLevelAdjustment(int desktop_id, bool is_f
         }
     }
 
-    LOG_F(WARNING, "Could not find display config for desktop %d, defaulting to 100% brightness adjustment", desktop_id);
+    LOG_F(WARNING, "Could not find display config for desktop %d, defaulting to 100%% brightness adjustment", desktop_id);
     return 1.0f;
 
     #endif //DPLUS_DUP_NO_HDR
