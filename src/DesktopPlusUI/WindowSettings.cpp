@@ -2038,6 +2038,8 @@ void WindowSettings::UpdatePageMainCatPerformance()
 
 void WindowSettings::UpdatePageMainCatMisc()
 {
+    const ImGuiStyle& style = ImGui::GetStyle();
+
     static bool is_autolaunch_enabled = false;
 
     if ( (UIManager::Get()->IsOpenVRLoaded()) && (m_PageAppearing == wndsettings_page_main) )
@@ -2171,7 +2173,11 @@ void WindowSettings::UpdatePageMainCatMisc()
 
         if (UIManager::Get()->IsElevatedTaskSetUp())
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            static float elevated_task_button_width = 0.0f;
+
+            //Put this button on a new line if it doesn't fit (typically happens with [Restart with Steam] button present in VR mode)
+            if (ImGui::GetItemRectMax().x + style.ItemSpacing.x + elevated_task_button_width < ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
+                ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
             const bool dashboard_app_running  = IPCManager::IsDashboardAppRunning();
 
@@ -2192,6 +2198,8 @@ void WindowSettings::UpdatePageMainCatMisc()
                     UIManager::Get()->ElevatedModeLeave();
                 }
             }
+
+            elevated_task_button_width = ImGui::GetItemRectSize().x;
 
             if (!dashboard_app_running)
                 ImGui::PopItemDisabled();
