@@ -466,7 +466,7 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
 
     if (mode_origin == ovrl_origin_theater_screen)
     {
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_OvrlPropsPositionOriginTheaterScreenTip));
     }
 
@@ -521,7 +521,7 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
             TextureManager::Get().GetTextureInfo((TMNGRTexID)(tmtex_icon_xsmall_origin_room + i), img_size, img_uv_min, img_uv_max);
             ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
 
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             ImGui::TextUnformatted(TranslationManager::GetString( (TRMGRStrID)(tstr_OvrlPropsPositionOriginRoom + i) ));
 
             ImGui::PopID();
@@ -540,7 +540,7 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
     TextureManager::Get().GetTextureInfo((TMNGRTexID)(tmtex_icon_xsmall_origin_room + mode_origin), img_size, img_uv_min, img_uv_max);
     ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
 
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
     ImGui::SetCursorPosY(ImGui::GetCursorPosY());
 
     ImGui::PushClipRect(ImGui::GetCursorScreenPos(), clip_end, true);
@@ -610,7 +610,7 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
 
     if (!UIManager::Get()->IsOpenVRLoaded()) //Show tip if position can't be changed due to desktop mode
     {
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_OvrlPropsPositionPosTip));
     }
 
@@ -624,7 +624,7 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
         PageGoForward(wndovrlprop_page_position_change);
     }
 
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
     if (ImGui::Button(TranslationManager::GetString(tstr_OvrlPropsPositionReset)))
     {
@@ -819,12 +819,12 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
 
     if (!DPWinRT_IsCaptureSupported())
     {
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_OvrlPropsCaptureMethodGCUnsupportedTip), "(!)");
     }
     else if (!DPWinRT_IsCaptureFromCombinedDesktopSupported())
     {
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_OvrlPropsCaptureMethodGCUnsupportedPartialTip), "(!)");
     }
 
@@ -921,7 +921,7 @@ void WindowOverlayProperties::UpdatePageMainCatCapture()
         {
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_winrt_window_matching_strict, strict_matching);
         }
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_OvrlPropsCaptureGCStrictMatchingTip));
     }
 
@@ -1130,7 +1130,7 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
 
     if (!DPBrowserAPIClient::Get().IsBrowserAvailable())
     {
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_OvrlPropsBrowserNotAvailableTip), "(!)");
     }
 
@@ -1147,7 +1147,7 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsBrowserCloned));
 
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(clone_tip_text.c_str());
 
         if (ImGui::IsItemHovered())
@@ -1398,7 +1398,7 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
 
             is_allow_transparency_pending = !is_allow_transparency_pending; //If it was already pending, then the value is back to what's already applied
         }
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_OvrlPropsBrowserAllowTransparencyTip));
 
         ImGui::NextColumn();
@@ -1410,7 +1410,7 @@ void WindowOverlayProperties::UpdatePageMainCatBrowser()
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_browser_recreate_context, config_overlay_id);
                 is_allow_transparency_pending = false;
             }
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_OvrlPropsBrowserRecreateContextTip));
         }
     }
@@ -1626,7 +1626,7 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAdvancedOverlayTags));
 
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_OvrlPropsAdvancedOverlayTagsTip));
 
         ImGui::NextColumn();
@@ -1888,7 +1888,7 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
     }
 
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-    ImGui::BeginChild("PositionChangeChild", ImVec2(0.0f, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y), false, ImGuiWindowFlags_NavFlattened);
+    ImGui::BeginChild("PositionChangeChild", ImVec2(0.0f, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() - style.ItemSpacing.y), false, ImGuiWindowFlags_NavFlattened);
     ImGui::PopStyleColor();
 
     const float column_width_1 = ImGui::GetFrameHeightWithSpacing() * 3.0f + style.ItemInnerSpacing.x;
@@ -1974,7 +1974,7 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
     ImGui::NextColumn();
 
     //Row 2
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + style.ItemSpacing.x);
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionChangeMove));
     ImGui::NextColumn();
@@ -1994,7 +1994,7 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
         bool is_active = (active_capture_type == 1);
 
         if (is_active)
-            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
+            ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
 
         ImGui::Button(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragButton), arrow_button_size);
 
@@ -2057,7 +2057,7 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
         bool is_active = (active_capture_type == 2);
 
         if (is_active)
-            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
+            ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
 
         ImGui::Button(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragButton), arrow_button_size);
 
@@ -2883,11 +2883,13 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
         m_ConfigDataTemp = OverlayManager::Get().GetCurrentConfigData();
     }
 
+    const ImGuiStyle& style = ImGui::GetStyle();
+
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_OvrlPropsCaptureGCSource));
     ImGui::Indent();
 
     ImGui::SetNextItemWidth(-1.0f);
-    ImGui::BeginChild("SourceList", ImVec2(0.0f, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y), true);
+    ImGui::BeginChild("SourceList", ImVec2(0.0f, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() - style.ItemSpacing.y), true);
 
     ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
     ImVec2 img_size, img_uv_min, img_uv_max;
@@ -2926,7 +2928,7 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
     TextureManager::Get().GetTextureInfo(tmtex_icon_xsmall_desktop_none, img_size, img_uv_min, img_uv_max);
     ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
 
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_SourceWinRTNone));
 
     ImGui::PopID();
@@ -2969,7 +2971,7 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
         TextureManager::Get().GetTextureInfo(tmtex_icon_xsmall_desktop_all, img_size, img_uv_min, img_uv_max);
         ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
 
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SourceDesktopAll));
 
         ImGui::PopID();
@@ -3012,7 +3014,7 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
         TextureManager::Get().GetTextureInfo(texid, img_size, img_uv_min, img_uv_max);
         ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
 
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         ImGui::TextUnformatted(TranslationManager::Get().GetDesktopIDString(i));
 
         ImGui::PopID();
@@ -3059,7 +3061,7 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
             TextureManager::Get().GetWindowIconTextureInfo(icon_id, img_size, img_uv_min, img_uv_max);
             ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
 
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         }
 
         ImGui::TextUnformatted(window_info.GetListTitle().c_str());

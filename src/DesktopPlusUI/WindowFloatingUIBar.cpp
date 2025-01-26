@@ -21,6 +21,8 @@ void WindowFloatingUIMainBar::DisplayTooltipIfHovered(const char* text)
 {
     if ( ((m_AnimationProgress == 0.0f) || (m_AnimationProgress == 1.0f)) && (ImGui::IsItemHovered()) ) //Also hide while animating
     {
+        const ImGuiStyle& style = ImGui::GetStyle();
+
         static ImVec2 button_pos_last; //Remember last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
         ImVec2 pos = ImGui::GetItemRectMin();
         float button_width = ImGui::GetItemRectSize().x;
@@ -33,8 +35,8 @@ void WindowFloatingUIMainBar::DisplayTooltipIfHovered(const char* text)
 
         //Not using GetWindowSize() here since it's delayed and plays odd when switching between buttons with the same label
         ImVec2 window_size = ImGui::GetItemRectSize();
-        window_size.x += ImGui::GetStyle().WindowPadding.x * 2.0f;
-        window_size.y += ImGui::GetStyle().WindowPadding.y * 2.0f;
+        window_size.x += style.WindowPadding.x * 2.0f;
+        window_size.y += style.WindowPadding.y * 2.0f;
 
         //Repeat frame when the window is appearing as it will not have the right position (either from being first time or still having old pos)
         if ( (ImGui::IsWindowAppearing()) || (pos.x != button_pos_last.x) )
@@ -45,7 +47,7 @@ void WindowFloatingUIMainBar::DisplayTooltipIfHovered(const char* text)
         button_pos_last = pos;
 
         pos.x += (button_width / 2.0f) - (window_size.x / 2.0f);
-        pos.y += button_width + ImGui::GetStyle().WindowPadding.y - 2.0f;
+        pos.y += button_width + style.WindowPadding.y - 2.0f;
 
         //Clamp x so the tooltip does not get cut off
         pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);   //Clamp right side to texture end
@@ -422,6 +424,8 @@ void WindowFloatingUIActionBar::DisplayTooltipIfHovered(const char* text)
 {
     if (ImGui::IsItemHovered())
     {
+        const ImGuiStyle& style = ImGui::GetStyle();
+
         static ImVec2 button_pos_last; //Remember last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
         ImVec2 pos = ImGui::GetItemRectMin();
         float button_width = ImGui::GetItemRectSize().x;
@@ -434,8 +438,8 @@ void WindowFloatingUIActionBar::DisplayTooltipIfHovered(const char* text)
 
         //Not using GetWindowSize() here since it's delayed and plays odd when switching between buttons with the same label
         ImVec2 window_size = ImGui::GetItemRectSize();
-        window_size.x += ImGui::GetStyle().WindowPadding.x * 2.0f;
-        window_size.y += ImGui::GetStyle().WindowPadding.y * 2.0f;
+        window_size.x += style.WindowPadding.x * 2.0f;
+        window_size.y += style.WindowPadding.y * 2.0f;
 
         //Repeat frame when the window is appearing as it will not have the right position (either from being first time or still having old pos)
         if ( (ImGui::IsWindowAppearing()) || (pos.x != button_pos_last.x) )
@@ -454,7 +458,7 @@ void WindowFloatingUIActionBar::DisplayTooltipIfHovered(const char* text)
         }
         else
         {
-            pos.y -= window_size.y + ImGui::GetStyle().WindowPadding.y;
+            pos.y -= window_size.y + style.WindowPadding.y;
         }
 
         //Clamp x so the tooltip does not get cut off
@@ -949,7 +953,7 @@ ImVec2 WindowFloatingUIOverlayStats::CalcPos(const WindowFloatingUIMainBar& main
 
     if (is_actionbar_blocking)
     {
-        const float space_width = mainbar.GetPos().x - actionbar_pos.x + ImGui::GetStyle().ItemSpacing.x;  //Space between left side of action-bar and left side of main-bar
+        const float space_width = mainbar.GetPos().x - actionbar_pos.x + style.ItemSpacing.x;  //Space between left side of action-bar and left side of main-bar
 
         if (window_width > space_width)
         {

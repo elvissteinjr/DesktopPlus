@@ -918,7 +918,7 @@ void WindowQuickStart::Update()
     if (current_page_prev == 0)
         ImGui::PopItemDisabled();
 
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
     if (current_page_prev == pageid_MAX)
         ImGui::PushItemDisabled();

@@ -80,7 +80,7 @@ void WindowDesktopMode::UpdateTitleBar()
         UIManager::Get()->GetOverlayPropertiesWindow().DesktopModeOnTitleIconClick();
     }
 
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
     ImGui::SetCursorPosY( (m_TitleBarRect.w / 2.0f) - (ImGui::GetTextLineHeight() / 1.90f) );   //1.90f to adjust alignment a bit
 
@@ -412,17 +412,17 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
             OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
             const ImVec4 tint_color = ImVec4(1.0f, 1.0f, 1.0f, data.ConfigBool[configid_bool_overlay_enabled] ? 1.0f : 0.5f); //Transparent when hidden
             //Overlay icon
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             TextureManager::Get().GetOverlayIconTextureInfo(data, img_size, img_uv_min, img_uv_max, true);
             ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max, tint_color);
 
             //Origin icon
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             TextureManager::Get().GetTextureInfo((TMNGRTexID)(tmtex_icon_xsmall_origin_room + data.ConfigInt[configid_int_overlay_origin]), img_size, img_uv_min, img_uv_max);
             ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max, tint_color);
 
             //Label
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             ImGui::TextColoredUnformatted(data.ConfigBool[configid_bool_overlay_enabled] ? ImGui::GetStyleColorVec4(ImGuiCol_Text) : color_text_hidden, data.ConfigNameStr.c_str());
         }
 
@@ -483,12 +483,12 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
             }
 
             //Custom render the selectable label with icon
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             TextureManager::Get().GetTextureInfo(tmtex_icon_add, img_size, img_uv_min, img_uv_max);
             ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
 
             //Label
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_DesktopModeOverlayListAdd));
         }
 
