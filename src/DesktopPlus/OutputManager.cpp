@@ -3944,11 +3944,12 @@ void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
         {
             //Check for translucent pixels (not fast)
             m_OutputAlphaCheckFailed = DesktopTextureAlphaCheck();
-
             m_OutputAlphaChecksPending--;
+
+            LOG_IF_F(WARNING, (m_OutputAlphaCheckFailed) && (m_OutputAlphaChecksPending == 0), "Failed Desktop Duplication alpha check, using extra render pass");
         }
     }
-    
+
     //Draw the frame to the texture with the alpha channel fixing pixel shader if we have to
     if (m_OutputAlphaCheckFailed)
     {
@@ -4417,8 +4418,6 @@ bool OutputManager::DesktopTextureAlphaCheck()
 
     //Cleanup
     m_DeviceContext->Unmap(tex_staging.Get(), 0);
-
-    LOG_IF_F(WARNING, ret, "Failed Desktop Duplication alpha check, using extra render pass");
 
     return ret;
 }
