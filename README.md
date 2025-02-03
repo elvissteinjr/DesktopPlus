@@ -35,7 +35,7 @@ Make sure to also download the [Desktop+ Browser component](https://github.com/e
 
 ### Nightly Build
 
-An automated build based on the latest code changes can be downloaded from [here](https://nightly.link/elvissteinjr/DesktopPlus/workflows/nightly/new-ui).  
+An automated build based on the latest code changes can be downloaded from [here](https://nightly.link/elvissteinjr/DesktopPlus/workflows/nightly/master).  
 Keep in mind that nightly builds are unstable and mostly untested. Prefer the latest release if possible.
 
 ### Building from Source
