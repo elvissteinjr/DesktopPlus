@@ -1888,21 +1888,6 @@ void UIManager::PositionOverlay()
             }
         }
 
-        //SteamVR 2.9.1 made changes that affected the dashboard matrix
-        //The changes themselves are odd as they add a control bar to *every* dashboard overlay
-        //Hopefully temporary, but for now fix this up when running those beta versions
-        if (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.9.") != nullptr)
-        {
-            if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
-            {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.11f, -0.000f);
-            }
-            else
-            {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.15f, -0.000f);
-            }
-        }
-
         //Rotate slightly forward (local rotation)
         Matrix4 mat_m4;                 //is identity
         mat_m4.rotateX(-14.0f);

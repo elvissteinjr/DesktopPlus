@@ -14,6 +14,9 @@
 
 #include "Matrices.h"
 
+//VROverlayFlags_MinimalControlBar is not available in a public SDK yet, but we've been given the go to use it
+#define VROverlayFlags_MinimalControlBar VROverlayFlags(1 << 26)
+
 namespace vr
 {
     class IVRSystemEx

@@ -637,7 +637,7 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
         if (!loaded_overlay_profile)
         {
             ConfigManager::Get().LoadConfigFromFile();
-        }       
+        }
 
         if (m_OvrlHandleDashboardDummy != vr::k_ulOverlayHandleInvalid)
         {
@@ -648,6 +648,8 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
 
             vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleDashboardDummy, vr::VROverlayInputMethod_None);
             vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, 1.5f);
+
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleDashboardDummy, vr::VROverlayFlags_MinimalControlBar, true);
 
             //ResetOverlays() is called later
 
