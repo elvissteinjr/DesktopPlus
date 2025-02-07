@@ -2359,7 +2359,7 @@ float OutputManager::GetDesktopHDRWhiteLevelAdjustment(int desktop_id, bool is_f
                 bool is_8bit = true;
                 ULONG sdr_white_level = 1000;
 
-                #if (NTDDI_VERSION >= NTDDI_WIN11_GA)
+                #if (NTDDI_VERSION >= 0x0A00000F/*NTDDI_WIN11_GA*/)
                     DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 adv_color_info_2 = {};
                     adv_color_info_2.header.adapterId = path.targetInfo.adapterId;
                     adv_color_info_2.header.id = path.targetInfo.id;
