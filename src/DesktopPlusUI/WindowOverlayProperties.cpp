@@ -159,6 +159,11 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
     }
 
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_interface_overlay_current_id, (int)overlay_id);
+
+    if (IsVisibleOrFading())
+    {
+        UIManager::Get()->GetIdleState().AddActiveTime();
+    }
 }
 
 void WindowOverlayProperties::UpdateDesktopMode()

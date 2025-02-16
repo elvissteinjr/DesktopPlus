@@ -3,6 +3,7 @@
 #include "WindowFloatingUIBar.h"
 
 #include "openvr.h"
+#include "Matrices.h"
 
 class FloatingUI
 {
@@ -20,6 +21,7 @@ class FloatingUI
         bool m_IsSwitchingTarget;
         float m_FadeOutDelayCount;
         int m_AutoFitFrames;
+        Matrix4 m_TransformLast;
 
         float m_TheaterOffsetAnimationProgress;
 

@@ -202,6 +202,8 @@ void FloatingUI::UpdateUITargetState()
     {
         m_IsSwitchingTarget = true;
         m_Visible = false;
+
+        UIManager::Get()->GetIdleState().AddActiveTime();
         return;
     }
     else if ( (ovrl_handle_hover_target != ovrl_handle_floating_ui) && (ovrl_handle_hover_target != vr::k_ulOverlayHandleInvalid) )
@@ -209,6 +211,7 @@ void FloatingUI::UpdateUITargetState()
         if ( (!m_Visible) && (m_Alpha == 0.0f) )
         {
             is_newly_visible = true;
+            UIManager::Get()->GetIdleState().AddActiveTime();
         }
 
         m_OvrlHandleCurrentUITarget = ovrl_handle_hover_target;
@@ -291,8 +294,15 @@ void FloatingUI::UpdateUITargetState()
         //Don't update position if dummy transform is unstable unless it's target is not primary dashboard overlay or we're newly appearing
         if ( (is_newly_visible) || (!UIManager::Get()->IsDummyOverlayTransformUnstable()) || (ovrl_id_hover_target != ovrl_id_primary_dashboard) )
         {
-            vr::HmdMatrix34_t hmd_matrix = matrix.toOpenVR34();
-            vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_floating_ui, vr::TrackingUniverseStanding, &hmd_matrix);
+            //Only set transform and add active time if we actually need to move the overlay
+            if (matrix != m_TransformLast)
+            {
+                vr::HmdMatrix34_t hmd_matrix = matrix.toOpenVR34();
+                vr::VROverlay()->SetOverlayTransformAbsolute(ovrl_handle_floating_ui, vr::TrackingUniverseStanding, &hmd_matrix);
+
+                UIManager::Get()->GetIdleState().AddActiveTime(100);
+                m_TransformLast = matrix;
+            }
         }
 
         //Set floating UI curvature based on target overlay curvature
@@ -345,6 +355,8 @@ void FloatingUI::UpdateUITargetState()
                     m_FadeOutDelayCount = 0.0f;
                 }
             }
+
+            UIManager::Get()->GetIdleState().AddActiveTime();
         }
         else if (m_Alpha == 0.0f)
         {

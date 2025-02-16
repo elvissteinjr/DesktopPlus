@@ -99,6 +99,138 @@ ImVec4 UITextureSpaces::GetRectAsVec4(UITexspaceID texspace_id) const
 //While this is a singleton like many other classes, we want to be careful about initializing it at global scope, so we leave that until a bit later in main()
 UIManager* g_UIManagerPtr = nullptr;
 
+UIManager::IdleState::IdleState()
+{
+    ::QueryPerformanceFrequency(&m_TimestepTicks);
+    ::QueryPerformanceCounter(&m_TimestepTime);
+}
+
+void UIManager::IdleState::SetLastActiveTick(ULONGLONG value)
+{
+    //Some functions set this into the future, so prevent it being overwritten in those cases
+    if (value > m_LastActiveTick)
+    {
+        m_LastActiveTick = value;
+    }
+}
+
+bool UIManager::IdleState::ShouldIdle()
+{
+    if (::IsIconic(UIManager::Get()->GetWindowHandle()))
+    {
+        m_WasIdleLastFrame = true;
+        return true;
+    }
+
+    UIManager& ui_manager = *UIManager::Get();
+
+    //Temporary setting to disable throttling in case it causes issues somewhere, matches old basic idle logic
+    if (!ConfigManager::GetValue(configid_bool_performance_ui_auto_throttle))
+    {
+        SetLastActiveTick(::GetTickCount64());
+
+        if (!ui_manager.IsInDesktopMode())
+        {
+            const bool do_idle = ( (!ui_manager.IsOverlayBarOverlayVisible())                     &&
+                                   (!ui_manager.GetFloatingUI().IsVisible())                      &&
+                                   (!ui_manager.GetSettingsWindow().IsVisibleOrFading())          &&
+                                   (!ui_manager.GetOverlayPropertiesWindow().IsVisibleOrFading()) &&
+                                   (!ui_manager.GetPerformanceWindow().IsVisible())               &&
+                                   (!ui_manager.GetVRKeyboard().GetWindow().IsVisibleOrFading())  &&
+                                   (!ui_manager.GetAuxUI().IsActive()) );
+
+            return do_idle;
+        }
+
+        return false;
+    }
+
+    //Performance Monitor needs constant updates, but it'll be throttled in GetFrameSkipValue() if possible
+    if (ui_manager.GetPerformanceWindow().IsVisible())
+    {
+        return false;
+    }
+
+    //If any text input is active, we need to deal with the blinking caret so we wake up occasionally for it to animate
+    if (ImGui::IsAnyInputTextActive())
+    {
+        if (m_LastCaretTick + 100 < ::GetTickCount64())
+        {
+            m_LastCaretTick = ::GetTickCount64();
+            return false;
+        }
+    }
+
+    if (m_LastActiveTick + s_MsBeforeIdle < ::GetTickCount64())
+    {
+        m_WasIdleLastFrame = true;
+        return true;
+    }
+
+    return false;
+}
+
+int UIManager::IdleState::GetFrameSkipValue()
+{
+    //If outside of active time, throttle to 1 frameskip or just use user frameskip value if it's higher
+    //This mainly causes Performance Monitor to animated at half rate. Other animating things are supposed to add active time
+    return std::max((m_LastActiveTick + s_MsBeforeIdle < ::GetTickCount64()) ? 1 : 0, ConfigManager::GetValue(configid_int_performance_ui_frameskip));
+}
+
+void UIManager::IdleState::OnImGuiNewFrame()
+{
+    //After idling we'll have a large delta time set by ImGui, so we run our own timestep once more to correct it for that one frame
+    if (m_WasIdleLastFrame)
+    {
+        DoIdleTimestep();
+    }
+
+    m_WasIdleLastFrame = false;
+}
+
+void UIManager::IdleState::OnWindowMessage(UINT message_id)
+{
+    if ( ((message_id >= WM_MOUSEFIRST) && (message_id <= WM_MOUSELAST)) || ((message_id >= WM_KEYFIRST) && (message_id <= WM_KEYLAST)) )
+    {
+        //We may get periodic mouse move messages with no cursor moving, ignore those
+        if (message_id == WM_MOUSEMOVE)
+        {
+            POINT pt;
+            GetCursorPos(&pt);
+
+            if ((pt.x == m_LastCursorPos.x) && (pt.y == m_LastCursorPos.y))
+            {
+                return;
+            }
+
+            m_LastCursorPos = pt;
+        }
+
+        SetLastActiveTick(::GetTickCount64());
+    }
+}
+
+void UIManager::IdleState::OnOpenVREvent(uint32_t event_type)
+{
+    if ( ((event_type >= vr::VREvent_MouseMove)    && (event_type <= vr::VREvent_UnlockMousePosition)) || ((event_type >= vr::VREvent_OverlayShown) && (event_type <= vr::VREvent_SwitchGamepadFocus)) )
+    {
+        SetLastActiveTick(::GetTickCount64());
+    }
+}
+
+void UIManager::IdleState::AddActiveTime(unsigned int ms)
+{
+    SetLastActiveTick(::GetTickCount64() + ms - s_MsBeforeIdle);
+}
+
+void UIManager::IdleState::DoIdleTimestep()
+{
+    LARGE_INTEGER current_time{0};
+    ::QueryPerformanceCounter(&current_time);
+    ImGui::GetIO().DeltaTime = (float)(current_time.QuadPart - m_TimestepTime.QuadPart) / m_TimestepTicks.QuadPart;
+    m_TimestepTime = current_time;
+}
+
 UIManager::UIManager(bool desktop_mode, bool keyboard_editor_mode) : 
     m_WindowHandle(nullptr),
     m_SharedTextureRef(nullptr),
@@ -710,6 +842,8 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
             if (msg.wParam < configid_bool_MAX)
             {
                 ConfigID_Bool bool_id = (ConfigID_Bool)msg.wParam;
+
+                bool previous_value = ConfigManager::GetValue(bool_id);
                 ConfigManager::SetValue(bool_id, (msg.lParam != 0) );
 
                 switch (bool_id)
@@ -721,7 +855,10 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     case configid_bool_state_misc_browser_version_mismatch:
                     case configid_bool_state_misc_browser_used_but_missing:
                     {
-                        UpdateAnyWarningDisplayedState();
+                        if ((msg.lParam != 0) != previous_value)
+                        {
+                            UpdateAnyWarningDisplayedState();
+                        }
                         break;
                     }
                     case configid_bool_state_overlay_dragmode_temp:
@@ -757,6 +894,15 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                         }
                         break;
                     }
+                    case configid_int_overlay_state_fps:
+                    case configid_int_state_performance_duplication_fps:
+                    {
+                        if (ConfigManager::GetValue(configid_bool_performance_show_fps))
+                        {
+                            m_IdleState.AddActiveTime(50);
+                        }
+                        break;
+                    }
                     case configid_int_interface_overlay_current_id:
                     {
                         OverlayManager::Get().SetCurrentOverlayID((unsigned int)msg.lParam);
@@ -771,6 +917,7 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
                     }
                     case configid_int_state_interface_desktop_count:
                     {
+                        m_IdleState.AddActiveTime(50);
                         RepeatFrame();
                         break;
                     }
@@ -913,6 +1060,11 @@ void UIManager::HandleDelayedIPCMessages()
         HandleIPCMessage(m_DelayedICPMessages.back(), true);
         m_DelayedICPMessages.pop_back();
     }
+}
+
+bool UIManager::HasDelayedIPCMessages() const
+{
+    return !m_DelayedICPMessages.empty();
 }
 
 void UIManager::OnInitDone()
@@ -1132,6 +1284,33 @@ void UIManager::SendUIIntersectionMaskToDashboardApp(std::vector<vr::VROverlayIn
     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_lpointer_ui_mask_rect, -1); //Mark end of mask
 
     last_tick = ::GetTickCount64();
+}
+
+UIManager::IdleState& UIManager::GetIdleState()
+{
+    return m_IdleState;
+}
+
+DPRect UIManager::CalcRectForActiveTexspace()
+{
+    DPRect rect;
+
+    if (m_WindowOverlayBar.IsVisibleOrFading())
+        (rect.GetWidth() == 0) ? rect = UITextureSpaces::Get().GetRect(ui_texspace_overlay_bar)         : rect.Add(UITextureSpaces::Get().GetRect(ui_texspace_overlay_bar));
+    if (m_FloatingUI.IsVisible())
+        (rect.GetWidth() == 0) ? rect = UITextureSpaces::Get().GetRect(ui_texspace_floating_ui)         : rect.Add(UITextureSpaces::Get().GetRect(ui_texspace_floating_ui));
+    if (m_WindowSettings.IsVisibleOrFading())
+        (rect.GetWidth() == 0) ? rect = UITextureSpaces::Get().GetRect(ui_texspace_settings)            : rect.Add(UITextureSpaces::Get().GetRect(ui_texspace_settings));
+    if (m_WindowOverlayProperties.IsVisibleOrFading())
+        (rect.GetWidth() == 0) ? rect = UITextureSpaces::Get().GetRect(ui_texspace_overlay_properties)  : rect.Add(UITextureSpaces::Get().GetRect(ui_texspace_overlay_properties));
+    if (m_VRKeyboard.GetWindow().IsVisibleOrFading())
+        (rect.GetWidth() == 0) ? rect = UITextureSpaces::Get().GetRect(ui_texspace_keyboard)            : rect.Add(UITextureSpaces::Get().GetRect(ui_texspace_keyboard));
+    if (m_WindowPerformance.IsVisible())
+        (rect.GetWidth() == 0) ? rect = UITextureSpaces::Get().GetRect(ui_texspace_performance_monitor) : rect.Add(UITextureSpaces::Get().GetRect(ui_texspace_performance_monitor));
+    if (m_AuxUI.IsActive())
+        (rect.GetWidth() == 0) ? rect = UITextureSpaces::Get().GetRect(ui_texspace_aux_ui)              : rect.Add(UITextureSpaces::Get().GetRect(ui_texspace_aux_ui));
+
+    return rect;
 }
 
 void UIManager::RepeatFrame(int extra_frame_count)
@@ -1605,6 +1784,7 @@ bool UIManager::IsAnyWarningDisplayed() const
 void UIManager::UpdateAnyWarningDisplayedState()
 {
     m_HasAnyWarning = false;
+    m_IdleState.AddActiveTime();    //Make sure any changes are reflected even while idling
 
     //Check all possible warnings. This has to be in sync with what WindowSettings::UpdateWarnings() does to be correct.
 
@@ -1992,6 +2172,7 @@ void UIManager::PositionOverlay()
                     if ((m_OverlayBarFadeInTick == 0) && (!m_IsSystemUIHoveredFromSwitch))
                     {
                         m_OverlayBarFadeInTick = ::GetTickCount64();
+                        m_IdleState.AddActiveTime();
                     }
 
                     if (m_OverlayBarFadeInTick + 300 < ::GetTickCount64())

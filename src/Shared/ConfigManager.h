@@ -67,6 +67,7 @@ enum ConfigID_Bool
     configid_bool_performance_single_desktop_mirroring,
     configid_bool_performance_hdr_mirroring,
     configid_bool_performance_show_fps,
+    configid_bool_performance_ui_auto_throttle,
     configid_bool_performance_monitor_large_style,
     configid_bool_performance_monitor_show_graphs,
     configid_bool_performance_monitor_show_time,
@@ -165,6 +166,7 @@ enum ConfigID_Int
     configid_int_browser_max_fps,                           //Browser overlays use this instead of update limits
     configid_int_performance_update_limit_mode,
     configid_int_performance_update_limit_fps,              //This is the enum ID, not the actual number. See ApplySettingUpdateLimiter() code for more info
+    configid_int_performance_ui_frameskip,
     configid_int_state_overlay_current_id_override,         //This is used to send config changes to overlays which aren't the current, mainly to avoid the UI switching around (-1 is disabled)
     configid_int_state_overlay_transform_sync_target_id,    //Target overlay ID for transform sync. -1 = None
     configid_int_state_overlay_focused_id,                  //Focused overlay ID (set by last click) for keyboard overlay target if applicable. -1 = None

@@ -411,6 +411,11 @@ void WindowFloatingUIMainBar::MarkCurrentWindowCapturableStateOutdated()
 {
     //Mark state as outdated. We don't do the update here as the current window can change a lot while the UI isn't even displaying... no need to bother then.
     m_IsCurrentWindowCapturable = -1;
+
+    if (UIManager::Get()->GetFloatingUI().IsVisible())
+    {
+        UIManager::Get()->GetIdleState().AddActiveTime(50);
+    }
 }
 
 

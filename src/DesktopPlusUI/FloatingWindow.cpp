@@ -1391,6 +1391,8 @@ void FloatingWindow::Show(bool skip_fade)
     {
         m_Alpha = 1.0f;
     }
+
+    UIManager::Get()->GetIdleState().AddActiveTime();
 }
 
 void FloatingWindow::Hide(bool skip_fade)
@@ -1401,6 +1403,8 @@ void FloatingWindow::Hide(bool skip_fade)
     {
         m_Alpha = 0.0f;
     }
+
+    UIManager::Get()->GetIdleState().AddActiveTime();
 }
 
 void FloatingWindow::HideAll(bool skip_fade)

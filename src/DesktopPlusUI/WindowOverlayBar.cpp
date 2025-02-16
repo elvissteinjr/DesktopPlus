@@ -835,6 +835,11 @@ bool WindowOverlayBar::IsVisible() const
     return m_Visible;
 }
 
+bool WindowOverlayBar::IsVisibleOrFading() const
+{
+    return ( (m_Visible) || (m_Alpha != 0.0f) );
+}
+
 bool WindowOverlayBar::IsAnyMenuVisible() const
 {
     return (m_MenuAlpha != 0.0f);
