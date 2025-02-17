@@ -432,6 +432,7 @@ void OverlayManager::SetTheaterOverlayID(unsigned int id)
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_NoDashboardTab,        true);
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_EnableControlBar,      true);
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_EnableControlBarClose, true);
+            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_MinimalControlBar,     true);
 
             m_TheaterOverlayHandle = ovrl_handle;
 
