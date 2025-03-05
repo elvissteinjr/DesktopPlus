@@ -898,6 +898,9 @@ void WindowDesktopMode::Update()
     ImGui::PopClipRect();
 
     ImGui::End();
+
+    //Display any potential Aux UI on top of this window
+    UIManager::Get()->GetAuxUI().Update();
 }
 
 ImVec4 WindowDesktopMode::GetTitleBarRect() const

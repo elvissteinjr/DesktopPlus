@@ -92,6 +92,23 @@ bool AuxUIWindow::WindowUpdateBase()
     return true;
 }
 
+void AuxUIWindow::DrawFullDimmedRectBehindWindow()
+{
+    //Based on ImGui::RenderDimmedBackgrounds()
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    if (draw_list->CmdBuffer.Size == 0)
+        draw_list->AddDrawCmd();
+
+    draw_list->PushClipRect({0.0f, 0.0f},  ImGui::GetIO().DisplaySize, false); //ImGui FIXME: Need to stricty ensure ImDrawCmd are not merged (ElemCount==6 checks below will verify that)
+    draw_list->AddRectFilled({0.0f, 0.0f}, ImGui::GetIO().DisplaySize, ImGui::ColorConvertFloat4ToU32({0.0f, 0.0f, 0.0f, m_Alpha * 0.5f}));
+    ImDrawCmd cmd = draw_list->CmdBuffer.back();
+    //IM_ASSERT(cmd.ElemCount == 6);    //This seems to block in the way we use this function, but also appears fine without for now?
+    draw_list->CmdBuffer.pop_back();
+    draw_list->CmdBuffer.push_front(cmd);
+    draw_list->AddDrawCmd(); //ImGui: We need to create a command as CmdBuffer.back().IdxOffset won't be correct if we append to same command.
+    draw_list->PopClipRect();
+}
+
 void AuxUIWindow::SetUpTextureBounds()
 {
     //Set overlay texture bounds based on m_Pos and m_Size (with padding), clamped to available texture space
@@ -251,12 +268,24 @@ void WindowDragHint::Update()
     if (!render_window)
         return;
 
+    const bool desktop_mode = UIManager::Get()->IsInDesktopMode();
+
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
 
     if (!m_Visible)
         flags |= ImGuiWindowFlags_NoInputs;
 
-    ImGui::SetNextWindowPos(m_Pos, ImGuiCond_Always);
+    //Center on screen in desktop mode
+    if (desktop_mode)
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_Alpha);
+        ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x / 2.0f, ImGui::GetIO().DisplaySize.y / 2.0f}, ImGuiCond_Always, {0.5f, 0.5f});
+    }
+    else
+    {
+        ImGui::SetNextWindowPos(m_Pos, ImGuiCond_Always);
+    }
+
     ImGui::Begin("WindowDragHint", nullptr, flags);
 
     switch (m_HintType)
@@ -267,10 +296,16 @@ void WindowDragHint::Update()
         case WindowDragHint::hint_ovrl_theater_screen_blocked: ImGui::TextUnformatted(TranslationManager::GetString(tstr_AuxUIDragHintOvrlTheaterScreenBlocked)); break;
     }
 
+    if (desktop_mode)
+        DrawFullDimmedRectBehindWindow();
+
     m_Size = ImGui::GetWindowSize();
     ImGui::End();
 
-    if ( (!UIManager::Get()->IsInDesktopMode()) && (!m_IsTransitionFading) )
+    if (desktop_mode)
+        ImGui::PopStyleVar();
+
+    if ((!desktop_mode) && (!m_IsTransitionFading))
     {
         UpdateOverlayPos();
     }
@@ -279,9 +314,8 @@ void WindowDragHint::Update()
     {
         m_AutoSizeFrames--;
 
-        if (m_AutoSizeFrames == 0)
+        if ((m_AutoSizeFrames == 0) && (!desktop_mode))
         {
-            if (!UIManager::Get()->IsInDesktopMode())
             SetUpOverlay();
         }
     }
@@ -387,20 +421,38 @@ void WindowGazeFadeAutoHint::Update()
         }
     }
 
+    const bool desktop_mode = UIManager::Get()->IsInDesktopMode();
+
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
 
     if (!m_Visible)
         flags |= ImGuiWindowFlags_NoInputs;
 
-    ImGui::SetNextWindowPos(m_Pos, ImGuiCond_Always);
+    //Center on screen in desktop mode
+    if (desktop_mode)
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_Alpha);
+        ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x / 2.0f, ImGui::GetIO().DisplaySize.y / 2.0f}, ImGuiCond_Always, {0.5f, 0.5f});
+    }
+    else
+    {
+        ImGui::SetNextWindowPos(m_Pos, ImGuiCond_Always);
+    }
+    
     ImGui::Begin("WindowGazeFadeAutoHint", nullptr, flags);
 
     ImGui::TextUnformatted(m_Label.c_str());
 
+    if (desktop_mode)
+        DrawFullDimmedRectBehindWindow();
+
     m_Size = ImGui::GetWindowSize();
     ImGui::End();
 
-    if ( (!UIManager::Get()->IsInDesktopMode()) && (!m_IsTransitionFading) )
+    if (desktop_mode)
+        ImGui::PopStyleVar();
+
+    if ((!desktop_mode) && (!m_IsTransitionFading))
     {
         UpdateOverlayPos();
     }
@@ -409,10 +461,9 @@ void WindowGazeFadeAutoHint::Update()
     {
         m_AutoSizeFrames--;
 
-        if (m_AutoSizeFrames == 0)
+        if ((m_AutoSizeFrames == 0) && (!desktop_mode))
         {
-            if (!UIManager::Get()->IsInDesktopMode())
-                SetUpOverlay();
+            SetUpOverlay();
         }
     }
 }
@@ -709,7 +760,7 @@ void WindowQuickStart::Update()
                 m_TransformAnimationProgress = 0.0f;
             }
         }
-        else
+        else if (m_Visible)
         {
             Hide();
         }
@@ -960,10 +1011,9 @@ void WindowQuickStart::Update()
     {
         m_AutoSizeFrames--;
 
-        if (m_AutoSizeFrames == 0)
+        if ((m_AutoSizeFrames == 0) && (!UIManager::Get()->IsInDesktopMode()))
         {
-            if (!UIManager::Get()->IsInDesktopMode())
-                SetUpOverlay();
+            SetUpOverlay();
         }
     }
 }
@@ -1144,10 +1194,9 @@ void WindowCaptureWindowSelect::Update()
     {
         m_AutoSizeFrames--;
 
-        if (m_AutoSizeFrames == 0)
+        if ((m_AutoSizeFrames == 0) && (!UIManager::Get()->IsInDesktopMode()))
         {
-            if (!UIManager::Get()->IsInDesktopMode())
-                SetUpOverlay();
+            SetUpOverlay();
         }
     }
 }

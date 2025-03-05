@@ -33,6 +33,7 @@ class AuxUIWindow
         int m_AutoSizeFrames;                  //Overlay setup may need to be delayed when the window uses auto-sizing. In that case m_Alpha stays 0.0f while m_AutoSizeFrames is not 0
 
         bool WindowUpdateBase();               //Handles alpha fading according to AuxUI state, but doesn't Begin() a window like FloatingWindow would. Returns true if window should be rendered
+        void DrawFullDimmedRectBehindWindow(); //Call before End() to draw a dimmed rect behind the window in desktop mode. Uses m_Alpha for fading. Messes with draw list, may break
 
         virtual void SetUpTextureBounds();
         virtual void StartTransitionFade();
