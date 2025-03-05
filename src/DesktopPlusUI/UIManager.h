@@ -65,6 +65,36 @@ static const char* const k_pch_bold_exclamation_mark = "\xE2\x9D\x97";
 
 class UIManager
 {
+    public:
+        class IdleState
+        {
+            private:
+                static const unsigned int s_MsBeforeIdle = 1000;    //A general 1 second buffer before idling saves us from adding active time for every short animation
+
+                ULONGLONG m_LastActiveTick = 0;
+                ULONGLONG m_LastCaretTick  = 0;
+                POINT m_LastCursorPos{0};
+                bool m_WasIdleLastFrame = false;
+
+                LARGE_INTEGER m_TimestepTime{0};
+                LARGE_INTEGER m_TimestepTicks{0};
+
+                void SetLastActiveTick(ULONGLONG value);
+
+            public:
+                IdleState();
+
+                bool ShouldIdle();
+                int GetFrameSkipValue();
+
+                void OnImGuiNewFrame();
+                void OnWindowMessage(UINT message_id);
+                void OnOpenVREvent(uint32_t event_type);
+
+                void AddActiveTime(unsigned int ms = s_MsBeforeIdle);
+                void DoIdleTimestep();
+        };
+
     private:
         FloatingUI m_FloatingUI;
         VRKeyboard m_VRKeyboard;
@@ -79,6 +109,8 @@ class UIManager
         NotificationIcon m_NotificationIcon;
         OverlayDragger m_OverlayDragger;
         Microsoft::WRL::ComPtr<ID3D11Resource> m_SharedTextureRef; //Pointer to render target texture, should only be used for calls to SetSharedOverlayTexture()
+
+        IdleState m_IdleState;
         int m_RepeatFrame;
 
         bool m_DesktopMode;
@@ -141,6 +173,8 @@ class UIManager
         vr::EVRInitError InitOverlay();
         void HandleIPCMessage(const MSG& msg, bool handle_delayed = false); //Messages that need processing within an ImGui frame are stored in m_DelayedICPMessages when handle_delayed is false
         void HandleDelayedIPCMessages();                                    //Calls HandleIPCMessage() for messages in m_DelayedICPMessages and clears it
+        bool HasDelayedIPCMessages() const;
+
         void OnInitDone();                                                  //Finishes up applying things that can only be applied after everything has finished loading
         void OnExit();
         void OnProfileLoaded();
@@ -172,6 +206,9 @@ class UIManager
         std::array<vr::VROverlayHandle_t, 6> GetUIOverlayHandles() const;
         bool IsDummyOverlayTransformUnstable() const;
         void SendUIIntersectionMaskToDashboardApp(std::vector<vr::VROverlayIntersectionMaskPrimitive_t>& primitives) const;
+
+        IdleState& GetIdleState();
+        DPRect CalcRectForActiveTexspace();
 
         //This can be called by functions knowingly making changes which will cause visible layout re-alignment due to ImGui's nature of intermediate UI
         //This will cause 2 extra frames to be calculated but thrown away instantly to be more pleasing to the eye. In rare cases more are needed and can be specified instead

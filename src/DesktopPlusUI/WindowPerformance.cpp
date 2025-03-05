@@ -52,6 +52,7 @@ WindowPerformance::WindowPerformance() :
 void WindowPerformance::Update(bool show_as_popup)
 {
     ImGuiIO& io = ImGui::GetIO();
+    const ImGuiStyle& style = ImGui::GetStyle();
 
     const DPRect& tex_rect = UITextureSpaces::Get().GetRect(ui_texspace_performance_monitor);
     ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {(float)tex_rect.GetWidth() - 1, (float)tex_rect.GetHeight() - 1});
@@ -65,7 +66,7 @@ void WindowPerformance::Update(bool show_as_popup)
         }
 
         //Set popup rounding to the same as a normal window
-        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, ImGui::GetStyle().WindowRounding);
+        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, style.WindowRounding);
         bool is_popup_rounding_pushed = true;
 
         const bool ui_large_style = ((ConfigManager::GetValue(configid_bool_interface_large_style)) && (!UIManager::Get()->IsInDesktopMode()));
@@ -182,10 +183,12 @@ void WindowPerformance::UpdateVisibleState()
 
 void WindowPerformance::DisplayStatsLarge()
 {
+    const ImGuiStyle& style = ImGui::GetStyle();
+
     const float column_width_0 = ImGui::GetFontSize() * 7.5f;
     const float column_width_1 = ImGui::GetFontSize() * 4.0f;
     const float column_width_3 = ImGui::GetFontSize() * 6.0f;
-    const ImVec2 graph_size    = {column_width_0 + column_width_3 - ImGui::GetStyle().WindowPadding.x, ImGui::GetFontSize() * 2.0f};
+    const ImVec2 graph_size    = {column_width_0 + column_width_3 - style.WindowPadding.x, ImGui::GetFontSize() * 2.0f};
 
     static float row_gpu_y = 0.0f;
 
@@ -193,19 +196,19 @@ void WindowPerformance::DisplayStatsLarge()
 
     //Shared offsets
     ImVec2 cursor_pos_prev = ImGui::GetCursorPos();
-    float graph_pos_x  = cursor_pos_prev.x + column_width_0 + column_width_1 - ImGui::GetStyle().FramePadding.x;
+    float graph_pos_x  = cursor_pos_prev.x + column_width_0 + column_width_1 - style.FramePadding.x;
 
     double plot_xmin = (m_FrameTimeLastIndex > (uint32_t)m_FrameTimeCPUHistory.MaxSize) ? m_FrameTimeLastIndex - m_FrameTimeCPUHistory.MaxSize + 0.5f : 0.5f;
     double plot_xmax = m_FrameTimeLastIndex - 0.5f;
     double plot_ymax = ceilf(m_FrameTimeVsyncLimit * 1.4f); 
 
     //Set fixed window width from graph cursor pos even if all graphs are disabled since columns don't increase the window size
-    ImGui::SetCursorPos({graph_pos_x, cursor_pos_prev.y + ImGui::GetStyle().FramePadding.y});
+    ImGui::SetCursorPos({graph_pos_x, cursor_pos_prev.y + style.FramePadding.y});
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, 0.0f});
     ImGui::Dummy({graph_size.x, 0.0f});
     ImGui::PopStyleVar();
-    ImGui::SetCursorPos({graph_pos_x, cursor_pos_prev.y + ImGui::GetStyle().FramePadding.y});
+    ImGui::SetCursorPos({graph_pos_x, cursor_pos_prev.y + style.FramePadding.y});
 
     if (ConfigManager::GetValue(configid_bool_performance_monitor_show_graphs))
     {
@@ -218,7 +221,7 @@ void WindowPerformance::DisplayStatsLarge()
         //-GPU Frame Time Graph
         if (ConfigManager::GetValue(configid_bool_performance_monitor_show_gpu))
         {
-            ImGui::SetCursorPos({graph_pos_x, row_gpu_y + ImGui::GetStyle().FramePadding.y});
+            ImGui::SetCursorPos({graph_pos_x, row_gpu_y + style.FramePadding.y});
 
             DrawFrameTimeGraphGPU(graph_size, plot_xmin, plot_xmax, plot_ymax);
         }
@@ -232,7 +235,7 @@ void WindowPerformance::DisplayStatsLarge()
     static const float text_percent_width = ImGui::CalcTextSize("%").x;
     static const float text_temp_width    = ImGui::CalcTextSize("\xC2\xB0""C").x;
 
-    float item_spacing_half = ImGui::GetStyle().ItemSpacing.x / 2.0f;
+    float item_spacing_half = style.ItemSpacing.x / 2.0f;
     float frame_time_warning_limit = m_FrameTimeVsyncLimit * 0.95f;
 
 
@@ -242,7 +245,7 @@ void WindowPerformance::DisplayStatsLarge()
     ImGui::SetColumnWidth(2, column_width_0);
     ImGui::SetColumnWidth(3, column_width_3);
 
-    float right_border_offset = -ImGui::GetStyle().FramePadding.x;
+    float right_border_offset = -style.FramePadding.x;
 
     //--Table CPU
     if (ConfigManager::GetValue(configid_bool_performance_monitor_show_cpu))
@@ -556,9 +559,10 @@ void WindowPerformance::DisplayStatsLarge()
 
 void WindowPerformance::DisplayStatsCompact()
 {
-    const float item_spacing_prev = ImGui::GetStyle().ItemSpacing.x;
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float item_spacing_prev = style.ItemSpacing.x;
 
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, ImGui::GetStyle().ItemSpacing.y});
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, style.ItemSpacing.y});
 
     //These width caluclations are not using the translated strings, but there really is no space for those to be longer either, so whatever
     static const float column_width_0     = ImGui::GetFontSize() * 1.5f;

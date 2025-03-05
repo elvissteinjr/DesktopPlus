@@ -581,6 +581,8 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_performance_single_desktop_mirroring]        = config.ReadBool("Performance", "SingleDesktopMirroring", false);
     m_ConfigBool[configid_bool_performance_hdr_mirroring]                   = config.ReadBool("Performance", "HDRMirroring", false);
     m_ConfigBool[configid_bool_performance_show_fps]                        = config.ReadBool("Performance", "ShowFPS", false);
+    m_ConfigBool[configid_bool_performance_ui_auto_throttle]                = config.ReadBool("Performance", "UIAutoThrottle", true);
+    m_ConfigInt[configid_int_performance_ui_frameskip]                      = config.ReadInt( "Performance", "UIFrameSkip", 0);
     m_ConfigBool[configid_bool_performance_monitor_large_style]             = config.ReadBool("Performance", "PerformanceMonitorStyleLarge", true);
     m_ConfigBool[configid_bool_performance_monitor_show_graphs]             = config.ReadBool("Performance", "PerformanceMonitorShowGraphs", true);
     m_ConfigBool[configid_bool_performance_monitor_show_time]               = config.ReadBool("Performance", "PerformanceMonitorShowTime", false);
@@ -1554,6 +1556,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Performance", "SingleDesktopMirroring",               m_ConfigBool[configid_bool_performance_single_desktop_mirroring]);
     config.WriteBool("Performance", "HDRMirroring",                         m_ConfigBool[configid_bool_performance_hdr_mirroring]);
     config.WriteBool("Performance", "ShowFPS",                              m_ConfigBool[configid_bool_performance_show_fps]);
+    config.WriteBool("Performance", "UIAutoThrottle",                       m_ConfigBool[configid_bool_performance_ui_auto_throttle]);
     config.WriteBool("Performance", "PerformanceMonitorStyleLarge",         m_ConfigBool[configid_bool_performance_monitor_large_style]);
     config.WriteBool("Performance", "PerformanceMonitorShowGraphs",         m_ConfigBool[configid_bool_performance_monitor_show_graphs]);
     config.WriteBool("Performance", "PerformanceMonitorShowTime",           m_ConfigBool[configid_bool_performance_monitor_show_time]);

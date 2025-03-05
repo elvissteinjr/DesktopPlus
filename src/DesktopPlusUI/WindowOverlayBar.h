@@ -38,6 +38,7 @@ class WindowOverlayBar
         const ImVec2& GetSize() const;
 
         bool IsVisible() const;
+        bool IsVisibleOrFading() const;
         bool IsAnyMenuVisible() const;
         bool IsScrollBarVisible() const;
         bool IsDraggingOverlayButtons() const;

@@ -121,7 +121,7 @@ void FloatingWindow::WindowUpdateBase()
     ImGui::Image(io.Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
     m_IsTitleIconClicked = ImGui::IsItemClicked();
 
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
     ImVec2 clip_end = ImGui::GetCursorScreenPos();
     clip_end.x += m_TitleBarTitleMaxWidth;
@@ -368,6 +368,8 @@ void FloatingWindow::HelpMarker(const char* desc, const char* marker_str) const
 
 void FloatingWindow::UpdateLimiterSetting(bool is_override) const
 {
+    const ImGuiStyle& style = ImGui::GetStyle();
+
     const ConfigID_Int   configid_mode = (is_override) ? configid_int_overlay_update_limit_override_mode : configid_int_performance_update_limit_mode;
     const ConfigID_Int   configid_fps  = (is_override) ? configid_int_overlay_update_limit_override_fps  : configid_int_performance_update_limit_fps;
     const ConfigID_Float configid_ms   = (is_override) ? configid_float_overlay_update_limit_override_ms : configid_float_performance_update_limit_ms;
@@ -382,12 +384,12 @@ void FloatingWindow::UpdateLimiterSetting(bool is_override) const
 
         if (update_limit_mode == update_limit_mode_ms)
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceUpdateLimiterModeMSTip));
         }
         else if (is_override)
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceUpdateLimiterOverrideTip));
         }
 
@@ -435,7 +437,7 @@ void FloatingWindow::UpdateLimiterSetting(bool is_override) const
 
         if (is_override)
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceUpdateLimiterOverrideTip));
         }
 
@@ -661,9 +663,9 @@ bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, siz
     ImGuiIO& io = ImGui::GetIO();
     VRKeyboard& vr_keyboard = UIManager::Get()->GetVRKeyboard();
 
-    const float pos_y      = ImGui::GetItemRectMin().y - ImGui::GetStyle().ItemSpacing.y;
-    const float pos_y_down = ImGui::GetItemRectMax().y + ImGui::GetStyle().ItemInnerSpacing.y;
-    const float pos_y_up   = ImGui::GetItemRectMin().y - ImGui::GetStyle().ItemSpacing.y - state.PopupHeight;
+    const float pos_y      = ImGui::GetItemRectMin().y - style.ItemSpacing.y;
+    const float pos_y_down = ImGui::GetItemRectMax().y + style.ItemInnerSpacing.y;
+    const float pos_y_up   = ImGui::GetItemRectMin().y - style.ItemSpacing.y - state.PopupHeight;
 
     bool update_filter = false;
     bool ret = false;
@@ -1389,6 +1391,8 @@ void FloatingWindow::Show(bool skip_fade)
     {
         m_Alpha = 1.0f;
     }
+
+    UIManager::Get()->GetIdleState().AddActiveTime();
 }
 
 void FloatingWindow::Hide(bool skip_fade)
@@ -1399,6 +1403,8 @@ void FloatingWindow::Hide(bool skip_fade)
     {
         m_Alpha = 0.0f;
     }
+
+    UIManager::Get()->GetIdleState().AddActiveTime();
 }
 
 void FloatingWindow::HideAll(bool skip_fade)

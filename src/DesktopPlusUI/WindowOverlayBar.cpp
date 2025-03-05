@@ -31,6 +31,8 @@ void WindowOverlayBar::DisplayTooltipIfHovered(const char* text, unsigned int ov
 
     if (ImGui::IsItemHovered())
     {
+        const ImGuiStyle& style = ImGui::GetStyle();
+
         static ImVec2 button_pos_last; //Remember last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
         ImVec2 pos = ImGui::GetItemRectMin();
         pos.y = ImGui::GetIO().DisplaySize.y;
@@ -53,7 +55,7 @@ void WindowOverlayBar::DisplayTooltipIfHovered(const char* text, unsigned int ov
             TextureManager::Get().GetTextureInfo((TMNGRTexID)(tmtex_icon_xsmall_origin_room + data.ConfigInt[configid_int_overlay_origin]), img_size, img_uv_min, img_uv_max);
             ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
 
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         }
 
         ImGui::TextUnformatted(text);
@@ -61,8 +63,8 @@ void WindowOverlayBar::DisplayTooltipIfHovered(const char* text, unsigned int ov
 
         //Not using GetWindowSize() here since it's delayed and plays odd when switching between buttons with the same label
         ImVec2 window_size = ImGui::GetItemRectSize();
-        window_size.x += ImGui::GetStyle().WindowPadding.x * 2.0f;
-        window_size.y += ImGui::GetStyle().WindowPadding.y * 2.0f;
+        window_size.x += style.WindowPadding.x * 2.0f;
+        window_size.y += style.WindowPadding.y * 2.0f;
 
         //Repeat frame when the window is appearing as it will not have the right position (either from being first time or still having old pos)
         if ( (ImGui::IsWindowAppearing()) || (pos.x != button_pos_last.x) )
@@ -73,7 +75,7 @@ void WindowOverlayBar::DisplayTooltipIfHovered(const char* text, unsigned int ov
         button_pos_last = pos;
 
         pos.x += (button_width / 2.0f) - (window_size.x / 2.0f);
-        pos.y -= window_size.y;// + ImGui::GetStyle().WindowPadding.y;
+        pos.y -= window_size.y;
 
         pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);   //Clamp right side to texture end
 
@@ -664,6 +666,7 @@ void WindowOverlayBar::Update()
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_Alpha);
 
     ImGuiIO& io = ImGui::GetIO();
+    const ImGuiStyle& style = ImGui::GetStyle();
 
     ImVec2 b_size, b_uv_min, b_uv_max;
     TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
@@ -671,7 +674,7 @@ void WindowOverlayBar::Update()
     //as well as still providing a way to change the size of text buttons by editing the settings icon's dimensions
     ImVec2 b_size_default = b_size;
 
-    float tooltip_padding = ImGui::GetTextLineHeightWithSpacing() + (ImGui::GetStyle().WindowPadding.y * 2.0f);
+    float tooltip_padding = ImGui::GetTextLineHeightWithSpacing() + (style.WindowPadding.y * 2.0f);
     float min_width = io.DisplaySize.x * 0.50f;
     ImGui::SetNextWindowSizeConstraints({min_width, -1.0f}, {io.DisplaySize.x * 0.95f, -1.0f});
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y - tooltip_padding), 0, ImVec2(0.5f, 1.0f));  //Center window at bottom of the overlay with space for tooltips
@@ -738,7 +741,7 @@ void WindowOverlayBar::Update()
         if (m_IsAddOverlayButtonActive)
         {
             float dist   = width / 2.0f;
-            float menu_y = m_Pos.y + ImGui::GetStyle().WindowBorderSize + dist - (dist * m_MenuAlpha);
+            float menu_y = m_Pos.y + style.WindowBorderSize + dist - (dist * m_MenuAlpha);
 
             MenuAddOverlayButton({pos.x + width / 2.0f, menu_y}, button_active);
         }
@@ -794,16 +797,16 @@ void WindowOverlayBar::Update()
     //Warning/Error marker
     if (UIManager::Get()->IsAnyWarningDisplayed())
     {
-        ImVec2 p_max = {ImGui::GetItemRectMax().x - ImGui::GetStyle().ItemInnerSpacing.x, ImGui::GetItemRectMin().y + ImGui::GetStyle().ItemInnerSpacing.y};
+        ImVec2 p_max = {ImGui::GetItemRectMax().x - style.ItemInnerSpacing.x, ImGui::GetItemRectMin().y + style.ItemInnerSpacing.y};
         ImVec2 p_min = p_max;
         p_min.x -= ImGui::CalcTextSize(k_pch_bold_exclamation_mark).x;
         p_max.y += ImGui::GetTextLineHeight();
 
-        ImGui::GetWindowDrawList()->AddRectFilled(p_min, p_max, ImGui::GetColorU32(Style_ImGuiCol_TextError), ImGui::GetStyle().WindowRounding);
+        ImGui::GetWindowDrawList()->AddRectFilled(p_min, p_max, ImGui::GetColorU32(Style_ImGuiCol_TextError), style.WindowRounding);
         ImGui::GetWindowDrawList()->AddText(p_min, ImGui::GetColorU32(ImGui::GetStyleColorVec4(ImGuiCol_Text)), k_pch_bold_exclamation_mark);
     }
 
-    right_buttons_width = (ImGui::GetItemRectSize().x * 2.0f) + ImGui::GetStyle().ItemSpacing.x;
+    right_buttons_width = (ImGui::GetItemRectSize().x * 2.0f) + style.ItemSpacing.x;
 
     DisplayTooltipIfHovered( TranslationManager::GetString((show_hold_message) ? tstr_OverlayBarTooltipResetHold : tstr_OverlayBarTooltipSettings) );
 
@@ -830,6 +833,11 @@ const ImVec2 & WindowOverlayBar::GetSize() const
 bool WindowOverlayBar::IsVisible() const
 {
     return m_Visible;
+}
+
+bool WindowOverlayBar::IsVisibleOrFading() const
+{
+    return ( (m_Visible) || (m_Alpha != 0.0f) );
 }
 
 bool WindowOverlayBar::IsAnyMenuVisible() const

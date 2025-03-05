@@ -136,6 +136,8 @@ bool AuxUIWindow::Show()
         return true;
 
     m_Visible = UIManager::Get()->GetAuxUI().SetActiveUI(m_AuxUIID);
+    UIManager::Get()->GetIdleState().AddActiveTime();
+
     return m_Visible;
 }
 
@@ -151,6 +153,8 @@ void AuxUIWindow::Hide()
         aux_ui.ClearActiveUI(m_AuxUIID);
         aux_ui.SetFadeOutFinished();
     }
+
+    UIManager::Get()->GetIdleState().AddActiveTime();
 }
 
 bool AuxUIWindow::IsVisible()
@@ -334,6 +338,8 @@ bool WindowGazeFadeAutoHint::Show()
 {
     m_Countdown = 3;
     m_TickTime = 0.0;         //Triggers label update right away on Update()
+
+    UIManager::Get()->GetIdleState().AddActiveTime(5000);
 
     //Deactivate GazeFade during the countdown so the overlay is visible to the user
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)m_TargetOverlay);
@@ -918,7 +924,7 @@ void WindowQuickStart::Update()
     if (current_page_prev == 0)
         ImGui::PopItemDisabled();
 
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
     if (current_page_prev == pageid_MAX)
         ImGui::PushItemDisabled();

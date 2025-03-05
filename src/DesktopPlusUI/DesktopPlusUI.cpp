@@ -95,6 +95,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     //Init UIManager and load config
     UIManager ui_manager(desktop_mode, open_keyboard_editor);
+    UIManager::IdleState& idle_state = ui_manager.GetIdleState();
+
     ConfigManager::Get().LoadConfigFromFile();
     IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_sync_config_state);
     ui_manager.SetWindowHandle(hwnd);
@@ -184,6 +186,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         //Poll and handle messages (inputs, window resize, etc.)
         if (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
         {
+            idle_state.OnWindowMessage(msg.message);
+
             if (msg.message >= 0xC000)  //Custom message from overlay process, handle in UI manager
             {
                 ui_manager.HandleIPCMessage(msg);
@@ -196,8 +200,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             continue;
         }
 
-        bool do_idle = false;
-
         if (!desktop_mode)
         {
             vr::VREvent_t vr_event;
@@ -208,6 +210,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleOverlayBar(), &vr_event, sizeof(vr_event)))
             {
+                idle_state.OnOpenVREvent(vr_event.eventType);
                 ImGui_ImplOpenVR_InputEventHandler(vr_event, &rect_v4);
 
                 switch (vr_event.eventType)
@@ -269,6 +272,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleFloatingUI(), &vr_event, sizeof(vr_event)))
             {
+                idle_state.OnOpenVREvent(vr_event.eventType);
                 ImGui_ImplOpenVR_InputEventHandler(vr_event, &rect_v4);
 
                 switch (vr_event.eventType)
@@ -294,6 +298,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleSettings(), &vr_event, sizeof(vr_event)))
             {
+                idle_state.OnOpenVREvent(vr_event.eventType);
                 ImGui_ImplOpenVR_InputEventHandler(vr_event, &rect_v4);
             }
 
@@ -302,6 +307,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleOverlayProperties(), &vr_event, sizeof(vr_event)))
             {
+                idle_state.OnOpenVREvent(vr_event.eventType);
                 ImGui_ImplOpenVR_InputEventHandler(vr_event);
             }
 
@@ -310,6 +316,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleKeyboard(), &vr_event, sizeof(vr_event)))
             {
+                idle_state.OnOpenVREvent(vr_event.eventType);
+
                 //Let the keyboard window handle events first for multi-laser support
                 if (!ui_manager.GetVRKeyboard().GetWindow().HandleOverlayEvent(vr_event))
                 {
@@ -322,6 +330,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
             while (vr::VROverlay()->PollNextOverlayEvent(ui_manager.GetOverlayHandleAuxUI(), &vr_event, sizeof(vr_event)))
             {
+                idle_state.OnOpenVREvent(vr_event.eventType);
                 ImGui_ImplOpenVR_InputEventHandler(vr_event, &rect_v4);
 
                 switch (vr_event.eventType)
@@ -341,22 +350,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             ui_manager.GetOverlayPropertiesWindow().UpdateVisibility();
             ui_manager.GetVRKeyboard().GetWindow().UpdateVisibility();
 
-            do_idle = ( (!ui_manager.IsOverlayBarOverlayVisible())                     &&
-                        (!ui_manager.GetFloatingUI().IsVisible())                      &&
-                        (!ui_manager.GetSettingsWindow().IsVisibleOrFading())          &&
-                        (!ui_manager.GetOverlayPropertiesWindow().IsVisibleOrFading()) &&
-                        (!ui_manager.GetPerformanceWindow().IsVisible())               &&
-                        (!ui_manager.GetVRKeyboard().GetWindow().IsVisibleOrFading())  &&
-                        (!ui_manager.GetAuxUI().IsActive()) );
-
             if (do_quit)
             {
                 break; //Breaks the message loop, causing clean shutdown
             }
-        }
-        else
-        {
-            do_idle = ::IsIconic(hwnd);
         }
 
         ui_manager.GetPerformanceWindow().UpdateVisibleState();
@@ -369,9 +366,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
 
         //While we still need to poll, greatly reduce the rate and don't do any ImGui stuff to not waste resources (hopefully this does not mess up ImGui input state)
-        if (do_idle)
+        if ((idle_state.ShouldIdle()) && (!ui_manager.HasDelayedIPCMessages()))
         {
-            ::Sleep(64); //Could wait longer, but it doesn't really make much of a difference in load and we stay more responsive like this)
+            ::Sleep(64);                 //Could wait longer, but it doesn't really make much of a difference in load and we stay more responsive like this)
+            idle_state.DoIdleTimestep(); //Delta time won't be updated by ImGui while idle, but some parts of the app still rely on it so we do it ourselves
             continue;
         }
 
@@ -383,6 +381,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         else
             ImGui_ImplOpenVR_NewFrame();
 
+        idle_state.OnImGuiNewFrame();
         ui_manager.GetVRKeyboard().OnImGuiNewFrame();
 
         ImGui::NewFrame();
@@ -489,11 +488,15 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 g_pd3dDeviceContext->ClearRenderTargetView(g_desktopRenderTargetView.Get(), clear_color);
                 ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-                HRESULT res = g_pSwapChain->Present(1, 0); // Present with vsync
+                const int sync_count = idle_state.GetFrameSkipValue() + 1;
+                HRESULT res = g_pSwapChain->Present(std::min(sync_count, 4), 0); //Present with vsync (and optionally wait longer with frameskip)
 
                 if (res == DXGI_STATUS_OCCLUDED) //When occluded, Present() will not wait for us
                 {
-                    ::DwmFlush(); //We could wait longer, but let's stay responsive
+                    for (int i = 0; i < sync_count; ++i)
+                    {
+                        ::DwmFlush();   //We could wait longer, but let's stay responsive
+                    }
                 }
             }
             else
@@ -503,9 +506,32 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
                 //Set Overlay texture
-                if ((ui_manager.GetOverlayHandleOverlayBar() != vr::k_ulOverlayHandleInvalid) && (g_vrTex))
+                ID3D11ShaderResourceView* ovrl_shader_rsv = vr::VROverlayEx()->GetOverlayTextureEx(ui_manager.GetOverlayHandleOverlayBar(), g_vrTex.Get());
+                if (ovrl_shader_rsv != nullptr)
                 {
-                    vr::Texture_t vrtex;
+                    //Do a partial update, only copying the active texture space into the overlay texture
+                    Microsoft::WRL::ComPtr<ID3D11Resource> ovrl_tex;
+                    ovrl_shader_rsv->GetResource(&ovrl_tex);
+
+                    const DPRect active_rect = ui_manager.CalcRectForActiveTexspace();
+                    if (active_rect.GetWidth() != 0)
+                    {
+                        D3D11_BOX box = {0};
+                        box.left   = active_rect.GetTL().x;
+                        box.top    = active_rect.GetTL().y;
+                        box.front  = 0;
+                        box.right  = active_rect.GetBR().x;
+                        box.bottom = active_rect.GetBR().y;
+                        box.back   = 1;
+
+                        g_pd3dDeviceContext->CopySubresourceRegion(ovrl_tex.Get(), 0, box.left, box.top, 0, g_vrTex.Get(), 0, &box);
+                    }
+
+                    //RSV is kept around by IVROverlayEx and not released here
+                }
+                else if ((ui_manager.GetOverlayHandleOverlayBar() != vr::k_ulOverlayHandleInvalid) && (g_vrTex))
+                {
+                    vr::Texture_t vrtex = {};
                     vrtex.handle = g_vrTex.Get();
                     vrtex.eType = vr::TextureType_DirectX;
                     vrtex.eColorSpace = vr::ColorSpace_Gamma;
@@ -519,9 +545,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 ImGui_ImplOpenVR_SetIntersectionMaskFromWindows(overlay_handles.data(), overlay_handles.size(), &mask_primitives);
                 ui_manager.SendUIIntersectionMaskToDashboardApp(mask_primitives);
 
-                //Wait for VR frame sync (34 ms timeout so we don't go much below 30 fps worst case)
+                //Wait for VR frame sync, optionally repeatedly to achieve lower synched frame rates
                 g_pd3dDeviceContext->Flush();
-                vr::VROverlay()->WaitFrameSync(34);
+                
+                const int sync_count = idle_state.GetFrameSkipValue() + 1;
+                for (int i = 0; i < sync_count; ++i)
+                {
+                    vr::VROverlay()->WaitFrameSync(34); //(34 ms timeout so we don't go much below 30 fps worst case)
+                }
             }
         }
     }

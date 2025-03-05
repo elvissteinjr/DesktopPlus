@@ -637,7 +637,7 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
         if (!loaded_overlay_profile)
         {
             ConfigManager::Get().LoadConfigFromFile();
-        }       
+        }
 
         if (m_OvrlHandleDashboardDummy != vr::k_ulOverlayHandleInvalid)
         {
@@ -648,6 +648,8 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
 
             vr::VROverlay()->SetOverlayInputMethod(m_OvrlHandleDashboardDummy, vr::VROverlayInputMethod_None);
             vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, 1.5f);
+
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleDashboardDummy, vr::VROverlayFlags_MinimalControlBar, true);
 
             //ResetOverlays() is called later
 
@@ -2357,7 +2359,7 @@ float OutputManager::GetDesktopHDRWhiteLevelAdjustment(int desktop_id, bool is_f
                 bool is_8bit = true;
                 ULONG sdr_white_level = 1000;
 
-                #if (NTDDI_VERSION >= NTDDI_WIN11_GA)
+                #if (NTDDI_VERSION >= 0x0A00000F/*NTDDI_WIN11_GA*/)
                     DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 adv_color_info_2 = {};
                     adv_color_info_2.header.adapterId = path.targetInfo.adapterId;
                     adv_color_info_2.header.id = path.targetInfo.id;
@@ -2426,7 +2428,7 @@ float OutputManager::GetDesktopHDRWhiteLevelAdjustment(int desktop_id, bool is_f
         }
     }
 
-    LOG_F(WARNING, "Could not find display config for desktop %d, defaulting to 100% brightness adjustment", desktop_id);
+    LOG_F(WARNING, "Could not find display config for desktop %d, defaulting to 100%% brightness adjustment", desktop_id);
     return 1.0f;
 
     #endif //DPLUS_DUP_NO_HDR
@@ -3944,11 +3946,12 @@ void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
         {
             //Check for translucent pixels (not fast)
             m_OutputAlphaCheckFailed = DesktopTextureAlphaCheck();
-
             m_OutputAlphaChecksPending--;
+
+            LOG_IF_F(WARNING, (m_OutputAlphaCheckFailed) && (m_OutputAlphaChecksPending == 0), "Failed Desktop Duplication alpha check, using extra render pass");
         }
     }
-    
+
     //Draw the frame to the texture with the alpha channel fixing pixel shader if we have to
     if (m_OutputAlphaCheckFailed)
     {
@@ -4386,21 +4389,37 @@ bool OutputManager::DesktopTextureAlphaCheck()
 
     //Check alpha value for anything between 0% and 100% transparency, which should not happen but apparently does
     bool ret = false;
-    for (int i = 0; i < pixel_count * 4; i += 4)
-    {
-        unsigned char a = ((unsigned char*)mapped_resource.pData)[i + 3];
 
-        if ((a > 0) && (a < 255))
+    if (desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM)
+    {
+        for (int i = 0; i < pixel_count * 4; i += 4)
         {
-            ret = true;
-            break;
+            unsigned char a = ((unsigned char*)mapped_resource.pData)[i + 3];
+
+            if ((a > 0) && (a < 255))
+            {
+                ret = true;
+                break;
+            }
+        }
+    }
+    else if (desc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT)
+    {
+        for (int i = 0; i < pixel_count * 4; i += 4)
+        {
+            PackedVector::HALF a_half = ((PackedVector::HALF*)mapped_resource.pData)[i + 3];
+            float a = PackedVector::XMConvertHalfToFloat(a_half);
+
+            if ((a > 0.0f) && (a < 1.0f))
+            {
+                ret = true;
+                break;
+            }
         }
     }
 
     //Cleanup
     m_DeviceContext->Unmap(tex_staging.Get(), 0);
-
-    LOG_IF_F(WARNING, ret, "Failed Desktop Duplication alpha check, using extra render pass");
 
     return ret;
 }

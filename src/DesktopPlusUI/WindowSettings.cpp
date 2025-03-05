@@ -1174,7 +1174,8 @@ void WindowSettings::UpdatePageMainCatActions()
         ImGui::Indent();
 
         const ImVec2 table_size(-style.IndentSpacing - 1.0f, 0.0f);                                     //Replicate padding from columns
-        const float table_column_width = m_Column0Width - style.IndentSpacing - style.IndentSpacing;    //Align with width of other columns 
+        const float table_column_width = m_Column0Width - style.IndentSpacing - style.IndentSpacing;    //Align with width of other columns
+        const float table_cell_height = ImGui::GetFontSize() + style.ItemInnerSpacing.y;
 
         if (BeginCompactTable("TableActiveButtons", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit, table_size))
         {
@@ -1290,6 +1291,8 @@ void WindowSettings::UpdatePageMainCatActions()
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsGlobalShortcutsAdd)))
         {
             global_shortcut_list.push_back(k_ActionUID_Invalid);
+
+            ImGui::SetScrollY(ImGui::GetScrollY() + table_cell_height);
         }
 
         if (shortcuts_visible >= shortcuts_max)
@@ -1303,6 +1306,8 @@ void WindowSettings::UpdatePageMainCatActions()
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsActionsGlobalShortcutsRemove)))
         {
             global_shortcut_list.pop_back();
+
+            ImGui::SetScrollY(ImGui::GetScrollY() - table_cell_height);
         }
 
         if (shortcuts_visible <= 1)
@@ -1400,6 +1405,9 @@ void WindowSettings::UpdatePageMainCatActions()
 
                             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_hotkey_set, hotkey_id);
 
+                            //Keep scroll position constant
+                            ImGui::SetScrollY(ImGui::GetScrollY() - table_cell_height);
+
                             //Erased something straight out of the list, get out of the loop and discard frame
                             UIManager::Get()->RepeatFrame();
                             ImGui::PopID();
@@ -1436,6 +1444,8 @@ void WindowSettings::UpdatePageMainCatActions()
 
             IPCManager::Get().SendStringToDashboardApp(configid_str_state_hotkey_data, hotkey_new.Serialize(), UIManager::Get()->GetWindowHandle());
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_hotkey_set, hotkey_list.size() - 1);
+
+            ImGui::SetScrollY(ImGui::GetScrollY() + table_cell_height);
 
             UIManager::Get()->RepeatFrame(3);   //Avoid some flicker from potentially hovering selectable + remove button appearing in the next few frames
         }
@@ -1541,7 +1551,7 @@ void WindowSettings::UpdatePageMainCatInput()
             {
                 IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_keyboard_auto_show_desktop, auto_show_desktop);
             }
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsKeyboardAutoShowDesktopTip));
 
             ImGui::NextColumn();
@@ -1567,7 +1577,7 @@ void WindowSettings::UpdatePageMainCatInput()
             {
                 IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_keyboard_auto_show_desktop, auto_show_desktop);
             }
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsKeyboardAutoShowDesktopTip));
         }
 
@@ -1590,12 +1600,12 @@ void WindowSettings::UpdatePageMainCatInput()
 
         if ( (!render_cursor) && (is_any_gc_overlay_active) )
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsMouseShowCursorGCActiveWarning), "(!)");
         }
         else if (!DPWinRT_IsCaptureCursorEnabledPropertySupported())
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsMouseShowCursorGCUnsupported), "(!)");
         }
 
@@ -1612,7 +1622,7 @@ void WindowSettings::UpdatePageMainCatInput()
         }
         if (!ConfigManager::GetValue(configid_bool_state_pen_simulation_supported))
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsMouseSimulatePenUnsupported), "(!)");
         }
 
@@ -1621,7 +1631,7 @@ void WindowSettings::UpdatePageMainCatInput()
         {
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_input_mouse_allow_pointer_override), pointer_override);
         }
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_SettingsMouseAllowLaserPointerOverrideTip));
 
         ImGui::Unindent();
@@ -1632,7 +1642,7 @@ void WindowSettings::UpdatePageMainCatInput()
 
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsMouseDoubleClickAssist)); 
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_SettingsMouseDoubleClickAssistTip));
 
         ImGui::NextColumn();
@@ -1699,7 +1709,7 @@ void WindowSettings::UpdatePageMainCatInput()
         ImGui::Spacing();
 
         ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_SettingsCatLaserPointer));
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_SettingsLaserPointerTip));
 
         ImGui::Indent();
@@ -1967,6 +1977,8 @@ void WindowSettings::UpdatePageMainCatBrowser()
 
 void WindowSettings::UpdatePageMainCatPerformance()
 {
+    const ImGuiStyle& style = ImGui::GetStyle();
+
     //Performance
     {
         ImGui::Spacing();
@@ -1990,7 +2002,7 @@ void WindowSettings::UpdatePageMainCatPerformance()
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_performance_rapid_laser_pointer_updates), rapid_updates);
             }
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceRapidUpdatesTip));
 
             ImGui::NextColumn();
@@ -2001,7 +2013,7 @@ void WindowSettings::UpdatePageMainCatPerformance()
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_performance_single_desktop_mirroring), single_desktop);
             }
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceSingleDesktopMirrorTip));
 
             ImGui::NextColumn();
@@ -2012,7 +2024,7 @@ void WindowSettings::UpdatePageMainCatPerformance()
             {
                 IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_performance_hdr_mirroring), use_hdr);
             }
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceUseHDRTip));
 
             ImGui::NextColumn();
@@ -2022,12 +2034,20 @@ void WindowSettings::UpdatePageMainCatPerformance()
         bool& show_fps = ConfigManager::Get().GetRef(configid_bool_performance_show_fps);
         ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceShowFPS), &show_fps);
 
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
+        {
+            bool& auto_throttle = ConfigManager::Get().GetRef(configid_bool_performance_ui_auto_throttle);
+            ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceUIAutoThrottle), &auto_throttle);
+        }
+
         ImGui::Columns(1);
     }
 }
 
 void WindowSettings::UpdatePageMainCatMisc()
 {
+    const ImGuiStyle& style = ImGui::GetStyle();
+
     static bool is_autolaunch_enabled = false;
 
     if ( (UIManager::Get()->IsOpenVRLoaded()) && (m_PageAppearing == wndsettings_page_main) )
@@ -2116,7 +2136,7 @@ void WindowSettings::UpdatePageMainCatMisc()
             {
                 IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_misc_no_steam, no_steam);
             }
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsStartupSteamDisableTip));
         }
 
@@ -2145,7 +2165,7 @@ void WindowSettings::UpdatePageMainCatMisc()
 
         if (has_restart_steam_button)
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
             if (no_steam)
                 ImGui::PushItemDisabled();
@@ -2161,7 +2181,11 @@ void WindowSettings::UpdatePageMainCatMisc()
 
         if (UIManager::Get()->IsElevatedTaskSetUp())
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            static float elevated_task_button_width = 0.0f;
+
+            //Put this button on a new line if it doesn't fit (typically happens with [Restart with Steam] button present in VR mode)
+            if (ImGui::GetItemRectMax().x + style.ItemSpacing.x + elevated_task_button_width < ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
+                ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
             const bool dashboard_app_running  = IPCManager::IsDashboardAppRunning();
 
@@ -2183,6 +2207,8 @@ void WindowSettings::UpdatePageMainCatMisc()
                 }
             }
 
+            elevated_task_button_width = ImGui::GetItemRectSize().x;
+
             if (!dashboard_app_running)
                 ImGui::PopItemDisabled();
         }
@@ -2202,7 +2228,7 @@ void WindowSettings::UpdatePageMainCatMisc()
 
         ImGui::PopID();
 
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
         if (ImGui::Button(TranslationManager::GetString(tstr_SettingsTroubleshootingRestartDesktop)))
         {
@@ -2248,7 +2274,7 @@ void WindowSettings::UpdatePagePersistentUI()
             //Draw background and border manually to merge with the tab-bar
             ImVec2 border_min = ImGui::GetCursorScreenPos();
             ImVec2 border_max = border_min;
-            border_min.y -= ImGui::GetStyle().ItemSpacing.y + 1;
+            border_min.y -= style.ItemSpacing.y + 1;
             border_max.x += ImGui::GetContentRegionAvail().x;
             border_max.y += tab_item_height;
             ImGui::GetWindowDrawList()->AddRectFilled(border_min, border_max, ImGui::GetColorU32(ImGuiCol_ChildBg));
@@ -3138,12 +3164,12 @@ void WindowSettings::UpdatePageProfilesOverlaySelect()
 
         if (is_name_taken)
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileSaveSelectNameErrorTaken), "(!)");
         }
         else if (is_name_blank)
         {
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsProfilesOverlaysProfileSaveSelectNameErrorBlank), "(!)");
         }
 
@@ -3268,7 +3294,7 @@ void WindowSettings::UpdatePageProfilesOverlaySelect()
                 ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
 
                 //Checkbox label
-                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
                 ImGui::SetCursorPosY(text_y);
 
                 ImGui::TextUnformatted(pair.first.c_str());
@@ -3431,7 +3457,7 @@ void WindowSettings::UpdatePageAppProfiles()
 
     if (!UIManager::Get()->IsOpenVRLoaded())
     {
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_SettingsProfilesAppsHeaderNoVRTip));
     }
 
@@ -4145,7 +4171,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
     //Add a tooltip when translation ID is used to minimize confusion about the name not matching what's displayed outside this page
     if (action_edit.NameTranslationID != tstr_NONE)
     {
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditNameTranslatedTip));
     }
 
@@ -4187,7 +4213,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
     {
         action_edit.TargetUseTags = false;
     }
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
     HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditTargetDefaultTip));
 
     ImGui::SameLine();
@@ -4255,7 +4281,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
 
     if (action_edit.LabelTranslationID != tstr_NONE)
     {
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditLabelTranslatedTip));
     }
 
@@ -4623,7 +4649,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
             {
                 ImGui::AlignTextToFramePadding();
                 ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandPath));
-                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
                 HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditCommandPathTip));
 
                 ImGui::NextColumn();
@@ -4642,7 +4668,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
 
                 ImGui::AlignTextToFramePadding();
                 ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandArgs));
-                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
                 HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditCommandArgsTip));
 
                 ImGui::NextColumn();
@@ -4848,7 +4874,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
                     command.UIntArg = MAKELPARAM(use_strict_matching, warp_cursor);
                     has_value_changed = true;
                 }
-                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
                 HelpMarker(TranslationManager::GetString(tstr_SettingsActionsEditCommandWindowStrictMatchingTip));
 
                 ImGui::NextColumn();
@@ -5014,7 +5040,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
     if (ImGui::IsItemVisible())
     {
         //Custom render the selectable label with icon
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
         ImVec2 img_size_line_height = {ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
         ImVec2 img_size, img_uv_min, img_uv_max;
@@ -5022,7 +5048,7 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
         ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
 
         //Label
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsActionsEditCommandAdd));
     }
 
@@ -5721,7 +5747,7 @@ void WindowSettings::UpdatePageIconPicker()
     }
 
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogIconPickerHeader));
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
     HelpMarker(TranslationManager::GetString(tstr_DialogIconPickerHeaderTip));
 
     ImGui::Indent();
@@ -5880,7 +5906,7 @@ void WindowSettings::UpdatePageWindowPicker()
             TextureManager::Get().GetWindowIconTextureInfo(icon_id, img_size, img_uv_min, img_uv_max);
             ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max);
 
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         }
 
         ImGui::TextUnformatted(window_info.GetListTitle().c_str());
@@ -5963,6 +5989,10 @@ void WindowSettings::UpdatePageResetConfirm()
                 ConfigManager::Get().LoadMultiOverlayProfileFromFile("../overlays_temp.ini");
                 ConfigManager::Get().DeleteOverlayProfile("../overlays_temp.ini");
             }
+        }
+        else if (reset_current_profile)
+        {
+            ConfigManager::Get().LoadOverlayProfileDefault(true);
         }
 
         if (reset_profile_overlays)
