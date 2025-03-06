@@ -418,7 +418,7 @@ The "Hide Overlay" option also automatically shows the overlay again when the ca
 The maximum amount of frames per second browsers overlays will render at. Browser overlays render at variable frame-rates and will not update the overlay if there are no changes.
 
 - **[x] Content Blocker**:  
-Sets if the content blocker is enabled. The content blocker built into Desktop+ Browser takes block lists in the AdblockPlus syntax, but doesn't implement cosmetic filters.
+Sets if the content blocker is enabled. The content blocker built into Desktop+ Browser takes block lists in the AdblockPlus syntax, but doesn't implement cosmetic filters.  
 Desktop+ does not come with any block lists by default. They can be added by placing lists files in "DesktopPlusBrowser\content_block". All lists present in the directory will be loaded and used.
 
 #### Performance
@@ -437,9 +437,20 @@ These settings allow tweaking the performance characteristics of Desktop+. Howev
   - **[x] Reduce Laser Pointer Latency**:  
   When this is active, the cursor position is updated instantly while pointing at the overlay. This causes high CPU load, but makes the laser pointer more responsive.
   - **[x] Single Desktop Mirroring**:  
-  Mirrors individual desktops instead of cropping from the combined desktop. All Desktop Duplication overlays will be showing the same desktop when this is active.
+  Mirrors individual desktops instead of cropping from the combined desktop. All Desktop Duplication overlays will be showing the same desktop when this is active.  
   There can be a noticeable performance impact when multiple desktops update constantly. This setting can be used to mitigate it.
-
+  
+- **[x] HDR Mirroring**  
+  Enables mirroring of desktops and windows using higher bit-depth textures, supporting HDR output.  
+  While the full bit-depth is passed to SteamVR, there are no known HMDs capable of making use of HDR output.  
+  The primary use-case for this setting is to fix SDR content not being captured correctly while HDR is enabled in the OS.  
+  This setting is still considered experimental.
+- **[x] Show FPS in Floating UI**  
+  When this is active, the number of captured or rendered frames per second, at which the overlay is updated, is displayed in the Floating UI.  
+  This number will be the same for all Desktop Duplication overlays, since they share a single backing texture.
+- **[x] Adaptive UI Rendering Rate**  
+  Disabling this allows turning off UI optimizations that try to lower the rendering rate when not needed.  
+  This setting is temporary and will be removed at a later date once these optimizations are considered stable.
 
 #### Version Info
 
