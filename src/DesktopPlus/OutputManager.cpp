@@ -5632,7 +5632,7 @@ void OutputManager::HandleKeyboardMessage(IPCActionID ipc_action_id, LPARAM lpar
                 wchar_t wstr[2] = {0};
                 wstr[0] = wchar;
 
-                m_InputSim.KeyboardText(StringConvertFromUTF16(wstr).c_str());
+                m_InputSim.KeyboardText(StringConvertFromUTF16(wstr).c_str(), true);
             }
             break;
         }
