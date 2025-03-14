@@ -174,7 +174,8 @@
   "localization_files": {
     "en_US" : "input/action_manifest_en.json",
     "de_DE" : "input/action_manifest_de.json",
-    "ja_JP" : "input/action_manifest_ja.json"
+    "ja_JP" : "input/action_manifest_ja.json",
+    "zh_CN" : "input/action_manifest_zh_CN.json"
   },
   "default_bindings": [
     {
