@@ -760,9 +760,19 @@ void TranslationManager::LoadTranslationFromFile(const std::string& filename)
     {
         wchar_t buffer[16] = {0};
         ::GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SISO639LANGNAME, buffer, sizeof(buffer) / sizeof(wchar_t));
+        std::string lang = StringConvertFromUTF16(buffer);
+        ::GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SISO3166CTRYNAME, buffer, sizeof(buffer) / sizeof(wchar_t));
+        std::string ctry = StringConvertFromUTF16(buffer);
 
-        //ISO 639 code ideally matches the file names used, so this works as auto-detection
-        std::string lang_filename = StringConvertFromUTF16(buffer) + ".ini";
+        // ISO 639 code ideally matches the file names used, so this works as auto-detection
+        // try to detect the language file with the country code first (e.g. en_US.ini)
+        std::string lang_filename = lang + "_" + ctry + ".ini";
+        if (!FileExists(WStringConvertFromUTF8((ConfigManager::Get().GetApplicationPath() + "lang/" + lang_filename).c_str()).c_str()))
+        {
+            // if the country code file does not exist, try to load the language file without the country code (e.g. en.ini)
+            lang_filename = lang + ".ini";
+        }
+        
         ConfigManager::SetValue(configid_str_interface_language_file, lang_filename);
         LoadTranslationFromFile(lang_filename);
 
