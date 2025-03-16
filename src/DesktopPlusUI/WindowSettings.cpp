@@ -786,10 +786,13 @@ void WindowSettings::UpdatePageMainCatInterface()
             static int list_id = 0;
 
             //Load language list when dropdown is used for the first time
-            if ( (ImGui::IsWindowAppearing()) && (list_langs.empty()) )
+            if (ImGui::IsWindowAppearing())
             {
-                list_id = 0;
-                list_langs = TranslationManager::GetTranslationList();
+                if (list_langs.empty())
+                {
+                    list_id = 0;
+                    list_langs = TranslationManager::GetTranslationList();
+                }
 
                 //Select matching entry and add unmapped characters if needed
                 const std::string& current_filename = ConfigManager::GetValue(configid_str_interface_language_file);
