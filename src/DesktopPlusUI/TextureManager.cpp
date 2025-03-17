@@ -234,11 +234,30 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     ULONG_PTR gdiplusToken;
     if (GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr) != Gdiplus::Ok)
     {
-        io.Fonts->Build();          //Still build the font so we can have text at least
+        LOG_F(ERROR, "Initializing GDI+ failed! Icons will not be loaded");
+
+        //Still build the font so we can have text at least
+        const bool font_build_success = io.Fonts->Build();
+
+        //If building the font atlas failed, fall back to the internal default font and try again
+        if (!font_build_success)
+        {
+            LOG_F(ERROR, "Building font atlas failed (invalid font file?)! Falling back to internal font");
+
+            io.Fonts->Clear();
+
+            font = io.Fonts->AddFontDefault();
+            font_compact = font;
+            font_large   = font;
+
+            io.Fonts->Build();
+        }
+
         io.Fonts->ClearInputData(); //We don't need to keep this around, reduces RAM use a lot
 
         UIManager::Get()->SetFonts(font_compact, font_large);
 
+        m_ReloadLater = false;
         return false;       //Everything below will fail as well if this did
     }
 
@@ -328,7 +347,26 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     }
 
     //Build atlas
-    io.Fonts->Build();
+    const bool font_build_success = io.Fonts->Build();
+
+    //If building the font atlas failed, fall back to the internal default font and try again
+    if (!font_build_success)
+    {
+        LOG_F(ERROR, "Building font atlas failed (invalid font file?)! Falling back to internal font");
+
+        ImVector<ImFontAtlasCustomRect> custom_rects_back = io.Fonts->CustomRects;
+        int desired_width_back = io.Fonts->TexDesiredWidth;
+        io.Fonts->Clear();
+
+        font = io.Fonts->AddFontDefault();
+        font_compact = font;
+        font_large   = font;
+
+        io.Fonts->CustomRects     = custom_rects_back;
+        io.Fonts->TexDesiredWidth = desired_width_back;
+
+        io.Fonts->Build();
+    }
 
     //Retrieve atlas texture in RGBA format
     unsigned char* tex_pixels = nullptr;
