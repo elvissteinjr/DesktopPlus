@@ -177,7 +177,31 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     //Loop to do the same for the large font if needed
     for (;;)
     {
-        //AddFontFromFileTTF asserts when failing to load, so check for existence, though it's not really an issue in release mode
+        //Load preferred font first, if the translation has set one
+        const std::string& preferred_font_name      = TranslationManager::Get().GetCurrentTranslationFontName();
+        const std::wstring preferred_font_name_wstr = WStringConvertFromUTF8(TranslationManager::Get().GetCurrentTranslationFontName().c_str());
+
+        if (!preferred_font_name.empty())
+        {
+            //AddFontFromFileTTF asserts when failing to load, so check for existence, though it's not really an issue in release mode
+            if (FileExists( (L"C:\\Windows\\Fonts\\" + preferred_font_name_wstr).c_str() ))
+            {
+                font = io.Fonts->AddFontFromFileTTF( ("C:\\Windows\\Fonts\\" + preferred_font_name).c_str(), font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);
+
+                //Other fonts are still used as fallback
+                config->MergeMode = true;
+            }
+            else if (FileExists( (WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"/lang/" + preferred_font_name_wstr).c_str() ))
+            {
+                //Also allow for a custom font from the application directory
+                font = io.Fonts->AddFontFromFileTTF( (ConfigManager::Get().GetApplicationPath() + "/lang/" + preferred_font_name).c_str(), font_base_size * UIManager::Get()->GetUIScale(), 
+                                                    config, ranges.Data);
+
+                config->MergeMode = true;
+            }
+        }
+
+        //Continue with the standard font selection
         if (FileExists(L"C:\\Windows\\Fonts\\segoeui.ttf"))
         {
             font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);

@@ -791,8 +791,9 @@ void TranslationManager::LoadTranslationFromFile(const std::string& filename)
     //Check if it's probably a translation/language file
     if (lang_file.SectionExists("TranslationInfo"))
     {
-        m_CurrentTranslationName   = lang_file.ReadString("TranslationInfo", "Name", "Unknown");
-        m_CurrentTranslationAuthor = lang_file.ReadString("TranslationInfo", "Author");
+        m_CurrentTranslationName     = lang_file.ReadString("TranslationInfo", "Name", "Unknown");
+        m_CurrentTranslationAuthor   = lang_file.ReadString("TranslationInfo", "Author");
+        m_CurrentTranslationFontName = lang_file.ReadString("TranslationInfo", "PreferredFont");
         m_IsCurrentTranslationComplete = true;
 
         LOG_IF_F(INFO, (filename != "en.ini"), "Loading translation \"%s\", from \"%s\"...", m_CurrentTranslationName.c_str(), filename.c_str());
@@ -858,6 +859,11 @@ const std::string& TranslationManager::GetCurrentTranslationName() const
 const std::string& TranslationManager::GetCurrentTranslationAuthor() const
 {
     return m_CurrentTranslationAuthor;
+}
+
+const std::string& TranslationManager::GetCurrentTranslationFontName() const
+{
+    return m_CurrentTranslationFontName;
 }
 
 void TranslationManager::AddStringsToFontBuilder(ImFontGlyphRangesBuilder& builder) const
