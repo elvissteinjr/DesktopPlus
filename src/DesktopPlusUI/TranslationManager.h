@@ -696,6 +696,7 @@ class TranslationManager
 
         std::string m_CurrentTranslationName;
         std::string m_CurrentTranslationAuthor;
+        std::string m_CurrentTranslationFontName;
         bool m_IsCurrentTranslationComplete;
 
     public:
@@ -708,8 +709,9 @@ class TranslationManager
 
         void LoadTranslationFromFile(const std::string& filename);
 
-        const std::string& GetCurrentTranslationName() const;
-        const std::string& GetCurrentTranslationAuthor() const;
+        const std::string& GetCurrentTranslationName()     const;
+        const std::string& GetCurrentTranslationAuthor()   const;
+        const std::string& GetCurrentTranslationFontName() const;
         bool IsCurrentTranslationComplete() const;
         void AddStringsToFontBuilder(ImFontGlyphRangesBuilder& builder) const;
 

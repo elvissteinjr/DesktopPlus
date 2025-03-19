@@ -177,7 +177,31 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     //Loop to do the same for the large font if needed
     for (;;)
     {
-        //AddFontFromFileTTF asserts when failing to load, so check for existence, though it's not really an issue in release mode
+        //Load preferred font first, if the translation has set one
+        const std::string& preferred_font_name      = TranslationManager::Get().GetCurrentTranslationFontName();
+        const std::wstring preferred_font_name_wstr = WStringConvertFromUTF8(TranslationManager::Get().GetCurrentTranslationFontName().c_str());
+
+        if (!preferred_font_name.empty())
+        {
+            //AddFontFromFileTTF asserts when failing to load, so check for existence, though it's not really an issue in release mode
+            if (FileExists( (L"C:\\Windows\\Fonts\\" + preferred_font_name_wstr).c_str() ))
+            {
+                font = io.Fonts->AddFontFromFileTTF( ("C:\\Windows\\Fonts\\" + preferred_font_name).c_str(), font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);
+
+                //Other fonts are still used as fallback
+                config->MergeMode = true;
+            }
+            else if (FileExists( (WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"/lang/" + preferred_font_name_wstr).c_str() ))
+            {
+                //Also allow for a custom font from the application directory
+                font = io.Fonts->AddFontFromFileTTF( (ConfigManager::Get().GetApplicationPath() + "/lang/" + preferred_font_name).c_str(), font_base_size * UIManager::Get()->GetUIScale(), 
+                                                    config, ranges.Data);
+
+                config->MergeMode = true;
+            }
+        }
+
+        //Continue with the standard font selection
         if (FileExists(L"C:\\Windows\\Fonts\\segoeui.ttf"))
         {
             font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);
@@ -234,11 +258,30 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     ULONG_PTR gdiplusToken;
     if (GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr) != Gdiplus::Ok)
     {
-        io.Fonts->Build();          //Still build the font so we can have text at least
+        LOG_F(ERROR, "Initializing GDI+ failed! Icons will not be loaded");
+
+        //Still build the font so we can have text at least
+        const bool font_build_success = io.Fonts->Build();
+
+        //If building the font atlas failed, fall back to the internal default font and try again
+        if (!font_build_success)
+        {
+            LOG_F(ERROR, "Building font atlas failed (invalid font file?)! Falling back to internal font");
+
+            io.Fonts->Clear();
+
+            font = io.Fonts->AddFontDefault();
+            font_compact = font;
+            font_large   = font;
+
+            io.Fonts->Build();
+        }
+
         io.Fonts->ClearInputData(); //We don't need to keep this around, reduces RAM use a lot
 
         UIManager::Get()->SetFonts(font_compact, font_large);
 
+        m_ReloadLater = false;
         return false;       //Everything below will fail as well if this did
     }
 
@@ -328,7 +371,26 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     }
 
     //Build atlas
-    io.Fonts->Build();
+    const bool font_build_success = io.Fonts->Build();
+
+    //If building the font atlas failed, fall back to the internal default font and try again
+    if (!font_build_success)
+    {
+        LOG_F(ERROR, "Building font atlas failed (invalid font file?)! Falling back to internal font");
+
+        ImVector<ImFontAtlasCustomRect> custom_rects_back = io.Fonts->CustomRects;
+        int desired_width_back = io.Fonts->TexDesiredWidth;
+        io.Fonts->Clear();
+
+        font = io.Fonts->AddFontDefault();
+        font_compact = font;
+        font_large   = font;
+
+        io.Fonts->CustomRects     = custom_rects_back;
+        io.Fonts->TexDesiredWidth = desired_width_back;
+
+        io.Fonts->Build();
+    }
 
     //Retrieve atlas texture in RGBA format
     unsigned char* tex_pixels = nullptr;
