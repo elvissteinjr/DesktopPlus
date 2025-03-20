@@ -1,0 +1,44 @@
+{
+    "language_tag": "zh_CN",
+
+    "/actions/shortcuts" : "全局快捷键",
+
+    "/actions/shortcuts/in/EnableGlobalLaserPointer" : "启用全局激光指针",
+    "/actions/shortcuts/in/GlobalShortcut01" : "执行全局快捷键 #1",
+    "/actions/shortcuts/in/GlobalShortcut02" : "执行全局快捷键 #2",
+    "/actions/shortcuts/in/GlobalShortcut03" : "执行全局快捷键 #3",
+    "/actions/shortcuts/in/GlobalShortcut04" : "执行全局快捷键 #4",
+    "/actions/shortcuts/in/GlobalShortcut05" : "执行全局快捷键 #5",
+    "/actions/shortcuts/in/GlobalShortcut06" : "执行全局快捷键 #6",
+    "/actions/shortcuts/in/GlobalShortcut07" : "执行全局快捷键 #7",
+    "/actions/shortcuts/in/GlobalShortcut08" : "执行全局快捷键 #8",
+    "/actions/shortcuts/in/GlobalShortcut09" : "执行全局快捷键 #9",
+    "/actions/shortcuts/in/GlobalShortcut10" : "执行全局快捷键 #10",
+    "/actions/shortcuts/in/GlobalShortcut11" : "执行全局快捷键 #11",
+    "/actions/shortcuts/in/GlobalShortcut12" : "执行全局快捷键 #12",
+    "/actions/shortcuts/in/GlobalShortcut13" : "执行全局快捷键 #13",
+    "/actions/shortcuts/in/GlobalShortcut14" : "执行全局快捷键 #14",
+    "/actions/shortcuts/in/GlobalShortcut15" : "执行全局快捷键 #15",
+    "/actions/shortcuts/in/GlobalShortcut16" : "执行全局快捷键 #16",
+    "/actions/shortcuts/in/GlobalShortcut17" : "执行全局快捷键 #17",
+    "/actions/shortcuts/in/GlobalShortcut18" : "执行全局快捷键 #18",
+    "/actions/shortcuts/in/GlobalShortcut19" : "执行全局快捷键 #19",
+    "/actions/shortcuts/in/GlobalShortcut20" : "执行全局快捷键 #20",
+
+    "/actions/laserpointer" : "激光指针",
+
+    "/actions/laserpointer/in/LeftClick"   : "左键点击",
+    "/actions/laserpointer/in/RightClick"  : "右键点击",
+    "/actions/laserpointer/in/MiddleClick" : "中键点击",
+    "/actions/laserpointer/in/Aux01Click"  : "辅助1点击",
+    "/actions/laserpointer/in/Aux02Click"  : "辅助2点击",
+    "/actions/laserpointer/in/Drag"        : "拖动叠加",
+	
+	"/actions/scroll_discrete" : "鼠标滚轮滚动",
+	
+    "/actions/scroll_discrete/in/ScrollDiscrete" : "滚动叠加",
+	
+	"/actions/scroll_smooth" : "平滑滚动",
+	
+    "/actions/scroll_smooth/in/ScrollSmooth" : "滚动叠加"
+}
