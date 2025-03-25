@@ -216,14 +216,31 @@ namespace ImGui
     class ActiveWidgetStateStorage
     {
         private:
+            //Copies of structs declared in imgui_internal.h, since we don't want to pull that header in for everything that uses this one
+            //These need to be kept in sync
+            struct ImGuiDeactivatedItemDataInternal
+            {
+                ImGuiID ID;
+                int     ElapseFrame;
+                bool    HasBeenEditedBefore;
+                bool    IsAlive;
+            };
+
+            struct ImGuiDataTypeStorageInternal
+            {
+                ImU8 Data[8];
+            };
+
             bool    IsInitialized;
 
             ImGuiID HoveredId;
             ImGuiID HoveredIdPreviousFrame;
-            bool    HoveredIdAllowOverlap;
-            bool    HoveredIdDisabled;
+            int     HoveredIdPreviousFrameItemCount;
             float   HoveredIdTimer;
-            float   HoveredIdNotActiveTimer; 
+            float   HoveredIdNotActiveTimer;
+            bool    HoveredIdAllowOverlap;
+            bool    HoveredIdIsDisabled;
+            bool    ItemUnclipByLog;
             ImGuiID ActiveId;
             ImGuiID ActiveIdIsAlive;
             float   ActiveIdTimer;
@@ -233,14 +250,14 @@ namespace ImGui
             bool    ActiveIdHasBeenPressedBefore;
             bool    ActiveIdHasBeenEditedBefore;
             bool    ActiveIdHasBeenEditedThisFrame;
+            bool    ActiveIdFromShortcut;
+            int     ActiveIdMouseButton;
             ImVec2  ActiveIdClickOffset;
             void*   ActiveIdWindow;
             int     ActiveIdSource;
-            int     ActiveIdMouseButton;
             ImGuiID ActiveIdPreviousFrame;
-            bool    ActiveIdPreviousFrameIsAlive;
-            bool    ActiveIdPreviousFrameHasBeenEditedBefore;
-            void*   ActiveIdPreviousFrameWindow;
+            ImGuiDeactivatedItemDataInternal DeactivatedItemData;
+            ImGuiDataTypeStorageInternal     ActiveIdValueOnActivation;
             ImGuiID LastActiveId;
             float   LastActiveIdTimer;
 

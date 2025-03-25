@@ -497,7 +497,7 @@ bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, siz
     ImGui::PushID(str_id);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, style.FramePadding);
-    if (ImGui::BeginChild("InputOverlayTags", {-style.ChildBorderSize, child_height}, true, ImGuiWindowFlags_NavFlattened))
+    if (ImGui::BeginChild("InputOverlayTags", {-style.ChildBorderSize, child_height}, ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened))
     {
         ImGui::PopStyleVar();
 
@@ -816,7 +816,7 @@ bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, siz
 
     buttons_width = ImGui::GetItemRectSize().x;
 
-    ImGui::BeginChild("ChildKnownTags", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_NavFlattened | ImGuiWindowFlags_NoBackground);
+    ImGui::BeginChild("ChildKnownTags", ImVec2(0.0f, 0.0f), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground);
 
     for (const auto& list_entry : state.KnownTagsList)
     {

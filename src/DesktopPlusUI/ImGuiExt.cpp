@@ -51,7 +51,7 @@ namespace ImGui
         ImGui::BeginGroup();
 
         ImGui::PushID(str_id);
-        ImGui::PushButtonRepeat(true);
+        ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
 
         //Calulate slider width (GetContentRegionAvail() returns 1 more than when using -1 width to fill)
         ImGui::SetNextItemWidth((ImGui::GetContentRegionAvail().x - (ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x) * 2) - 1.0f);
@@ -101,7 +101,7 @@ namespace ImGui
                 *used_button = true;
         }
 
-        ImGui::PopButtonRepeat();
+        ImGui::PopItemFlag();   //ImGuiItemFlag_ButtonRepeat
         ImGui::PopID();
 
         ImGui::EndGroup();
@@ -161,7 +161,7 @@ namespace ImGui
         ImGui::BeginGroup();
 
         ImGui::PushID(str_id);
-        ImGui::PushButtonRepeat(true);
+        ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
 
         //Calulate slider width (GetContentRegionAvail() returns 1 more than when using -1 width to fill)
         ImGui::SetNextItemWidth((ImGui::GetContentRegionAvail().x - (ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x) * 2) - 1.0f);
@@ -201,7 +201,7 @@ namespace ImGui
                 *used_button = true;
         }
 
-        ImGui::PopButtonRepeat();
+        ImGui::PopItemFlag();   //ImGuiItemFlag_ButtonRepeat
         ImGui::PopID();
 
         ImGui::EndGroup();
@@ -429,7 +429,7 @@ namespace ImGui
     {
         //-
         //Custom code sections marked with //-
-        //Otherwise exactly the same as ImGui::BeginCombo() of ImGui v1.82
+        //Otherwise exactly the same as ImGui::BeginCombo() of ImGui v1.82 (with compat patches)
         static float animation_progress = 0.0f;
         static float scrollbar_alpha = 0.0f;
         float popup_expected_width = FLT_MAX;
@@ -438,10 +438,10 @@ namespace ImGui
 
         // Always consume the SetNextWindowSizeConstraint() call in our early return paths
         ImGuiContext& g = *GImGui;
-        bool has_window_size_constraint = (g.NextWindowData.Flags & ImGuiNextWindowDataFlags_HasSizeConstraint) != 0;
-        g.NextWindowData.Flags &= ~ImGuiNextWindowDataFlags_HasSizeConstraint;
-
         ImGuiWindow* window = GetCurrentWindow();
+
+        ImGuiNextWindowDataFlags backup_next_window_data_flags = g.NextWindowData.HasFlags;
+        g.NextWindowData.ClearFlags(); // We behave like Begin() and need to consume those values
         if (window->SkipItems)
             return false;
 
@@ -466,7 +466,7 @@ namespace ImGui
 
         const ImU32 frame_col = GetColorU32(hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
         const float value_x2 = ImMax(frame_bb.Min.x, frame_bb.Max.x - arrow_size);
-        RenderNavHighlight(frame_bb, id);
+        RenderNavCursor(frame_bb, id);
         if (!(flags & ImGuiComboFlags_NoPreview))
             window->DrawList->AddRectFilled(frame_bb.Min, ImVec2(value_x2, frame_bb.Max.y), frame_col, style.FrameRounding, (flags & ImGuiComboFlags_NoArrowButton) ? ImDrawFlags_RoundCornersAll : ImDrawFlags_RoundCornersLeft);
         if (!(flags & ImGuiComboFlags_NoArrowButton))
@@ -510,21 +510,28 @@ namespace ImGui
         clip_min.y -= style.FramePadding.y + style.PopupBorderSize;
         //-
 
-        if (has_window_size_constraint)
+        g.NextWindowData.HasFlags = backup_next_window_data_flags;
+
+        // Set popup size
+        if (g.NextWindowData.HasFlags & ImGuiNextWindowDataFlags_HasSizeConstraint)
         {
-            g.NextWindowData.Flags |= ImGuiNextWindowDataFlags_HasSizeConstraint;
             g.NextWindowData.SizeConstraintRect.Min.x = ImMax(g.NextWindowData.SizeConstraintRect.Min.x, w);
         }
         else
         {
             if ((flags & ImGuiComboFlags_HeightMask_) == 0)
                 flags |= ImGuiComboFlags_HeightRegular;
-            IM_ASSERT(ImIsPowerOfTwo(flags & ImGuiComboFlags_HeightMask_));    // Only one
+            IM_ASSERT(ImIsPowerOfTwo(flags & ImGuiComboFlags_HeightMask_)); // Only one
             int popup_max_height_in_items = -1;
             if (flags & ImGuiComboFlags_HeightRegular)     popup_max_height_in_items = 8;
             else if (flags & ImGuiComboFlags_HeightSmall)  popup_max_height_in_items = 4;
             else if (flags & ImGuiComboFlags_HeightLarge)  popup_max_height_in_items = 20;
-            SetNextWindowSizeConstraints(ImVec2(w, 0.0f), ImVec2(FLT_MAX, CalcMaxPopupHeightFromItemCount(popup_max_height_in_items)));
+            ImVec2 constraint_min(0.0f, 0.0f), constraint_max(FLT_MAX, FLT_MAX);
+            if ((g.NextWindowData.HasFlags & ImGuiNextWindowDataFlags_HasSize) == 0 || g.NextWindowData.SizeVal.x <= 0.0f) // Don't apply constraints if user specified a size
+                constraint_min.x = w;
+            if ((g.NextWindowData.HasFlags & ImGuiNextWindowDataFlags_HasSize) == 0 || g.NextWindowData.SizeVal.y <= 0.0f)
+                constraint_max.y = CalcMaxPopupHeightFromItemCount(popup_max_height_in_items);
+            SetNextWindowSizeConstraints(constraint_min, constraint_max);
         }
 
         char name[16];
@@ -757,8 +764,8 @@ namespace ImGui
         const ImGuiStyle& style = g.Style;
 
         //Fixed flags, but we still kept some checks below in case we need to adjust later
-        const ImGuiColorEditFlags flags = ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreview |
-                                          ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
+        const ImGuiColorEditFlags flags = ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoSidePreview | 
+                                          ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
 
         const float start_y           = ImGui::GetCursorScreenPos().y;
         const float square_sz         = ImGui::GetFrameHeight() * scale;
@@ -809,8 +816,8 @@ namespace ImGui
         if ((flags & ImGuiColorEditFlags_NoLabel))
             ImGui::TextUnformatted(label_color_current);
 
-        ImGuiColorEditFlags sub_flags_to_forward = ImGuiColorEditFlags_InputMask_ | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_AlphaPreviewHalf | 
-                                                   ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop;
+        ImGuiColorEditFlags sub_flags_to_forward = ImGuiColorEditFlags_InputMask_ | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_AlphaPreviewHalf | ImGuiColorEditFlags_NoTooltip | 
+                                                   ImGuiColorEditFlags_NoDragDrop;
 
         ImGui::ColorButton("##current", col_v4, (flags & sub_flags_to_forward), ImVec2(square_sz * 3, square_sz * 2));
         if (ref_col != nullptr)
@@ -825,7 +832,7 @@ namespace ImGui
             }
         }
 
-        ImGui::PopItemFlag();
+        ImGui::PopItemFlag();   //ImGuiItemFlags_NoNavDefaultFocus
         ImGui::EndGroup();
 
         ImGui::PopID();
@@ -1050,7 +1057,7 @@ namespace ImGui
         const ImGuiContext& g = *GImGui;
         bool blocked_by_active_item = (g.ActiveId != 0 && !g.ActiveIdAllowOverlap);
 
-        return ( (g.HoveredId != g.HoveredIdPreviousFrame) && (g.HoveredId != 0) && (!g.HoveredIdDisabled) && (!blocked_by_active_item) );
+        return ( (g.HoveredId != g.HoveredIdPreviousFrame) && (g.HoveredId != 0) && (!g.HoveredIdIsDisabled) && (!blocked_by_active_item) );
     }
 
     bool IsAnyItemActiveOrDeactivated()
@@ -1273,7 +1280,7 @@ namespace ImGui
             ImGui::PushItemDisabledNoVisual();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
-        if (ImGui::BeginChild(str_id, area_size, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NavFlattened))
+        if (ImGui::BeginChild(str_id, area_size, ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
         {
             const float drag_threshold_prev = io.MouseDragThreshold;
             io.MouseDragThreshold = 0.0f;
@@ -1605,14 +1612,20 @@ namespace ImGui
 
     ActiveWidgetStateStorage::ActiveWidgetStateStorage()
     {
+        //These need to be the same or things will explode
+        IM_ASSERT(sizeof(ImGuiDeactivatedItemDataInternal) == sizeof(DeactivatedItemData));
+        IM_ASSERT(sizeof(ActiveIdValueOnActivation)        == sizeof(ActiveIdValueOnActivation));
+
         IsInitialized                            = false;
 
         HoveredId                                = 0;
         HoveredIdPreviousFrame                   = 0;
-        HoveredIdAllowOverlap                    = false;
-        HoveredIdDisabled                        = false;
+        HoveredIdPreviousFrameItemCount          = 0;
         HoveredIdTimer                           = 0.0f;
         HoveredIdNotActiveTimer                  = 0.0f;
+        HoveredIdAllowOverlap                    = false;
+        HoveredIdIsDisabled                      = false;
+        ItemUnclipByLog                          = false;
         ActiveId                                 = 0;
         ActiveIdIsAlive                          = 0;
         ActiveIdTimer                            = 0.0f;
@@ -1622,15 +1635,15 @@ namespace ImGui
         ActiveIdHasBeenPressedBefore             = false;
         ActiveIdHasBeenEditedBefore              = false;
         ActiveIdHasBeenEditedThisFrame           = false;
+        ActiveIdFromShortcut                     = false;
         ActiveIdUsingNavDirMask                  = 0x00;
         ActiveIdClickOffset                      = ImVec2(-1, -1);
         ActiveIdWindow                           = nullptr;
         ActiveIdSource                           = ImGuiInputSource_None;
         ActiveIdMouseButton                      = -1;
         ActiveIdPreviousFrame                    = 0;
-        ActiveIdPreviousFrameIsAlive             = false;
-        ActiveIdPreviousFrameHasBeenEditedBefore = false;
-        ActiveIdPreviousFrameWindow              = nullptr;
+        memset(&DeactivatedItemData,       0, sizeof(DeactivatedItemData));
+        memset(&ActiveIdValueOnActivation, 0, sizeof(ActiveIdValueOnActivation));
         LastActiveId                             = 0;
         LastActiveIdTimer                        = 0.0f;
 
@@ -1646,10 +1659,12 @@ namespace ImGui
 
         HoveredId                                = g.HoveredId;
         HoveredIdPreviousFrame                   = g.HoveredIdPreviousFrame;
-        HoveredIdAllowOverlap                    = g.HoveredIdAllowOverlap;
-        HoveredIdDisabled                        = g.HoveredIdDisabled;
+        HoveredIdPreviousFrameItemCount          = g.HoveredIdPreviousFrameItemCount;
         HoveredIdTimer                           = g.HoveredIdTimer;
         HoveredIdNotActiveTimer                  = g.HoveredIdNotActiveTimer;
+        HoveredIdAllowOverlap                    = g.HoveredIdAllowOverlap;
+        HoveredIdIsDisabled                      = g.HoveredIdIsDisabled;
+        ItemUnclipByLog                          = g.ItemUnclipByLog;
         ActiveId                                 = g.ActiveId;
         ActiveIdIsAlive                          = g.ActiveIdIsAlive;
         ActiveIdTimer                            = g.ActiveIdTimer;
@@ -1659,14 +1674,14 @@ namespace ImGui
         ActiveIdHasBeenPressedBefore             = g.ActiveIdHasBeenPressedBefore;
         ActiveIdHasBeenEditedBefore              = g.ActiveIdHasBeenEditedBefore;
         ActiveIdHasBeenEditedThisFrame           = g.ActiveIdHasBeenEditedThisFrame;
+        ActiveIdFromShortcut                     = g.ActiveIdFromShortcut;
+        ActiveIdMouseButton                      = g.ActiveIdMouseButton;
         ActiveIdClickOffset                      = g.ActiveIdClickOffset;
         ActiveIdWindow                           = g.ActiveIdWindow;
         ActiveIdSource                           = g.ActiveIdSource;
-        ActiveIdMouseButton                      = g.ActiveIdMouseButton;
         ActiveIdPreviousFrame                    = g.ActiveIdPreviousFrame;
-        ActiveIdPreviousFrameIsAlive             = g.ActiveIdPreviousFrameIsAlive;
-        ActiveIdPreviousFrameHasBeenEditedBefore = g.ActiveIdPreviousFrameHasBeenEditedBefore;
-        ActiveIdPreviousFrameWindow              = g.ActiveIdPreviousFrameWindow;
+        DeactivatedItemData                      = *(ImGuiDeactivatedItemDataInternal*)&g.DeactivatedItemData;
+        ActiveIdValueOnActivation                = *(ImGuiDataTypeStorageInternal*)&g.ActiveIdValueOnActivation;
         LastActiveId                             = g.LastActiveId;
         LastActiveIdTimer                        = g.LastActiveIdTimer;
 
@@ -1684,10 +1699,12 @@ namespace ImGui
 
         g.HoveredId                                = HoveredId;
         g.HoveredIdPreviousFrame                   = HoveredIdPreviousFrame;
-        g.HoveredIdAllowOverlap                    = HoveredIdAllowOverlap;
-        g.HoveredIdDisabled                        = HoveredIdDisabled;
+        g.HoveredIdPreviousFrameItemCount          = HoveredIdPreviousFrameItemCount;
         g.HoveredIdTimer                           = HoveredIdTimer;
         g.HoveredIdNotActiveTimer                  = HoveredIdNotActiveTimer;
+        g.HoveredIdAllowOverlap                    = HoveredIdAllowOverlap;
+        g.HoveredIdIsDisabled                      = HoveredIdIsDisabled;
+        g.ItemUnclipByLog                          = ItemUnclipByLog;
         g.ActiveId                                 = ActiveId;
         g.ActiveIdIsAlive                          = ActiveIdIsAlive;
         g.ActiveIdTimer                            = ActiveIdTimer;
@@ -1697,14 +1714,14 @@ namespace ImGui
         g.ActiveIdHasBeenPressedBefore             = ActiveIdHasBeenPressedBefore;
         g.ActiveIdHasBeenEditedBefore              = ActiveIdHasBeenEditedBefore;
         g.ActiveIdHasBeenEditedThisFrame           = ActiveIdHasBeenEditedThisFrame;
+        g.ActiveIdFromShortcut                     = ActiveIdFromShortcut;
+        g.ActiveIdMouseButton                      = ActiveIdMouseButton;
         g.ActiveIdClickOffset                      = ActiveIdClickOffset;
         g.ActiveIdWindow                           = (ImGuiWindow*)ActiveIdWindow;
         g.ActiveIdSource                           = (ImGuiInputSource)ActiveIdSource;
-        g.ActiveIdMouseButton                      = ActiveIdMouseButton;
         g.ActiveIdPreviousFrame                    = ActiveIdPreviousFrame;
-        g.ActiveIdPreviousFrameIsAlive             = ActiveIdPreviousFrameIsAlive;
-        g.ActiveIdPreviousFrameHasBeenEditedBefore = ActiveIdPreviousFrameHasBeenEditedBefore;
-        g.ActiveIdPreviousFrameWindow              = (ImGuiWindow*)ActiveIdPreviousFrameWindow;
+        g.DeactivatedItemData                      = *(ImGuiDeactivatedItemData*)&DeactivatedItemData;
+        g.ActiveIdValueOnActivation                = *(ImGuiDataTypeStorage*)&ActiveIdValueOnActivation;
         g.LastActiveId                             = LastActiveId;
         g.LastActiveIdTimer                        = LastActiveIdTimer;
 
@@ -1718,6 +1735,7 @@ namespace ImGui
             return;
 
         const ImGuiIO& io = ImGui::GetIO();
+        ImGuiContext& g = *ImGui::GetCurrentContext();
 
         // Update HoveredId data
         if (!HoveredIdPreviousFrame)
@@ -1731,7 +1749,7 @@ namespace ImGui
         HoveredIdPreviousFrame = HoveredId;
         HoveredId = 0;
         HoveredIdAllowOverlap = false;
-        HoveredIdDisabled = false;
+        HoveredIdIsDisabled = false;
 
         // Clear ActiveID if the item is not alive anymore.
         // In 1.87, the common most call to KeepAliveID() was moved from GetID() to ItemAdd().
@@ -1739,10 +1757,18 @@ namespace ImGui
         if (ActiveId != 0 && ActiveIdIsAlive != ActiveId && ActiveIdPreviousFrame == ActiveId)
         {
             //ClearActiveID
+            ImGuiDeactivatedItemDataInternal* deactivated_data = &DeactivatedItemData;
+            deactivated_data->ID = ActiveId;
+            deactivated_data->ElapseFrame = (g.LastItemData.ID == ActiveId) ? g.FrameCount : g.FrameCount + 1;
+            deactivated_data->HasBeenEditedBefore = ActiveIdHasBeenEditedBefore;
+            deactivated_data->IsAlive = (ActiveIdIsAlive == ActiveId);
+
             ActiveIdIsJustActivated        = true;
             ActiveIdTimer                  = 0.0f;
             ActiveIdHasBeenPressedBefore   = false;
             ActiveIdHasBeenEditedBefore    = false;
+            ActiveIdHasBeenEditedThisFrame = false;
+            ActiveIdFromShortcut           = false;
             ActiveIdMouseButton            = -1;
             ActiveId                       = 0;
             ActiveIdAllowOverlap           = false;
@@ -1776,11 +1802,8 @@ namespace ImGui
 
         LastActiveIdTimer                       += io.DeltaTime;
         ActiveIdPreviousFrame                    = ActiveId;
-        ActiveIdPreviousFrameWindow              = ActiveIdWindow;
-        ActiveIdPreviousFrameHasBeenEditedBefore = ActiveIdHasBeenEditedBefore;
         ActiveIdIsAlive                          = 0;
         ActiveIdHasBeenEditedThisFrame           = false;
-        ActiveIdPreviousFrameIsAlive             = false;
         ActiveIdIsJustActivated                  = false;
 
         if (ActiveId == 0)
@@ -1788,5 +1811,9 @@ namespace ImGui
             ActiveIdUsingNavDirMask      = 0x00;
             ActiveIdUsingAllKeyboardKeys = false;
         }
+
+        if (DeactivatedItemData.ElapseFrame < g.FrameCount)
+            DeactivatedItemData.ID = 0;
+        DeactivatedItemData.IsAlive = false;
     }
 }

@@ -485,7 +485,7 @@ void VRKeyboard::SetKeyDown(unsigned char keycode, bool down, bool block_modifie
 
     if (m_InputTarget != kbdtarget_desktop)
     {
-        ImGui::GetIO().AddKeyEvent(ImGui_ImplWin32_VirtualKeyToImGuiKey(keycode), down);
+        ImGui::GetIO().AddKeyEvent(ImGui_ImplWin32_KeyEventToImGuiKey(keycode, 0), down);
 
         //Get text output for current state and key
         if ((down) && (keycode != VK_BACK) && (keycode != VK_TAB))

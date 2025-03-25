@@ -296,7 +296,7 @@ void WindowSettings::WindowUpdate()
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f)); //This prevents child bg color being visible if there's a widget before this (e.g. warnings)
 
-        if ( (ImGui::BeginChild(child_str_id[child_id], child_size, false, ImGuiWindowFlags_NavFlattened)) || (m_PageAppearing == page_id) ) //Process page if currently appearing
+        if ( (ImGui::BeginChild(child_str_id[child_id], child_size, ImGuiChildFlags_NavFlattened)) || (m_PageAppearing == page_id) ) //Process page if currently appearing
         {
             ImGui::PopStyleColor(); //ImGuiCol_ChildBg
 
@@ -742,7 +742,7 @@ void WindowSettings::UpdateWarnings()
 void WindowSettings::UpdatePageMain()
 {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-    ImGui::BeginChild("SettingsMainContent", ImVec2(0.00f, 0.00f), false, ImGuiWindowFlags_NavFlattened);
+    ImGui::BeginChild("SettingsMainContent", ImVec2(0.00f, 0.00f), ImGuiChildFlags_NavFlattened);
     ImGui::PopStyleColor();
 
     //Page Content
@@ -929,7 +929,7 @@ void WindowSettings::UpdatePageMainCatInterface()
         ImGui::Text(TranslationManager::GetString(tstr_SettingsEnvironmentBackgroundColor));
         ImGui::NextColumn();
 
-        if (ImGui::ColorButton("##BackgroundColor", background_color_vec4, ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop))
+        if (ImGui::ColorButton("##BackgroundColor", background_color_vec4, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop))
         {
             PageGoForward(wndsettings_page_color_picker);
         }
@@ -2187,7 +2187,7 @@ void WindowSettings::UpdatePageMainCatMisc()
             static float elevated_task_button_width = 0.0f;
 
             //Put this button on a new line if it doesn't fit (typically happens with [Restart with Steam] button present in VR mode)
-            if (ImGui::GetItemRectMax().x + style.ItemSpacing.x + elevated_task_button_width < ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
+            if (ImGui::GetItemRectMax().x + style.ItemSpacing.x + elevated_task_button_width < ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x)
                 ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 
             const bool dashboard_app_running  = IPCManager::IsDashboardAppRunning();
@@ -5172,7 +5172,7 @@ void WindowSettings::UpdatePageColorPicker(bool only_restore_settings)
 
     //Make page scrollable since we can't easily adjust the picker to space taken by warnings
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-    ImGui::BeginChild("SettingsColorPicker", ImVec2(0.00f, -ImGui::GetFrameHeightWithSpacing() - style.ItemSpacing.y), false, ImGuiWindowFlags_NavFlattened);
+    ImGui::BeginChild("SettingsColorPicker", ImVec2(0.00f, -ImGui::GetFrameHeightWithSpacing() - style.ItemSpacing.y), ImGuiChildFlags_NavFlattened);
     ImGui::PopStyleColor();
 
     ImGui::TextColoredUnformatted(ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered), TranslationManager::GetString(tstr_DialogColorPickerHeader)); 

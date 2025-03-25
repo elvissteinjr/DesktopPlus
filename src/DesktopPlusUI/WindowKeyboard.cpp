@@ -356,7 +356,7 @@ void WindowKeyboard::WindowUpdate()
     //Enable button repeat if setting is enabled
     const bool use_key_repeat_global = ConfigManager::GetValue(configid_bool_input_keyboard_key_repeat);
     if (use_key_repeat_global)
-        ImGui::PushButtonRepeat(true);
+        ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
 
     const float base_width = (float)int(ImGui::GetTextLineHeightWithSpacing() * 2.225f);
 
@@ -509,7 +509,7 @@ void WindowKeyboard::WindowUpdate()
         const bool use_key_repeat = ((use_key_repeat_global) && (!key.NoRepeat));
 
         if ((use_key_repeat_global) && (!use_key_repeat))
-            ImGui::PushButtonRepeat(false);
+            ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, false);
 
         switch (key.KeyType)
         {
@@ -563,7 +563,7 @@ void WindowKeyboard::WindowUpdate()
             case kbdlayout_key_virtual_key_toggle:
             {
                 if (use_key_repeat)
-                    ImGui::PushButtonRepeat(false);
+                    ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, false);
 
                 const bool is_down = vr_keyboard.GetKeyDown(key.KeyCode);
                 const bool push_color = ((is_down) && (button_state.IsDown));
@@ -587,7 +587,7 @@ void WindowKeyboard::WindowUpdate()
                     ImGui::PopStyleColor();
 
                 if (use_key_repeat)
-                    ImGui::PopButtonRepeat();
+                    ImGui::PopItemFlag();
 
                 break;
             }
@@ -762,7 +762,7 @@ void WindowKeyboard::WindowUpdate()
             case kbdlayout_key_sublayout_toggle:
             {
                 if (use_key_repeat)
-                    ImGui::PushButtonRepeat(false);
+                    ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, false);
 
                 const bool is_down = (m_SubLayoutOverride == key.KeySubLayoutToggle);
 
@@ -779,7 +779,7 @@ void WindowKeyboard::WindowUpdate()
                     ImGui::PopStyleColor();
 
                 if (use_key_repeat)
-                    ImGui::PopButtonRepeat();
+                    ImGui::PopItemFlag();
 
                 break;
             }
@@ -837,7 +837,7 @@ void WindowKeyboard::WindowUpdate()
 
         //Undo disabled button repeat if necessary
         if ((use_key_repeat_global) && (!use_key_repeat))
-            ImGui::PopButtonRepeat();
+            ImGui::PopItemFlag();
 
         ImGui::PopID();
 
@@ -847,7 +847,7 @@ void WindowKeyboard::WindowUpdate()
     m_LastSubLayout = current_sublayout;
 
     if (use_key_repeat_global)
-        ImGui::PopButtonRepeat();
+        ImGui::PopItemFlag();
 
     m_KeyboardWidgetState.StoreCurrentState();
     widget_state_back.ApplyState();
@@ -1139,7 +1139,7 @@ bool WindowKeyboard::ButtonLaser(const char* label, const ImVec2& size_arg, Butt
     if (!ImGui::ItemAdd(bb, id))
         return false;
 
-    bool do_repeat = (g.LastItemData.InFlags & ImGuiItemFlags_ButtonRepeat);
+    bool do_repeat = (g.LastItemData.ItemFlags & ImGuiItemFlags_ButtonRepeat);
 
     //Check all laser input states for potential input on the button
     LaserInputState orig_state;
@@ -1235,7 +1235,7 @@ bool WindowKeyboard::ButtonLaser(const char* label, const ImVec2& size_arg, Butt
 
     //Render button
     const ImU32 col = ImGui::GetColorU32((button_state.IsHeld) ? ImGuiCol_ButtonActive : (is_any_hovering) ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
-    ImGui::RenderNavHighlight(bb, id);
+    ImGui::RenderNavCursor(bb, id);
     ImGui::RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
 
     const ImVec2 pos_min(bb.Min.x + style.FramePadding.x, bb.Min.y + style.FramePadding.y);

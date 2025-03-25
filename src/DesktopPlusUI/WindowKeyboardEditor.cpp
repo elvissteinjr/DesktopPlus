@@ -61,7 +61,7 @@ void KeyboardEditor::UpdateWindowKeyList()
                 //Make the child expand past window padding
                 ImGui::SetCursorPos({ImGui::GetCursorPosX() - style.WindowPadding.x, ImGui::GetCursorPosY() - style.WindowPadding.y - style.TabBarBorderSize});
 
-                ImGui::BeginChild("TabContents", {ImGui::GetContentRegionAvail().x + style.WindowPadding.x, -ImGui::GetFrameHeightWithSpacing()}, ImGuiChildFlags_Border);
+                ImGui::BeginChild("TabContents", {ImGui::GetContentRegionAvail().x + style.WindowPadding.x, -ImGui::GetFrameHeightWithSpacing()}, ImGuiChildFlags_Borders);
 
                 if (current_sublayout != m_SelectedSublayout)
                 {
@@ -773,7 +773,7 @@ void KeyboardEditor::UpdateWindowKeyProperties()
             filter.Build();
         }
 
-        ImGui::BeginChild("KeyCodePickerList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing()), ImGuiChildFlags_Border);
+        ImGui::BeginChild("KeyCodePickerList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing()), ImGuiChildFlags_Borders);
 
         unsigned char list_keycode;
         const char* list_keycode_str = nullptr;
@@ -1027,7 +1027,7 @@ void KeyboardEditor::UpdateWindowMetadata()
     ImGui::SetCursorPos({ImGui::GetCursorPosX() - style.WindowPadding.x, ImGui::GetCursorPosY() - style.WindowPadding.y - style.TabBarBorderSize});
 
     ImGui::SetNextWindowBgAlpha(0.0f);
-    ImGui::BeginChild("MetadataContents", {ImGui::GetContentRegionAvail().x + style.WindowPadding.x, -ImGui::GetFrameHeightWithSpacing()}, ImGuiChildFlags_Border);
+    ImGui::BeginChild("MetadataContents", {ImGui::GetContentRegionAvail().x + style.WindowPadding.x, -ImGui::GetFrameHeightWithSpacing()}, ImGuiChildFlags_Borders);
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, style.ItemSpacing.y});    //Avoid horizontal padding from the column
 
@@ -1211,7 +1211,7 @@ void KeyboardEditor::UpdateWindowMetadata()
             is_name_blank = current_filename.empty();
         }
 
-        ImGui::BeginChild("LayoutList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing()), ImGuiChildFlags_Border);
+        ImGui::BeginChild("LayoutList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing()), ImGuiChildFlags_Borders);
 
         int index = 0;
         for (const auto& metadata : list_layouts)
@@ -1316,7 +1316,7 @@ void KeyboardEditor::UpdateWindowMetadata()
 
         CloseCurrentModalPopupFromInput();
 
-        ImGui::BeginChild("LayoutList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing()), ImGuiChildFlags_Border);
+        ImGui::BeginChild("LayoutList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing()), ImGuiChildFlags_Borders);
 
         int index = 0;
         for (const auto& metadata : list_layouts)

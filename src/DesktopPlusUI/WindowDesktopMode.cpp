@@ -414,12 +414,12 @@ void WindowDesktopMode::UpdatePageMainOverlayList()
             //Overlay icon
             ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             TextureManager::Get().GetOverlayIconTextureInfo(data, img_size, img_uv_min, img_uv_max, true);
-            ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max, tint_color);
+            ImGui::ImageWithBg(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max, {0, 0, 0, 0}, tint_color);
 
             //Origin icon
             ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             TextureManager::Get().GetTextureInfo((TMNGRTexID)(tmtex_icon_xsmall_origin_room + data.ConfigInt[configid_int_overlay_origin]), img_size, img_uv_min, img_uv_max);
-            ImGui::Image(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max, tint_color);
+            ImGui::ImageWithBg(ImGui::GetIO().Fonts->TexID, img_size_line_height, img_uv_min, img_uv_max, {0, 0, 0, 0}, tint_color);
 
             //Label
             ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
@@ -638,7 +638,7 @@ void WindowDesktopMode::MenuOverlayList(unsigned int overlay_id)
         }
         else
         {
-            if (ImGui::Selectable(TranslationManager::GetString(tstr_OverlayBarOvrlRemove), false, ImGuiSelectableFlags_DontClosePopups))
+            if (ImGui::Selectable(TranslationManager::GetString(tstr_OverlayBarOvrlRemove), false, ImGuiSelectableFlags_NoAutoClosePopups))
             {
                 m_IsMenuRemoveConfirmationVisible = true;
                 UIManager::Get()->RepeatFrame();
@@ -857,7 +857,7 @@ void WindowDesktopMode::Update()
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f)); //This prevents child bg color being visible if there's a widget before this (e.g. warnings)
 
-        if ( (ImGui::BeginChild(child_str_id[child_id], child_size, false, ImGuiWindowFlags_NavFlattened)) || (m_PageAppearing == page_id) ) //Process page if currently appearing
+        if ( (ImGui::BeginChild(child_str_id[child_id], child_size, ImGuiChildFlags_NavFlattened)) || (m_PageAppearing == page_id) ) //Process page if currently appearing
         {
             ImGui::PopStyleColor(); //ImGuiCol_ChildBg
 

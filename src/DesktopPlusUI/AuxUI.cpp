@@ -826,7 +826,7 @@ void WindowQuickStart::Update()
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
 
-        if ( (ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)i), child_size, false, ImGuiWindowFlags_NavFlattened)) )
+        if ( (ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)i), child_size, ImGuiChildFlags_NavFlattened)) )
         {
             ImGui::PopStyleColor(); //ImGuiCol_ChildBg
 
