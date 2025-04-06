@@ -161,6 +161,11 @@ bool UIManager::IdleState::ShouldIdle()
         }
     }
 
+    if (ImGui::IsAnyMouseDown())
+    {
+        return false;
+    }
+
     if (m_LastActiveTick + s_MsBeforeIdle < ::GetTickCount64())
     {
         m_WasIdleLastFrame = true;
