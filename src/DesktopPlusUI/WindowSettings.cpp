@@ -208,7 +208,10 @@ void WindowSettings::WindowUpdate()
     //Page animation
     if (m_PageAnimationDir != 0)
     {
-        m_PageAnimationProgress += ImGui::GetIO().DeltaTime * 3.0f;
+        //Use the averaged framerate value instead of delta time for the first animation step
+        //This is to smooth over increased frame deltas that can happen when a new page needs to do initial larger computations or save/load files
+        const float progress_step = (m_PageAnimationProgress == 0.0f) ? (1.0f / ImGui::GetIO().Framerate) * 3.0f : ImGui::GetIO().DeltaTime * 3.0f;
+        m_PageAnimationProgress += progress_step;
 
         if (m_PageAnimationProgress >= 1.0f)
         {
