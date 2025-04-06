@@ -7,7 +7,7 @@
 
 #include "openvr.h"
 
-static const int k_lDPBrowserAPIVersion = 4;
+static const int k_lDPBrowserAPIVersion = 5;
 LPCWSTR const g_WindowClassNameBrowserApp        = L"elvdesktopbrowser";
 LPCWSTR const g_WindowMessageNameBrowserApp      = L"WMIPC_DPLUS_BrowserCommand";
 const char* const g_AppKeyBrowserApp             = "elvissteinjr.DesktopPlusBrowser";

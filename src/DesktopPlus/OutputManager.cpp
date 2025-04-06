@@ -5011,11 +5011,6 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 if (mode_3D >= ovrl_3Dmode_hou)
                 {
                     offset_x += overlay_current.GetValidatedCropRect().GetTL().x;
-
-                    if (overlay_current.GetTextureSource() != ovrl_texsource_browser)   //Browser uses flipped texture and needs no vertical adjustment
-                    {
-                        offset_y += overlay_current.GetValidatedCropRect().GetBR().y - content_height;
-                    }
                 }
                 else
                 {
@@ -5045,7 +5040,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
             //If browser overlay, pass event along and skip the rest
             if (overlay_current.GetTextureSource() == ovrl_texsource_browser)
             {
-                DPBrowserAPIClient::Get().DPBrowser_MouseMove(overlay_current.GetHandle(), event_mouse_pos.x + offset_x, event_mouse_pos.y + offset_y);
+                DPBrowserAPIClient::Get().DPBrowser_MouseMove(overlay_current.GetHandle(), pointer_x, pointer_y);
                 m_MouseLastLaserPointerX = pointer_x;
                 m_MouseLastLaserPointerY = pointer_y;
 
@@ -6047,15 +6042,7 @@ void OutputManager::ApplySetting3DMode()
 
     if (is_enabled)
     {
-        bool is_swapped = data.ConfigBool[configid_bool_overlay_3D_swapped];
-
-        //Browser overlay textures are flipped vertically, which results in the OU to SBS converted texture to have the eyes swapped, so inverted swapped state to counteract this 
-        if ((overlay_current.GetTextureSource() == ovrl_texsource_browser) && (mode >= ovrl_3Dmode_hou))
-        {
-            is_swapped = !is_swapped;
-        }
-
-        if (is_swapped)
+        if (data.ConfigBool[configid_bool_overlay_3D_swapped])
         {
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Parallel, false);
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_SideBySide_Crossed, true);
@@ -6413,10 +6400,6 @@ void OutputManager::ApplySettingCrop()
     else if (ConfigManager::GetValue(configid_int_overlay_capture_source) == ovrl_capsource_browser) //Same with browser
     {
         DPBrowserAPIClient::Get().DPBrowser_SetOverUnder3D(ovrl_handle, is_ou3d, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
-
-        //Browser overlay textures are flipped vertically, so swap the UVs to result in a flipped image to correct it
-        tex_bounds.vMin = -tex_bounds.vMin + 1.0f;
-        tex_bounds.vMax = -tex_bounds.vMax + 1.0f;
     }
     else //For Desktop Duplication, compare old to new bounds to see if a full refresh is required
     {

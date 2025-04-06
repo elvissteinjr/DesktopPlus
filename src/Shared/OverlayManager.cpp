@@ -148,12 +148,6 @@ Matrix4 OverlayManager::GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handl
             }
         #endif
 
-        //Browser overlays are using flipped UVs, so flip offset_to_bottom to match
-        if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_browser)
-        {
-            offset_to_bottom *= -1.0f;
-        }
-
         //Move to bottom
         vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix, 0.0f, offset_to_bottom, 0.0f);
     }
