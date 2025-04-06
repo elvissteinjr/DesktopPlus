@@ -1696,7 +1696,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                             ConfigManager::SetValue(configid_int_overlay_state_content_height, user_height);
 
                             //Update crop as it depends on user size
-                            if (ConfigManager::GetValue(configid_bool_overlay_crop_enabled))
+                            if ((ConfigManager::GetValue(configid_bool_overlay_crop_enabled)) || (ConfigManager::GetValue(configid_bool_overlay_3D_enabled)))
                             {
                                 ApplySettingCrop();
                             }
