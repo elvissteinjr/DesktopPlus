@@ -47,7 +47,7 @@ void WindowFloatingUIMainBar::DisplayTooltipIfHovered(const char* text)
         button_pos_last = pos;
 
         pos.x += (button_width / 2.0f) - (window_size.x / 2.0f);
-        pos.y += button_width + style.WindowPadding.y - 2.0f;
+        pos.y += button_width + style.WindowPadding.y;
 
         //Clamp x so the tooltip does not get cut off
         pos.x = clamp(pos.x, 0.0f, ImGui::GetIO().DisplaySize.x - window_size.x);   //Clamp right side to texture end
@@ -463,7 +463,7 @@ void WindowFloatingUIActionBar::DisplayTooltipIfHovered(const char* text)
         }
         else
         {
-            pos.y -= window_size.y + style.WindowPadding.y;
+            pos.y -= window_size.y + style.WindowPadding.y + 2.0f;
         }
 
         //Clamp x so the tooltip does not get cut off
