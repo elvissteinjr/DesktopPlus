@@ -2,9 +2,7 @@
 
 //This is the part of Desktop+ using Windows Runtime functions, separated from rest of the codebase as a DLL
 //Windows SDK 10.0.19041.0 or newer is required to build this, 10.0.20348.0 or newer recommended to allow removing the capture border
-//
-//Windows SDK 10.0.26100.0 or newer is required for Windows 11 24H2 features, but not selected by default, as it appears incompatible with the VS2019/v142 compiler
-//So while official builds do include the features, nightly builds do not, and they need to be manually enabled by selecting the SDK and platform toolset version before building
+//Windows SDK 10.0.26100.0 or newer is required for Windows 11 24H2 features
 //
 //If you wish to build Desktop+ without support for the functionality provided by this library, define DPLUSWINRT_STUB for the project,
 //remove the package references and adjust the project's Windows SDK version if needed
