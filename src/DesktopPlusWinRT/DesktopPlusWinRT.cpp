@@ -496,8 +496,12 @@ void DPWinRT_SetHDREnabled(bool is_hdr_enabled)
 
 void DPWinRT_SetDesktopEnumerationFlags(bool ignore_wmr_screens)
 {
+    #ifndef DPLUSWINRT_STUB
+
     //This really is just a flag that could be hard coded to true in theory, but we keep our options open down the line even if it means carrying this everywhere
     g_DesktopEnumFlagIgnoreWMRScreens = ignore_wmr_screens;
+
+    #endif
 }
 
 #ifndef DPLUSWINRT_STUB
