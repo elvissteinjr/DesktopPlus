@@ -157,6 +157,7 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
 
     //Extra characters used by the UI directly
     builder.AddText(k_pch_bold_exclamation_mark);
+    builder.AddText(k_pch_degree_symbol);
 
     builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
     builder.BuildRanges(&ranges);

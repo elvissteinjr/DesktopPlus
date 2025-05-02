@@ -535,7 +535,6 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_drag]   = config.ReadInt( "Input", "LaserPointerHMDKeyCodeDrag",   0);
 
     m_ConfigBool[configid_bool_input_drag_auto_docking]                     = config.ReadBool("Input", "DragAutoDocking", true);
-    m_ConfigBool[configid_bool_input_drag_force_upright]                    = config.ReadBool("Input", "DragForceUpright", false);
     m_ConfigBool[configid_bool_input_drag_fixed_distance]                   = config.ReadBool("Input", "DragFixedDistance", false);
     m_ConfigFloat[configid_float_input_drag_fixed_distance_m]               = config.ReadInt( "Input", "DragFixedDistanceCM", 200) / 100.0f;
     m_ConfigInt[configid_int_input_drag_fixed_distance_shape]               = config.ReadInt( "Input", "DragFixedDistanceShape", 0);
@@ -543,6 +542,11 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_input_drag_fixed_distance_auto_tilt]         = config.ReadBool("Input", "DragFixedDistanceAutoTilt", true);
     m_ConfigBool[configid_bool_input_drag_snap_position]                    = config.ReadBool("Input", "DragSnapPosition", false);
     m_ConfigFloat[configid_float_input_drag_snap_position_size]             = config.ReadInt( "Input", "DragSnapPositionSize", 10) / 100.0f;
+    m_ConfigBool[configid_bool_input_drag_snap_rotation]                    = config.ReadBool("Input", "DragSnapRotation",  false);
+    m_ConfigBool[configid_bool_input_drag_snap_rotation_x]                  = config.ReadBool("Input", "DragSnapRotationX", true);
+    m_ConfigBool[configid_bool_input_drag_snap_rotation_y]                  = config.ReadBool("Input", "DragSnapRotationY", true);
+    m_ConfigBool[configid_bool_input_drag_snap_rotation_z]                  = config.ReadBool("Input", "DragSnapRotationZ", true);
+    m_ConfigInt[configid_int_input_drag_snap_rotation_angle]                = config.ReadInt( "Input", "DragSnapRotationAngle", 45);
 
     m_ConfigBool[configid_bool_input_mouse_render_cursor]                   = config.ReadBool("Mouse", "RenderCursor", true);
     m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]        = config.ReadBool("Mouse", "RenderIntersectionBlob", false);
@@ -1511,7 +1515,6 @@ void ConfigManager::SaveConfigToFile()
     config.WriteInt( "Input", "LaserPointerHMDKeyCodeDrag",         m_ConfigInt[configid_int_input_laser_pointer_hmd_device_keycode_drag]);
 
     config.WriteBool("Input", "DragAutoDocking",                    m_ConfigBool[configid_bool_input_drag_auto_docking]);
-    config.WriteBool("Input", "DragForceUpright",                   m_ConfigBool[configid_bool_input_drag_force_upright]);
     config.WriteBool("Input", "DragFixedDistance",                  m_ConfigBool[configid_bool_input_drag_fixed_distance]);
     config.WriteInt( "Input", "DragFixedDistanceCM",            int(m_ConfigFloat[configid_float_input_drag_fixed_distance_m] * 100.0f));
     config.WriteInt( "Input", "DragFixedDistanceShape",             m_ConfigInt[configid_int_input_drag_fixed_distance_shape]);
@@ -1519,6 +1522,11 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Input", "DragFixedDistanceAutoTilt",          m_ConfigBool[configid_bool_input_drag_fixed_distance_auto_tilt]);
     config.WriteBool("Input", "DragSnapPosition",                   m_ConfigBool[configid_bool_input_drag_snap_position]);
     config.WriteInt( "Input", "DragSnapPositionSize",           int(m_ConfigFloat[configid_float_input_drag_snap_position_size] * 100.0f));
+    config.WriteBool("Input", "DragSnapRotation",                   m_ConfigBool[configid_bool_input_drag_snap_rotation]);
+    config.WriteBool("Input", "DragSnapRotationX",                  m_ConfigBool[configid_bool_input_drag_snap_rotation_x]);
+    config.WriteBool("Input", "DragSnapRotationY",                  m_ConfigBool[configid_bool_input_drag_snap_rotation_y]);
+    config.WriteBool("Input", "DragSnapRotationZ",                  m_ConfigBool[configid_bool_input_drag_snap_rotation_z]);
+    config.WriteInt( "Input", "DragSnapRotationAngle",              m_ConfigInt[configid_int_input_drag_snap_rotation_angle]);
 
     config.WriteBool("Mouse", "RenderCursor",              m_ConfigBool[configid_bool_input_mouse_render_cursor]);
     config.WriteBool("Mouse", "RenderIntersectionBlob",    m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]);

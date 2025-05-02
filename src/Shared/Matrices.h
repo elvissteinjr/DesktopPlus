@@ -168,15 +168,17 @@ public:
     void        setColumn(int index, const Vector3& v);
 
     void setTranslation(const Vector3 & v);
+    void setRotation(float x, float y, float z);        //Set rotation with euler angles (ZYX rotation order). Resets scale to 1, if any
 
     const float*      get() const;
-    const float*      getTranspose();                        // return transposed matrix
+    const float*      getTranspose();                   // return transposed matrix
     float			  getDeterminant();
     vr::HmdMatrix34_t toOpenVR34() const;
     std::string       toString() const;
 
 
     Vector3 getTranslation() const;
+    Vector3 getRotation()    const;                     //Returns rotation in euler angles (ZYX rotation order)
     bool    isZero() const;                             // return if the matrix is a zero matrix
 
     Matrix4&    identity();

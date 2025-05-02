@@ -37,6 +37,7 @@ class OverlayDragger
 
         void TransformForceUpright(Matrix4& transform) const;
         void TransformForceDistance(Matrix4& transform, Vector3 reference_pos, float distance, bool use_cylinder_shape = false, bool auto_tilt = false) const;
+        void TransformSnapRotation(Matrix4& transform, float degrees, bool snap_x, bool snap_y, bool snap_z) const;
 
     public:
         OverlayDragger();

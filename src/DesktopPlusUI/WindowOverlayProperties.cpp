@@ -2216,13 +2216,6 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_auto_docking, auto_docking);
     }
 
-    bool& force_upright = ConfigManager::GetRef(configid_bool_input_drag_force_upright);
-
-    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsForceUpright), &force_upright))
-    {
-        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_force_upright, force_upright);
-    }
-
     ImGui::Unindent();
 
     //Fixed Size
@@ -2317,6 +2310,59 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
     vr_keyboard.VRKeyboardInputEnd();
 
     if (!snap_position)
+        ImGui::PopItemDisabled();
+
+    ImGui::NextColumn();
+
+    //Rotation Snapping
+    bool& snap_rotation      = ConfigManager::GetRef(configid_bool_input_drag_snap_rotation);
+    bool& snap_rotation_x    = ConfigManager::GetRef(configid_bool_input_drag_snap_rotation_x);
+    bool& snap_rotation_y    = ConfigManager::GetRef(configid_bool_input_drag_snap_rotation_y);
+    bool& snap_rotation_z    = ConfigManager::GetRef(configid_bool_input_drag_snap_rotation_z);
+    int& snap_rotation_angle = ConfigManager::GetRef(configid_int_input_drag_snap_rotation_angle);
+
+    //This checkbox is somewhat redundant and is mostly there for aesthetical reasons
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsSnapRotation), &snap_rotation))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_snap_rotation, snap_rotation);
+    }
+    ImGui::NextColumn();
+
+    if (!snap_rotation)
+        ImGui::PushItemDisabled();
+
+    vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("SnapRotationAngle") );
+    if (ImGui::SliderWithButtonsInt("SnapRotationAngle", snap_rotation_angle, 5, 1, 1, 359, "%i\xc2\xb0"))  //using k_pch_degree_symbol here
+    {
+        snap_rotation_angle = clamp(snap_rotation_angle, 1, 359);
+
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_input_drag_snap_rotation_angle, snap_rotation_angle);
+    }
+    vr_keyboard.VRKeyboardInputEnd();
+
+    ImGui::NextColumn();
+    ImGui::NextColumn();
+
+    //Arranged in Y-X-Z order to result in hopefully more intuitive Yaw-Pitch-Roll checkboxes
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsSnapRotationYaw), &snap_rotation_y))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_snap_rotation_y, snap_rotation_y);
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsSnapRotationPitch), &snap_rotation_x))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_snap_rotation_x, snap_rotation_x);
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsSnapRotationRoll), &snap_rotation_z))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_snap_rotation_z, snap_rotation_z);
+    }
+    ImGui::SameLine();
+
+    if (!snap_rotation)
         ImGui::PopItemDisabled();
 
     ImGui::Columns(1);

@@ -23,10 +23,14 @@
 #include <sstream>
 #include "Matrices.h"
 
-const float DEG2RAD = 3.141593f / 180;
-const float EPSILON = 0.00001f;
+constexpr float DEG2RAD = 3.141593f / 180;
+constexpr float RAD2DEG = 180 / 3.141593f;
+constexpr float EPSILON = 0.00001f;
 
-
+float clampf(float value, float value_min, float value_max)
+{
+    return std::max(value_min, std::min(value, value_max));
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // transpose 2x2 matrix
@@ -159,6 +163,22 @@ Matrix4::Matrix4(const std::string str)
         set(m_temp);
     else
         identity();
+}
+
+void Matrix4::setRotation(float x, float y, float z)
+{
+    //Compute cosine and sine for each angle
+    float cx = cosf(x * DEG2RAD);
+    float sx = sinf(x * DEG2RAD);
+    float cy = cosf(y * DEG2RAD);
+    float sy = sinf(y * DEG2RAD);
+    float cz = cosf(z * DEG2RAD);
+    float sz = sinf(z * DEG2RAD);
+
+    //Refill the the matrix. Any scaling is lost here
+    m[0]  =  cy * cz + sy * sx * sz; m[4] = -cy * sz + sy * sx * cz; m[8]  =  sy * cx;
+    m[1]  =  cx * sz;                m[5] =  cx * cz;                m[9]  = -sx;
+    m[2]  =  cy * sx * sz - sy * cz; m[6] =  sy * sz + cy * sx * cz; m[10] =  cy * cx;
 }
 
 
@@ -471,6 +491,21 @@ std::string Matrix4::toString() const
     ss << m[15] << ']';
 
     return ss.str();
+}
+
+Vector3 Matrix4::getRotation() const
+{
+    Vector3 rot;
+    rot.x = std::asin(-clampf(m[9], -1.0f, 1.0f));        //Pitch
+    rot.z = std::atan2(m[1], m[5]);                       //Roll
+    rot.y = std::atan2(clampf(m[8], -1.0f, 1.0f), m[10]); //Yaw
+
+    //Convert to degrees
+    rot.x *= RAD2DEG;
+    rot.y *= RAD2DEG;
+    rot.z *= RAD2DEG;
+
+    return rot;
 }
 
 bool Matrix4::isZero() const

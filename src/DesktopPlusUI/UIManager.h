@@ -62,6 +62,7 @@ class UITextureSpaces
 };
 
 static const char* const k_pch_bold_exclamation_mark = "\xE2\x9D\x97";
+static const char* const k_pch_degree_symbol = "\xc2\xb0";
 
 class UIManager
 {

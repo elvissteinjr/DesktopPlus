@@ -199,6 +199,41 @@ void OverlayDragger::TransformForceDistance(Matrix4& transform, Vector3 referenc
     }
 }
 
+void OverlayDragger::TransformSnapRotation(Matrix4& transform, float degrees, bool snap_x, bool snap_y, bool snap_z) const
+{
+    //Don't touch the matrix if all snapping is off
+    if ((!snap_x) && (!snap_y) && (!snap_z))
+        return;
+
+    degrees = clamp(degrees, 0.001f, 360.0f);
+
+    const Vector3 translation = transform.getTranslation();
+
+    //Get scale from matrix, so we can remove and later re-apply it
+    const Vector3 row_1(transform[0], transform[1], transform[2]);
+    const float scale_x = row_1.length(); //Scaling is always uniform so we just check the x-axis
+
+    //Remove scale and translation
+    transform.setTranslation({0.0f, 0.0f, 0.0f});
+    transform.scale(1 / scale_x);
+
+    //Get rotation as euler angles
+    Vector3 rot = transform.getRotation();
+
+    if (snap_x)
+        rot.x = roundf(rot.x / degrees) * degrees;
+    if (snap_y)
+        rot.y = roundf(rot.y / degrees) * degrees;
+    if (snap_z) 
+        rot.z = roundf(rot.z / degrees) * degrees;
+
+    transform.setRotation(rot.x, rot.y, rot.z);
+
+    //Restore scale and translation
+    transform.scale(scale_x);
+    transform.setTranslation(translation);
+}
+
 Matrix4 OverlayDragger::GetBaseOffsetMatrix()
 {
     const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
@@ -454,10 +489,13 @@ void OverlayDragger::DragUpdate()
             //Apply drag settings if managed overlay (while most would work on UI overlays, they're more of a hindrance most of the time)
             if (m_DragModeOverlayID != k_ulOverlayID_None)
             {
-                //Do axis locking if enabled
-                if (ConfigManager::GetValue(configid_bool_input_drag_force_upright))
+                //Snap rotation if enabled
+                if (ConfigManager::GetValue(configid_bool_input_drag_snap_rotation))
                 {
-                    TransformForceUpright(m_DragModeMatrixTargetCurrent);
+                    TransformSnapRotation(m_DragModeMatrixTargetCurrent, (float)ConfigManager::GetValue(configid_int_input_drag_snap_rotation_angle), 
+                                                                                ConfigManager::GetValue(configid_bool_input_drag_snap_rotation_x), 
+                                                                                ConfigManager::GetValue(configid_bool_input_drag_snap_rotation_y), 
+                                                                                ConfigManager::GetValue(configid_bool_input_drag_snap_rotation_z));
                 }
 
                 //Snap position if enabled
