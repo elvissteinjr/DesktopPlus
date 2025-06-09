@@ -1035,9 +1035,6 @@ Change these settings to adjust the laser pointer drag behavior. Drag settings a
 - **[x] Dock to Controller when Near**:  
 Sets if auto-docking is enabled. Auto-docking automatically changes the dragged overlay's origin to the left or right hand controller when the drag is released near them.
 
-- **[x] Force Upright Orientation**:  
-Forces the overlay to stand straight up. Only yaw rotations are applied.
-
 - **[x] Force Fixed Distance**:  
 Force a fixed distance between the overlays and the user.  
 The reference position for this is always based on the headset position, but is only updated when the dashboard is brought up or drag-mode is toggled on while the dashboard is not active. Small changes in position are ignored to allow for a more fixed reference position between adjustments.  
@@ -1052,6 +1049,12 @@ Using stick or touchpad to change the distance of an overlay during a drag will 
 - **[x] Snap Position**:  
 Snaps the position to a 3D grid of the given size.  
 Note that the overlay origin itself may still be moving and make it difficult to line up multiple overlays together.
+
+- **[x] Snap Rotation**:  
+Snaps the rotation to the gvien angle.  
+Note that the overlay origin itself may still be spinning and make it difficult to line up multiple overlays together.
+  - **[x] Yaw/Pitch/Roll**  
+  Toggles which axes the snapping is applied to.
 
 ### Cropping Area Page
 
