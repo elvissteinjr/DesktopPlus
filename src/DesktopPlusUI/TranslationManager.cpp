@@ -305,7 +305,6 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsPerformanceUseHDR",
     "tstr_SettingsPerformanceUseHDRTip",
     "tstr_SettingsPerformanceShowFPS",
-    "tstr_SettingsPerformanceUIAutoThrottle",
     "tstr_SettingsWarningsHidden",
     "tstr_SettingsWarningsReset",
     "tstr_SettingsStartupAutoLaunch",

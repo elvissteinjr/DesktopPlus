@@ -2040,12 +2040,6 @@ void WindowSettings::UpdatePageMainCatPerformance()
         bool& show_fps = ConfigManager::Get().GetRef(configid_bool_performance_show_fps);
         ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceShowFPS), &show_fps);
 
-        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
-        {
-            bool& auto_throttle = ConfigManager::Get().GetRef(configid_bool_performance_ui_auto_throttle);
-            ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceUIAutoThrottle), &auto_throttle);
-        }
-
         ImGui::Columns(1);
     }
 }

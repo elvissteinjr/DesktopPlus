@@ -303,7 +303,6 @@ enum TRMGRStrID
     tstr_SettingsPerformanceUseHDR,
     tstr_SettingsPerformanceUseHDRTip,
     tstr_SettingsPerformanceShowFPS,
-    tstr_SettingsPerformanceUIAutoThrottle,
     tstr_SettingsWarningsHidden,
     tstr_SettingsWarningsReset,
     tstr_SettingsStartupAutoLaunch,
