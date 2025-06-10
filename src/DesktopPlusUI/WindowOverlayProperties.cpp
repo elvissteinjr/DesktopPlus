@@ -2332,7 +2332,7 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
         ImGui::PushItemDisabled();
 
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("SnapRotationAngle") );
-    if (ImGui::SliderWithButtonsInt("SnapRotationAngle", snap_rotation_angle, 5, 1, 1, 359, "%i\xc2\xb0"))  //using k_pch_degree_symbol here
+    if (ImGui::SliderWithButtonsInt("SnapRotationAngle", snap_rotation_angle, 5, 1, 1, 180, "%i\xc2\xb0"))  //using k_pch_degree_symbol here
     {
         snap_rotation_angle = clamp(snap_rotation_angle, 1, 359);
 
