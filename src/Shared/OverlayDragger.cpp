@@ -545,9 +545,13 @@ void OverlayDragger::DragUpdate()
 
                         //Sync adjusted curvature value
                         #ifdef DPLUS_UI
+                            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, (int)m_DragModeOverlayID);
                             IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_curvature, curve);
+                            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
                         #else
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, (int)m_DragModeOverlayID);
                             IPCManager::Get().PostConfigMessageToUIApp(configid_float_overlay_curvature, curve);
+                            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
                         #endif
                     }
                 }
