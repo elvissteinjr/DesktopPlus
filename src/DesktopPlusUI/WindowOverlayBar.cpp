@@ -289,6 +289,14 @@ void WindowOverlayBar::UpdateOverlayButtons()
         {
             TextureManager::Get().GetOverlayIconTextureInfo(data, b_size, b_uv_min, b_uv_max, true);
 
+            //Downscale oversized icons
+            float icon_scale = (b_size_default.x * 0.5f) / std::max(b_size.x, b_size.y);
+
+            if (icon_scale < 1.0f)
+            {
+                b_size *= icon_scale;
+            }
+
             ImVec2 p_min = {pos.x + (width / 2.0f) - (b_size.x / 2.0f), pos.y + (width / 2.0f) - (b_size.y / 2.0f)};
             ImVec2 p_max = p_min;
             p_max.x += b_size.x;
