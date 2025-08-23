@@ -1,0 +1,44 @@
+{
+    "language_tag": "ko_KR",
+
+    "/actions/shortcuts" : "전역 단축키",
+
+    "/actions/shortcuts/in/EnableGlobalLaserPointer" : "전역 레이저 포인터 활성화",
+    "/actions/shortcuts/in/GlobalShortcut01" : "전역 단축키 실행 #1",
+    "/actions/shortcuts/in/GlobalShortcut02" : "전역 단축키 실행 #2",
+    "/actions/shortcuts/in/GlobalShortcut03" : "전역 단축키 실행 #3",
+    "/actions/shortcuts/in/GlobalShortcut04" : "전역 단축키 실행 #4",
+    "/actions/shortcuts/in/GlobalShortcut05" : "전역 단축키 실행 #5",
+    "/actions/shortcuts/in/GlobalShortcut06" : "전역 단축키 실행 #6",
+    "/actions/shortcuts/in/GlobalShortcut07" : "전역 단축키 실행 #7",
+    "/actions/shortcuts/in/GlobalShortcut08" : "전역 단축키 실행 #8",
+    "/actions/shortcuts/in/GlobalShortcut09" : "전역 단축키 실행 #9",
+    "/actions/shortcuts/in/GlobalShortcut10" : "전역 단축키 실행 #10",
+    "/actions/shortcuts/in/GlobalShortcut11" : "전역 단축키 실행 #11",
+    "/actions/shortcuts/in/GlobalShortcut12" : "전역 단축키 실행 #12",
+    "/actions/shortcuts/in/GlobalShortcut13" : "전역 단축키 실행 #13",
+    "/actions/shortcuts/in/GlobalShortcut14" : "전역 단축키 실행 #14",
+    "/actions/shortcuts/in/GlobalShortcut15" : "전역 단축키 실행 #15",
+    "/actions/shortcuts/in/GlobalShortcut16" : "전역 단축키 실행 #16",
+    "/actions/shortcuts/in/GlobalShortcut17" : "전역 단축키 실행 #17",
+    "/actions/shortcuts/in/GlobalShortcut18" : "전역 단축키 실행 #18",
+    "/actions/shortcuts/in/GlobalShortcut19" : "전역 단축키 실행 #19",
+    "/actions/shortcuts/in/GlobalShortcut20" : "전역 단축키 실행 #20",
+
+    "/actions/laserpointer" : "레이저 포인터",
+
+    "/actions/laserpointer/in/LeftClick"   : "왼쪽 클릭",
+    "/actions/laserpointer/in/RightClick"  : "오른쪽 클릭",
+    "/actions/laserpointer/in/MiddleClick" : "휠 클릭",
+    "/actions/laserpointer/in/Aux01Click"  : "측면 1 클릭",
+    "/actions/laserpointer/in/Aux02Click"  : "측면 2 클릭",
+    "/actions/laserpointer/in/Drag"        : "오버레이 드래그",
+	
+	"/actions/scroll_discrete" : "마우스 휠 스크롤",
+	
+    "/actions/scroll_discrete/in/ScrollDiscrete" : "오버레이 스크롤",
+	
+	"/actions/scroll_smooth" : "부드러운 스크롤",
+	
+    "/actions/scroll_smooth/in/ScrollSmooth" : "오버레이 스크롤"
+}
