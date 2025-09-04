@@ -787,7 +787,7 @@ void KeyboardEditor::UpdateWindowKeyProperties()
                 {
                     list_id = i;
 
-                    if (key.KeyCode != i)
+                    if (key.KeyCode != list_keycode)
                     {
                         HistoryPush();
                         key.KeyCode = list_keycode;
