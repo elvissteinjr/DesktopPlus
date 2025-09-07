@@ -319,6 +319,14 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
 
             matrix = m_DashboardMatLast;
 
+            //SteamVR 2.13.1 made changes that affected the dashboard matrix, moving the middle position up slightly
+            //While this change is only in the beta branch, we conditionally apply an additional offset on 2.13 runtimes to get back to the old position
+            const bool use_additional_offset = (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.13") != nullptr);
+            if (use_additional_offset)
+            {
+                matrix.translate_relative(0.0f, -0.19f, 0.0f);
+            }
+
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
                 //Magic number, from taking the difference of both version's dashboard origins at the same HMD position
