@@ -648,6 +648,43 @@ void InputSimulator::KeyboardSetKeyState(IPCKeyboardKeystateFlags flags, unsigne
         return;
     }
 
+    //Numpad input simulation is a bit weird
+    //It seems like numpad (especially shift+numpad) is something that is taken care of in a lower layer and as such confuses Windows if we just send our straight inputs
+    //Basically it either doesn't produce an input with numlock off or shift can get stuck in a way that requires both shift keys to be released
+    //So we just end up handling this manually below
+    if (((keycode >= VK_NUMPAD0) && (keycode <= VK_NUMPAD9)) || (keycode == VK_DECIMAL))
+    {
+        const bool is_numlock_on        = ((::GetKeyState(VK_NUMLOCK) & 0x0001) != 0);
+        const bool is_shift_down        = ((flags & kbd_keystate_flag_lshift_down) || (flags & kbd_keystate_flag_rshift_down));
+        const bool is_double_shift_down = ((flags & kbd_keystate_flag_lshift_down) && (flags & kbd_keystate_flag_rshift_down));
+
+        if ((!is_numlock_on) || (is_shift_down))
+        {
+            //Swap numpad keycodes with regular ones
+            //One might think these should be sent as unextended scancodes down the line, but doing so makes them be treated as numpad inputs again with all the issues we're trying to avoid here
+            switch (keycode)
+            {
+                case VK_NUMPAD0: keycode = VK_INSERT; break;
+                case VK_NUMPAD1: keycode = VK_END;    break;
+                case VK_NUMPAD2: keycode = VK_DOWN;   break;
+                case VK_NUMPAD3: keycode = VK_NEXT;   break;
+                case VK_NUMPAD4: keycode = VK_LEFT;   break;
+                case VK_NUMPAD5: keycode = VK_CLEAR;  break;
+                case VK_NUMPAD6: keycode = VK_RIGHT;  break;
+                case VK_NUMPAD7: keycode = VK_HOME;   break;
+                case VK_NUMPAD8: keycode = VK_UP;     break;
+                case VK_NUMPAD9: keycode = VK_PRIOR;  break;
+                case VK_DECIMAL: keycode = VK_DELETE; break;
+            }
+
+            //Shift needs to be up to get normal cursor movement (unless both shifts are down)
+            if ((is_numlock_on) && (is_shift_down) && (!is_double_shift_down))
+            {
+                flags = IPCKeyboardKeystateFlags(flags & ~(kbd_keystate_flag_lshift_down | kbd_keystate_flag_rshift_down));
+            }
+        }
+    }
+
     INPUT input_event[10] = {0};
     int used_event_count = 0;
 
