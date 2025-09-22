@@ -778,7 +778,7 @@ ini_t* ini_load( char const* data, void* memctx )
                     start2 = ptr;
                     while( *ptr && *ptr != '\n' )
                         ++ptr;
-                    while( (unsigned char)*(--ptr) <= ' ' )                     //same as above
+                    while( (unsigned char)*(--ptr) < ' ' )                      //same as above, but also explicity allow trailing whitespace here
                         (void)ptr;
                     ptr++;
                     //Treat whitespace-only value as empty
@@ -1222,7 +1222,7 @@ void ini_property_value_set( ini_t* ini, int section, int property, char const* 
 /*
 
 contributors:
-    elvissteinjr (empty properties reading fix, ascii+ whitespace fix, wrong index deleting long property names/values fix, whitespace-only fix)
+    elvissteinjr (empty properties reading fix, ascii+ whitespace fix, wrong index deleting long property names/values fix, whitespace-only fix, allow trailing whitespace)
     Andrej Redeky (section and properties find function fix)
     Randy Gaul (copy-paste bug in ini_property_value_set)
     Branimir Karadzic (INI_STRNICMP bugfix)
@@ -1230,7 +1230,7 @@ contributors:
 revision history:
     Desktop+    apply WSSDude's return of wrong sections and properties by find functions fix, fix reading empty properties,
                 fix characters past ASCII range to be detected as whitespace, fix wrong index deleting long property names/values,
-                fix whitespace-only property values causing the rest of the file to be used instead
+                fix whitespace-only property values causing the rest of the file to be used instead, allow trailing whitespace in property values
     1.2         using strnicmp for correct length compares, fixed copy-paste bug in ini_property_value_set
     1.1         customization, added documentation, cleanup
     1.0         first publicly released version
