@@ -354,6 +354,88 @@ namespace ImGui
         return ret;
     }
 
+    void RenderButtonMultilineLabel(const char* label, float line_height_scale)
+    {
+        const ImGuiContext& g = *GImGui;
+        RenderButtonMultilineLabel(label, g.LastItemData.Rect, line_height_scale);
+    }
+
+    void RenderButtonMultilineLabel(const char* label, const ImRect& bb, float line_height_scale)
+    {
+        struct label_line_data
+        {
+            const char* text_start;
+            const char* text_end;
+            ImVec2 text_alignment;
+        };
+
+        const ImGuiStyle& style = ImGui::GetStyle();
+        const float line_height = ImGui::GetFontSize() * line_height_scale;
+
+        //Provided bounding box is intended to be for the button or whatever frame it's rendered on (also used for clipping), so apply inner padding here (vertical one not required)
+        ImRect bb_inner = bb;
+        bb_inner.Min.x += style.FramePadding.x;
+        bb_inner.Max.x -= style.FramePadding.x;
+
+        //Split label string into line segments (via offsets, no copying)
+        std::vector<label_line_data> label_lines;
+        float total_height = ImGui::GetFontSize();  //First line is always set and needs to be equal with font size, while other lines add line_height
+
+        {
+            const char* line_start = label;
+            const char* s = label;
+            float h_align = 0.5f;
+
+            for (;;)
+            {
+                if (*s == '\0')
+                {
+                    label_lines.push_back({line_start, s, {h_align, 0.0f}});
+                    break;
+                }
+                else if (*s == '\n')
+                {
+                    label_lines.push_back({line_start, s, {h_align, 0.0f}});
+
+                    //total_height starts with first line height so only add on newline characters, not string end
+                    total_height += line_height;
+                    line_start = s + 1;
+
+                    //Horizontal alignment defaults to center on line start
+                    h_align = 0.5f;
+                }
+                else if ((*s == '#') && (s[1] == '#')) //Double # is already being eaten by ImGui but not used for IDs in this context. Let's use it as control mechanism for horizontal alignment
+                {
+                    //Reminder this kind of advance access is fine because the string is always NUL-terminated and we didn't encounter any NULs
+                    if (s[2] == 'L')
+                    {
+                        h_align = 0.0f;
+                    }
+                    else if (s[2] == 'R')
+                    {
+                        h_align = 1.0f;
+                    }
+                }
+
+                ++s;
+            }
+        }
+
+        //Render the lines one-by-one to get correct horizontally centered alignment for each
+        ImVec2 pos_line;
+        const float base_offset_y = ((bb.Max.y - bb.Min.y) / 2.0f) - (total_height / 2.0f);
+
+        for (int i = 0; i < label_lines.size(); ++i)
+        {
+            const label_line_data& label_line = label_lines[i];
+
+            pos_line.x = bb_inner.Min.x;
+            pos_line.y = bb_inner.Min.y + base_offset_y + (line_height * i);
+
+            RenderTextClippedUnclamped(pos_line, bb_inner.Max, label_line.text_start, label_line.text_end, nullptr, label_line.text_alignment, &bb);
+        }
+    }
+
     bool BeginComboWithInputText(const char* str_id, char* str_buffer, size_t buffer_size, bool& out_buffer_changed, bool& persist_input_visible,
                                  bool& persist_input_activated, bool& persist_mouse_released_once, bool no_preview_text)
     {
@@ -715,6 +797,51 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_Text, col);
         ImGui::TextUnformatted(text, text_end); 
         ImGui::PopStyleColor();
+    }
+
+    void RenderTextClippedUnclamped(const ImVec2& pos_min, const ImVec2& pos_max, const char* text, const char* text_end, const ImVec2* text_size_if_known, const ImVec2& align, const ImRect* clip_rect)
+    {
+        // Hide anything after a '##' string
+        const char* text_display_end = FindRenderedTextEnd(text, text_end);
+        const int text_len = (int)(text_display_end - text);
+        if (text_len == 0)
+            return;
+
+        ImGuiContext& g = *GImGui;
+        ImGuiWindow* window = g.CurrentWindow;
+        //Aside from this line, this function is identical to ImGui::RenderTextClipped()
+        RenderTextClippedUnclampedEx(window->DrawList, pos_min, pos_max, text, text_display_end, text_size_if_known, align, clip_rect);
+        if (g.LogEnabled)
+            LogRenderedText(&pos_min, text, text_display_end);
+    }
+
+    void RenderTextClippedUnclampedEx(ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max, const char* text, const char* text_display_end, const ImVec2* text_size_if_known, const ImVec2& align, const ImRect* clip_rect)
+    {
+        // Perform CPU side clipping for single clipped element to avoid using scissor state
+        ImVec2 pos = pos_min;
+        const ImVec2 text_size = text_size_if_known ? *text_size_if_known : CalcTextSize(text, text_display_end, false, 0.0f);
+
+        const ImVec2* clip_min = clip_rect ? &clip_rect->Min : &pos_min;
+        const ImVec2* clip_max = clip_rect ? &clip_rect->Max : &pos_max;
+        bool need_clipping = (pos.x + text_size.x >= clip_max->x) || (pos.y + text_size.y >= clip_max->y);
+        if (clip_rect) // If we had no explicit clipping rectangle then pos==clip_min
+            need_clipping |= (pos.x < clip_min->x) || (pos.y < clip_min->y);
+
+        // Align whole block. We should defer that to the better rendering function when we'll have support for individual line alignment.
+        //Aside from these two lines, this function is identical to ImGui::RenderTextClippedEx()
+        if (align.x > 0.0f) pos.x = pos.x + (pos_max.x - pos.x - text_size.x) * align.x;
+        if (align.y > 0.0f) pos.y = pos.y + (pos_max.y - pos.y - text_size.y) * align.y;
+
+        // Render
+        if (need_clipping)
+        {
+            ImVec4 fine_clip_rect(clip_min->x, clip_min->y, clip_max->x, clip_max->y);
+            draw_list->AddText(nullptr, 0.0f, pos, GetColorU32(ImGuiCol_Text), text, text_display_end, 0.0f, &fine_clip_rect);
+        }
+        else
+        {
+            draw_list->AddText(nullptr, 0.0f, pos, GetColorU32(ImGuiCol_Text), text, text_display_end, 0.0f, nullptr);
+        }
     }
 
     int g_Stretched_BeginIndex = 0;

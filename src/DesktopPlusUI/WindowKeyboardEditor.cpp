@@ -1474,12 +1474,13 @@ void KeyboardEditor::UpdateWindowPreview()
             case kbdlayout_key_sublayout_toggle:
             case kbdlayout_key_action:
             {
-                if (ImGui::Button(key.Label.c_str(), {key_width, key_height}))
+                if (ImGui::Button("", {key_width, key_height}))
                 {
                     m_SelectedRowID = -1;
                     m_SelectedKeyID = key_index;
                     m_HasChangedSelectedKey = true;
                 }
+                ImGui::RenderButtonMultilineLabel(key.Label.c_str(), 0.82f);
 
                 break;
             }
@@ -1510,12 +1511,13 @@ void KeyboardEditor::UpdateWindowPreview()
                     iso_enter_top_index = key_index;
                 }
 
-                if (ImGui::Button((is_bottom_key) ? key.Label.c_str() : "##IsoEnterDummy", {key_width, base_width + offset_y}))
+                if (ImGui::Button("", {key_width, base_width + offset_y}))
                 {
                     m_SelectedRowID = -1;
                     m_SelectedKeyID = key_index;
                     m_HasChangedSelectedKey = true;
                 }
+                ImGui::RenderButtonMultilineLabel((is_bottom_key) ? key.Label.c_str() : "##IsoEnterDummy", 0.82f);
 
                 break;
             }

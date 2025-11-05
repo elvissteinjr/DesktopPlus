@@ -511,6 +511,10 @@ void WindowKeyboard::WindowUpdate()
         if ((use_key_repeat_global) && (!use_key_repeat))
             ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, false);
 
+        //Set horizontal label alignment if needed
+        if (key.LabelHAlignment != 0.5f)
+            ImGui::PushStyleVarX(ImGuiStyleVar_ButtonTextAlign, key.LabelHAlignment);
+
         switch (key.KeyType)
         {
             case kbdlayout_key_blank_space:
@@ -529,7 +533,7 @@ void WindowKeyboard::WindowUpdate()
                 //We don't want key repeat on backspace for ImGui since it does that itself
                 const bool repeat_on_backspace = ((vr_keyboard.GetInputTarget() != kbdtarget_ui) || (key.KeyCode != VK_BACK));
 
-                if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state)) && (use_key_repeat) && (repeat_on_backspace) )
+                if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state, key.IsLabelMultiline)) && (use_key_repeat) && (repeat_on_backspace) )
                 {
                     (is_down) ? OnVirtualKeyUp(key.KeyCode, key.BlockModifiers) : OnVirtualKeyDown(key.KeyCode, key.BlockModifiers);
                     button_state.IsDown = !button_state.IsDown;
@@ -572,7 +576,7 @@ void WindowKeyboard::WindowUpdate()
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
                 //Allow right click too to be consistent with toggling normal virtual keys
-                if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state)) || (button_state.IsRightClicked) )
+                if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state, key.IsLabelMultiline)) || (button_state.IsRightClicked) )
                 {
                     (is_down) ? OnVirtualKeyUp(key.KeyCode) : OnVirtualKeyDown(key.KeyCode);
                     button_state.IsDown = !button_state.IsDown;
@@ -682,7 +686,7 @@ void WindowKeyboard::WindowUpdate()
                     //Lower part with label
                     ImGui::SetCursorPos({cursor_pos.x, cursor_pos.y - offset_y});
 
-                    ButtonVisual(key.Label.c_str(), {key_width, base_width + offset_y});
+                    ButtonVisual(key.Label.c_str(), {key_width, base_width + offset_y}, key.IsLabelMultiline);
 
                     //React to button click state
                     if ( ( (iso_enter_click_state == 3) /*button clicked*/ && (use_key_repeat) ) || (iso_enter_click_state == 4) /*button right-clicked*/)
@@ -730,7 +734,7 @@ void WindowKeyboard::WindowUpdate()
                 if (is_down)
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
-                if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state)) && (use_key_repeat) )
+                if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state, key.IsLabelMultiline)) && (use_key_repeat) )
                 {
                     (button_state.IsDown) ? OnStringKeyUp(key.KeyString) : OnStringKeyDown(key.KeyString);
                     button_state.IsDown = !button_state.IsDown;
@@ -770,7 +774,7 @@ void WindowKeyboard::WindowUpdate()
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
                 //Allow right click too to be consistent with toggling normal virtual keys
-                if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state)) || (button_state.IsRightClicked) )
+                if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state, key.IsLabelMultiline)) || (button_state.IsRightClicked) )
                 {
                     m_SubLayoutOverride = (is_down) ? kbdlayout_sub_base : key.KeySubLayoutToggle;
                 }
@@ -790,7 +794,7 @@ void WindowKeyboard::WindowUpdate()
                 if (is_down)
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
-                if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state)) && (use_key_repeat) )
+                if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state, key.IsLabelMultiline)) && (use_key_repeat) )
                 {
                     vr_keyboard.SetActionDown(key.KeyActionUID, !button_state.IsDown);
                     button_state.IsDown = !button_state.IsDown;
@@ -834,6 +838,10 @@ void WindowKeyboard::WindowUpdate()
             ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             cursor_pos.x += key_width_f;
         }
+
+        //Undo label alignment if necessary
+        if (key.LabelHAlignment != 0.5f)
+            ImGui::PopStyleVar();
 
         //Undo disabled button repeat if necessary
         if ((use_key_repeat_global) && (!use_key_repeat))
@@ -1117,7 +1125,7 @@ LaserInputState& WindowKeyboard::GetLaserInputState(vr::TrackedDeviceIndex_t dev
     return *it;
 }
 
-bool WindowKeyboard::ButtonLaser(const char* label, const ImVec2& size_arg, ButtonLaserState& button_state)
+bool WindowKeyboard::ButtonLaser(const char* label, const ImVec2& size_arg, ButtonLaserState& button_state, bool is_label_multiline)
 {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     if (window->SkipItems)
@@ -1238,14 +1246,22 @@ bool WindowKeyboard::ButtonLaser(const char* label, const ImVec2& size_arg, Butt
     ImGui::RenderNavCursor(bb, id);
     ImGui::RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
 
-    const ImVec2 pos_min(bb.Min.x + style.FramePadding.x, bb.Min.y + style.FramePadding.y);
-    const ImVec2 pos_max(bb.Max.x - style.FramePadding.x, bb.Max.y - style.FramePadding.y);
-    ImGui::RenderTextClipped(pos_min, pos_max, label, nullptr, &label_size, style.ButtonTextAlign, &bb);
+    if (is_label_multiline)
+    {
+        ImGui::RenderButtonMultilineLabel(label, bb, 0.82f);
+    }
+    else
+    {
+        const ImVec2 pos_min(bb.Min.x + style.FramePadding.x, bb.Min.y + style.FramePadding.y);
+        const ImVec2 pos_max(bb.Max.x - style.FramePadding.x, bb.Max.y - style.FramePadding.y);
+
+        ImGui::RenderTextClipped(pos_min, pos_max, label, nullptr, &label_size, style.ButtonTextAlign, &bb);
+    }
 
     return is_pressed;
 }
 
-void WindowKeyboard::ButtonVisual(const char* label, const ImVec2& size_arg)
+void WindowKeyboard::ButtonVisual(const char* label, const ImVec2& size_arg, bool is_label_multiline)
 {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     if (window->SkipItems)
@@ -1262,9 +1278,17 @@ void WindowKeyboard::ButtonVisual(const char* label, const ImVec2& size_arg)
     const ImU32 col = ImGui::GetColorU32(ImGuiCol_Button);
     ImGui::RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
 
-    const ImVec2 pos_min(bb.Min.x + style.FramePadding.x, bb.Min.y + style.FramePadding.y);
-    const ImVec2 pos_max(bb.Max.x - style.FramePadding.x, bb.Max.y - style.FramePadding.y);
-    ImGui::RenderTextClipped(pos_min, pos_max, label, nullptr, &label_size, style.ButtonTextAlign, &bb);
+    if (is_label_multiline)
+    {
+        ImGui::RenderButtonMultilineLabel(label, bb, 0.82f);
+    }
+    else
+    {
+        const ImVec2 pos_min(bb.Min.x + style.FramePadding.x, bb.Min.y + style.FramePadding.y);
+        const ImVec2 pos_max(bb.Max.x - style.FramePadding.x, bb.Max.y - style.FramePadding.y);
+
+        ImGui::RenderTextClipped(pos_min, pos_max, label, nullptr, &label_size, style.ButtonTextAlign, &bb);
+    }
 }
 
 vr::VROverlayHandle_t WindowKeyboard::GetOverlayHandle() const

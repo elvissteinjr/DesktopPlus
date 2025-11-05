@@ -199,6 +199,16 @@ void VRKeyboard::LoadLayoutFromFile(const std::string& filename)
                 StringReplaceAll(key.Label, "\\n", "\n");
                 m_KeyLabels += key.Label;
 
+                //We cache whether the label is multi-line to avoid calling the more complex label functions every frame for 100+ keys that won't need it
+                key.IsLabelMultiline = (key.Label.find('\n') != std::string::npos);
+
+                //For non-multi-line labels pre-parse possible alignment commands in the label string
+                if (!key.IsLabelMultiline)
+                {
+                    size_t pos = key.Label.find("##");
+                    key.LabelHAlignment = (key.Label.find('L', pos) != std::string::npos) ? 0.0f : ((key.Label.find('R', pos) != std::string::npos) ? 1.0f : 0.5f);
+                }
+
                 m_KeyboardKeys[sublayout_id].push_back(key);
 
                 key_id++;

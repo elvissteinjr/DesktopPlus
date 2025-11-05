@@ -51,6 +51,8 @@ struct KeyboardLayoutKey
     float Width   = 1.0f;
     float Height  = 1.0f;
     std::string Label;
+    float LabelHAlignment = 0.5f;   //Computed at load-time
+    bool IsLabelMultiline = false;  //Computed at load-time
     bool BlockModifiers   = false;
     bool NoRepeat         = false;
     unsigned char KeyCode = 0;

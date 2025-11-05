@@ -44,6 +44,9 @@ enum ImGuiNavInput
     ImGuiNavInput_COUNT
 };
 
+//Forward declase ImRect as we have functions with overloads that take it, but it's not part of the public ImGui API
+struct IMGUI_API ImRect;
+
 namespace ImGui
 {
     //Like InputFloat()'s buttons but with a slider instead. Not quite as flexible, though. Always takes as much space as available.
@@ -63,6 +66,10 @@ namespace ImGui
     //Button, but with wrapped, cropped and center aligned label
     bool ButtonWithWrappedLabel(const char* label, const ImVec2& size);
 
+    //Per-line centered multiline label render function. Renders on top of the last button/item or inside explicit bounding box
+    void RenderButtonMultilineLabel(const char* label, float line_height_scale = 1.0f);
+    void RenderButtonMultilineLabel(const char* label, const ImRect& bb, float line_height_scale = 1.0f);
+
     //BeginCombo() but with the option of turning the Combo into an Input text like the sliders. Little bit awkward with the state variables but works otherwise
     //Uses PopupContextMenuInputText() with the InputText
     //Use normal EndCombo() to finish
@@ -80,6 +87,10 @@ namespace ImGui
 
     //Shortcut for unformatted colored text
     void TextColoredUnformatted(const ImVec4& col, const char* text, const char* text_end = nullptr);
+
+    //RenderTextClipped, but does not limit rendered minimal position to alignment pos_min (so centered text will stay centered with left side being cut off instead)
+    void RenderTextClippedUnclamped(const ImVec2& pos_min, const ImVec2& pos_max, const char* text, const char* text_end, const ImVec2* text_size_if_known, const ImVec2& align = ImVec2(0, 0), const ImRect* clip_rect = nullptr);
+    void RenderTextClippedUnclampedEx(ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max, const char* text, const char* text_end, const ImVec2* text_size_if_known, const ImVec2& align = ImVec2(0, 0), const ImRect* clip_rect = nullptr);
 
     //Stretches content added to drawlist between calls to BeginStretched() & EndStretched. Mostly for text.
     void BeginStretched();

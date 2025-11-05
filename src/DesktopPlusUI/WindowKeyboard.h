@@ -64,8 +64,8 @@ class WindowKeyboard : public FloatingWindow
         int FindSameKeyInNewSubLayout(int key_index, KeyboardLayoutSubLayout sublayout_id_current, KeyboardLayoutSubLayout sublayout_id_new);
 
         LaserInputState& GetLaserInputState(vr::TrackedDeviceIndex_t device_index);
-        bool ButtonLaser(const char* label, const ImVec2& size_arg, ButtonLaserState& button_state);
-        void ButtonVisual(const char* label, const ImVec2& size_arg);
+        bool ButtonLaser(const char* label, const ImVec2& size_arg, ButtonLaserState& button_state, bool is_label_multiline = false);
+        void ButtonVisual(const char* label, const ImVec2& size_arg, bool is_label_multiline = false);
 
     public:
         WindowKeyboard();
