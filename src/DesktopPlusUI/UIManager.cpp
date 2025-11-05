@@ -157,6 +157,7 @@ bool UIManager::IdleState::ShouldIdle()
         if (m_LastCaretTick + 100 < ::GetTickCount64())
         {
             m_LastCaretTick = ::GetTickCount64();
+            m_WasIdleLastFrame = false; //Explicitly avoid doing the idle timestep when only waking up for a single frame as the caret blinking relies on it advancing in real time
             return false;
         }
     }
