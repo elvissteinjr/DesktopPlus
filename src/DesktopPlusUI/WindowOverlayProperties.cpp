@@ -519,6 +519,10 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
                     //Also disable Gaze Fade if it's on
                     ConfigManager::SetValue(configid_bool_overlay_gazefade_enabled, false);
                     IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_gazefade_enabled, false);
+
+                    //...and reset display mode to Always. It technically works in that the overlay stops updating but that's not helpful if the theater screen is showing
+                    ConfigManager::SetValue(configid_int_overlay_display_mode, ovrl_dispmode_always);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_display_mode, ovrl_dispmode_always);
                 }
 
                 IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_origin, mode_origin);
