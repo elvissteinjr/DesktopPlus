@@ -7552,7 +7552,28 @@ bool OutputManager::HasDashboardMoved()
     vr::HmdMatrix34_t hmd_matrix = {0};
     vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
 
-    vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, universe_origin, {0.0f, 0.0f}, &hmd_matrix);
+    if (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleDashboardDummy))
+    {
+        vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, universe_origin, {0.0f, 0.0f}, &hmd_matrix);
+    }
+    else
+    {
+        vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
+        vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
+
+        //Use GamepadUI as a reference if available since it's more stable due to the systemui overlay changing size depending on the active dashboard overlay's flags
+        vr::VROverlayHandle_t handle_dashboard = handle_gamepad_ui;
+
+        if (handle_dashboard == vr::k_ulOverlayHandleInvalid)
+        {
+            vr::VROverlay()->FindOverlay("system.systemui", &handle_dashboard);
+        }
+
+        vr::HmdVector2_t overlay_dashboard_size;
+        vr::VROverlay()->GetOverlayMouseScale(handle_dashboard, &overlay_dashboard_size); //Coordinate size should be mouse scale
+
+        vr::VROverlay()->GetTransformForOverlayCoordinates(handle_dashboard, universe_origin, { overlay_dashboard_size.v[0]/2.0f, 0.0f }, &hmd_matrix);
+    }
 
     Matrix4 matrix_new = hmd_matrix;
 
