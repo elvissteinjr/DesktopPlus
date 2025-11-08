@@ -288,23 +288,33 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
         }
         case ovrl_origin_dashboard:
         {
+            //Adjust behavior if GamepadUI (SteamVR 2 dashboard) exists
+            vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
+            vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
+
             //Update dashboard transform if it's visible or we never set the dashboard matrix before (IsDashboardVisible() can return false while visible)
             if ( (vr::VROverlay()->IsDashboardVisible()) || (m_DashboardMatLast.isZero()) )
             {
-                //This code is prone to break when Valve changes the entire dashboard once again
-                vr::VROverlayHandle_t system_dashboard;
-                vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
+                //This code is prone to break when Valve makes changes to the dashboard
+
+                //Use GamepadUI as a reference if available since it's more stable due to the systemui overlay changing size depending on the active dashboard overlay's flags
+                vr::VROverlayHandle_t handle_dashboard = handle_gamepad_ui;
+
+                if (handle_dashboard == vr::k_ulOverlayHandleInvalid)
+                {
+                    vr::VROverlay()->FindOverlay("system.systemui", &handle_dashboard);
+                }
 
                 //Double-checking dashboard overlay visibility for the case when IsDashboardVisible() is false while it's actually visible
-                if ( (system_dashboard != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsOverlayVisible(system_dashboard)) )
+                if ( (handle_dashboard != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsOverlayVisible(handle_dashboard)) )
                 {
-                    vr::HmdMatrix34_t matrix_overlay_system;
+                    vr::HmdMatrix34_t matrix_overlay_dashboard;
 
-                    vr::HmdVector2_t overlay_system_size;
-                    vr::VROverlay()->GetOverlayMouseScale(system_dashboard, &overlay_system_size); //Coordinate size should be mouse scale
+                    vr::HmdVector2_t overlay_dashboard_size;
+                    vr::VROverlay()->GetOverlayMouseScale(handle_dashboard, &overlay_dashboard_size); //Coordinate size should be mouse scale
 
-                    vr::VROverlay()->GetTransformForOverlayCoordinates(system_dashboard, universe_origin, { overlay_system_size.v[0]/2.0f, 0.0f }, &matrix_overlay_system);
-                    m_DashboardMatLast = matrix_overlay_system;
+                    vr::VROverlay()->GetTransformForOverlayCoordinates(handle_dashboard, universe_origin, { overlay_dashboard_size.v[0]/2.0f, 0.0f }, &matrix_overlay_dashboard);
+                    m_DashboardMatLast = matrix_overlay_dashboard;
 
                     if (m_DashboardHMD_Y == -100.0f)    //If Desktop+ was started with the dashboard open, the value will still be default, so set it now
                     {
@@ -313,19 +323,7 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
                 }
             }
 
-            //Adjust behavior if GamepadUI (SteamVR 2 dashboard) exists
-            vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
-            vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
-
             matrix = m_DashboardMatLast;
-
-            //SteamVR 2.13.1 made changes that affected the dashboard matrix, moving the middle position up slightly
-            //While this change is only in the beta branch, we conditionally apply an additional offset on 2.13 runtimes to get back to the old position
-            const bool use_additional_offset = (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.13") != nullptr);
-            if (use_additional_offset)
-            {
-                matrix.translate_relative(0.0f, -0.19f, 0.0f);
-            }
 
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
@@ -339,12 +337,37 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
                 matrix = matrix * matrix_to_old_dash;
 
                 //Move matrix towards normal dashboard overlay position
-                matrix.translate_relative(0.0f, -0.57f, 0.32f);
+                matrix.translate_relative(0.0f, -1.143f, 0.768f);
             }
             else
             {
+                //SteamVR 2.13.1 made changes that affected the dashboard matrix, moving the middle position up slightly
+                //While this change is only in the beta branch, we conditionally apply an additional offset on 2.13 runtimes to get back to the old position
+                const bool use_additional_offset = (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.13") != nullptr);
+                if (use_additional_offset)
+                {
+                    matrix.translate_relative(0.0f, -0.19f, 0.0f);
+                }
+
                 //Move matrix towards normal dashboard overlay position
                 matrix.translate_relative(0.0f, 1.09f, 0.0f);
+
+                //Correct the tilt we get when an overlay with control bar is active
+                //The rotation may be off for overlays that don't use one, but without being able to detect this cleanly there doesn't seem much that can be done
+                //For now it's being done when the Desktop+ dashboard tab isn't selected which is fine for most cases
+                //The legacy dashboard is rarely used anyhow
+                vr::VROverlayHandle_t ovrl_handle_dplus;
+                vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &ovrl_handle_dplus);
+
+                if ((ovrl_handle_dplus == vr::k_ulOverlayHandleInvalid) || (!vr::VROverlay()->IsActiveDashboardOverlay(ovrl_handle_dplus)))
+                {
+                    Matrix4 mat_rot;
+                    mat_rot.rotateX(40.0f);
+                    matrix = matrix * mat_rot;
+
+                    //Additional offset to make the position pretty much equal to D+ dashboard tab
+                    matrix.translate_relative(0.0f, -0.002f, 0.268f);
+                }
             }
 
             break;
