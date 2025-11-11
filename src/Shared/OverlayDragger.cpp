@@ -341,16 +341,8 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
             }
             else
             {
-                //SteamVR 2.13.1 made changes that affected the dashboard matrix, moving the middle position up slightly
-                //While this change is only in the beta branch, we conditionally apply an additional offset on 2.13 runtimes to get back to the old position
-                const bool use_additional_offset = (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.13") != nullptr);
-                if (use_additional_offset)
-                {
-                    matrix.translate_relative(0.0f, -0.19f, 0.0f);
-                }
-
                 //Move matrix towards normal dashboard overlay position
-                matrix.translate_relative(0.0f, 1.09f, 0.0f);
+                matrix.translate_relative(0.0f, 0.90f, 0.0f);
 
                 //Correct the tilt we get when an overlay with control bar is active
                 //The rotation may be off for overlays that don't use one, but without being able to detect this cleanly there doesn't seem much that can be done
