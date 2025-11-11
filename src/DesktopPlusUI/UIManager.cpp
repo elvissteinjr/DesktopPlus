@@ -2055,7 +2055,7 @@ void UIManager::PositionOverlay()
         {
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.247f, 0.392f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.247f, 0.400f);
             }
             else
             {
@@ -2066,7 +2066,7 @@ void UIManager::PositionOverlay()
         {
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.200f, 0.382f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.200f, 0.390f);
             }
             else
             {
