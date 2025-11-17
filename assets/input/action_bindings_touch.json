@@ -62,7 +62,7 @@
             {
                "inputs" : {
                   "click" : {
-                     "output" : "/actions/lasermouse/in/MiddleClick"
+                     "output" : "/actions/laserpointer/in/MiddleClick"
                   }
                },
                "mode" : "button",
@@ -71,7 +71,7 @@
             {
                "inputs" : {
                   "click" : {
-                     "output" : "/actions/lasermouse/in/MiddleClick"
+                     "output" : "/actions/laserpointer/in/MiddleClick"
                   }
                },
                "mode" : "button",
