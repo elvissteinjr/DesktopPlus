@@ -131,6 +131,8 @@ class WindowQuickStart : public AuxUIWindow
         Matrix4 m_TransformAnimationEnd;
         float m_TransformAnimationProgress = 0.0f;
 
+        ULONGLONG m_TimeoutTickStart = 0;
+
         void SetUpOverlay();
         void UpdateOverlayPos();
         void OnPageChange(int page_id);

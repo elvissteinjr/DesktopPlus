@@ -730,6 +730,7 @@ void WindowQuickStart::OnPageChange(int page_id)
     }
 
     m_TransformAnimationProgress = 0.0f;
+    m_TimeoutTickStart = 0;
 }
 
 bool WindowQuickStart::Show()
@@ -739,14 +740,15 @@ bool WindowQuickStart::Show()
 
 void WindowQuickStart::Hide()
 {
+    m_TimeoutTickStart = 0;
     AuxUIWindow::Hide();
 }
 
 void WindowQuickStart::Update()
 {
-    //Temporarily hide when leaving dashboard tab
     if (!ConfigManager::GetValue(configid_bool_interface_quick_start_hidden))
     {
+        //Temporarily hide when leaving dashboard tab
         if (UIManager::Get()->IsOverlayBarOverlayVisible())
         {
             if (!m_Visible)
@@ -763,6 +765,30 @@ void WindowQuickStart::Update()
         else if (m_Visible)
         {
             Hide();
+        }
+
+        //Hide automatically after a timeout if there doesn't seem to be any input device (using the dashboard without one is weird, but still)
+        if ((m_CurrentPage == 0) && (UIManager::Get()->IsOpenVRLoaded()))
+        {
+            const vr::TrackedDeviceIndex_t device_index = ConfigManager::Get().GetPrimaryLaserPointerDevice();
+            if ((device_index == vr::k_unTrackedDeviceIndexInvalid) || ((device_index == vr::k_unTrackedDeviceIndex_Hmd))) //HMD may or may not being able to click
+            {
+                //Don't do it if the overlay is being pointed at, however (potentially still no input possible, but user can point somewhere else then)
+                if (!ConfigManager::Get().IsLaserPointerTargetOverlay(UIManager::Get()->GetOverlayHandleAuxUI()))
+                {
+                    const unsigned int timeout_ms = (device_index == vr::k_unTrackedDeviceIndex_Hmd) ? 20000 : 10000;
+
+                    if (m_TimeoutTickStart == 0)
+                    {
+                        m_TimeoutTickStart = ::GetTickCount64();
+                    }
+                    else if (m_TimeoutTickStart + timeout_ms < ::GetTickCount64())
+                    {
+                        ConfigManager::SetValue(configid_bool_interface_quick_start_hidden, true);
+                        Hide();
+                    }
+                }
+            }
         }
     }
 

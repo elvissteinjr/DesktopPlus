@@ -151,6 +151,12 @@ bool UIManager::IdleState::ShouldIdle()
         return false;
     }
 
+    //Quick-Start Guide needs updates for its automatic timeout to work
+    if (ui_manager.GetAuxUI().GetQuickStartWindow().IsVisible())
+    {
+        return false;
+    }
+
     //If any text input is active, we need to deal with the blinking caret so we wake up occasionally for it to animate
     if (ImGui::IsAnyInputTextActive())
     {
