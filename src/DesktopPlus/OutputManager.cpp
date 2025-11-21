@@ -348,6 +348,8 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
     if (adapter_ptr_preferred == nullptr)
     {
+        LOG_F(WARNING, "Output enumeration did not return a preferred GPU. Trying first available device...");
+
         for (UINT DriverTypeIndex = 0; DriverTypeIndex < NumDriverTypes; ++DriverTypeIndex)
         {
             hr = D3D11CreateDevice(nullptr, DriverTypes[DriverTypeIndex], nullptr, 0, FeatureLevels, NumFeatureLevels,
@@ -355,7 +357,8 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
             if (SUCCEEDED(hr))
             {
-                // Device creation succeeded, no need to loop anymore
+                //Device creation succeeded. Take adapter from the device so it can be used further down
+                adapter_ptr_preferred.Attach(GetDXGIAdapter());
                 break;
             }
         }
@@ -386,6 +389,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     m_OutputHDRAvailable = false;
 
     #ifndef DPLUS_DUP_NO_HDR
+    if (adapter_ptr_preferred != nullptr)
     {
         Microsoft::WRL::ComPtr<IDXGIOutput> DxgiOutput;
         hr = adapter_ptr_preferred->EnumOutputs(0, &DxgiOutput);
@@ -395,15 +399,15 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
             hr = DxgiOutput.As(&DxgiOutput5);
             m_OutputHDRAvailable = SUCCEEDED(hr);
         }
+    }
 
-        if (m_OutputHDRAvailable)
-        {
-            LOG_F(INFO, "Desktop Duplication HDR mirroring is supported");
-        }
-        else
-        {
-            LOG_F(INFO, "Desktop Duplication HDR mirroring is not supported");
-        }
+    if (m_OutputHDRAvailable)
+    {
+        LOG_F(INFO, "Desktop Duplication HDR mirroring is supported");
+    }
+    else
+    {
+        LOG_F(INFO, "Desktop Duplication HDR mirroring is not supported");
     }
     #else
         LOG_F(INFO, "Desktop+ was not built with Desktop Duplication HDR support");
@@ -2972,8 +2976,6 @@ const LARGE_INTEGER& OutputManager::GetUpdateLimiterDelay()
 
 int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_preferred, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_vr)
 {
-    LOG_SCOPE_F(INFO, "Detected Outputs");
-
     Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
     Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_preferred;
     Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_vr;
@@ -2984,27 +2986,30 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
     m_DesktopHDRWhiteLevelAdjustments.clear();
 
     const bool is_hdr_in_use = ((m_OutputHDRAvailable) && (ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)));
+    const UINT target_adapter_deviceid    = (ConfigManager::GetValue(configid_int_misc_force_gpu_deviceid)    == -1) ? 0 : (UINT)ConfigManager::GetValue(configid_int_misc_force_gpu_deviceid);
+    const UINT target_adapter_deviceid_vr = (ConfigManager::GetValue(configid_int_misc_force_gpu_vr_deviceid) == -1) ? 0 : (UINT)ConfigManager::GetValue(configid_int_misc_force_gpu_vr_deviceid);
+
+    //Also look for the device the HMD is connected to
+    int32_t vr_gpu_id;
+    vr::VRSystem()->GetDXGIOutputInfo(&vr_gpu_id);
 
     HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
     if (!FAILED(hr))
     {
+        LOG_SCOPE_F(INFO, "Detected Outputs");
+
         Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
         UINT i = 0;
         int output_count = 0;
         bool wmr_ignore_vscreens = (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1);
-
-        //Also look for the device the HMD is connected to
-        int32_t vr_gpu_id;
-        vr::VRSystem()->GetDXGIOutputInfo(&vr_gpu_id);
 
         while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
         {
             DXGI_ADAPTER_DESC adapter_desc;
             adapter_ptr->GetDesc(&adapter_desc);
 
-            int first_output_adapter = output_count;
-
-            if (i == vr_gpu_id)
+            //Check if this is the adapter SteamVR wants
+            if ( ((target_adapter_deviceid_vr == 0) && (i == vr_gpu_id)) || (adapter_desc.DeviceId == target_adapter_deviceid_vr) )
             {
                 adapter_ptr_vr = adapter_ptr;
             }
@@ -3027,6 +3032,9 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
             //Check if there are gonna be any outputs before logging the GPU to avoid confusion (there may be multiple adapters per GPU with no outputs attached)
             if (adapter_ptr->EnumOutputs(0, &output_ptr) == DXGI_ERROR_NOT_FOUND)
             {
+                //Still log them with higher verbosity level just in case
+                LOG_F(1, "GPU %u: %s (Device ID %u) (No Outputs)", i + 1, StringConvertFromUTF16(adapter_desc.Description).c_str(), adapter_desc.DeviceId);
+
                 ++i;
                 continue;
             }
@@ -3036,8 +3044,9 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
             UINT output_index = 0;
             while (adapter_ptr->EnumOutputs(output_index, &output_ptr) != DXGI_ERROR_NOT_FOUND)
             {
-                //Check if this happens to be the output we're looking for (or for combined desktop, set the first adapter with available output)
-                if ( (adapter_ptr_preferred == nullptr) && ( (target_desktop_id == output_count) || (target_desktop_id == -1) ) )
+                //Check if this happens to be the output we're looking for (or for combined desktop, set the first adapter with available output unless forced otherwise)
+                if ( (adapter_ptr_preferred == nullptr) && 
+                     ( (target_desktop_id == output_count) || ((target_desktop_id == -1) && ((target_adapter_deviceid == 0) || (adapter_desc.DeviceId == target_adapter_deviceid))) ) )
                 {
                     adapter_ptr_preferred = adapter_ptr;
 
@@ -3083,6 +3092,12 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
         ConfigManager::SetValue(configid_int_state_interface_desktop_count, output_count);
         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_interface_desktop_count, output_count);
     }
+
+    LOG_IF_F(WARNING, (adapter_ptr_preferred == nullptr) && (target_adapter_deviceid == 0) && (target_desktop_id == -1), "No GPU with desktop outputs was found!");
+    LOG_IF_F(WARNING, (adapter_ptr_preferred == nullptr) && (target_adapter_deviceid != 0) && (target_desktop_id == -1), "GPU forced by config (DeviceID %u) was not found or has no outputs!", target_adapter_deviceid);
+    LOG_IF_F(WARNING, (adapter_ptr_preferred == nullptr) && (target_desktop_id != -1), "GPU for target Desktop %i was not found!", target_desktop_id);
+    LOG_IF_F(WARNING, (adapter_ptr_vr == nullptr) && (target_adapter_deviceid_vr == 0), "GPU requested by SteamVR (%u) was not found!", vr_gpu_id + 1);
+    LOG_IF_F(WARNING, (adapter_ptr_vr == nullptr) && (target_adapter_deviceid_vr != 0), "VR GPU forced by config (DeviceID %u) was not found!", target_adapter_deviceid_vr);
 
     if (out_adapter_preferred != nullptr)
     {

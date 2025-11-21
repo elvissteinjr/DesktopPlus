@@ -576,15 +576,22 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 // Helper functions
 
 bool CreateDeviceD3D(HWND hWnd, bool desktop_mode)
-{   
-    //Get the adapter recommended by OpenVR if it's loaded (needed for Performance Monitor even in desktop mode)
-    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_vr;
+{
+    const UINT target_adapter_deviceid    = (ConfigManager::GetValue(configid_int_misc_force_gpu_deviceid)    == -1) ? 0 : (UINT)ConfigManager::GetValue(configid_int_misc_force_gpu_deviceid);
+    const UINT target_adapter_deviceid_vr = (ConfigManager::GetValue(configid_int_misc_force_gpu_vr_deviceid) == -1) ? 0 : (UINT)ConfigManager::GetValue(configid_int_misc_force_gpu_vr_deviceid);
 
-    if (UIManager::Get()->IsOpenVRLoaded())
+    //Get forced adapter if any and get the adapter recommended by OpenVR if it's loaded (needed for Performance Monitor even in desktop mode)
+    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_vr;
+    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr_desktop;   //stays nullptr unless forced
+
     {
         Microsoft::WRL::ComPtr<IDXGIFactory1> factory_ptr;
-        int32_t vr_gpu_id;
-        vr::VRSystem()->GetDXGIOutputInfo(&vr_gpu_id);
+        int32_t vr_gpu_id = -1;
+
+        if (UIManager::Get()->IsOpenVRLoaded())
+        {
+            vr::VRSystem()->GetDXGIOutputInfo(&vr_gpu_id);
+        }
 
         HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory_ptr);
         if (!FAILED(hr))
@@ -594,10 +601,17 @@ bool CreateDeviceD3D(HWND hWnd, bool desktop_mode)
 
             while (factory_ptr->EnumAdapters(i, &adapter_ptr) != DXGI_ERROR_NOT_FOUND)
             {
-                if (i == vr_gpu_id)
+                DXGI_ADAPTER_DESC adapter_desc;
+                adapter_ptr->GetDesc(&adapter_desc);
+
+                if ( ((target_adapter_deviceid_vr == 0) && (i == vr_gpu_id)) || (adapter_desc.DeviceId == target_adapter_deviceid_vr) )
                 {
                     adapter_ptr_vr = adapter_ptr;
-                    break;
+                }
+
+                if (adapter_desc.DeviceId == target_adapter_deviceid)
+                {
+                    adapter_ptr_desktop = adapter_ptr;
                 }
 
                 ++i;
@@ -613,6 +627,10 @@ bool CreateDeviceD3D(HWND hWnd, bool desktop_mode)
                 UIManager::Get()->GetPerformanceWindow().GetPerformanceData().SetTargetGPU(adapter_desc.AdapterLuid, adapter_desc.DedicatedVideoMemory);
             }
         }
+
+        LOG_IF_F(WARNING, (adapter_ptr_desktop == nullptr) && (target_adapter_deviceid != 0), "GPU forced by config (DeviceID %u) was not found!", target_adapter_deviceid);
+        LOG_IF_F(WARNING, (adapter_ptr_vr == nullptr) && (target_adapter_deviceid_vr == 0) && UIManager::Get()->IsOpenVRLoaded(), "GPU requested by SteamVR (%u) was not found!", vr_gpu_id + 1);
+        LOG_IF_F(WARNING, (adapter_ptr_vr == nullptr) && (target_adapter_deviceid_vr != 0), "VR GPU forced by config (DeviceID %u) was not found!", target_adapter_deviceid_vr);
     }
 
     D3D_FEATURE_LEVEL featureLevel;
@@ -636,9 +654,12 @@ bool CreateDeviceD3D(HWND hWnd, bool desktop_mode)
         sd.SampleDesc.Quality = 0;
         sd.Windowed = TRUE;
         sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;   //DXGI_SWAP_EFFECT_FLIP_DISCARD also would work, but we still support Windows 8
-
-        if (D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
+        
+        if (D3D11CreateDeviceAndSwapChain(adapter_ptr_desktop.Get(), (adapter_ptr_desktop != nullptr) ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, featureLevelArray, 2, D3D11_SDK_VERSION, 
+                                          &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
+        {
             return false;
+        }
     }
     else 
     {

@@ -600,6 +600,8 @@ bool ConfigManager::LoadConfigFromFile()
 
     m_ConfigBool[configid_bool_misc_no_steam]             = config.ReadBool("Misc", "NoSteam", false);
     m_ConfigBool[configid_bool_misc_uiaccess_was_enabled] = config.ReadBool("Misc", "UIAccessWasEnabled", false);
+    m_ConfigInt[configid_int_misc_force_gpu_deviceid]     = config.ReadInt("Misc", "ForceGPUDeviceID", -1);
+    m_ConfigInt[configid_int_misc_force_gpu_vr_deviceid]  = config.ReadInt("Misc", "ForceGPUVRDeviceID", -1);
 
     //Load actions
     if (!m_ActionManager.LoadActionsFromFile())

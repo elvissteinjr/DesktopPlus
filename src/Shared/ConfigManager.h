@@ -171,6 +171,8 @@ enum ConfigID_Int
     configid_int_performance_update_limit_mode,
     configid_int_performance_update_limit_fps,              //This is the enum ID, not the actual number. See ApplySettingUpdateLimiter() code for more info
     configid_int_performance_ui_frameskip,
+    configid_int_misc_force_gpu_deviceid,
+    configid_int_misc_force_gpu_vr_deviceid,
     configid_int_state_overlay_current_id_override,         //This is used to send config changes to overlays which aren't the current, mainly to avoid the UI switching around (-1 is disabled)
     configid_int_state_overlay_transform_sync_target_id,    //Target overlay ID for transform sync. -1 = None
     configid_int_state_overlay_focused_id,                  //Focused overlay ID (set by last click) for keyboard overlay target if applicable. -1 = None
