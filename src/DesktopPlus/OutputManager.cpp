@@ -4552,6 +4552,7 @@ bool OutputManager::HandleOpenVREvents()
                     OverlayDirectDragFinish(m_OverlayDragger.GetDragOverlayID());
                 }
 
+                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 0);
                 break;
             }
             case vr::VREvent_DashboardDeactivated:
@@ -4613,6 +4614,7 @@ bool OutputManager::HandleOpenVREvents()
                     }
                 }
 
+                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 0);
                 break;
             }
             case vr::VREvent_SeatedZeroPoseReset:
@@ -4644,6 +4646,8 @@ bool OutputManager::HandleOpenVREvents()
             {
                 m_VRInput.RefreshAnyGlobalActionBound();
                 m_LaserPointer.RemoveDevice(vr_event.trackedDeviceIndex);
+
+                IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 0);
                 break;
             }
             case vr::VREvent_Quit:
