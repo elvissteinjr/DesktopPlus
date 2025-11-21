@@ -3795,7 +3795,8 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
     if (SingleOutput < 0)
     {
         //Combined desktop, also count desktops on the used adapter
-        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr = GetDXGIAdapter();
+        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
+        adapter_ptr.Attach(GetDXGIAdapter());
 
         UINT output_index_adapter = 0;
         hr = S_OK;
