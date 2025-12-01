@@ -645,15 +645,12 @@ int TextureManager::GetWindowIconCacheID(HICON icon_handle)
     ICONINFO icon_info = {0};
     if (::GetIconInfo(icon_handle, &icon_info) != 0)
     {
-        HDC hdc, hdcMem;
-
-        hdc    = ::GetDC(nullptr);
-        hdcMem = ::CreateCompatibleDC(hdc);
+        HDC hdc = ::GetDC(nullptr);
 
         //Get bitmap info from icon bitmap
         BITMAPINFO bmp_info = {0};
         bmp_info.bmiHeader.biSize = sizeof(bmp_info.bmiHeader);
-        if (::GetDIBits(hdcMem, icon_info.hbmColor, 0, 0, nullptr, &bmp_info, DIB_RGB_COLORS) != 0)
+        if (::GetDIBits(hdc, icon_info.hbmColor, 0, 0, nullptr, &bmp_info, DIB_RGB_COLORS) != 0)
         {
             TMNGRWindowIcon window_icon;
             int icon_width  = bmp_info.bmiHeader.biWidth;
@@ -691,7 +688,7 @@ int TextureManager::GetWindowIconCacheID(HICON icon_handle)
                     //Get bitmap info for the mask this time
                     BITMAPINFO bmp_info = {0};
                     bmp_info.bmiHeader.biSize = sizeof(bmp_info.bmiHeader);
-                    if (::GetDIBits(hdcMem, icon_info.hbmMask, 0, 0, nullptr, &bmp_info, DIB_RGB_COLORS) != 0)
+                    if (::GetDIBits(hdc, icon_info.hbmMask, 0, 0, nullptr, &bmp_info, DIB_RGB_COLORS) != 0)
                     {
                         int mask_width  = bmp_info.bmiHeader.biWidth;
                         int mask_height = abs(bmp_info.bmiHeader.biHeight);
@@ -746,7 +743,6 @@ int TextureManager::GetWindowIconCacheID(HICON icon_handle)
         ::DeleteObject(icon_info.hbmColor);
         ::DeleteObject(icon_info.hbmMask);
 
-        ::DeleteDC(hdcMem);
         ::ReleaseDC(nullptr, hdc);
     }
 
