@@ -235,33 +235,13 @@ DUPL_RETURN DUPLICATIONMANAGER::GetMouse(_Inout_ PTR_INFO* PtrInfo, _In_ DXGI_OU
 
     PtrInfo->CursorShapeChanged = true;
 
-    // Old buffer too small
-    if (FrameInfo->PointerShapeBufferSize > PtrInfo->BufferSize)
-    {
-        if (PtrInfo->PtrShapeBuffer)
-        {
-            delete [] PtrInfo->PtrShapeBuffer;
-            PtrInfo->PtrShapeBuffer = nullptr;
-        }
-        PtrInfo->PtrShapeBuffer = new (std::nothrow) BYTE[FrameInfo->PointerShapeBufferSize];
-        if (!PtrInfo->PtrShapeBuffer)
-        {
-            PtrInfo->BufferSize = 0;
-            return ProcessFailure(nullptr, L"Failed to allocate memory for pointer shape", L"Desktop+ Error", E_OUTOFMEMORY);
-        }
-
-        // Update buffer size
-        PtrInfo->BufferSize = FrameInfo->PointerShapeBufferSize;
-    }
-
     // Get shape
+    PtrInfo->ShapeBuffer.resize(FrameInfo->PointerShapeBufferSize, 0);
     UINT BufferSizeRequired;
-    HRESULT hr = m_DeskDupl->GetFramePointerShape(FrameInfo->PointerShapeBufferSize, reinterpret_cast<VOID*>(PtrInfo->PtrShapeBuffer), &BufferSizeRequired, &(PtrInfo->ShapeInfo));
+    HRESULT hr = m_DeskDupl->GetFramePointerShape(FrameInfo->PointerShapeBufferSize, PtrInfo->ShapeBuffer.data(), &BufferSizeRequired, &(PtrInfo->ShapeInfo));
     if (FAILED(hr))
     {
-        delete [] PtrInfo->PtrShapeBuffer;
-        PtrInfo->PtrShapeBuffer = nullptr;
-        PtrInfo->BufferSize = 0;
+        PtrInfo->ShapeBuffer.clear();
         return ProcessFailure(m_Device, L"Failed to get frame pointer shape", L"Desktop+ Error", hr, FrameInfoExpectedErrors);
     }
 

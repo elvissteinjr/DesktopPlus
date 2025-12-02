@@ -108,7 +108,6 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_IsAnyHotkeyActive(false),
     m_RegisteredHotkeyCount(0)
 {
-    m_MouseLastInfo = {0};
     m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
     ::QueryPerformanceFrequency(&m_MouseLaserPointerScrollDeltaFrequency);
 
@@ -228,7 +227,7 @@ void OutputManager::CleanRefs()
     //Reset mouse state variables too
     m_MouseLastClickTick = 0;
     m_MouseIgnoreMoveEvent = false;
-    m_MouseLastInfo = {0};
+    m_MouseLastInfo = PTR_INFO();
     m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
     m_MouseLastLaserPointerX = -1;
     m_MouseLastLaserPointerY = -1;
@@ -906,10 +905,13 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         m_MouseCursorNeedsUpdate = true;
     }
 
-    //Set cached mouse values
-    m_MouseLastInfo = *PointerInfo;
-    m_MouseLastInfo.PtrShapeBuffer = nullptr; //Not used or copied properly so remove info to avoid confusion
-    m_MouseLastInfo.BufferSize = 0;
+    //Set cached mouse values (we don't want to copy the shape buffer, so no straight assignment)
+    m_MouseLastInfo.ShapeInfo              = PointerInfo->ShapeInfo;
+    m_MouseLastInfo.Position               = PointerInfo->Position;
+    m_MouseLastInfo.Visible                = PointerInfo->Visible;
+    m_MouseLastInfo.WhoUpdatedPositionLast = PointerInfo->WhoUpdatedPositionLast;
+    m_MouseLastInfo.LastTimeStamp          = PointerInfo->LastTimeStamp;
+    m_MouseLastInfo.CursorShapeChanged     = PointerInfo->CursorShapeChanged;
 
     //Reset dirty rect
     DirtyRectTotal = DPRect(-1, -1, -1, -1);
@@ -3215,8 +3217,8 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int
 {
     out_tex_format = DXGI_FORMAT_UNKNOWN;
 
-    //PtrShapeBuffer can sometimes be nullptr when the secure desktop is active, skip
-    if (ptr_info.PtrShapeBuffer == nullptr)
+    //ShapeBuffer can sometimes be empty when the secure desktop is active, skip
+    if (ptr_info.ShapeBuffer.empty())
         return DUPL_RETURN_SUCCESS;
 
     //Desktop dimensions
@@ -3332,7 +3334,7 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int
     if (is_mono)
     {
         //Iterate through pointer shape pixels
-        for (int ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
+        for (size_t ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
         {
             //Set mask
             uint8_t mask_base = 0x80;
@@ -3340,9 +3342,9 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int
             for (int ptr_pixel_col = 0; ptr_pixel_col < ptr_width; ++ptr_pixel_col)
             {
                 //Get masks using appropriate offsets
-                int mask_offset_base = ((ptr_pixel_col + ptr_skip_x) / 8);
-                BYTE mask_and = ptr_info.PtrShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y) * ptr_info.ShapeInfo.Pitch)                  ] & mask_base;
-                BYTE mask_xor = ptr_info.PtrShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y + ptr_height_half) * ptr_info.ShapeInfo.Pitch)] & mask_base;
+                size_t mask_offset_base = ((ptr_pixel_col + ptr_skip_x) / 8);
+                BYTE mask_and = ptr_info.ShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y) * ptr_info.ShapeInfo.Pitch)                  ] & mask_base;
+                BYTE mask_xor = ptr_info.ShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y + ptr_height_half) * ptr_info.ShapeInfo.Pitch)] & mask_base;
                 uint32_t mask_and_u32 = (mask_and) ? 0xFFFFFFFF : 0xFF000000;
                 uint32_t mask_xor_u32 = (mask_xor) ? 0x00FFFFFF : 0x00000000;
 
@@ -3356,12 +3358,12 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int
     }
     else
     {
-        uint32_t* shape_buffer_u32 = (uint32_t*)ptr_info.PtrShapeBuffer;
+        uint32_t* shape_buffer_u32 = (uint32_t*)ptr_info.ShapeBuffer.data();
 
         //Iterate through pointer shape pixels
-        for (unsigned int ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
+        for (size_t ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
         {
-            for (unsigned int ptr_pixel_col = 0; ptr_pixel_col < ptr_width; ++ptr_pixel_col)
+            for (size_t ptr_pixel_col = 0; ptr_pixel_col < ptr_width; ++ptr_pixel_col)
             {
                 // Set up mask
                 uint32_t MaskVal = 0xFF000000 & shape_buffer_u32[(ptr_pixel_col + ptr_skip_x) + ((ptr_pixel_row + ptr_skip_y) * uint32_t(ptr_info.ShapeInfo.Pitch / sizeof(uint32_t)))];
@@ -3431,8 +3433,8 @@ DUPL_RETURN OutputManager::ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_in
 {
     out_tex_format = DXGI_FORMAT_UNKNOWN;
 
-    //PtrShapeBuffer can sometimes be nullptr when the secure desktop is active, skip
-    if (ptr_info.PtrShapeBuffer == nullptr)
+    //ShapeBuffer can sometimes be empty when the secure desktop is active, skip
+    if (ptr_info.ShapeBuffer.empty())
         return DUPL_RETURN_SUCCESS;
 
     //Desktop dimensions
@@ -3553,20 +3555,20 @@ DUPL_RETURN OutputManager::ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_in
     if (is_mono)
     {
         //Iterate through pointer shape pixels
-        for (int ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
+        for (size_t ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
         {
             //Set mask
             uint8_t mask_base = 0x80;
             mask_base = mask_base >> (ptr_skip_x % 8);
-            for (int ptr_pixel_col = 0; ptr_pixel_col < ptr_width; ++ptr_pixel_col)
+            for (size_t ptr_pixel_col = 0; ptr_pixel_col < ptr_width; ++ptr_pixel_col)
             {
                 const int offset_in  = (ptr_pixel_row * desktop_buffer_pitch) + (ptr_pixel_col * 4);
                 const int offset_out = ((ptr_pixel_row * ptr_width) + (ptr_pixel_col)) * 4;
 
                 //Get masks using appropriate offsets
-                int mask_offset_base = ((ptr_pixel_col + ptr_skip_x) / 8);
-                BYTE mask_and = ptr_info.PtrShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y) * ptr_info.ShapeInfo.Pitch)                  ] & mask_base;
-                BYTE mask_xor = ptr_info.PtrShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y + ptr_height_half) * ptr_info.ShapeInfo.Pitch)] & mask_base;
+                size_t mask_offset_base = ((ptr_pixel_col + ptr_skip_x) / 8);
+                BYTE mask_and = ptr_info.ShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y) * ptr_info.ShapeInfo.Pitch)                  ] & mask_base;
+                BYTE mask_xor = ptr_info.ShapeBuffer[mask_offset_base + ((ptr_pixel_row + ptr_skip_y + ptr_height_half) * ptr_info.ShapeInfo.Pitch)] & mask_base;
 
                 //Set new pixel
                 float f32_value_r = (mask_and) ? PackedVector::XMConvertHalfToFloat(desktop_buffer_f16[offset_in])     : 0.0f;
@@ -3598,12 +3600,12 @@ DUPL_RETURN OutputManager::ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_in
     }
     else
     {
-        uint32_t* shape_buffer_u32 = (uint32_t*)ptr_info.PtrShapeBuffer;
+        uint32_t* shape_buffer_u32 = (uint32_t*)ptr_info.ShapeBuffer.data();
 
         //Iterate through pointer shape pixels
-        for (unsigned int ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
+        for (size_t ptr_pixel_row = 0; ptr_pixel_row < ptr_height; ++ptr_pixel_row)
         {
-            for (unsigned int ptr_pixel_col = 0; ptr_pixel_col < ptr_width; ++ptr_pixel_col)
+            for (size_t ptr_pixel_col = 0; ptr_pixel_col < ptr_width; ++ptr_pixel_col)
             {
                 // Set up mask
                 const int offset_in  = (ptr_pixel_row * desktop_buffer_pitch) + (ptr_pixel_col * 4);
@@ -4137,7 +4139,7 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
             Desc.MiscFlags          = 0;
 
             //Set up init data
-            InitData.pSysMem          = PtrInfo->PtrShapeBuffer;
+            InitData.pSysMem          = PtrInfo->ShapeBuffer.data();
             InitData.SysMemPitch      = PtrInfo->ShapeInfo.Pitch;
             InitData.SysMemSlicePitch = 0;
 

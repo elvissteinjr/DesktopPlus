@@ -6,7 +6,7 @@ THREADMANAGER::THREADMANAGER() : m_ThreadCount(0),
                                  m_ThreadHandles(nullptr),
                                  m_ThreadData(nullptr)
 {
-    RtlZeroMemory(&m_PtrInfo, sizeof(m_PtrInfo));
+
 }
 
 THREADMANAGER::~THREADMANAGER()
@@ -19,12 +19,7 @@ THREADMANAGER::~THREADMANAGER()
 //
 void THREADMANAGER::Clean()
 {
-    if (m_PtrInfo.PtrShapeBuffer)
-    {
-        delete [] m_PtrInfo.PtrShapeBuffer;
-        m_PtrInfo.PtrShapeBuffer = nullptr;
-    }
-    RtlZeroMemory(&m_PtrInfo, sizeof(m_PtrInfo));
+    m_PtrInfo = PTR_INFO();
 
     if (m_ThreadHandles)
     {

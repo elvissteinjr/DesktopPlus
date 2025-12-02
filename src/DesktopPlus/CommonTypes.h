@@ -21,6 +21,7 @@
 #include <warning.h>
 #include <DirectXMath.h>
 #include <string>
+#include <vector>
 
 #include "DPRect.h"
 
@@ -69,14 +70,13 @@ void DisplayMsg(_In_ LPCWSTR str, _In_ LPCWSTR title, HRESULT hr);
 //
 typedef struct _PTR_INFO
 {
-    _Field_size_bytes_(BufferSize) BYTE* PtrShapeBuffer;
-    DXGI_OUTDUPL_POINTER_SHAPE_INFO ShapeInfo;
-    POINT Position;
-    bool Visible;
-    UINT BufferSize;
-    UINT WhoUpdatedPositionLast;
-    LARGE_INTEGER LastTimeStamp;
-    bool CursorShapeChanged;
+    std::vector<BYTE> ShapeBuffer;
+    DXGI_OUTDUPL_POINTER_SHAPE_INFO ShapeInfo = {0};
+    POINT Position = {0, 0};
+    bool Visible = false;
+    UINT WhoUpdatedPositionLast = 0;
+    LARGE_INTEGER LastTimeStamp = {0};
+    bool CursorShapeChanged = false;
 } PTR_INFO;
 
 //
