@@ -12,6 +12,7 @@
 
 #include "OverlayManager.h"
 #include "ConfigManager.h"
+#include "SoftwareCursorGrabber.h"
 #include "InputSimulator.h"
 #include "VRInput.h"
 #include "BackgroundOverlay.h"
@@ -98,7 +99,6 @@ class OutputManager
         void ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter);
 
     private:
-    // Methods
         DUPL_RETURN ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
                                     Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box);
         DUPL_RETURN ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
@@ -167,7 +167,6 @@ class OutputManager
 
         void HandleKeyboardAutoVisibility();
 
-    // ClassVars
         InputSimulator m_InputSim;
         VRInput m_VRInput;
         IPCManager m_IPCMan;
@@ -175,7 +174,6 @@ class OutputManager
         OverlayDragger m_OverlayDragger;
         LaserPointer m_LaserPointer;
 
-    // Vars
         ID3D11Device* m_Device;
         ID3D11DeviceContext* m_DeviceContext;
         ID3D11SamplerState* m_Sampler;
@@ -228,6 +226,7 @@ class OutputManager
         Microsoft::WRL::ComPtr<ID3D11Texture2D> m_MouseTex;
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_MouseShaderRes;
 
+        SoftwareCursorGrabber m_MouseAlternativeCursor;
         ULONGLONG m_MouseLastClickTick;
         bool m_MouseIgnoreMoveEvent;
         bool m_MouseCursorNeedsUpdate;

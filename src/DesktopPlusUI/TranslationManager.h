@@ -300,6 +300,8 @@ enum TRMGRStrID
     tstr_SettingsPerformanceRapidUpdatesTip,
     tstr_SettingsPerformanceSingleDesktopMirror,
     tstr_SettingsPerformanceSingleDesktopMirrorTip,
+    tstr_SettingsPerformanceAlternativeCursorRendering,
+    tstr_SettingsPerformanceAlternativeCursorRenderingTip,
     tstr_SettingsPerformanceUseHDR,
     tstr_SettingsPerformanceUseHDRTip,
     tstr_SettingsPerformanceShowFPS,

@@ -583,6 +583,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_performance_update_limit_fps]                  = config.ReadInt( "Performance", "UpdateLimitFPS", update_limit_fps_30);
     m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]     = config.ReadBool("Performance", "RapidLaserPointerUpdates", false);
     m_ConfigBool[configid_bool_performance_single_desktop_mirroring]        = config.ReadBool("Performance", "SingleDesktopMirroring", false);
+    m_ConfigBool[configid_bool_performance_alternative_cursor_rendering]    = config.ReadBool("Performance", "AlternativeCursorRendering", false);
     m_ConfigBool[configid_bool_performance_hdr_mirroring]                   = config.ReadBool("Performance", "HDRMirroring", false);
     m_ConfigBool[configid_bool_performance_show_fps]                        = config.ReadBool("Performance", "ShowFPS", false);
     m_ConfigBool[configid_bool_performance_ui_auto_throttle]                = config.ReadBool("Performance", "UIAutoThrottle", true);
@@ -1564,6 +1565,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteInt( "Performance", "UpdateLimitFPS",                       m_ConfigInt[configid_int_performance_update_limit_fps]);
     config.WriteBool("Performance", "RapidLaserPointerUpdates",             m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]);
     config.WriteBool("Performance", "SingleDesktopMirroring",               m_ConfigBool[configid_bool_performance_single_desktop_mirroring]);
+    config.WriteBool("Performance", "AlternativeCursorRendering",           m_ConfigBool[configid_bool_performance_alternative_cursor_rendering]);
     config.WriteBool("Performance", "HDRMirroring",                         m_ConfigBool[configid_bool_performance_hdr_mirroring]);
     config.WriteBool("Performance", "ShowFPS",                              m_ConfigBool[configid_bool_performance_show_fps]);
     config.WriteBool("Performance", "UIAutoThrottle",                       m_ConfigBool[configid_bool_performance_ui_auto_throttle]);

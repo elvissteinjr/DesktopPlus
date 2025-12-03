@@ -65,6 +65,7 @@ enum ConfigID_Bool
     configid_bool_interface_quick_start_hidden,
     configid_bool_performance_rapid_laser_pointer_updates,
     configid_bool_performance_single_desktop_mirroring,
+    configid_bool_performance_alternative_cursor_rendering,
     configid_bool_performance_hdr_mirroring,
     configid_bool_performance_show_fps,
     configid_bool_performance_ui_auto_throttle,

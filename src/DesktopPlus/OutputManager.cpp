@@ -782,6 +782,13 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
 
     DUPL_RETURN_UPD ret = DUPL_RETURN_UPD_SUCCESS;
 
+    //If alternative cursor rendering is enabled, try to get software cursor data and use that as PointerInfo instead
+    if (ConfigManager::GetValue(configid_bool_performance_alternative_cursor_rendering))
+    {
+        m_MouseAlternativeCursor.SynthesizeDDPCursorInfo();
+        PointerInfo = &m_MouseAlternativeCursor.GetDDPCursorInfo();
+    }
+
     //Got mutex, so we can access pointer info and shared surface
     DPRect mouse_rect = {PointerInfo->Position.x, PointerInfo->Position.y, int(PointerInfo->Position.x + PointerInfo->ShapeInfo.Width),
                          int(PointerInfo->Position.y + PointerInfo->ShapeInfo.Height)};
@@ -1568,6 +1575,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         reset_mirroring = true;
                         DPWinRT_SetHDREnabled(msg.lParam);
+                        break;
+                    }
+                    case configid_bool_performance_alternative_cursor_rendering:
+                    {
+                        m_MouseCursorNeedsUpdate = true;
                         break;
                     }
                     case configid_bool_input_mouse_render_cursor:

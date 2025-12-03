@@ -2022,6 +2022,14 @@ void WindowSettings::UpdatePageMainCatPerformance()
             ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceSingleDesktopMirrorTip));
 
+            bool& alt_cursor_render = ConfigManager::Get().GetRef(configid_bool_performance_alternative_cursor_rendering);
+            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceAlternativeCursorRendering), &alt_cursor_render))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_performance_alternative_cursor_rendering), alt_cursor_render);
+            }
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceAlternativeCursorRenderingTip));
+
             ImGui::NextColumn();
             ImGui::Spacing();
 

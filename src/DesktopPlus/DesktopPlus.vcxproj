@@ -12,8 +12,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{05050918-71E9-AF87-0B3C-6F34D471A55A}</ProjectGuid>
-	<ProjectName>DesktopPlus</ProjectName>
-	<RootNamespace>DesktopPlus</RootNamespace>
+    <ProjectName>DesktopPlus</ProjectName>
+    <RootNamespace>DesktopPlus</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -132,6 +132,7 @@
     <ClCompile Include="OutputManager.cpp" />
     <ClCompile Include="Overlays.cpp" />
     <ClCompile Include="RadialFollowSmoothing.cpp" />
+    <ClCompile Include="SoftwareCursorGrabber.cpp" />
     <ClCompile Include="ThreadManager.cpp" />
     <ClCompile Include="VRInput.cpp" />
   </ItemGroup>
@@ -166,6 +167,7 @@
     <ClInclude Include="Overlays.h" />
     <ClInclude Include="RadialFollowSmoothing.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="SoftwareCursorGrabber.h" />
     <ClInclude Include="ThreadManager.h" />
     <ClInclude Include="VRInput.h" />
   </ItemGroup>

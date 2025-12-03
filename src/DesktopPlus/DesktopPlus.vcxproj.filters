@@ -63,6 +63,7 @@
       <Filter>Shared</Filter>
     </ClCompile>
     <ClCompile Include="RadialFollowSmoothing.cpp" />
+    <ClCompile Include="SoftwareCursorGrabber.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -135,6 +136,7 @@
       <Filter>Shared</Filter>
     </ClInclude>
     <ClInclude Include="RadialFollowSmoothing.h" />
+    <ClInclude Include="SoftwareCursorGrabber.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DesktopPlus.rc" />
