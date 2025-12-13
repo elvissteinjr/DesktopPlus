@@ -12,8 +12,14 @@ class SoftwareCursorGrabber
         PTR_INFO m_DDPPointerInfo = {};
         std::unordered_map<HCURSOR, bool> m_CursorUseMaskCache;
 
+        //Log things only once per session as it would be quite spammy otherwise
+        bool m_LoggedOnceUsed = false;
+        bool m_LoggedOnceFallbackDefault = false;
+        bool m_LoggedOnceFallbackBlob = false;
+
         bool CopyMonoMask(const ICONINFO& icon_info);
         bool CopyColor(const ICONINFO& icon_info);
+        static bool IsShapeBufferBlank(BYTE* psrc, size_t size, UINT type);
 
     public:
         bool SynthesizeDDPCursorInfo();

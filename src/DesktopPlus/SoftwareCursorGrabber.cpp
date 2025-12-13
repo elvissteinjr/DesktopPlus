@@ -1,4 +1,5 @@
 #include "SoftwareCursorGrabber.h"
+#include "Logging.h"
 
 bool SoftwareCursorGrabber::CopyMonoMask(const ICONINFO& icon_info)
 {
@@ -48,6 +49,7 @@ bool SoftwareCursorGrabber::CopyMonoMask(const ICONINFO& icon_info)
 
             m_DDPPointerInfo.ShapeInfo.Width  = cursor_width;
             m_DDPPointerInfo.ShapeInfo.Height = cursor_height;
+            m_DDPPointerInfo.ShapeInfo.Pitch  = 4;
 
             ret = true;
         }
@@ -84,18 +86,7 @@ bool SoftwareCursorGrabber::CopyColor(const ICONINFO& icon_info)
             //Even if we don't override biBitCount to 32, it's still returned as that for 24-bit and lower bit-depth cursors (probably just the screen DC format)
             //It seems the only way to check if the cursor needs its mask applied is to see if the alpha channel is fully blank
             //32-bit cursors still come with masks, but applying them means to override the alpha channel with a 1-bit one (and doing so is also wasteful)
-            bool needs_mask = true;
-            BYTE* psrc = m_DDPPointerInfo.ShapeBuffer.data() + 3; //BGRA alpha pixel
-            const BYTE* const psrc_end = m_DDPPointerInfo.ShapeBuffer.data() + m_DDPPointerInfo.ShapeBuffer.size();
-            for (; psrc < psrc_end; psrc += 4)
-            {
-                if (*psrc != 0)
-                {
-                    needs_mask = false;
-                    break;
-                }
-            }
-
+            const bool needs_mask = IsShapeBufferBlank(m_DDPPointerInfo.ShapeBuffer.data(), m_DDPPointerInfo.ShapeBuffer.size(), DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR);
             if (needs_mask)
             {
                 auto pixel_data_mask = std::unique_ptr<BYTE[]>{new BYTE[m_DDPPointerInfo.ShapeBuffer.size()]};
@@ -105,7 +96,8 @@ bool SoftwareCursorGrabber::CopyColor(const ICONINFO& icon_info)
                 {
                     //Apply mask to color pixel data
                     BYTE* psrc = m_DDPPointerInfo.ShapeBuffer.data() + 3;  //BGRA alpha pixel
-                    BYTE* pmsk = pixel_data_mask.get(); //BGRA blue pixel (alpha channel is blank for the mask)
+                    BYTE* pmsk = pixel_data_mask.get();                    //BGRA blue pixel (alpha channel is blank for the mask)
+                    const BYTE* const psrc_end = m_DDPPointerInfo.ShapeBuffer.data() + m_DDPPointerInfo.ShapeBuffer.size();
                     for (; psrc < psrc_end; psrc += 4, pmsk += 4)
                     {
                         *psrc = ~(*pmsk);
@@ -115,6 +107,7 @@ bool SoftwareCursorGrabber::CopyColor(const ICONINFO& icon_info)
 
             m_DDPPointerInfo.ShapeInfo.Width  = cursor_width;
             m_DDPPointerInfo.ShapeInfo.Height = cursor_height;
+            m_DDPPointerInfo.ShapeInfo.Pitch  = cursor_width * 4;
 
             ret = true;
         }
@@ -124,8 +117,41 @@ bool SoftwareCursorGrabber::CopyColor(const ICONINFO& icon_info)
     return ret;
 }
 
+bool SoftwareCursorGrabber::IsShapeBufferBlank(BYTE* psrc, size_t size, UINT type)
+{
+    if (type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR)
+    {
+        const BYTE* const psrc_end = psrc + size;
+        psrc = psrc + 3; //first BGRA alpha pixel
+        for (; psrc < psrc_end; psrc += 4)
+        {
+            if (*psrc != 0)
+            {
+                return false;
+            }
+        }
+    }
+    else if (type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME)
+    {
+        const BYTE* const psrc_end = psrc + size;
+        psrc = psrc + (size / 2); //first mask pixel
+        for (; psrc < psrc_end; ++psrc)
+        {
+            if (*psrc != 0)
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 bool SoftwareCursorGrabber::SynthesizeDDPCursorInfo()
 {
+    LOG_IF_F(INFO, !m_LoggedOnceUsed, "Using Alternative Cursor Rendering");
+    m_LoggedOnceUsed = true;
+
     CURSORINFO cursor_info = {0};
     cursor_info.cbSize = sizeof(CURSORINFO);
 
@@ -142,19 +168,60 @@ bool SoftwareCursorGrabber::SynthesizeDDPCursorInfo()
                 if (::GetIconInfo(cursor_info.hCursor, &icon_info))
                 {
                     ret = (icon_info.hbmColor != nullptr) ? CopyColor(icon_info) : CopyMonoMask(icon_info);
-
-                    //Set other data if cursor copy was successful
-                    if (ret)
-                    {
-                        m_DDPPointerInfo.CursorShapeChanged = shape_changed;
-                        m_DDPPointerInfo.ShapeInfo.Type  = (icon_info.hbmColor != nullptr) ? DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR : DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME;
-                        m_DDPPointerInfo.ShapeInfo.Pitch = (icon_info.hbmColor != nullptr) ? m_DDPPointerInfo.ShapeInfo.Width * 4 : 4;
-                        m_DDPPointerInfo.ShapeInfo.HotSpot.x = icon_info.xHotspot;
-                        m_DDPPointerInfo.ShapeInfo.HotSpot.y = icon_info.yHotspot;
-                    }
+                    m_DDPPointerInfo.ShapeInfo.Type = (icon_info.hbmColor != nullptr) ? DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR : DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME;
 
                     ::DeleteObject(icon_info.hbmColor);
                     ::DeleteObject(icon_info.hbmMask);
+                }
+
+                //Fallback: If getting the icon info failed or "succeeded" with blank data, try copying the default arrow pointer instead
+                if ((!ret) || (IsShapeBufferBlank(m_DDPPointerInfo.ShapeBuffer.data(), m_DDPPointerInfo.ShapeBuffer.size(), m_DDPPointerInfo.ShapeInfo.Type)))
+                {
+                    LOG_IF_F(WARNING, !m_LoggedOnceFallbackDefault, "Alternative Cursor Rendering: Getting current cursor failed. Falling back to default cursor.");
+                    m_LoggedOnceFallbackDefault = true;
+
+                    ret = false;
+
+                    if (::GetIconInfo(::LoadCursor(nullptr, IDC_ARROW), &icon_info))
+                    {
+                        ret = (icon_info.hbmColor != nullptr) ? CopyColor(icon_info) : CopyMonoMask(icon_info);
+                        m_DDPPointerInfo.ShapeInfo.Type = (icon_info.hbmColor != nullptr) ? DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR : DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME;
+
+                        //Check if somehow still blank
+                        if (ret)
+                        {
+                            ret = !IsShapeBufferBlank(m_DDPPointerInfo.ShapeBuffer.data(), m_DDPPointerInfo.ShapeBuffer.size(), m_DDPPointerInfo.ShapeInfo.Type);
+                        }
+
+                        ::DeleteObject(icon_info.hbmColor);
+                        ::DeleteObject(icon_info.hbmMask);
+                    }
+                }
+
+                //Set other data if cursor copy was successful
+                if (ret)
+                {
+                    m_DDPPointerInfo.CursorShapeChanged = true;
+                    m_DDPPointerInfo.ShapeInfo.HotSpot.x = icon_info.xHotspot;
+                    m_DDPPointerInfo.ShapeInfo.HotSpot.y = icon_info.yHotspot;
+                }
+                else
+                {
+                    LOG_IF_F(WARNING, !m_LoggedOnceFallbackBlob, "Alternative Cursor Rendering: Getting default cursor failed. Falling back to simple blob.");
+                    m_LoggedOnceFallbackBlob = true;
+
+                    //Everything else failed, put a blob there
+                    m_DDPPointerInfo.ShapeInfo.Width  = 12;
+                    m_DDPPointerInfo.ShapeInfo.Height = 19 * 2; //Double height for mask
+                    m_DDPPointerInfo.ShapeBuffer.assign((size_t)m_DDPPointerInfo.ShapeInfo.Width * m_DDPPointerInfo.ShapeInfo.Height, 255);
+
+                    m_DDPPointerInfo.CursorShapeChanged = true;
+                    m_DDPPointerInfo.ShapeInfo.Type  = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME;
+                    m_DDPPointerInfo.ShapeInfo.Pitch = 4;
+                    m_DDPPointerInfo.ShapeInfo.HotSpot.x = 0;
+                    m_DDPPointerInfo.ShapeInfo.HotSpot.y = 0;
+
+                    ret = true;
                 }
             }
             else
@@ -180,7 +247,7 @@ bool SoftwareCursorGrabber::SynthesizeDDPCursorInfo()
             m_DDPPointerInfo.Position.y -= m_DDPPointerInfo.ShapeInfo.HotSpot.y;
             QueryPerformanceCounter(&m_DDPPointerInfo.LastTimeStamp);
         }
-        
+
         m_CursorInfoLast = cursor_info;
     }
 
