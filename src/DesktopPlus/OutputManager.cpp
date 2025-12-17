@@ -3023,7 +3023,7 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
             adapter_ptr->GetDesc(&adapter_desc);
 
             //Check if this is the adapter SteamVR wants
-            if ( ((target_adapter_deviceid_vr == 0) && (i == vr_gpu_id)) || (adapter_desc.DeviceId == target_adapter_deviceid_vr) )
+            if ( ((target_adapter_deviceid_vr == 0) && (i == vr_gpu_id)) || ((adapter_ptr_vr == nullptr) && (adapter_desc.DeviceId == target_adapter_deviceid_vr)) )
             {
                 adapter_ptr_vr = adapter_ptr;
             }
