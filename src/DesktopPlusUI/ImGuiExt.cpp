@@ -988,9 +988,10 @@ namespace ImGui
 
     struct CollapsingAreaState
     {
-        ImGuiID WidgetID    = 0;
-        float WidgetBeginY  = 0.0f;
-        bool PushedClipRect = false;
+        ImGuiID WidgetID        = 0;
+        float WidgetBeginY      = 0.0f;
+        bool PushedClipRect     = false;
+        bool PushedItemDisabled = false;
     };
 
     ImVector<CollapsingAreaState> g_CollapsingArea_Stack;
@@ -1021,6 +1022,12 @@ namespace ImGui
             //Pull cursor position further up to make widgets scroll down as they animate, keep start Y-pos in global to use in the next EndCollapsingArea() call
             state.WidgetBeginY = (ImGui::GetCursorPosY() - content_height) + clip_height;
             ImGui::SetCursorPosY(state.WidgetBeginY);
+
+            if (persist_animation_progress == 0.0f)
+            {
+                PushItemDisabledNoVisual();
+                state.PushedItemDisabled = true;
+            }
         }
     }
 
@@ -1036,6 +1043,11 @@ namespace ImGui
         if (state.PushedClipRect)
         {
             ImGui::PopClipRect();
+        }
+
+        if (state.PushedItemDisabled)
+        {
+            PopItemDisabledNoVisual();
         }
 
         g_CollapsingArea_Stack.pop_back();
