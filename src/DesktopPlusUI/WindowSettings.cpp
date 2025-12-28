@@ -4755,6 +4755,8 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
                     has_value_changed = true;
                 }
 
+                ImGui::EndCollapsingArea();
+
                 ImGui::NextColumn();
 
                 if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsActionsEditCommandUndo), &do_undo_command))
@@ -4762,8 +4764,6 @@ void WindowSettings::UpdatePageActionsEdit(bool only_restore_settings)
                     command.UIntID = MAKELPARAM(use_command_tags, do_undo_command);
                     has_value_changed = true;
                 }
-
-                ImGui::EndCollapsingArea();
 
                 break;
             }
