@@ -1578,7 +1578,6 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Performance", "PerformanceMonitorShowBattery",        m_ConfigBool[configid_bool_performance_monitor_show_battery]);
     config.WriteBool("Performance", "PerformanceMonitorShowTrackers",       m_ConfigBool[configid_bool_performance_monitor_show_trackers]);
     config.WriteBool("Performance", "PerformanceMonitorShowViveWireless",   m_ConfigBool[configid_bool_performance_monitor_show_vive_wireless]);
-    config.WriteBool("Performance", "PerformanceMonitorDisableGPUCounters", m_ConfigBool[configid_bool_performance_monitor_disable_gpu_counters]);
 
     config.WriteInt( "Misc", "ConfigVersion",      k_nDesktopPlusConfigVersion);
     config.WriteBool("Misc", "NoSteam",            m_ConfigBool[configid_bool_misc_no_steam]);

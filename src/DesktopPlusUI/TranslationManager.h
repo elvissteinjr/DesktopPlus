@@ -427,8 +427,6 @@ enum TRMGRStrID
     tstr_OvrlPropsPerfMonShowBattery,
     tstr_OvrlPropsPerfMonShowTrackerBattery,
     tstr_OvrlPropsPerfMonShowViveWirelessTemp,
-    tstr_OvrlPropsPerfMonDisableGPUCounter,
-    tstr_OvrlPropsPerfMonDisableGPUCounterTip,
     tstr_OvrlPropsPerfMonResetValues,
     tstr_OvrlPropsBrowserNotAvailableTip,
     tstr_OvrlPropsBrowserCloned,

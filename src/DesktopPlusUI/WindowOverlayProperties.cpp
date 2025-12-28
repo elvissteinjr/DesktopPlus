@@ -1089,29 +1089,6 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
 
     ImGui::Indent();
 
-    if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
-    {
-        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonDisableGPUCounter), &disable_gpu_counters))
-        {
-            //Update active performance counter state if the window is currently visible
-            if (UIManager::Get()->GetPerformanceWindow().IsVisible())
-            {
-                if (disable_gpu_counters)
-                {
-                    UIManager::Get()->GetPerformanceWindow().GetPerformanceData().DisableGPUCounters();
-                }
-                else
-                {
-                    UIManager::Get()->GetPerformanceWindow().GetPerformanceData().EnableCounters(true);
-                }
-            }
-
-            UIManager::Get()->RepeatFrame();
-        }
-        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-        HelpMarker(TranslationManager::GetString(tstr_OvrlPropsPerfMonDisableGPUCounterTip));
-    }
-
     ImGui::Spacing();
 
     if (ImGui::Button(TranslationManager::GetString(tstr_OvrlPropsPerfMonResetValues)))
