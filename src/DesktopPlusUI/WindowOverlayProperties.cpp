@@ -958,6 +958,9 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
         HelpMarker(TranslationManager::GetString(tstr_OvrlPropsPerfMonGlobalTip));
     }
 
+    const float column_1_width = (ImGui::GetContentRegionAvail().x - m_Column0Width) * 0.5f;
+
+    //Monitor style radio buttons
     ImGui::Columns(2, "ColumnPerformanceMonitor", false);
     ImGui::SetColumnWidth(0, m_Column0Width);
 
@@ -965,9 +968,10 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyle));
     ImGui::NextColumn();
 
-    bool& use_large_style = ConfigManager::GetRef(configid_bool_performance_monitor_large_style);
+    bool& use_large_style        = ConfigManager::GetRef(configid_bool_performance_monitor_large_style);
+    const bool use_compact_style = !use_large_style;
 
-    if (ImGui::RadioButton(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleCompact), !use_large_style))
+    if (ImGui::RadioButton(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleCompact), use_compact_style))
     {
         use_large_style = false;
         UIManager::Get()->RepeatFrame();
@@ -986,9 +990,10 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     //Monitor items
     ImGui::Spacing();
 
-    ImGui::Columns(2, "ColumnPerformanceMonitorItems", false);
+    ImGui::Columns(3, "ColumnPerformanceMonitorItems", false);
     ImGui::SetColumnWidth(0, m_Column0Width);
-    ImGui::SetColumnWidth(1, m_Column0Width);
+    ImGui::SetColumnWidth(1, column_1_width);
+    ImGui::SetColumnWidth(2, column_1_width);
 
     bool& show_cpu             = ConfigManager::GetRef(configid_bool_performance_monitor_show_cpu);
     bool& show_gpu             = ConfigManager::GetRef(configid_bool_performance_monitor_show_gpu);
@@ -1000,72 +1005,82 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     bool& show_vive_wireless   = ConfigManager::GetRef(configid_bool_performance_monitor_show_vive_wireless);
     bool& disable_gpu_counters = ConfigManager::GetRef(configid_bool_performance_monitor_disable_gpu_counters);
 
+    const bool can_show_graphs = ((use_large_style) && ((show_cpu) || (show_gpu))) || (!use_large_style);
+    const bool can_show_time   = ((use_large_style) && (show_fps) && (show_battery));
+
     //Keep unavailable options as enabled but show the check boxes as unticked to avoid confusion
-    bool show_graphs_visual        = ( (use_large_style) && ((!show_cpu) && (!show_gpu)) ) ? false : show_graphs;
-    bool show_time_visual          = ( ((!show_fps) && (!show_battery)) || (!use_large_style) ) ? false : show_time;
+    bool show_graphs_visual  = (can_show_graphs) ? show_graphs : false;
+    bool show_time_visual    = (can_show_time)   ? show_time : false;
     bool show_trackers_visual      = (!show_battery) ? false : show_trackers;
     bool show_vive_wireless_visual = (!show_battery) ? false : show_vive_wireless;
 
-    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonShowCPU), &show_cpu))
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPerfMonItems));
+    ImGui::NextColumn();
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonItemCPU), &show_cpu))
     {
         UIManager::Get()->RepeatFrame();
     }
 
     ImGui::NextColumn();
 
-    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonShowGPU), &show_gpu))
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonItemGPU), &show_gpu))
+    {
+        UIManager::Get()->RepeatFrame();
+    }
+
+    ImGui::NextColumn();
+    ImGui::NextColumn();
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonItemFrameStats), &show_fps))
     {
         UIManager::Get()->RepeatFrame();
     }
 
     ImGui::NextColumn();
 
-    if ( (use_large_style) && ((!show_cpu) && (!show_gpu)) )
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonItemBattery), &show_battery))
+    {
+        UIManager::Get()->RepeatFrame();
+    }
+
+    ImGui::NextColumn();
+    ImGui::NextColumn();
+
+    if (!can_show_graphs)
         ImGui::PushItemDisabled();
 
-    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonShowGraphs), &show_graphs_visual))
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonItemGraphs), &show_graphs_visual))
     {
         show_graphs = show_graphs_visual;
         UIManager::Get()->RepeatFrame();
     }
 
-    if ( (use_large_style) && ((!show_cpu) && (!show_gpu)) )
+    if (!can_show_graphs)
         ImGui::PopItemDisabled();
 
     ImGui::NextColumn();
 
-    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonShowFrameStats), &show_fps))
-    {
-        UIManager::Get()->RepeatFrame();
-    }
-
-    ImGui::NextColumn();
-
-    if ( ((!show_fps) && (!show_battery)) || (!use_large_style) )
+    if (!can_show_time)
         ImGui::PushItemDisabled();
 
-    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonShowTime), &show_time_visual))
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonItemTime), &show_time_visual))
     {
         show_time = show_time_visual;
         UIManager::Get()->RepeatFrame();
     }
 
-    if ( ((!show_fps) && (!show_battery)) || (!use_large_style) )
+    if (!can_show_time)
         ImGui::PopItemDisabled();
 
     ImGui::NextColumn();
-
-    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonShowBattery), &show_battery))
-    {
-        UIManager::Get()->RepeatFrame();
-    }
-
     ImGui::NextColumn();
 
     if (!show_battery)
         ImGui::PushItemDisabled();
 
-    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonShowTrackerBattery), &show_trackers_visual))
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonItemTrackerBattery), &show_trackers_visual))
     {
         show_trackers = show_trackers_visual;
         UIManager::Get()->RepeatFrame();
@@ -1075,7 +1090,7 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
 
     if (UIManager::Get()->GetPerformanceWindow().IsViveWirelessInstalled())
     {
-        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonShowViveWirelessTemp), &show_vive_wireless_visual))
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonItemViveWirelessTemp), &show_vive_wireless_visual))
         {
             show_vive_wireless = show_vive_wireless_visual;
             UIManager::Get()->RepeatFrame();
