@@ -82,8 +82,8 @@ namespace ImGui
     bool BeginComboAnimated(const char* label, const char* preview_value, ImGuiComboFlags flags = 0);
 
     //Right-alinged Text(). Use offset_x if it's not supposed to take all of the available space. Note that text may not always be pixel-perfectly aligned with this
-    void TextRight(float offset_x, const char* fmt, ...)           IM_FMTARGS(2);
-    void TextRightV(float offset_x, const char* fmt, va_list args) IM_FMTLIST(2);
+    void TextRight(float offset_x, const char* fmt, ...)           IM_FMTARGS(3);
+    void TextRightV(float offset_x, const char* fmt, va_list args) IM_FMTLIST(3);
     void TextRightUnformatted(float offset_x, const char* text, const char* text_end = nullptr);
 
     //Shortcut for unformatted colored text
