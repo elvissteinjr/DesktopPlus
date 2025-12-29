@@ -12,6 +12,7 @@
 ImVec4 Style_ImGuiCol_TextNotification;
 ImVec4 Style_ImGuiCol_TextWarning;
 ImVec4 Style_ImGuiCol_TextError;
+ImVec4 Style_ImGuiCol_TextOutline;
 ImVec4 Style_ImGuiCol_ButtonPassiveToggled;
 ImVec4 Style_ImGuiCol_SteamVRCursor;
 ImVec4 Style_ImGuiCol_SteamVRCursorBorder;
@@ -797,6 +798,130 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_Text, col);
         ImGui::TextUnformatted(text, text_end); 
         ImGui::PopStyleColor();
+    }
+
+    void TextOutlined(const char* fmt, ...)
+    {
+        va_list args;
+        va_start(args, fmt);
+        TextOutlinedV(fmt, args);
+        va_end(args);
+    }
+
+    void TextOutlinedV(const char* fmt, va_list args)
+    {
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems)
+            return;
+
+        const char* text, *text_end;
+        ImFormatStringToTempBufferV(&text, &text_end, fmt, args);
+        TextUnformattedOutlined(text, text_end);
+    }
+
+    void TextUnformattedOutlined(const char* text, const char* text_end)
+    {
+        //This is mostly ImGui::TextUnformatted()
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems)
+            return;
+        ImGuiContext& g = *GImGui;
+
+        // Accept null ranges
+        if (text == text_end)
+            text = text_end = "";
+
+        // Calculate length
+        const char* text_begin = text;
+        if (text_end == NULL)
+            text_end = text + ImStrlen(text); // FIXME-OPT
+
+        const ImVec2 pos(window->DC.CursorPos.x, window->DC.CursorPos.y + window->DC.CurrLineTextBaseOffset);
+
+        // Common case
+        const ImVec2 text_size = CalcTextSize(text_begin, text_end);
+
+        ImRect bb(pos, pos + text_size);
+        ItemSize(text_size, 0.0f);
+        if (!ItemAdd(bb, 0))
+            return;
+
+        // Render
+        const bool hide_text_after_hash = true;
+
+        // Hide anything after a '##' string
+        const char* text_display_end;
+        if (hide_text_after_hash)
+        {
+            text_display_end = FindRenderedTextEnd(text, text_end);
+        }
+        else
+        {
+            if (!text_end)
+                text_end = text + ImStrlen(text); // FIXME-OPT
+            text_display_end = text_end;
+        }
+
+        if (text != text_display_end)
+        {
+            const ImU32 col = GetColorU32(ImGuiCol_Text);
+            const ImU32 col_outline = GetColorU32(Style_ImGuiCol_TextOutline);
+
+            //This does indeed do 9x the AddText() calls of normal text, which is a bit wasteful but not too bad with the short strings this gets used with
+            ImVec2 pos_outline = pos;
+            pos_outline.y -= 1;
+            window->DrawList->AddText(g.Font, g.FontSize, pos_outline, col_outline, text, text_display_end);
+            pos_outline.x += 1;
+            window->DrawList->AddText(g.Font, g.FontSize, pos_outline, col_outline, text, text_display_end);
+            pos_outline.y += 1;
+            window->DrawList->AddText(g.Font, g.FontSize, pos_outline, col_outline, text, text_display_end);
+            pos_outline.y += 1;
+            window->DrawList->AddText(g.Font, g.FontSize, pos_outline, col_outline, text, text_display_end);
+            pos_outline.x -= 1;
+            window->DrawList->AddText(g.Font, g.FontSize, pos_outline, col_outline, text, text_display_end);
+            pos_outline.x -= 1;
+            window->DrawList->AddText(g.Font, g.FontSize, pos_outline, col_outline, text, text_display_end);
+            pos_outline.y -= 1;
+            window->DrawList->AddText(g.Font, g.FontSize, pos_outline, col_outline, text, text_display_end);
+            pos_outline.y -= 1;
+            window->DrawList->AddText(g.Font, g.FontSize, pos_outline, col_outline, text, text_display_end);
+
+            window->DrawList->AddText(g.Font, g.FontSize, pos, col, text, text_display_end);
+
+            if (g.LogEnabled)
+                LogRenderedText(&pos, text, text_display_end);
+        }
+    }
+
+    void TextRightOutlined(float offset_x, const char* fmt, ...)
+    {
+        va_list args;
+        va_start(args, fmt);
+        TextRightOutlinedV(offset_x, fmt, args);
+        va_end(args);
+    }
+
+    void TextRightOutlinedV(float offset_x, const char* fmt, va_list args)
+    {
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems)
+            return;
+
+        const char* text, *text_end;
+        ImFormatStringToTempBufferV(&text, &text_end, fmt, args);
+        TextRightUnformattedOutlined(offset_x, text, text_end);
+    }
+
+    void TextRightUnformattedOutlined(float offset_x, const char* text, const char* text_end)
+    {
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems)
+            return;
+
+        ImVec2 size = ImGui::CalcTextSize(text, text_end);
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x - size.x - offset_x));
+
+        TextUnformattedOutlined(text, text_end);
     }
 
     void RenderTextClippedUnclamped(const ImVec2& pos_min, const ImVec2& pos_max, const char* text, const char* text_end, const ImVec2* text_size_if_known, const ImVec2& align, const ImRect* clip_rect)

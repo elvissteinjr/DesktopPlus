@@ -1584,6 +1584,7 @@ void UIManager::UpdateStyle()
     Style_ImGuiCol_TextNotification        = ImVec4(0.64f, 0.97f, 0.26f, 1.00f);
     Style_ImGuiCol_TextWarning             = ImVec4(0.98f, 0.81f, 0.26f, 1.00f);
     Style_ImGuiCol_TextError               = ImVec4(0.97f, 0.33f, 0.33f, 1.00f);
+    Style_ImGuiCol_TextOutline             = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
     Style_ImGuiCol_ButtonPassiveToggled    = ImVec4(0.122f, 0.220f, 0.322f, 1.000f);
     Style_ImGuiCol_SteamVRCursor           = ImVec4(0.463f, 0.765f, 0.882f, 1.000f);
     Style_ImGuiCol_SteamVRCursorBorder     = ImVec4(0.161f, 0.176f, 0.196f, 0.929f);

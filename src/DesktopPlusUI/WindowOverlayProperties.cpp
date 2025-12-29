@@ -971,7 +971,8 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     bool& use_large_style        = ConfigManager::GetRef(configid_bool_performance_monitor_large_style);
     const bool use_compact_style = !use_large_style;
 
-    bool& show_window = ConfigManager::GetRef(configid_bool_performance_monitor_style_show_window);
+    bool& show_window       = ConfigManager::GetRef(configid_bool_performance_monitor_style_show_window);
+    bool& show_text_outline = ConfigManager::GetRef(configid_bool_performance_monitor_style_show_text_outline);
 
     if (ImGui::RadioButton(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleCompact), use_compact_style))
     {
@@ -998,6 +999,13 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     ImGui::NextColumn();
 
     if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleShowWindow), &show_window))
+    {
+        UIManager::Get()->RepeatFrame();
+    }
+
+    ImGui::NextColumn();
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleShowTextOutline), &show_text_outline))
     {
         UIManager::Get()->RepeatFrame();
     }

@@ -114,6 +114,12 @@ class WindowPerformance
         //Overlay state
         bool m_IsOverlaySharedTextureUpdateNeeded;
 
+        //Wrapped text functions to choose whether outline variant should be used or not
+        static void PerfMonText(const char* fmt, ...) IM_FMTARGS(2);
+        static void PerfMonTextUnformatted(const char* text, const char* text_end = nullptr);
+        static void PerfMonTextRight(float offset_x, const char* fmt, ...) IM_FMTARGS(3);
+        static void PerfMonTextRightUnformatted(float offset_x, const char* text, const char* text_end = nullptr);
+
         void DisplayStatsLarge();
         void DisplayStatsCompact();
         void UpdateStatValues();

@@ -421,6 +421,7 @@ enum TRMGRStrID
     tstr_OvrlPropsPerfMonStyleCompact,
     tstr_OvrlPropsPerfMonStyleLarge,
     tstr_OvrlPropsPerfMonStyleShowWindow,
+    tstr_OvrlPropsPerfMonStyleShowTextOutline,
     tstr_OvrlPropsPerfMonItemCPU,
     tstr_OvrlPropsPerfMonItemGPU,
     tstr_OvrlPropsPerfMonItemGraphs,

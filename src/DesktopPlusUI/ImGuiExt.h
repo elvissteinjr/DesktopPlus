@@ -10,6 +10,7 @@
 extern ImVec4 Style_ImGuiCol_TextNotification;
 extern ImVec4 Style_ImGuiCol_TextWarning;
 extern ImVec4 Style_ImGuiCol_TextError;
+extern ImVec4 Style_ImGuiCol_TextOutline;
 extern ImVec4 Style_ImGuiCol_ButtonPassiveToggled; //Toggled state for a button indicating a passive state, rather a full-on eye-catching active state
 extern ImVec4 Style_ImGuiCol_SteamVRCursor;        //Inner color used to mimic a SteamVR overlay cursor
 extern ImVec4 Style_ImGuiCol_SteamVRCursorBorder;  //Border color used to mimic a SteamVR overlay cursor
@@ -87,6 +88,14 @@ namespace ImGui
 
     //Shortcut for unformatted colored text
     void TextColoredUnformatted(const ImVec4& col, const char* text, const char* text_end = nullptr);
+
+    //Outlined Text(). Uses Style_ImGuiCol_TextOutline
+    void TextOutlined(const char* fmt, ...) IM_FMTARGS(2);
+    void TextOutlinedV(const char* fmt, va_list args) IM_FMTLIST(2);
+    void TextUnformattedOutlined(const char* text, const char* text_end = nullptr);
+    void TextRightOutlined(float offset_x, const char* fmt, ...) IM_FMTARGS(3);
+    void TextRightOutlinedV(float offset_x, const char* fmt, va_list args) IM_FMTLIST(3);
+    void TextRightUnformattedOutlined(float offset_x, const char* text, const char* text_end = nullptr);
 
     //RenderTextClipped, but does not limit rendered minimal position to alignment pos_min (so centered text will stay centered with left side being cut off instead)
     void RenderTextClippedUnclamped(const ImVec2& pos_min, const ImVec2& pos_max, const char* text, const char* text_end, const ImVec2* text_size_if_known, const ImVec2& align = ImVec2(0, 0), const ImRect* clip_rect = nullptr);
