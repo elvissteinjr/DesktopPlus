@@ -971,6 +971,8 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     bool& use_large_style        = ConfigManager::GetRef(configid_bool_performance_monitor_large_style);
     const bool use_compact_style = !use_large_style;
 
+    bool& show_window = ConfigManager::GetRef(configid_bool_performance_monitor_style_show_window);
+
     if (ImGui::RadioButton(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleCompact), use_compact_style))
     {
         use_large_style = false;
@@ -982,6 +984,21 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     if (ImGui::RadioButton(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleLarge), use_large_style))
     {
         use_large_style = true;
+        UIManager::Get()->RepeatFrame();
+    }
+
+    ImGui::Columns(1);
+
+    //Monitor style checkboxes
+    ImGui::Columns(3, "ColumnPerformanceMonitorStyleCheckboxes", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+    ImGui::SetColumnWidth(1, column_1_width);
+    ImGui::SetColumnWidth(2, column_1_width);
+
+    ImGui::NextColumn();
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleShowWindow), &show_window))
+    {
         UIManager::Get()->RepeatFrame();
     }
 

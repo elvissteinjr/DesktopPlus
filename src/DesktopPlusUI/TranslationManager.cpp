@@ -422,6 +422,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsPerfMonItems",
     "tstr_OvrlPropsPerfMonStyleCompact",
     "tstr_OvrlPropsPerfMonStyleLarge",
+    "tstr_OvrlPropsPerfMonStyleShowWindow",
     "tstr_OvrlPropsPerfMonItemCPU",
     "tstr_OvrlPropsPerfMonItemGPU",
     "tstr_OvrlPropsPerfMonItemGraphs",

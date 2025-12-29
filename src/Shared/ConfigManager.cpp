@@ -589,6 +589,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_performance_ui_auto_throttle]                = config.ReadBool("Performance", "UIAutoThrottle", true);
     m_ConfigInt[configid_int_performance_ui_frameskip]                      = config.ReadInt( "Performance", "UIFrameSkip", 0);
     m_ConfigBool[configid_bool_performance_monitor_large_style]             = config.ReadBool("Performance", "PerformanceMonitorStyleLarge", true);
+    m_ConfigBool[configid_bool_performance_monitor_style_show_window]       = config.ReadBool("Performance", "PerformanceMonitorStyleShowWindow", true);
     m_ConfigBool[configid_bool_performance_monitor_show_graphs]             = config.ReadBool("Performance", "PerformanceMonitorShowGraphs", true);
     m_ConfigBool[configid_bool_performance_monitor_show_time]               = config.ReadBool("Performance", "PerformanceMonitorShowTime", false);
     m_ConfigBool[configid_bool_performance_monitor_show_cpu]                = config.ReadBool("Performance", "PerformanceMonitorShowCPU", true);
@@ -1570,6 +1571,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Performance", "ShowFPS",                              m_ConfigBool[configid_bool_performance_show_fps]);
     config.WriteBool("Performance", "UIAutoThrottle",                       m_ConfigBool[configid_bool_performance_ui_auto_throttle]);
     config.WriteBool("Performance", "PerformanceMonitorStyleLarge",         m_ConfigBool[configid_bool_performance_monitor_large_style]);
+    config.WriteBool("Performance", "PerformanceMonitorStyleShowWindow",    m_ConfigBool[configid_bool_performance_monitor_style_show_window]);
     config.WriteBool("Performance", "PerformanceMonitorShowGraphs",         m_ConfigBool[configid_bool_performance_monitor_show_graphs]);
     config.WriteBool("Performance", "PerformanceMonitorShowTime",           m_ConfigBool[configid_bool_performance_monitor_show_time]);
     config.WriteBool("Performance", "PerformanceMonitorShowCPU",            m_ConfigBool[configid_bool_performance_monitor_show_cpu]);

@@ -57,6 +57,8 @@ void WindowPerformance::Update(bool show_as_popup)
     const DPRect& tex_rect = UITextureSpaces::Get().GetRect(ui_texspace_performance_monitor);
     ImGui::SetNextWindowSizeConstraints({0.0f, 0.0f}, {(float)tex_rect.GetWidth() - 1, (float)tex_rect.GetHeight() - 1});
 
+    const ImGuiWindowFlags flags_extra = (!ConfigManager::GetValue(configid_bool_performance_monitor_style_show_window)) ? ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration : 0;
+
     if (show_as_popup)
     {
         //Don't update values when repeating the frame
@@ -79,7 +81,7 @@ void WindowPerformance::Update(bool show_as_popup)
         ImGui::SetNextWindowPos({io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f}, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 
         if (ImGui::BeginPopup("PopupPerformanceMonitor", ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize |
-                                                         ImGuiWindowFlags_NoScrollbar))
+                                                         ImGuiWindowFlags_NoScrollbar | flags_extra))
         {
             ImGui::PopStyleVar(); //ImGuiStyleVar_PopupRounding
             is_popup_rounding_pushed = false;
@@ -128,7 +130,7 @@ void WindowPerformance::Update(bool show_as_popup)
         ImGui::SetNextWindowPos(ImVec2((float)rect.GetCenter().x, (float)rect.GetCenter().y), 0, ImVec2(0.5f, 0.5f));
 
         ImGui::Begin("WindowPerformance", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
-                                                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
+                                                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar | flags_extra);
 
         if (ConfigManager::GetValue(configid_bool_performance_monitor_large_style))
         {

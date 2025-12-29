@@ -70,6 +70,7 @@ enum ConfigID_Bool
     configid_bool_performance_show_fps,
     configid_bool_performance_ui_auto_throttle,
     configid_bool_performance_monitor_large_style,
+    configid_bool_performance_monitor_style_show_window,
     configid_bool_performance_monitor_show_graphs,
     configid_bool_performance_monitor_show_time,
     configid_bool_performance_monitor_show_cpu,
