@@ -1235,7 +1235,7 @@ void KeyboardEditor::UpdateWindowMetadata()
 
             ImGui::SameLine();
             ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
-            ImGui::TextRightUnformatted(0.0f, metadata.FileName.c_str());
+            ImGui::TextRightUnformatted(0.0f, 0.0f, metadata.FileName.c_str());
             ImGui::PopStyleColor();
 
             ImGui::PopID();
@@ -1281,7 +1281,7 @@ void KeyboardEditor::UpdateWindowMetadata()
 
             ImGui::AlignTextToFramePadding();
             ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextError);
-            ImGui::TextRightUnformatted(style.ItemInnerSpacing.x, TranslationManager::GetString(tstr_KeyboardEditorMetadataSavePopupConfirmError));
+            ImGui::TextRightUnformatted(style.ItemInnerSpacing.x, 0.0f, TranslationManager::GetString(tstr_KeyboardEditorMetadataSavePopupConfirmError));
             ImGui::PopStyleColor();
         }
 
@@ -1335,7 +1335,7 @@ void KeyboardEditor::UpdateWindowMetadata()
 
             ImGui::SameLine();
             ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
-            ImGui::TextRightUnformatted(0.0f, metadata.FileName.c_str());
+            ImGui::TextRightUnformatted(0.0f, 0.0f, metadata.FileName.c_str());
             ImGui::PopStyleColor();
 
             ImGui::PopID();

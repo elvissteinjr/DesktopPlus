@@ -28,6 +28,7 @@ WindowOverlayProperties::WindowOverlayProperties() :
     m_IsConfigDataModified(false),
     m_OriginHMDFloorSettingsAnimationProgress(0.0f),
     m_OriginTheaterScreenSettingsAnimationProgress(0.0f),
+    m_PerfMonStyleCheckboxAnimationProgress(0.0f),
     m_BufferOverlayName{0},
     m_IsBrowserURLChanged(false)
 {
@@ -156,6 +157,7 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
 
         m_OriginHMDFloorSettingsAnimationProgress      = (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_hmd_floor)      ? 1.0f : 0.0f;
         m_OriginTheaterScreenSettingsAnimationProgress = (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen) ? 1.0f : 0.0f;
+        m_PerfMonStyleCheckboxAnimationProgress        = (ConfigManager::GetValue(configid_bool_performance_monitor_minimal_style))  ? 1.0f : 0.0f;
     }
 
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_interface_overlay_current_id, (int)overlay_id);
@@ -968,15 +970,27 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyle));
     ImGui::NextColumn();
 
+    bool& use_minimal_style      = ConfigManager::GetRef(configid_bool_performance_monitor_minimal_style);
     bool& use_large_style        = ConfigManager::GetRef(configid_bool_performance_monitor_large_style);
-    const bool use_compact_style = !use_large_style;
+    const bool use_compact_style = (!use_minimal_style && !use_large_style);
 
     bool& show_window       = ConfigManager::GetRef(configid_bool_performance_monitor_style_show_window);
     bool& show_text_outline = ConfigManager::GetRef(configid_bool_performance_monitor_style_show_text_outline);
+    bool& minimal_show_more = ConfigManager::GetRef(configid_bool_performance_monitor_style_minimal_show_more);
+
+    if (ImGui::RadioButton(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleMinimal), use_minimal_style))
+    {
+        use_minimal_style = true;
+        use_large_style   = false;
+        UIManager::Get()->RepeatFrame();
+    }
+
+    ImGui::SameLine();
 
     if (ImGui::RadioButton(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleCompact), use_compact_style))
     {
-        use_large_style = false;
+        use_minimal_style = false;
+        use_large_style   = false;
         UIManager::Get()->RepeatFrame();
     }
 
@@ -984,7 +998,8 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
 
     if (ImGui::RadioButton(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleLarge), use_large_style))
     {
-        use_large_style = true;
+        use_minimal_style = false;
+        use_large_style   = true;
         UIManager::Get()->RepeatFrame();
     }
 
@@ -1012,6 +1027,23 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
 
     ImGui::Columns(1);
 
+    //This needs more space in some languages, so we give it the full width as it's the only checkbox for now
+    ImGui::Columns(2, "ColumnPerformanceMonitorStyleMinimalSettings", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
+    ImGui::NextColumn();
+
+    ImGui::BeginCollapsingArea("PerformanceMonitorStyleMinimalSettings", use_minimal_style, m_PerfMonStyleCheckboxAnimationProgress);
+
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPerfMonStyleMinimalShowMore), &minimal_show_more))
+    {
+        UIManager::Get()->RepeatFrame();
+    }
+
+    ImGui::EndCollapsingArea();
+
+    ImGui::Columns(1);
+
     //Monitor items
     ImGui::Spacing();
 
@@ -1030,8 +1062,8 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     bool& show_vive_wireless   = ConfigManager::GetRef(configid_bool_performance_monitor_show_vive_wireless);
     bool& disable_gpu_counters = ConfigManager::GetRef(configid_bool_performance_monitor_disable_gpu_counters);
 
-    const bool can_show_graphs = ((use_large_style) && ((show_cpu) || (show_gpu))) || (!use_large_style);
-    const bool can_show_time   = ((use_large_style) && (show_fps) && (show_battery));
+    const bool can_show_graphs = ((use_large_style) && ((show_cpu) || (show_gpu)))   || (!use_large_style);
+    const bool can_show_time   = ((use_large_style) && (show_fps) && (show_battery)) || (use_minimal_style);
 
     //Keep unavailable options as enabled but show the check boxes as unticked to avoid confusion
     bool show_graphs_visual  = (can_show_graphs) ? show_graphs : false;
@@ -1099,7 +1131,12 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
     if (!can_show_time)
         ImGui::PopItemDisabled();
 
-    ImGui::NextColumn();
+    ImGui::Columns(1);
+
+    //These need more space than the other entries, so one per line here. Doesn't look as nice, but will have to do for now
+    ImGui::Columns(2, "ColumnPerformanceMonitorItemsLong", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
     ImGui::NextColumn();
 
     if (!show_battery)
@@ -1111,6 +1148,8 @@ void WindowOverlayProperties::UpdatePageMainCatPerformanceMonitor()
         UIManager::Get()->RepeatFrame();
     }
 
+    ImGui::NextColumn();
+    ImGui::NextColumn();
     ImGui::NextColumn();
 
     if (UIManager::Get()->GetPerformanceWindow().IsViveWirelessInstalled())

@@ -1022,7 +1022,7 @@ void WindowFloatingUIOverlayStats::Update(const WindowFloatingUIMainBar& mainbar
 
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorFPS));
         ImGui::SameLine();
-        ImGui::TextRight(0.0f, "%d", fps);
+        ImGui::TextRight(0.0f, 0.0f, "%d", fps);
 
         ImGui::End();
     }

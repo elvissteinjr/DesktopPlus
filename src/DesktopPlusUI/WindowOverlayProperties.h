@@ -40,6 +40,7 @@ class WindowOverlayProperties : public FloatingWindow, public FloatingWindowDesk
 
         float m_OriginHMDFloorSettingsAnimationProgress;
         float m_OriginTheaterScreenSettingsAnimationProgress;
+        float m_PerfMonStyleCheckboxAnimationProgress;
         std::string m_CropButtonLabel;
         std::string m_WinRTSourceButtonLabel;
         std::string m_ActionButtonsLabel;

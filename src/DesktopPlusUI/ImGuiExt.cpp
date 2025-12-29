@@ -757,15 +757,15 @@ namespace ImGui
         return true;
     }
 
-    void TextRight(float offset_x, const char* fmt, ...)
+    void TextRight(float offset_x, float fixed_w, const char* fmt, ...)
     {
         va_list args;
         va_start(args, fmt);
-        TextRightV(offset_x, fmt, args);
+        TextRightV(offset_x, fixed_w, fmt, args);
         va_end(args);
     }
 
-    void TextRightV(float offset_x, const char* fmt, va_list args)
+    void TextRightV(float offset_x, float fixed_w, const char* fmt, va_list args)
     {
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems)
@@ -775,20 +775,18 @@ namespace ImGui
         const char* text, *text_end;
         ImFormatStringToTempBufferV(&text, &text_end, fmt, args);
 
-        ImVec2 size = ImGui::CalcTextSize(text, text_end);
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x - size.x - offset_x));
-
-        TextEx(text, text_end, ImGuiTextFlags_NoWidthForLargeClippedText);
+        TextRightUnformatted(offset_x, fixed_w, text, text_end);
     }
 
-    void TextRightUnformatted(float offset_x, const char* text, const char* text_end)
+    void TextRightUnformatted(float offset_x, float fixed_w, const char* text, const char* text_end)
     {
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems)
             return;
 
         ImVec2 size = ImGui::CalcTextSize(text, text_end);
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x - size.x - offset_x));
+        const float available_width = (fixed_w == 0.0f) ? ImGui::GetContentRegionAvail().x : fixed_w;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (available_width - size.x - offset_x));
 
         TextEx(text, text_end, ImGuiTextFlags_NoWidthForLargeClippedText);
     }
@@ -893,15 +891,15 @@ namespace ImGui
         }
     }
 
-    void TextRightOutlined(float offset_x, const char* fmt, ...)
+    void TextRightOutlined(float offset_x, float fixed_w, const char* fmt, ...)
     {
         va_list args;
         va_start(args, fmt);
-        TextRightOutlinedV(offset_x, fmt, args);
+        TextRightOutlinedV(offset_x, fixed_w, fmt, args);
         va_end(args);
     }
 
-    void TextRightOutlinedV(float offset_x, const char* fmt, va_list args)
+    void TextRightOutlinedV(float offset_x, float fixed_w, const char* fmt, va_list args)
     {
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems)
@@ -909,17 +907,18 @@ namespace ImGui
 
         const char* text, *text_end;
         ImFormatStringToTempBufferV(&text, &text_end, fmt, args);
-        TextRightUnformattedOutlined(offset_x, text, text_end);
+        TextRightUnformattedOutlined(offset_x, fixed_w, text, text_end);
     }
 
-    void TextRightUnformattedOutlined(float offset_x, const char* text, const char* text_end)
+    void TextRightUnformattedOutlined(float offset_x, float fixed_w, const char* text, const char* text_end)
     {
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems)
             return;
 
-        ImVec2 size = ImGui::CalcTextSize(text, text_end);
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x - size.x - offset_x));
+        const ImVec2 size = ImGui::CalcTextSize(text, text_end);
+        const float available_width = (fixed_w == 0.0f) ? ImGui::GetContentRegionAvail().x : fixed_w;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (available_width - size.x - offset_x));
 
         TextUnformattedOutlined(text, text_end);
     }

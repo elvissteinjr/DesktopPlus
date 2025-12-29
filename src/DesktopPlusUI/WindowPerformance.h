@@ -61,6 +61,9 @@ class WindowPerformance
         ULONGLONG m_VisibleTickLast; //Valid when m_Visible is false
         bool m_IsPopupOpen;
 
+        float m_MinimalItemLineWrapMaxLength;
+        float m_MinimalItemLineWrapPrevX;
+
         Win32PerformanceData m_PerfData;
 
         uint32_t m_PIDLast;
@@ -117,14 +120,20 @@ class WindowPerformance
         //Wrapped text functions to choose whether outline variant should be used or not
         static void PerfMonText(const char* fmt, ...) IM_FMTARGS(2);
         static void PerfMonTextUnformatted(const char* text, const char* text_end = nullptr);
-        static void PerfMonTextRight(float offset_x, const char* fmt, ...) IM_FMTARGS(3);
-        static void PerfMonTextRightUnformatted(float offset_x, const char* text, const char* text_end = nullptr);
+        static void PerfMonTextRight(float offset_x, float fixed_w, const char* fmt, ...) IM_FMTARGS(4);
+        static void PerfMonTextRightUnformatted(float offset_x, float fixed_w, const char* text, const char* text_end = nullptr);
+
+        //Called in Minimal style to do line wrapper on a per-item basis
+        void StatsMinimalItemLineWrap();
 
         void DisplayStatsLarge();
         void DisplayStatsCompact();
+        void DisplayStatsMinimal();
+
         void UpdateStatValues();
         void UpdateStatValuesSteamVR();
         void UpdateStatValuesViveWireless();
+
         void DrawFrameTimeGraphCPU(const ImVec2& graph_size, double plot_xmin, double plot_xmax, double plot_ymax);
         void DrawFrameTimeGraphGPU(const ImVec2& graph_size, double plot_xmin, double plot_xmax, double plot_ymax);
 

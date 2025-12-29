@@ -18,6 +18,8 @@ WindowPerformance::WindowPerformance() :
     m_Visible(false),
     m_VisibleTickLast(0),
     m_IsPopupOpen(false),
+    m_MinimalItemLineWrapMaxLength(FLT_MAX),
+    m_MinimalItemLineWrapPrevX(0.0f),
     m_PIDLast(0),
     m_OffsetFrameIndex(0),
     m_OffsetFramesPresents(0),
@@ -95,6 +97,10 @@ void WindowPerformance::Update(bool show_as_popup)
             {
                 DisplayStatsLarge();
             }
+            else if (ConfigManager::GetValue(configid_bool_performance_monitor_minimal_style))
+            {
+                DisplayStatsMinimal();
+            }
             else
             {
                 DisplayStatsCompact();
@@ -135,6 +141,10 @@ void WindowPerformance::Update(bool show_as_popup)
         if (ConfigManager::GetValue(configid_bool_performance_monitor_large_style))
         {
             DisplayStatsLarge();
+        }
+        else if (ConfigManager::GetValue(configid_bool_performance_monitor_minimal_style))
+        {
+            DisplayStatsMinimal();
         }
         else
         {
@@ -200,21 +210,47 @@ void WindowPerformance::PerfMonTextUnformatted(const char* text, const char* tex
                                                                                          ImGui::TextUnformatted(text, text_end);
 }
 
-void WindowPerformance::PerfMonTextRight(float offset_x, const char* fmt, ...)
+void WindowPerformance::PerfMonTextRight(float offset_x, float fixed_w, const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
 
-    ConfigManager::GetValue(configid_bool_performance_monitor_style_show_text_outline) ? ImGui::TextRightOutlinedV(offset_x, fmt, args) : 
-                                                                                         ImGui::TextRightV(offset_x, fmt, args);
+    ConfigManager::GetValue(configid_bool_performance_monitor_style_show_text_outline) ? ImGui::TextRightOutlinedV(offset_x, fixed_w, fmt, args) : 
+                                                                                         ImGui::TextRightV(offset_x, fixed_w, fmt, args);
 
     va_end(args);
 }
 
-void WindowPerformance::PerfMonTextRightUnformatted(float offset_x, const char* text, const char* text_end)
+void WindowPerformance::PerfMonTextRightUnformatted(float offset_x, float fixed_w, const char* text, const char* text_end)
 {
-    ConfigManager::GetValue(configid_bool_performance_monitor_style_show_text_outline) ? ImGui::TextRightUnformattedOutlined(offset_x, text, text_end) : 
-                                                                                         ImGui::TextRightUnformatted(offset_x, text, text_end);
+    ConfigManager::GetValue(configid_bool_performance_monitor_style_show_text_outline) ? ImGui::TextRightUnformattedOutlined(offset_x, fixed_w, text, text_end) : 
+                                                                                         ImGui::TextRightUnformatted(offset_x, fixed_w, text, text_end);
+}
+
+void WindowPerformance::StatsMinimalItemLineWrap()
+{
+    //Poor man's widget line-wrap
+    //We take advantage of being able to just toss a frame away if we're not happy and avoid calculating the size of each stat item
+    //Instead we just check if the last widget got clipped, and in that case store the starting position and use that as the max allowed starting pos before a line break
+    //Far from perfect, especially since there's no mechanism to reset the max length, but it does the job to provide a way to still display what is too many items anyways
+    const ImGuiStyle style = ImGui::GetStyle();
+    const DPRect& tex_rect = UITextureSpaces::Get().GetRect(ui_texspace_performance_monitor);
+    const float max_window_content_x = (float)tex_rect.GetWidth() - 1.0f - style.WindowPadding.x + ImGui::GetWindowPos().x;
+
+    if (ImGui::GetItemRectMax().x > max_window_content_x)
+    {
+        m_MinimalItemLineWrapMaxLength = m_MinimalItemLineWrapPrevX;
+        UIManager::Get()->RepeatFrame();
+        return;
+    }
+    else if (ImGui::GetCursorPosX() >= m_MinimalItemLineWrapMaxLength)
+    {
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x);
+        ImGui::NewLine();
+    }
+
+    //Could use item groups but this way works to leave the way the window is laid out mostly untouched
+    m_MinimalItemLineWrapPrevX = ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x;
 }
 
 void WindowPerformance::DisplayStatsLarge()
@@ -303,7 +339,7 @@ void WindowPerformance::DisplayStatsLarge()
         if (m_FrameTimeCPU > frame_time_warning_limit)
             ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-        PerfMonTextRight(text_ms_width, "%.2f", m_FrameTimeCPU);
+        PerfMonTextRight(text_ms_width, 0.0f, "%.2f", m_FrameTimeCPU);
         ImGui::SameLine(0.0f, 0.0f);
         PerfMonTextUnformatted(" ms");
 
@@ -319,7 +355,7 @@ void WindowPerformance::DisplayStatsLarge()
         PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorLoad));
         ImGui::NextColumn();
 
-        PerfMonTextRight(text_percent_width, "%.2f", m_PerfData.GetCPULoadPrecentage());
+        PerfMonTextRight(text_percent_width, 0.0f, "%.2f", m_PerfData.GetCPULoadPrecentage());
         ImGui::SameLine(0.0f, 0.0f);
         PerfMonTextUnformatted("%");
 
@@ -331,7 +367,7 @@ void WindowPerformance::DisplayStatsLarge()
         ImGui::NextColumn();
 
         //Right align
-        PerfMonTextRight(right_border_offset - 1.0f, "%.2f/%.2f GB", m_PerfData.GetRAMUsedGB(), m_PerfData.GetRAMTotalGB());
+        PerfMonTextRight(right_border_offset - 1.0f, 0.0f, "%.2f/%.2f GB", m_PerfData.GetRAMUsedGB(), m_PerfData.GetRAMTotalGB());
         ImGui::NextColumn();
     }
 
@@ -355,7 +391,7 @@ void WindowPerformance::DisplayStatsLarge()
         if (m_FrameTimeGPU > frame_time_warning_limit)
             ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-        PerfMonTextRight(text_ms_width, "%.2f", m_FrameTimeGPU);
+        PerfMonTextRight(text_ms_width, 0.0f, "%.2f", m_FrameTimeGPU);
         ImGui::SameLine(0.0f, 0.0f);
         PerfMonTextUnformatted(" ms");
         ImGui::NextColumn();
@@ -372,7 +408,7 @@ void WindowPerformance::DisplayStatsLarge()
             PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorLoad));
             ImGui::NextColumn();
 
-            PerfMonTextRight(text_percent_width, "%.2f", m_PerfData.GetGPULoadPrecentage());
+            PerfMonTextRight(text_percent_width, 0.0f, "%.2f", m_PerfData.GetGPULoadPrecentage());
             ImGui::SameLine(0.0f, 0.0f);
             PerfMonTextUnformatted("%");
             ImGui::NextColumn();
@@ -381,7 +417,7 @@ void WindowPerformance::DisplayStatsLarge()
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() - item_spacing_half);  //Reduce horizontal spacing
             PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorVRAM));
             ImGui::NextColumn();
-            PerfMonTextRight(right_border_offset - 1.0f, "%.2f/%.2f GB", m_PerfData.GetVRAMUsedGB(), m_PerfData.GetVRAMTotalGB());
+            PerfMonTextRight(right_border_offset - 1.0f, 0.0f, "%.2f/%.2f GB", m_PerfData.GetVRAMUsedGB(), m_PerfData.GetVRAMTotalGB());
             ImGui::NextColumn();
         }
     }
@@ -400,7 +436,7 @@ void WindowPerformance::DisplayStatsLarge()
         //-Time
         if (ConfigManager::GetValue(configid_bool_performance_monitor_show_time))
         {
-            PerfMonTextRightUnformatted(right_border_offset, m_TimeStr.c_str());
+            PerfMonTextRightUnformatted(right_border_offset, 0.0f, m_TimeStr.c_str());
         }
 
         ImGui::NextColumn();
@@ -410,14 +446,14 @@ void WindowPerformance::DisplayStatsLarge()
             //-FPS
             PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorFPS));
             ImGui::NextColumn();
-            PerfMonTextRight(0.0f, "%d", m_FPS);
+            PerfMonTextRight(0.0f, 0.0f, "%d", m_FPS);
             ImGui::NextColumn();
 
             //-Average FPS
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() - item_spacing_half);  //Reduce horizontal spacing
             PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorFPSAverage));
             ImGui::NextColumn();
-            PerfMonTextRight(right_border_offset, "%.2f", m_FPS_Average);
+            PerfMonTextRight(right_border_offset, 0.0f, "%.2f", m_FPS_Average);
             ImGui::NextColumn();
 
             //No VR app means no frame statistics (FPS still gets counted, though)
@@ -428,7 +464,7 @@ void WindowPerformance::DisplayStatsLarge()
             PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorReprojectionRatio));
             ImGui::NextColumn();
 
-            PerfMonTextRight(text_percent_width, "%.2f", m_ReprojectionRatio);
+            PerfMonTextRight(text_percent_width, 0.0f, "%.2f", m_ReprojectionRatio);
             ImGui::SameLine(0.0f, 0.0f);
             PerfMonTextUnformatted("%");
             ImGui::NextColumn();
@@ -437,7 +473,7 @@ void WindowPerformance::DisplayStatsLarge()
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() - item_spacing_half);  //Reduce horizontal spacing
             PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorDroppedFrames));
             ImGui::NextColumn();
-            PerfMonTextRight(right_border_offset, "%u", m_DroppedFrames);
+            PerfMonTextRight(right_border_offset, 0.0f, "%u", m_DroppedFrames);
             ImGui::NextColumn();
 
             if (m_PIDLast == 0)
@@ -456,7 +492,7 @@ void WindowPerformance::DisplayStatsLarge()
                 if (m_BatteryLeft < 15.0f)
                     ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-                PerfMonTextRight(text_percent_width, "%.0f", m_BatteryLeft);
+                PerfMonTextRight(text_percent_width, 0.0f, "%.0f", m_BatteryLeft);
                 ImGui::SameLine(0.0f, 0.0f);
                 PerfMonTextUnformatted("%");
                 ImGui::NextColumn();
@@ -467,7 +503,7 @@ void WindowPerformance::DisplayStatsLarge()
             else
             {
                 ImGui::PushItemDisabled();
-                PerfMonTextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorBatteryDisconnected));
+                PerfMonTextRightUnformatted(0.0f, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorBatteryDisconnected));
                 ImGui::NextColumn();
                 ImGui::PopItemDisabled();
             }
@@ -483,7 +519,7 @@ void WindowPerformance::DisplayStatsLarge()
                 if (m_BatteryRight < 15.0f)
                     ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-                PerfMonTextRight(text_percent_width + right_border_offset, "%.0f", m_BatteryRight);
+                PerfMonTextRight(text_percent_width + right_border_offset, 0.0f, "%.0f", m_BatteryRight);
                 ImGui::SameLine(0.0f, 0.0f);
                 PerfMonTextUnformatted("%");
                 ImGui::NextColumn();
@@ -494,7 +530,7 @@ void WindowPerformance::DisplayStatsLarge()
             else
             {
                 ImGui::PushItemDisabled();
-                PerfMonTextRightUnformatted(right_border_offset, TranslationManager::GetString(tstr_PerformanceMonitorBatteryDisconnected));
+                PerfMonTextRightUnformatted(right_border_offset, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorBatteryDisconnected));
                 ImGui::NextColumn();
                 ImGui::PopItemDisabled();
             }
@@ -508,7 +544,7 @@ void WindowPerformance::DisplayStatsLarge()
                 if (m_BatteryHMD < 15.0f)
                     ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-                PerfMonTextRight(text_percent_width, "%.0f", m_BatteryHMD);
+                PerfMonTextRight(text_percent_width, 0.0f, "%.0f", m_BatteryHMD);
                 ImGui::SameLine(0.0f, 0.0f);
                 PerfMonTextUnformatted("%");
                 ImGui::NextColumn();
@@ -543,7 +579,7 @@ void WindowPerformance::DisplayStatsLarge()
                     if (tracker_info.BatteryLevel < 15.0f)
                         ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-                    PerfMonTextRight(right_offset, "%.0f", tracker_info.BatteryLevel);
+                    PerfMonTextRight(right_offset, 0.0f, "%.0f", tracker_info.BatteryLevel);
                     ImGui::SameLine(0.0f, 0.0f);
                     PerfMonTextUnformatted("%");
                     ImGui::NextColumn();
@@ -578,7 +614,7 @@ void WindowPerformance::DisplayStatsLarge()
                     if (m_ViveWirelessTemp > 90)
                         ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-                    PerfMonTextRight(right_offset, "%d\xC2\xB0""C", m_ViveWirelessTemp);
+                    PerfMonTextRight(right_offset, 0.0f, "%d\xC2\xB0""C", m_ViveWirelessTemp);
 
                     if (m_ViveWirelessTemp > 90)
                         ImGui::PopStyleColor();
@@ -586,7 +622,7 @@ void WindowPerformance::DisplayStatsLarge()
                 else
                 {
                     ImGui::PushItemDisabled();
-                    PerfMonTextRightUnformatted(right_offset, TranslationManager::GetString(tstr_PerformanceMonitorCompactViveWirelessTempNotAvailable));
+                    PerfMonTextRightUnformatted(right_offset, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactViveWirelessTempNotAvailable));
                     ImGui::PopItemDisabled();
                 }
             }
@@ -714,7 +750,7 @@ void WindowPerformance::DisplayStatsCompact()
         if (m_FrameTimeCPU > frame_time_warning_limit)
             ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-        PerfMonTextRight(text_ms_width, "%.2f", m_FrameTimeCPU);
+        PerfMonTextRight(text_ms_width, 0.0f, "%.2f", m_FrameTimeCPU);
         ImGui::SameLine(0.0f, 0.0f);
         PerfMonTextUnformatted(" ms");
         ImGui::NextColumn();
@@ -723,15 +759,15 @@ void WindowPerformance::DisplayStatsCompact()
             ImGui::PopStyleColor();
 
         //-CPU Load
-        PerfMonTextRight(text_percent_width, "%.2f", m_PerfData.GetCPULoadPrecentage());
+        PerfMonTextRight(text_percent_width, 0.0f, "%.2f", m_PerfData.GetCPULoadPrecentage());
         ImGui::SameLine(0.0f, 0.0f);
         PerfMonTextUnformatted("%");
         ImGui::NextColumn();
 
         //-RAM
-        PerfMonTextRight(text_ram_padding, "%.2f GB/", m_PerfData.GetRAMUsedGB());
+        PerfMonTextRight(text_ram_padding, 0.0f, "%.2f GB/", m_PerfData.GetRAMUsedGB());
         ImGui::SameLine(0.0f, 0.0f);
-        PerfMonTextRight(0.0f, "%.2f GB", m_PerfData.GetRAMTotalGB());
+        PerfMonTextRight(0.0f, 0.0f, "%.2f GB", m_PerfData.GetRAMTotalGB());
         text_ram_total_width = ImGui::GetItemRectSize().x;
         ImGui::NextColumn();
     }
@@ -749,7 +785,7 @@ void WindowPerformance::DisplayStatsCompact()
         if (m_FrameTimeGPU > frame_time_warning_limit)
             ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-        PerfMonTextRight(text_ms_width, "%.2f", m_FrameTimeGPU);
+        PerfMonTextRight(text_ms_width, 0.0f, "%.2f", m_FrameTimeGPU);
         ImGui::SameLine(0.0f, 0.0f);
         PerfMonTextUnformatted(" ms");
         ImGui::NextColumn();
@@ -760,15 +796,15 @@ void WindowPerformance::DisplayStatsCompact()
         if (!ConfigManager::GetValue(configid_bool_performance_monitor_disable_gpu_counters)) //No point in showing it all if it's not updating
         {
             //-GPU Load
-            PerfMonTextRight(text_percent_width, "%.2f", m_PerfData.GetGPULoadPrecentage());
+            PerfMonTextRight(text_percent_width, 0.0f, "%.2f", m_PerfData.GetGPULoadPrecentage());
             ImGui::SameLine(0.0f, 0.0f);
             PerfMonTextUnformatted("%");
             ImGui::NextColumn();
 
             //-VRAM
-            PerfMonTextRight(text_ram_padding, "%.2f GB/", m_PerfData.GetVRAMUsedGB());
+            PerfMonTextRight(text_ram_padding, 0.0f, "%.2f GB/", m_PerfData.GetVRAMUsedGB());
             ImGui::SameLine(0.0f, 0.0f);
-            PerfMonTextRight(0.0f, "%.2f GB", m_PerfData.GetVRAMTotalGB());
+            PerfMonTextRight(0.0f, 0.0f, "%.2f GB", m_PerfData.GetVRAMTotalGB());
             text_vram_total_width = ImGui::GetItemRectSize().x;
             ImGui::NextColumn();
         }
@@ -790,13 +826,13 @@ void WindowPerformance::DisplayStatsCompact()
 
         //-FPS
         ImGui::NextColumn();
-        PerfMonTextRight(0.0f, "%d", m_FPS);
+        PerfMonTextRight(0.0f, 0.0f, "%d", m_FPS);
         ImGui::NextColumn();
 
         //-Average FPS
-        PerfMonTextRight(text_avg_cwidth, "%.2f", m_FPS_Average);
+        PerfMonTextRight(text_avg_cwidth, 0.0f, "%.2f", m_FPS_Average);
         ImGui::SameLine(0.0f, 0.0f);
-        PerfMonTextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactFPSAverage));
+        PerfMonTextRightUnformatted(0.0f, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactFPSAverage));
         ImGui::NextColumn();
 
         //No VR app means no frame statistics (FPS still gets counted, though)
@@ -804,15 +840,15 @@ void WindowPerformance::DisplayStatsCompact()
             ImGui::PushItemDisabled();
 
         //-Reprojection Ratio
-        PerfMonTextRight(text_rpr_cwidth, "%.2f", m_ReprojectionRatio);
+        PerfMonTextRight(text_rpr_cwidth, 0.0f, "%.2f", m_ReprojectionRatio);
         ImGui::SameLine(0.0f, 0.0f);
-        PerfMonTextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactReprojectionRatio));
+        PerfMonTextRightUnformatted(0.0f, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactReprojectionRatio));
         ImGui::NextColumn();
 
         //-Dropped Frames
-        PerfMonTextRight(text_drp_cwidth, "%u", m_DroppedFrames);
+        PerfMonTextRight(text_drp_cwidth, 0.0f, "%u", m_DroppedFrames);
         ImGui::SameLine(0.0f, 0.0f);
-        PerfMonTextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactDroppedFrames));
+        PerfMonTextRightUnformatted(0.0f, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactDroppedFrames));
         ImGui::NextColumn();
 
         if (m_PIDLast == 0)
@@ -837,7 +873,7 @@ void WindowPerformance::DisplayStatsCompact()
         ImGui::NextColumn();
 
         //-Battery Left
-        PerfMonTextRightUnformatted(text_percentage_cwidth, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryLeft));
+        PerfMonTextRightUnformatted(text_percentage_cwidth, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryLeft));
         ImGui::SameLine(0.0f, 0.0f);
 
         if (m_BatteryLeft != -1.0f)
@@ -846,7 +882,7 @@ void WindowPerformance::DisplayStatsCompact()
             if (m_BatteryLeft < 15.0f)
                 ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-            PerfMonTextRight(0.0f, "%.0f%%", m_BatteryLeft);
+            PerfMonTextRight(0.0f, 0.0f, "%.0f%%", m_BatteryLeft);
 
             if (m_BatteryLeft < 15.0f)
                 ImGui::PopStyleColor();
@@ -854,14 +890,14 @@ void WindowPerformance::DisplayStatsCompact()
         else
         {
             ImGui::PushItemDisabled();
-            PerfMonTextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryDisconnected));
+            PerfMonTextRightUnformatted(0.0f, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryDisconnected));
             ImGui::PopItemDisabled();
         }
 
         ImGui::NextColumn();
 
         //-Battery Right
-        PerfMonTextRightUnformatted(text_percentage_cwidth, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryRight));
+        PerfMonTextRightUnformatted(text_percentage_cwidth, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryRight));
         ImGui::SameLine(0.0f, 0.0f);
 
         if (m_BatteryRight != -1.0f)
@@ -870,7 +906,7 @@ void WindowPerformance::DisplayStatsCompact()
             if (m_BatteryRight < 15.0f)
                 ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-            PerfMonTextRight(0.0f, "%.0f%%", m_BatteryRight);
+            PerfMonTextRight(0.0f, 0.0f, "%.0f%%", m_BatteryRight);
 
             if (m_BatteryRight < 15.0f)
                 ImGui::PopStyleColor();
@@ -878,7 +914,7 @@ void WindowPerformance::DisplayStatsCompact()
         else
         {
             ImGui::PushItemDisabled();
-            PerfMonTextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryDisconnected));
+            PerfMonTextRightUnformatted(0.0f, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryDisconnected));
             ImGui::PopItemDisabled();
         }
 
@@ -887,14 +923,14 @@ void WindowPerformance::DisplayStatsCompact()
         //-Battery HMD (only shown if available)
         if (m_BatteryHMD != -1.0f)
         {
-            PerfMonTextRightUnformatted(text_percentage_cwidth, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryHMD));
+            PerfMonTextRightUnformatted(text_percentage_cwidth, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryHMD));
             ImGui::SameLine(0.0f, 0.0f);
 
             //15% warning color
             if (m_BatteryHMD < 15.0f)
                 ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-            PerfMonTextRight(0.0f, "%.0f%%", m_BatteryHMD);
+            PerfMonTextRight(0.0f, 0.0f, "%.0f%%", m_BatteryHMD);
 
             if (m_BatteryHMD < 15.0f)
                 ImGui::PopStyleColor();
@@ -914,14 +950,14 @@ void WindowPerformance::DisplayStatsCompact()
                     ImGui::NextColumn();
                 }
 
-                PerfMonTextRightUnformatted(text_percentage_cwidth, tracker_info.NameCompact.c_str());
+                PerfMonTextRightUnformatted(text_percentage_cwidth, 0.0f, tracker_info.NameCompact.c_str());
                 ImGui::SameLine(0.0f, 0.0f);
 
                 //15% warning color
                 if (tracker_info.BatteryLevel < 15.0f)
                     ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-                PerfMonTextRight(0.0f, "%.0f%%", tracker_info.BatteryLevel);
+                PerfMonTextRight(0.0f, 0.0f, "%.0f%%", tracker_info.BatteryLevel);
 
                 if (tracker_info.BatteryLevel < 15.0f)
                     ImGui::PopStyleColor();
@@ -941,7 +977,7 @@ void WindowPerformance::DisplayStatsCompact()
                 ImGui::NextColumn();
             }
 
-            PerfMonTextRightUnformatted(text_percentage_cwidth, "VW");
+            PerfMonTextRightUnformatted(text_percentage_cwidth, 0.0f, "VW");
             ImGui::SameLine(0.0f, 0.0f);
 
             if (m_ViveWirelessTemp != -1)
@@ -950,7 +986,7 @@ void WindowPerformance::DisplayStatsCompact()
                 if (m_ViveWirelessTemp > 90)
                     ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
 
-                PerfMonTextRight(0.0f, "%d\xC2\xB0""C", m_ViveWirelessTemp);
+                PerfMonTextRight(0.0f, 0.0f, "%d\xC2\xB0""C", m_ViveWirelessTemp);
 
                 if (m_ViveWirelessTemp > 90)
                     ImGui::PopStyleColor();
@@ -958,7 +994,7 @@ void WindowPerformance::DisplayStatsCompact()
             else
             {
                 ImGui::PushItemDisabled();
-                PerfMonTextRightUnformatted(0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactViveWirelessTempNotAvailable));
+                PerfMonTextRightUnformatted(0.0f, 0.0f, TranslationManager::GetString(tstr_PerformanceMonitorCompactViveWirelessTempNotAvailable));
                 ImGui::PopItemDisabled();
             }
         }
@@ -970,6 +1006,282 @@ void WindowPerformance::DisplayStatsCompact()
     if (ImGui::GetItemRectSize().y == 0.0f)
     {
         ImGui::Columns(1);
+        PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorEmpty));
+    }
+}
+
+void WindowPerformance::DisplayStatsMinimal()
+{
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float item_spacing_half = style.ItemSpacing.x / 2.0f;
+
+    //Items are using right-aligned text within a fixed expected width to avoid text jumping around as values change
+    static const float text_fps_width            = ImGui::CalcTextSize("100").x;
+    static const float text_percentage_width     = ImGui::CalcTextSize("00.00%").x;
+    static const float text_percentage_int_width = ImGui::CalcTextSize("100%").x;
+    static const float text_rpr_width            = ImGui::CalcTextSize("00.00").x;
+    static const float text_ms_width             = ImGui::CalcTextSize("00.00 ms").x;
+    static const float text_gb_width             = ImGui::CalcTextSize("00.00 GB").x;
+    static const float text_temperature_width    = ImGui::CalcTextSize("00\xC2\xB0""C").x;
+    static const float text_time_width           = ImGui::CalcTextSize("00:00").x;
+
+    const float frame_time_warning_limit = m_FrameTimeVsyncLimit * 0.95f;
+
+    //StatsMinimalItemLineWrap() expects a previous item to exist, so we have a dummy fill that role
+    ImGui::Dummy({0.0f, 0.0f});
+    ImGui::SameLine(0.0f, 0.0f);
+
+    //--CPU/GPU Frame Time Graphs
+    //Show both graphs if showing CPU and GPU stats or none of them (if graphs themselves are still active)
+    bool show_both_graphs = (ConfigManager::GetValue(configid_bool_performance_monitor_show_cpu) == ConfigManager::GetValue(configid_bool_performance_monitor_show_gpu));
+    const ImVec2 graph_size = {ImGui::GetFontSize() * 2.0f, ImGui::GetFontSize()};
+
+    double plot_xmin = (m_FrameTimeLastIndex > (uint32_t)m_FrameTimeCPUHistory.MaxSize) ? m_FrameTimeLastIndex - m_FrameTimeCPUHistory.MaxSize + 0.5f : 0.5f;
+    double plot_xmax = m_FrameTimeLastIndex - 0.75f;
+    double plot_ymax = ceilf(m_FrameTimeVsyncLimit * 1.4f);
+
+    //--FPS
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_fps))
+    {
+        StatsMinimalItemLineWrap(); //First item won't ever wrap, but this sets the last item position for wrapping
+
+        //-FPS
+        PerfMonTextRight(0.0f, text_fps_width, "%d", m_FPS);
+        ImGui::SameLine();
+
+        if (ConfigManager::GetValue(configid_bool_performance_monitor_style_minimal_show_more))
+        {
+            //No VR app means no frame statistics (FPS still gets counted, though)
+            if (m_PIDLast == 0)
+                ImGui::PushItemDisabled();
+
+            //-Reprojection Ratio
+            PerfMonTextRight(0.0f, text_rpr_width, "%.2f", m_ReprojectionRatio);
+            ImGui::SameLine(0.0f, 0.0f);
+            PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorCompactReprojectionRatio));
+            ImGui::SameLine();
+
+            if (m_PIDLast == 0)
+                ImGui::PopItemDisabled();
+        }
+    }
+
+    //--CPU
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_cpu))
+    {
+        StatsMinimalItemLineWrap();
+
+        //-CPU Frame Time
+        //Warning color when frame time above 95% vsync time
+        if (m_FrameTimeCPU > frame_time_warning_limit)
+            ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
+
+        PerfMonTextRight(0.0f, text_ms_width, "%.2f ms", m_FrameTimeCPU);
+        ImGui::SameLine();
+
+        if (m_FrameTimeCPU > frame_time_warning_limit)
+            ImGui::PopStyleColor();
+
+        if (ConfigManager::GetValue(configid_bool_performance_monitor_style_minimal_show_more))
+        {
+            //-CPU Load
+            PerfMonTextRight(0.0f, text_percentage_width, "%.2f%%", m_PerfData.GetCPULoadPrecentage());
+            ImGui::SameLine();
+
+            //-RAM
+            PerfMonTextRight(0.0f, text_gb_width, "%.2f GB", m_PerfData.GetRAMUsedGB());
+            ImGui::SameLine();
+        }
+    }
+
+    //--CPU Frame Time Graph
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_graphs))
+    {
+        if ( (show_both_graphs) || (ConfigManager::GetValue(configid_bool_performance_monitor_show_cpu)) )
+        {
+            StatsMinimalItemLineWrap();
+
+            DrawFrameTimeGraphCPU(graph_size, plot_xmin, plot_xmax, plot_ymax);
+            ImGui::SameLine();
+        }
+    }
+
+    //--GPU
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_gpu))
+    {
+        StatsMinimalItemLineWrap();
+
+        //-GPU Frame Time
+        if (m_FrameTimeGPU > frame_time_warning_limit)
+            ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
+
+        PerfMonTextRight(0.0f, text_ms_width, "%.2f ms", m_FrameTimeGPU);
+        ImGui::SameLine();
+
+        if (m_FrameTimeGPU > frame_time_warning_limit)
+            ImGui::PopStyleColor();
+
+        if (ConfigManager::GetValue(configid_bool_performance_monitor_style_minimal_show_more))
+        {
+            if (!ConfigManager::GetValue(configid_bool_performance_monitor_disable_gpu_counters)) //No point in showing it all if it's not updating
+            {
+                //-GPU Load
+                PerfMonTextRight(0.0f, text_percentage_width, "%.2f%%", m_PerfData.GetGPULoadPrecentage());
+                ImGui::SameLine();
+
+                //-VRAM
+                PerfMonTextRight(0.0f, text_gb_width, "%.2f GB", m_PerfData.GetVRAMUsedGB());
+                ImGui::SameLine();
+            }
+        }
+    }
+
+    //--GPU Frame Time Graph
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_graphs))
+    {
+        if ( (show_both_graphs) || (ConfigManager::GetValue(configid_bool_performance_monitor_show_gpu)) )
+        {
+            StatsMinimalItemLineWrap();
+
+            DrawFrameTimeGraphGPU(graph_size, plot_xmin, plot_xmax, plot_ymax);
+            ImGui::SameLine();
+        }
+    }
+
+    //--Battery Levels
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_battery))
+    {
+        //-Battery Left
+        if (m_BatteryLeft != -1.0f)
+        {
+            StatsMinimalItemLineWrap();
+
+            PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryLeft));
+            ImGui::SameLine(0.0f, item_spacing_half);
+
+            //15% warning color
+            if (m_BatteryLeft < 15.0f)
+                ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
+
+            PerfMonTextRight(0.0f, text_percentage_int_width, "%.0f%%", m_BatteryLeft);
+
+            if (m_BatteryLeft < 15.0f)
+                ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+        }
+
+        //-Battery Right
+        if (m_BatteryRight != -1.0f)
+        {
+            StatsMinimalItemLineWrap();
+
+            PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryRight));
+            ImGui::SameLine(0.0f, item_spacing_half);
+
+            //15% warning color
+            if (m_BatteryRight < 15.0f)
+                ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
+
+            PerfMonTextRight(0.0f, text_percentage_int_width, "%.0f%%", m_BatteryRight);
+
+            if (m_BatteryRight < 15.0f)
+                ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+        }
+
+        //-Battery HMD
+        if (m_BatteryHMD != -1.0f)
+        {
+            StatsMinimalItemLineWrap();
+
+            PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorCompactBatteryHMD));
+            ImGui::SameLine(0.0f, item_spacing_half);
+
+            //15% warning color
+            if (m_BatteryHMD < 15.0f)
+                ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
+
+            PerfMonTextRight(0.0f, text_percentage_int_width, "%.0f%%", m_BatteryHMD);
+
+            if (m_BatteryHMD < 15.0f)
+                ImGui::PopStyleColor();
+
+            ImGui::SameLine();
+        }
+
+        //-Battery Trackers
+        if (ConfigManager::GetValue(configid_bool_performance_monitor_show_trackers))
+        {
+            unsigned int tracker_number = 1;
+            for (const auto& tracker_info : m_BatteryTrackers)
+            {
+                StatsMinimalItemLineWrap();
+
+                PerfMonTextUnformatted(tracker_info.NameCompact.c_str());
+                ImGui::SameLine(0.0f, item_spacing_half);
+
+                //15% warning color
+                if (tracker_info.BatteryLevel < 15.0f)
+                    ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
+
+                PerfMonTextRight(0.0f, text_percentage_int_width, "%.0f%%", tracker_info.BatteryLevel);
+
+                if (tracker_info.BatteryLevel < 15.0f)
+                    ImGui::PopStyleColor();
+
+                ImGui::SameLine();
+
+                tracker_number++;
+            }
+        }
+
+        //-Vive Wireless
+        if ( (m_ViveWirelessLogPathExists) && (ConfigManager::GetValue(configid_bool_performance_monitor_show_vive_wireless)) )
+        {
+            StatsMinimalItemLineWrap();
+
+            PerfMonTextUnformatted("VW");
+            ImGui::SameLine(0.0f, item_spacing_half);
+
+            if (m_ViveWirelessTemp != -1)
+            {
+                //90 degrees celsius warning color
+                if (m_ViveWirelessTemp > 90)
+                    ImGui::PushStyleColor(ImGuiCol_Text, Style_ImGuiCol_TextWarning);
+
+                PerfMonTextRight(0.0f, text_temperature_width, "%d\xC2\xB0""C", m_ViveWirelessTemp);
+
+                if (m_ViveWirelessTemp > 90)
+                    ImGui::PopStyleColor();
+            }
+            else
+            {
+                ImGui::PushItemDisabled();
+                PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorCompactViveWirelessTempNotAvailable));
+                ImGui::PopItemDisabled();
+            }
+
+            ImGui::SameLine();
+        }
+    }
+
+    //--Time
+    if (ConfigManager::GetValue(configid_bool_performance_monitor_show_time))
+    {
+        StatsMinimalItemLineWrap();
+
+        PerfMonTextRightUnformatted(0.0f, text_time_width, m_TimeStr.c_str());
+        ImGui::SameLine();
+    }
+
+    //Last item needs to have the wrapping function called too in case it went over
+    StatsMinimalItemLineWrap();
+
+    //Last item rect height is the padding dummy == empty window
+    if (ImGui::GetItemRectSize().y == 0.0f)
+    {
         PerfMonTextUnformatted(TranslationManager::GetString(tstr_PerformanceMonitorEmpty));
     }
 }

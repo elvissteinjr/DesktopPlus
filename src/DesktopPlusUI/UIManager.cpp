@@ -79,9 +79,10 @@ void UITextureSpaces::Init(bool desktop_mode, bool keyboard_editor_mode)
             m_TexspaceRects[ui_texspace_total] = {0, 0, 1153, 1042};    //Results in 720x651px at 100% DPI scaling
         }
 
-        m_TexspaceRects[ui_texspace_overlay_properties] = m_TexspaceRects[ui_texspace_total];
-        m_TexspaceRects[ui_texspace_settings] = m_TexspaceRects[ui_texspace_total];
-        m_TexspaceRects[ui_texspace_keyboard] = {0, 0, m_TexspaceRects[ui_texspace_total].GetWidth(), 750};
+        m_TexspaceRects[ui_texspace_overlay_properties]  = m_TexspaceRects[ui_texspace_total];
+        m_TexspaceRects[ui_texspace_settings]            = m_TexspaceRects[ui_texspace_total];
+        m_TexspaceRects[ui_texspace_performance_monitor] = m_TexspaceRects[ui_texspace_total];
+        m_TexspaceRects[ui_texspace_keyboard]            = {0, 0, m_TexspaceRects[ui_texspace_total].GetWidth(), 750};
     }
 }
 

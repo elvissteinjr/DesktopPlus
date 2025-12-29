@@ -588,9 +588,11 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_performance_show_fps]                        = config.ReadBool("Performance", "ShowFPS", false);
     m_ConfigBool[configid_bool_performance_ui_auto_throttle]                = config.ReadBool("Performance", "UIAutoThrottle", true);
     m_ConfigInt[configid_int_performance_ui_frameskip]                      = config.ReadInt( "Performance", "UIFrameSkip", 0);
+    m_ConfigBool[configid_bool_performance_monitor_minimal_style]           = config.ReadBool("Performance", "PerformanceMonitorStyleMinimal", true);
     m_ConfigBool[configid_bool_performance_monitor_large_style]             = config.ReadBool("Performance", "PerformanceMonitorStyleLarge", true);
     m_ConfigBool[configid_bool_performance_monitor_style_show_window]       = config.ReadBool("Performance", "PerformanceMonitorStyleShowWindow", true);
     m_ConfigBool[configid_bool_performance_monitor_style_show_text_outline] = config.ReadBool("Performance", "PerformanceMonitorStyleShowTextOutline", false);
+    m_ConfigBool[configid_bool_performance_monitor_style_minimal_show_more] = config.ReadBool("Performance", "PerformanceMonitorStyleMinimalShowMore", false);
     m_ConfigBool[configid_bool_performance_monitor_show_graphs]             = config.ReadBool("Performance", "PerformanceMonitorShowGraphs", true);
     m_ConfigBool[configid_bool_performance_monitor_show_time]               = config.ReadBool("Performance", "PerformanceMonitorShowTime", false);
     m_ConfigBool[configid_bool_performance_monitor_show_cpu]                = config.ReadBool("Performance", "PerformanceMonitorShowCPU", true);
@@ -1571,9 +1573,11 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Performance", "HDRMirroring",                           m_ConfigBool[configid_bool_performance_hdr_mirroring]);
     config.WriteBool("Performance", "ShowFPS",                                m_ConfigBool[configid_bool_performance_show_fps]);
     config.WriteBool("Performance", "UIAutoThrottle",                         m_ConfigBool[configid_bool_performance_ui_auto_throttle]);
+    config.WriteBool("Performance", "PerformanceMonitorStyleMinimal",         m_ConfigBool[configid_bool_performance_monitor_minimal_style]);
     config.WriteBool("Performance", "PerformanceMonitorStyleLarge",           m_ConfigBool[configid_bool_performance_monitor_large_style]);
     config.WriteBool("Performance", "PerformanceMonitorStyleShowWindow",      m_ConfigBool[configid_bool_performance_monitor_style_show_window]);
     config.WriteBool("Performance", "PerformanceMonitorStyleShowTextOutline", m_ConfigBool[configid_bool_performance_monitor_style_show_text_outline]);
+    config.WriteBool("Performance", "PerformanceMonitorStyleMinimalShowMore", m_ConfigBool[configid_bool_performance_monitor_style_minimal_show_more]);
     config.WriteBool("Performance", "PerformanceMonitorShowGraphs",           m_ConfigBool[configid_bool_performance_monitor_show_graphs]);
     config.WriteBool("Performance", "PerformanceMonitorShowTime",             m_ConfigBool[configid_bool_performance_monitor_show_time]);
     config.WriteBool("Performance", "PerformanceMonitorShowCPU",              m_ConfigBool[configid_bool_performance_monitor_show_cpu]);
