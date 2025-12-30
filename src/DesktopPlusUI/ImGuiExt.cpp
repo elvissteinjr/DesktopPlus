@@ -1139,7 +1139,7 @@ namespace ImGui
             const float content_height = ImGui::GetStateStorage()->GetFloat(state.WidgetID, 0.0f);
             const float clip_height = smoothstep(persist_animation_progress, 0.0f, content_height);
             ImVec2 clip_begin = ImGui::GetCursorScreenPos();
-            ImVec2 clip_end(clip_begin.x + ImGui::GetContentRegionAvail().x, clip_begin.y + clip_height);
+            ImVec2 clip_end(clip_begin.x + ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x, clip_begin.y + clip_height);
 
             ImGui::PushClipRect(clip_begin, clip_end, true);
             state.PushedClipRect = true;
