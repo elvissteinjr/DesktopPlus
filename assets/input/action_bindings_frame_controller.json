@@ -1,0 +1,141 @@
+{
+   "action_manifest_version" : 5,
+   "alias_info" : {},
+   "app_key" : "steam.overlay.1494460",
+   "bindings" : {
+      "/actions/laserpointer" : {
+         "haptics" : [
+            {
+               "output" : "/actions/laserpointer/out/Haptic",
+               "path" : "/user/hand/left/output/haptic"
+            },
+            {
+               "output" : "/actions/laserpointer/out/Haptic",
+               "path" : "/user/hand/right/output/haptic"
+            }
+         ],
+         "sources" : [
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/LeftClick"
+                  }
+               },
+               "mode" : "button",
+               "parameters" : {
+                  "click_activate_threshold" : "0.65",
+                  "click_deactivate_threshold" : "0.6",
+                  "haptic_amplitude" : "0"
+               },
+               "path" : "/user/hand/right/input/trigger"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/LeftClick"
+                  }
+               },
+               "mode" : "button",
+               "parameters" : {
+                  "click_activate_threshold" : "0.65",
+                  "click_deactivate_threshold" : "0.6",
+                  "haptic_amplitude" : "0"
+               },
+               "path" : "/user/hand/left/input/trigger"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/RightClick"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/left/input/bumper"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/RightClick"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/right/input/bumper"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/Aux02Click"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/left/input/dpad_down"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/Aux02Click"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/right/input/b"
+            }
+         ]
+      },
+      "/actions/scroll_discrete" : {
+         "sources" : [
+            {
+               "inputs" : {
+                  "scroll" : {
+                     "output" : "/actions/scroll_discrete/in/ScrollDiscrete"
+                  }
+               },
+               "mode" : "scroll",
+               "path" : "/user/hand/left/input/thumbstick"
+            },
+            {
+               "inputs" : {
+                  "scroll" : {
+                     "output" : "/actions/scroll_discrete/in/ScrollDiscrete"
+                  }
+               },
+               "mode" : "scroll",
+               "path" : "/user/hand/right/input/thumbstick"
+            }
+         ]
+      },
+	  "/actions/scroll_smooth" : {
+         "sources" : [
+            {
+               "inputs" : {
+                  "scroll" : {
+                     "output" : "/actions/scroll_smooth/in/ScrollSmooth"
+                  }
+               },
+               "mode" : "scroll",
+               "parameters" : {
+                  "scroll_mode" : "smooth"
+               },
+               "path" : "/user/hand/left/input/thumbstick"
+            },
+            {
+               "inputs" : {
+                  "scroll" : {
+                     "output" : "/actions/scroll_smooth/in/ScrollSmooth"
+                  }
+               },
+               "mode" : "scroll",
+               "parameters" : {
+                  "scroll_mode" : "smooth"
+               },
+               "path" : "/user/hand/right/input/thumbstick"
+            }
+         ]
+      }
+   },
+   "category" : "steamvr_input",
+   "controller_type" : "frame_controller",
+   "description" : "",
+   "name" : "Default Desktop+ bindings for Steam Frame Controllers",
+   "options" : {},
+   "simulated_actions" : []
+}

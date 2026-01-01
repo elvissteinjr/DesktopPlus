@@ -180,6 +180,10 @@
   },
   "default_bindings": [
     {
+      "controller_type": "frame_controller",
+      "binding_url": "input/action_bindings_frame_controller.json"
+    },
+    {
       "controller_type": "knuckles",
       "binding_url": "input/action_bindings_knuckles.json"
     },
