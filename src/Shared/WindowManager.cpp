@@ -66,6 +66,11 @@ bool IsCapturableWindow(WindowInfo const& window)
         return false;
     }
 
+    if ((exStyle & WS_EX_NOACTIVATE) && !(exStyle & WS_EX_APPWINDOW))   //WS_EX_NOACTIVATE is not capturable unless WS_EX_APPWINDOW is also set
+    {
+        return false;
+    }
+
     // Check to see if the window is cloaked if it's a UWP
     if ((wcscmp(window.GetWindowClassName().c_str(), L"Windows.UI.Core.CoreWindow") == 0) || (wcscmp(window.GetWindowClassName().c_str(), L"ApplicationFrameWindow") == 0))
     {
