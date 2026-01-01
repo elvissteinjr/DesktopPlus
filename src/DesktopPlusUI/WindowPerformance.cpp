@@ -1130,7 +1130,7 @@ void WindowPerformance::UpdateStatValuesSteamVR()
     }
     else
     {
-        m_BatteryRight = -1.0f;
+        m_BatteryLeft = -1.0f;
     }
 
     //Battery Right
