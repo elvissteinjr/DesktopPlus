@@ -969,23 +969,19 @@ namespace ImGui
     }
 
     int g_Stretched_BeginIndex = 0;
-    float g_Stretched_BaseX = 0.0f;
     void BeginStretched()
     {
         g_Stretched_BeginIndex = ImGui::GetWindowDrawList()->VtxBuffer.Size;
-
-        const auto& buffer = ImGui::GetWindowDrawList()->VtxBuffer;
-        g_Stretched_BaseX = (buffer.empty()) ? 0.0f : buffer[g_Stretched_BeginIndex - 1].pos.x;
     }
 
     void EndStretched(float scale_x)
     {
         auto& buffer = ImGui::GetWindowDrawList()->VtxBuffer;
 
-        g_Stretched_BaseX = (buffer.size() > g_Stretched_BeginIndex) ? buffer[g_Stretched_BeginIndex].pos.x : 0.0f;
+        const float base_x = (buffer.size() > g_Stretched_BeginIndex) ? buffer[g_Stretched_BeginIndex].pos.x : 0.0f;
         for (int i = g_Stretched_BeginIndex; i < buffer.Size; ++i)
         {
-            buffer[i].pos.x = ((buffer[i].pos.x - g_Stretched_BaseX) * scale_x) + g_Stretched_BaseX;
+            buffer[i].pos.x = ((buffer[i].pos.x - base_x) * scale_x) + base_x;
         }
     }
 
