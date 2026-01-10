@@ -2873,7 +2873,7 @@ void OutputManager::ShowWindowSwitcher()
     InitComIfNeeded();
 
     Microsoft::WRL::ComPtr<IShellDispatch5> shell_dispatch;
-    HRESULT sc = ::CoCreateInstance(CLSID_Shell, nullptr, CLSCTX_SERVER, IID_IDispatch, &shell_dispatch);
+    HRESULT sc = ::CoCreateInstance(CLSID_Shell, nullptr, CLSCTX_SERVER, IID_PPV_ARGS(&shell_dispatch));
 
     if (SUCCEEDED(sc))
     {
