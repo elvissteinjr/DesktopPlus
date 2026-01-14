@@ -88,18 +88,29 @@ void WindowOverlayBar::DisplayTooltipIfHovered(const char* text, unsigned int ov
 void WindowOverlayBar::UpdateOverlayButtons()
 {
     ImGuiIO& io = ImGui::GetIO();
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    struct OverlayButtonState
+    {
+        float starting_x = -1.0f;
+        float animation_progress = 0.0f;
+    };
 
     //List of unique IDs for overlays so ImGui can identify the same list entries after reordering or list expansion (needed for drag reordering)
     static std::vector<int> list_unique_ids;
-    static unsigned int drag_last_hovered_button = k_ulOverlayID_None;
+    static std::vector<OverlayButtonState> list_unique_data;
+    static unsigned int drag_button_id  = k_ulOverlayID_None;
+    static unsigned int drag_overlay_id = k_ulOverlayID_None;
+    static float drag_mouse_offset = 0.0f;
 
     const int overlay_count = (int)OverlayManager::Get().GetOverlayCount();
-    unsigned int properties_active_overlay = (UIManager::Get()->GetOverlayPropertiesWindow().IsVisible()) ? (UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID()) : k_ulOverlayID_None;
+    const unsigned int properties_active_overlay = (UIManager::Get()->GetOverlayPropertiesWindow().IsVisible()) ? (UIManager::Get()->GetOverlayPropertiesWindow().GetActiveOverlayID()) : k_ulOverlayID_None;
 
-    //Reset unique IDs when appearing
+    //Reset unique IDs & widget data when appearing
     if (ImGui::IsWindowAppearing())
     {
         list_unique_ids.clear();
+        list_unique_data.clear();
     }
 
     //Expand unique id lists if overlays were added (also does initialization since it's empty then)
@@ -108,24 +119,26 @@ void WindowOverlayBar::UpdateOverlayButtons()
         list_unique_ids.push_back((int)list_unique_ids.size());
     }
 
-    ImGui::PushID("OverlayButtons");
+    while (list_unique_data.size() < OverlayManager::Get().GetOverlayCount())
+    {
+        list_unique_data.emplace_back();
+    }
 
-    bool b_window_icon_available = false;
-    TMNGRTexID b_icon_texture_id = tmtex_icon_desktop;
+    //Get settings icons dimensions for uniform button size
     ImVec2 b_size, b_uv_min, b_uv_max;
-    TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max); //Get settings icons dimensions for uniform button size
+    TextureManager::Get().GetTextureInfo(tmtex_icon_settings, b_size, b_uv_min, b_uv_max);
     ImVec2 b_size_default = b_size;
 
-    static unsigned int hovered_overlay_id_last = k_ulOverlayID_None;
+    static unsigned int left_down_overlay_id  = k_ulOverlayID_None;
     static unsigned int right_down_overlay_id = k_ulOverlayID_None;
+    static unsigned int hovered_overlay_id_last = k_ulOverlayID_None;
     unsigned int hovered_overlay_id = k_ulOverlayID_None;
-    const unsigned int u_overlay_count = OverlayManager::Get().GetOverlayCount();
 
-    for (unsigned int i = 0; i < u_overlay_count; ++i)
+    //Lambda for an overlay button widget. Interactions are implemented separately where needed
+    auto overlay_button = [&](unsigned int overlay_id)
     {
-        ImGui::PushID(list_unique_ids[i]);
-
-        bool is_active = ( (m_OverlayButtonActiveMenuID == i) || (properties_active_overlay == i) || (right_down_overlay_id == i) );
+        bool is_active = ( (m_OverlayButtonActiveMenuID == overlay_id) || (drag_overlay_id == overlay_id) || (properties_active_overlay == overlay_id) || (left_down_overlay_id == overlay_id) || 
+                           (right_down_overlay_id == overlay_id) );
 
         if (is_active)
         {
@@ -134,26 +147,13 @@ void WindowOverlayBar::UpdateOverlayButtons()
         }
 
         //Get icon texture ID
-        OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+        OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
+        bool b_window_icon_available;
         TextureManager::Get().GetOverlayIconTextureInfo(data, b_size, b_uv_min, b_uv_max, false, &b_window_icon_available);
 
-        const ImVec4 tint_color = ImVec4(1.0f, 1.0f, 1.0f, data.ConfigBool[configid_bool_overlay_enabled] ? 1.0f : 0.5f); //Transparent when hidden
+        const ImVec4 tint_color = ImVec4(1.0f, 1.0f, 1.0f, data.ConfigBool[configid_bool_overlay_enabled] ? 1.0f : 0.5f); //Half-transparent when hidden
 
-        if (ImGui::ImageButton("OverlayButton", io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tint_color))
-        {
-            if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 3.0f) //Don't do normal button behavior after reset was just triggered
-            {
-                if ((m_OverlayButtonActiveMenuID != i) && (!m_IsDraggingOverlayButtons))
-                {
-                    HideMenus();
-                    m_OverlayButtonActiveMenuID = i;
-                }
-                else
-                {
-                    HideMenus();
-                }
-            }
-        }
+        bool ret = ImGui::ImageButton("OverlayButton", io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tint_color);
 
         if (is_active)
         {
@@ -161,128 +161,8 @@ void WindowOverlayBar::UpdateOverlayButtons()
         }
 
         //Additional button behavior
-        bool button_active = ImGui::IsItemActive();
-        ImVec2 pos         = ImGui::GetItemRectMin();
-        float width        = ImGui::GetItemRectSize().x;
-
-        //Reset transform when holding the button for 3 or more seconds
-        bool show_hold_message = false;
-
-        if ( (button_active) && (!m_IsDraggingOverlayButtons) )
-        {
-            if (io.MouseDownDuration[ImGuiMouseButton_Left] > 3.0f)
-            {
-                FloatingWindow& overlay_properties = UIManager::Get()->GetOverlayPropertiesWindow();
-                overlay_properties.SetPinned(false);
-                overlay_properties.ResetTransformAll();
-                io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so transform changes don't get blocked
-            }
-            else if (io.MouseDownDuration[ImGuiMouseButton_Left] > 0.5f)
-            {
-                show_hold_message = true;
-            }
-        }
-
-        if (ImGui::IsItemHovered())
-        {
-            //Quick toggle visibility via double-click
-            const int click_count = ImGui::GetMouseClickedCount(ImGuiMouseButton_Left);
-            if ((click_count > 1) && (click_count % 2 == 0))     //ImGui keeps counting up so fast double-clicks in a row don't get detected as such with ImGui::IsMouseDoubleClicked()
-            {
-                bool& is_enabled = data.ConfigBool[configid_bool_overlay_enabled];
-
-                is_enabled = !is_enabled;
-
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, i);
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_enabled, is_enabled);
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
-            }
-
-            //Quick switch properties via right-click
-            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
-            {
-                right_down_overlay_id = i;
-            }
-
-            if ((ImGui::IsMouseReleased(ImGuiMouseButton_Right)) && (right_down_overlay_id == i))
-            {
-                WindowOverlayProperties& properties_window = UIManager::Get()->GetOverlayPropertiesWindow();
-
-                //Hide window instead if it's already open for this overlay
-                if ((properties_window.IsVisible()) && (properties_window.GetActiveOverlayID() == i))
-                {
-                    properties_window.Hide();
-                }
-                else
-                {
-                    properties_window.SetActiveOverlayID(i);
-                    properties_window.Show();
-                }
-
-                HideMenus();
-            }
-        }
-
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
-        {
-            drag_last_hovered_button = i;
-            hovered_overlay_id = i;
-        }
-
-        if ((ImGui::IsItemActive()) && (!ImGui::IsItemHovered())) //Drag reordering
-        {
-            int index_swap = i + ((ImGui::GetMouseDragDelta(ImGuiMouseButton_Left).x < 0.0f) ? -1 : 1);
-            if ((drag_last_hovered_button != i) && (index_swap >= 0) && (index_swap < overlay_count))
-            {
-                OverlayManager::Get().SwapOverlays(i, index_swap);
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, i);
-                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_swap, index_swap);
-                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
-
-                std::iter_swap(list_unique_ids.begin() + i, list_unique_ids.begin() + index_swap);
-
-                ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
-                m_IsDraggingOverlayButtons = true;
-
-                //Also adjust the active properties window if we just swapped that
-                if (properties_active_overlay == i)
-                {
-                    UIManager::Get()->GetOverlayPropertiesWindow().SetActiveOverlayID((unsigned int)index_swap, true);
-                }
-                else if (properties_active_overlay == (unsigned int)index_swap)
-                {
-                    UIManager::Get()->GetOverlayPropertiesWindow().SetActiveOverlayID(i, true);
-                }
-
-                m_OverlayButtonActiveMenuID = k_ulOverlayID_None;
-            }
-        }
-
-        if (show_hold_message)
-        {
-            DisplayTooltipIfHovered(TranslationManager::GetString(tstr_OverlayBarTooltipResetHold));
-        }
-        else
-        {
-            DisplayTooltipIfHovered(OverlayManager::Get().GetConfigData(i).ConfigNameStr.c_str(), i);
-        }
-        
-
-        float dist = width / 2.0f;
-        float menu_y = m_Pos.y + ImGui::GetStyle().WindowBorderSize + dist - (dist * m_MenuAlpha);
-
-        if (m_OverlayButtonActiveMenuID == i)
-        {
-            MenuOverlayButton(i, {pos.x + width / 2.0f, menu_y}, button_active);
-
-            //Check if menu modified overlay count and bail then
-            if (OverlayManager::Get().GetOverlayCount() != u_overlay_count)
-            {
-                ImGui::PopID();
-                UIManager::Get()->RepeatFrame();
-                break;
-            }
-        }
+        const ImVec2 pos  = ImGui::GetItemRectMin();
+        const float width = ImGui::GetItemRectSize().x;
 
         //Draw window icon on top
         if (b_window_icon_available)
@@ -305,9 +185,265 @@ void WindowOverlayBar::UpdateOverlayButtons()
             ImGui::GetWindowDrawList()->AddImage(io.Fonts->TexID, p_min, p_max, b_uv_min, b_uv_max, ImGui::ColorConvertFloat4ToU32(tint_color));
         }
 
+        return ret;
+    };
+
+    //List overlays
+    const float button_width_base = b_size_default.x + (style.ItemSpacing.x * 3.0f);
+    const ImVec2 cursor_pos_first = ImGui::GetCursorPos();
+    const ImVec2 cursor_screen_pos_first = ImGui::GetCursorScreenPos();
+
+    ImGui::PushID("OverlayButtons");
+
+    const unsigned int u_overlay_count = OverlayManager::Get().GetOverlayCount();
+    for (unsigned int i = 0; i < u_overlay_count; ++i)
+    {
+        const unsigned int button_id = list_unique_ids[i];
+
+        if (drag_button_id != button_id)
+        {
+            ImGui::PushID(button_id);
+
+            //Button positioning
+            OverlayButtonState& button_state = list_unique_data[button_id];
+            const float target_x = cursor_pos_first.x + (button_width_base * i);
+
+            if (button_state.starting_x != -1.0f)
+            {
+                ImGui::SetCursorPosX(smoothstep(button_state.animation_progress, button_state.starting_x, target_x));
+
+                const float animation_step = ImGui::GetIO().DeltaTime * 6.0f;
+                button_state.animation_progress = clamp(button_state.animation_progress + animation_step, 0.0f, 1.0f);
+
+                if (button_state.animation_progress == 1.0f)
+                {
+                    button_state.starting_x = -1.0f;
+                    button_state.animation_progress = 0.0f;
+                }
+            }
+            else
+            {
+                ImGui::SetCursorPosX(target_x);
+            }
+
+            //Overlay button widget
+            if (overlay_button(i))
+            {
+                if (io.MouseDownDurationPrev[ImGuiMouseButton_Left] < 3.0f) //Don't do normal button behavior after reset was just triggered
+                {
+                    if ((m_OverlayButtonActiveMenuID != i) && (!m_IsDraggingOverlayButtons))
+                    {
+                        HideMenus();
+                        m_OverlayButtonActiveMenuID = i;
+                    }
+                    else
+                    {
+                        HideMenus();
+                    }
+                }
+            }
+
+            //-Additional button behavior
+            bool button_active = ImGui::IsItemActive();
+            ImVec2 pos         = ImGui::GetItemRectMin();
+            float width        = ImGui::GetItemRectSize().x;
+
+            //Reset transform when holding the button for 3 or more seconds
+            bool show_hold_message = false;
+
+            if ( (button_active) && (!m_IsDraggingOverlayButtons) )
+            {
+                if (io.MouseDownDuration[ImGuiMouseButton_Left] > 3.0f)
+                {
+                    FloatingWindow& overlay_properties = UIManager::Get()->GetOverlayPropertiesWindow();
+                    overlay_properties.SetPinned(false);
+                    overlay_properties.ResetTransformAll();
+                    io.MouseDown[ImGuiMouseButton_Left] = false;    //Release mouse button so transform changes don't get blocked
+                }
+                else if (io.MouseDownDuration[ImGuiMouseButton_Left] > 0.5f)
+                {
+                    show_hold_message = true;
+                }
+            }
+
+            if (ImGui::IsItemHovered())
+            {
+                //Quick toggle visibility via double-click
+                const int click_count = ImGui::GetMouseClickedCount(ImGuiMouseButton_Left);
+                if ((click_count > 1) && (click_count % 2 == 0))     //ImGui keeps counting up, so fast double-clicks in a row don't get detected as such with ImGui::IsMouseDoubleClicked()
+                {
+                    OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+                    bool& is_enabled = data.ConfigBool[configid_bool_overlay_enabled];
+
+                    is_enabled = !is_enabled;
+
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, i);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_enabled, is_enabled);
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+                }
+
+                //Quick switch properties via right-click
+                if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+                {
+                    right_down_overlay_id = i;
+                }
+
+                if ((ImGui::IsMouseReleased(ImGuiMouseButton_Right)) && (right_down_overlay_id == i))
+                {
+                    WindowOverlayProperties& properties_window = UIManager::Get()->GetOverlayPropertiesWindow();
+
+                    //Hide window instead if it's already open for this overlay
+                    if ((properties_window.IsVisible()) && (properties_window.GetActiveOverlayID() == i))
+                    {
+                        properties_window.Hide();
+                    }
+                    else
+                    {
+                        properties_window.SetActiveOverlayID(i);
+                        properties_window.Show();
+                    }
+
+                    HideMenus();
+                }
+            }
+
+            //Remember hovered overlay for highlighting
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+            {
+                hovered_overlay_id = i;
+            }
+
+            //Tooltip, but don't show while dragging or animating position
+            if ((!m_IsDraggingOverlayButtons) && (button_state.starting_x == -1.0f))
+            {
+                (show_hold_message) ? DisplayTooltipIfHovered(TranslationManager::GetString(tstr_OverlayBarTooltipResetHold)) : 
+                                      DisplayTooltipIfHovered(OverlayManager::Get().GetConfigData(i).ConfigNameStr.c_str(), i);
+            }
+
+            //Button menu
+            if (m_OverlayButtonActiveMenuID == i)
+            {
+                float dist = width / 2.0f;
+                float menu_y = m_Pos.y + ImGui::GetStyle().WindowBorderSize + dist - (dist * m_MenuAlpha);
+
+                MenuOverlayButton(i, {pos.x + width / 2.0f, menu_y}, button_active);
+
+                //Check if menu modified overlay count and bail then
+                if (OverlayManager::Get().GetOverlayCount() != u_overlay_count)
+                {
+                    ImGui::PopID();
+                    UIManager::Get()->RepeatFrame();
+                    break;
+                }
+            }
+
+            //Dragging start
+            if (button_active)
+            {
+                if (!m_IsDraggingOverlayButtons)
+                {
+                    if ((ImGui::IsMouseDragging(ImGuiMouseButton_Left)))
+                    {
+                        drag_mouse_offset = -(ImGui::GetMousePos().x - ImGui::GetItemRectMin().x);
+
+                        drag_button_id = button_id;
+                        drag_overlay_id = i;
+                        m_IsDraggingOverlayButtons = true;
+
+                        //This state is only used to avoid flickering when dragging right at the button edge since in Dear ImGui a held-down button doesn't stay visually down if the cursor leaves it
+                        //It's going to highlight the wrong buttons if it stays set during the drag however, so we already clear it here
+                        left_down_overlay_id = k_ulOverlayID_None;
+
+                        UIManager::Get()->RepeatFrame();
+                    }
+                    else
+                    {
+                        left_down_overlay_id = i;
+                    }
+                }
+            }
+
+            ImGui::SameLine();
+            ImGui::PopID();
+        }
+    }
+
+    if (m_IsDraggingOverlayButtons)
+    {
+        ImGui::PushID(drag_button_id);
+
+        //Add active dragged button separately so it's always on top of the other ones
+        const float button_x = clamp(ImGui::GetMousePos().x + drag_mouse_offset, cursor_screen_pos_first.x, cursor_screen_pos_first.x + (button_width_base * (u_overlay_count - 1) ));
+        ImGui::SetCursorScreenPos({button_x, ImGui::GetCursorScreenPos().y});
+        ImGui::SetNextItemAllowOverlap();
+
+        overlay_button(drag_overlay_id);
         ImGui::SameLine();
 
+        //Button & overlay swapping
+        unsigned int index_swap = (unsigned int)( ((button_x - cursor_screen_pos_first.x) + (button_width_base / 2.0f)) / button_width_base );
+        if (drag_overlay_id != index_swap)
+        {
+            //Animate swap
+            OverlayButtonState& button_state = list_unique_data[list_unique_ids[index_swap]];
+            const float target_x = cursor_pos_first.x + (button_width_base * index_swap);
+            if (button_state.starting_x != -1.0f)   //account for ongoing animation even if it's really quick
+            {
+                button_state.starting_x = smoothstep(button_state.animation_progress, button_state.starting_x, target_x);
+            }
+            else
+            {
+                button_state.starting_x = target_x;
+            }
+            button_state.animation_progress = 0.0f;
+
+            //Actually swap the overlay
+            OverlayManager::Get().SwapOverlays(drag_overlay_id, index_swap);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, drag_overlay_id);
+            IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_swap, index_swap);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_state_overlay_current_id_override, -1);
+
+            std::iter_swap(list_unique_ids.begin() + drag_overlay_id, list_unique_ids.begin() + index_swap);
+
+            //Also adjust the active properties window if we just swapped that
+            if (properties_active_overlay == drag_overlay_id)
+            {
+                UIManager::Get()->GetOverlayPropertiesWindow().SetActiveOverlayID(index_swap, true);
+            }
+            else if (properties_active_overlay == index_swap)
+            {
+                UIManager::Get()->GetOverlayPropertiesWindow().SetActiveOverlayID(drag_overlay_id, true);
+            }
+
+            drag_overlay_id = index_swap;
+            m_OverlayButtonActiveMenuID = k_ulOverlayID_None;
+
+            UIManager::Get()->RepeatFrame();
+        }
+
+        //Dragging release
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+        {
+            OverlayButtonState& button_state = list_unique_data[drag_button_id];
+            button_state.starting_x = button_x - ImGui::GetWindowPos().x + ImGui::GetScrollX();
+            button_state.animation_progress = 0.0f;
+
+            drag_button_id = k_ulOverlayID_None;
+            drag_overlay_id = k_ulOverlayID_None;
+            m_IsDraggingOverlayButtons = false;
+        }
+
         ImGui::PopID();
+    }
+
+    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+    {
+        left_down_overlay_id = k_ulOverlayID_None;
+    }
+
+    if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+    {
+        right_down_overlay_id = k_ulOverlayID_None;
     }
 
     //Don't change overlay highlight while mouse down as it won't be correct while dragging and flicker just before it
@@ -317,17 +453,10 @@ void WindowOverlayBar::UpdateOverlayButtons()
         hovered_overlay_id_last = hovered_overlay_id;
     }
 
+    //Always leave cursor where the last unmoved button would've left it (leaves blank space during during drags if necessary)
+    ImGui::SetCursorPosX(cursor_pos_first.x + (button_width_base * u_overlay_count));
+
     ImGui::PopID();
-
-    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-    {
-        m_IsDraggingOverlayButtons = false;
-    }
-
-    if ( (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) || (hovered_overlay_id == k_ulOverlayID_None) )
-    {
-        right_down_overlay_id = k_ulOverlayID_None;
-    }
 }
 
 void WindowOverlayBar::MenuOverlayButton(unsigned int overlay_id, ImVec2 pos, bool is_item_active)
@@ -701,6 +830,7 @@ void WindowOverlayBar::Update()
     }
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {style.ItemSpacing.y, style.ItemSpacing.y});
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 
     UpdateOverlayButtons();
@@ -724,7 +854,7 @@ void WindowOverlayBar::Update()
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
         TextureManager::Get().GetTextureInfo(tmtex_icon_add, b_size, b_uv_min, b_uv_max);
-        if (ImGui::ImageButton("Close", io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
+        if (ImGui::ImageButton("Add Overlay", io.Fonts->TexID, b_size_default, b_uv_min, b_uv_max, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)))
         {
             if (!m_IsAddOverlayButtonActive)
             {
@@ -819,6 +949,7 @@ void WindowOverlayBar::Update()
     DisplayTooltipIfHovered( TranslationManager::GetString((show_hold_message) ? tstr_OverlayBarTooltipResetHold : tstr_OverlayBarTooltipSettings) );
 
     ImGui::PopStyleColor(); //ImGuiCol_Button
+    ImGui::PopStyleVar();   //ImGuiStyleVar_ItemSpacing
     ImGui::PopStyleVar();   //ImGuiStyleVar_FrameRounding
 
     m_Pos  = ImGui::GetWindowPos();
