@@ -6259,18 +6259,50 @@ void OutputManager::ApplySettingTransform()
         {
             Matrix4 matrix_base = m_OverlayDragger.GetBaseOffsetMatrix() * ConfigManager::Get().GetOverlayDetachedTransform();
 
+            //SteamVR 2.15.1 made changes that affected legacy dashboard positioning in... odd ways
+            //This more of a band-aid solution for the rarely used legacy dashboard, short of just not supporting it anymore
+            bool has_applied_bandaid_fix = false;
+            const bool is_v2_15 = (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.15") != nullptr);
+            if (is_v2_15)
+            {
+                vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
+                vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
+
+                if (handle_gamepad_ui == vr::k_ulOverlayHandleInvalid)
+                {
+                    if (is_primary_dashboard_overlay)
+                    {
+                        vr::HmdMatrix34_t matrix_dplus_tab;
+                        vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
+                        vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, origin, {0.5f, 0.5f}, &matrix_dplus_tab);
+                        matrix_base = matrix_dplus_tab;
+
+                        Vector3 translation = matrix_base.getTranslation();
+                        matrix_base.setTranslation({0.0f, 0.0f, 0.0f});
+                        matrix_base.scale(1.0f / GetDashboardScale());
+                        matrix_base.setTranslation(translation);
+
+                        has_applied_bandaid_fix = true;
+                        //Yes, this does not apply the overlay's transform at all
+                    }
+                }
+            }
+
             //Offset transform by additional offset values
             matrix_base.translate_relative(ConfigManager::GetValue(configid_float_overlay_offset_right),
                                            ConfigManager::GetValue(configid_float_overlay_offset_up),
                                            ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
-            //Apply origin offset, which basically adjusts transform to be aligned bottom-center instead of centered on both axes
-            if (height == 0.0f)     //Get overlay height if it's not set yet
+            if (!has_applied_bandaid_fix)
             {
-                height = GetOverlayHeight(overlay.GetID());
-            }
+                //Apply origin offset, which basically adjusts transform to be aligned bottom-center instead of centered on both axes
+                if (height == 0.0f)     //Get overlay height if it's not set yet
+                {
+                    height = GetOverlayHeight(overlay.GetID());
+                }
 
-            matrix_base.translate_relative(0.0f, height / 2.0f, 0.0f);
+                matrix_base.translate_relative(0.0f, height / 2.0f, 0.0f);
+            }
 
             matrix = matrix_base.toOpenVR34();
 

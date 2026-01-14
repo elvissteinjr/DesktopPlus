@@ -353,12 +353,22 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
 
                 if ((ovrl_handle_dplus == vr::k_ulOverlayHandleInvalid) || (!vr::VROverlay()->IsActiveDashboardOverlay(ovrl_handle_dplus)))
                 {
-                    Matrix4 mat_rot;
-                    mat_rot.rotateX(40.0f);
-                    matrix = matrix * mat_rot;
+                    //SteamVR 2.15.1 made changes that make the rotation no longer necessary
+                    //While this change is only in the beta branch, we conditionally skip applying the rotation on 2.15 runtimes
+                    const bool use_simple_offset = (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.15") != nullptr);
+                    if (use_simple_offset)
+                    {
+                        matrix.translate_relative(0.0f, 0.265f, 0.0f);
+                    }
+                    else
+                    {
+                        Matrix4 mat_rot;
+                        mat_rot.rotateX(40.0f);
+                        matrix = matrix * mat_rot;
 
-                    //Additional offset to make the position pretty much equal to D+ dashboard tab
-                    matrix.translate_relative(0.0f, -0.002f, 0.268f);
+                        //Additional offset to make the position pretty much equal to D+ dashboard tab
+                        matrix.translate_relative(0.0f, -0.002f, 0.268f);
+                    }
                 }
             }
 

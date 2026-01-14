@@ -2082,6 +2082,17 @@ void UIManager::PositionOverlay()
             }
         }
 
+        //SteamVR 2.15.1 made changes that affected offsets needed for Overlay Bar positioning and curvature
+        //While this change is only in the beta branch, we conditionally adjust properties on 2.15 runtimes to get back to the old position
+        const bool use_additional_offset = (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.15") != nullptr);
+        if (use_additional_offset)
+        {
+            vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.126f, 0.070f);
+
+            vr::VROverlay()->SetOverlayPreCurvePitch(m_OvrlHandleOverlayBar, 0.20f);
+            curve = 0.1725f;
+        }
+
         //Rotate slightly forward (local rotation)
         Matrix4 mat_m4;                 //is identity
         mat_m4.rotateX(-14.0f);
