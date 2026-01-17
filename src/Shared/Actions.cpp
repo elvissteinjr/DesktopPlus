@@ -496,7 +496,7 @@ void ActionManager::DoLoadOverlayProfileCommand(const ActionCommand& command, Ov
     }
     else
     {
-        const bool has_loaded_profile = ConfigManager::Get().LoadMultiOverlayProfileFromFile(command.StrMain + ".ini");
+        const bool has_loaded_profile = ConfigManager::Get().LoadMultiOverlayProfileFromFile(command.StrMain + ".ini", clear_existing);
 
         if (has_loaded_profile)
         {
