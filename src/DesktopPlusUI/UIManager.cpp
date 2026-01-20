@@ -1620,7 +1620,6 @@ void UIManager::UpdateStyle()
 
     //Set DPI-dependent style
     style.LogSliderDeadzone = (float)int(58.0f * ui_scale); //Force whole pixel size
-    io.MouseDragThreshold   = (float)int(12.0f * ui_scale);
 
     if (UIManager::Get()->IsInDesktopMode())
     {

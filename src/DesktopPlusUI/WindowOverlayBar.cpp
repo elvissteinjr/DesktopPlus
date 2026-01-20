@@ -342,13 +342,31 @@ void WindowOverlayBar::UpdateOverlayButtons()
             {
                 if (!m_IsDraggingOverlayButtons)
                 {
-                    if ((ImGui::IsMouseDragging(ImGuiMouseButton_Left)))
+                    //Record cursor offset at the time of clicking as we require a large drag delta to avoid mis-inputs when trying to just press the button with a shaky pointer
+                    //The button will be animated to snap to this offset
+                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
                     {
                         drag_mouse_offset = -(ImGui::GetMousePos().x - ImGui::GetItemRectMin().x);
+                    }
 
+                    //Not using ImGui::IsMouseDragging() here to only check for horizontal dragging
+                    if (fabs(ImGui::GetMouseDragDelta().x) > width / 2.0f)
+                    {
                         drag_button_id = button_id;
                         drag_overlay_id = i;
                         m_IsDraggingOverlayButtons = true;
+
+                        //Set starting drag state for animating the button snapping to the mouse offset posiiton
+                        OverlayButtonState& drag_button_state = list_unique_data[list_unique_ids[drag_overlay_id]];
+                        const float target_x = ImGui::GetMousePos().x + drag_mouse_offset - ImGui::GetMouseDragDelta().x;
+                        if (drag_button_state.starting_x != -1.0f)   //account for ongoing animation even if it's really quick
+                        {
+                            drag_button_state.starting_x = smoothstep(drag_button_state.animation_progress, drag_button_state.starting_x, target_x);
+                        }
+                        else
+                        {
+                            drag_button_state.starting_x = target_x;
+                        }
 
                         //This state is only used to avoid flickering when dragging right at the button edge since in Dear ImGui a held-down button doesn't stay visually down if the cursor leaves it
                         //It's going to highlight the wrong buttons if it stays set during the drag however, so we already clear it here
@@ -373,29 +391,54 @@ void WindowOverlayBar::UpdateOverlayButtons()
         ImGui::PushID(drag_button_id);
 
         //Add active dragged button separately so it's always on top of the other ones
-        const float button_x = clamp(ImGui::GetMousePos().x + drag_mouse_offset, cursor_screen_pos_first.x, cursor_screen_pos_first.x + (button_width_base * (u_overlay_count - 1) ));
-        ImGui::SetCursorScreenPos({button_x, ImGui::GetCursorScreenPos().y});
+        OverlayButtonState& drag_button_state = list_unique_data[list_unique_ids[drag_overlay_id]];
+        const float target_x_drag = ImGui::GetMousePos().x + drag_mouse_offset;
+
+        //Animate the button snapping from its initial positon into the mouse position with drag offset
+        float drag_button_x = -1.0f;
+        if (drag_button_state.starting_x != -1.0f)
+        {
+            drag_button_x = smoothstep(drag_button_state.animation_progress, drag_button_state.starting_x, target_x_drag);
+
+            const float animation_step = ImGui::GetIO().DeltaTime * 8.0f;
+            drag_button_state.animation_progress = clamp(drag_button_state.animation_progress + animation_step, 0.0f, 1.0f);
+
+            if (drag_button_state.animation_progress == 1.0f)
+            {
+                drag_button_state.starting_x = -1.0f;
+                drag_button_state.animation_progress = 0.0f;
+            }
+        }
+        else
+        {
+            drag_button_x = target_x_drag;
+        }
+
+        drag_button_x = clamp(drag_button_x, cursor_screen_pos_first.x, cursor_screen_pos_first.x + (button_width_base * (u_overlay_count - 1) ));
+
+        //Overlay button widget
+        ImGui::SetCursorScreenPos({drag_button_x, ImGui::GetCursorScreenPos().y});
         ImGui::SetNextItemAllowOverlap();
 
         overlay_button(drag_overlay_id);
         ImGui::SameLine();
 
         //Button & overlay swapping
-        unsigned int index_swap = (unsigned int)( ((button_x - cursor_screen_pos_first.x) + (button_width_base / 2.0f)) / button_width_base );
+        unsigned int index_swap = (unsigned int)( ((drag_button_x - cursor_screen_pos_first.x) + (button_width_base / 2.0f)) / button_width_base );
         if (drag_overlay_id != index_swap)
         {
             //Animate swap
-            OverlayButtonState& button_state = list_unique_data[list_unique_ids[index_swap]];
+            OverlayButtonState& button_state_swap = list_unique_data[list_unique_ids[index_swap]];
             const float target_x = cursor_pos_first.x + (button_width_base * index_swap);
-            if (button_state.starting_x != -1.0f)   //account for ongoing animation even if it's really quick
+            if (button_state_swap.starting_x != -1.0f)   //account for ongoing animation even if it's really quick
             {
-                button_state.starting_x = smoothstep(button_state.animation_progress, button_state.starting_x, target_x);
+                button_state_swap.starting_x = smoothstep(button_state_swap.animation_progress, button_state_swap.starting_x, target_x);
             }
             else
             {
-                button_state.starting_x = target_x;
+                button_state_swap.starting_x = target_x;
             }
-            button_state.animation_progress = 0.0f;
+            button_state_swap.animation_progress = 0.0f;
 
             //Actually swap the overlay
             OverlayManager::Get().SwapOverlays(drag_overlay_id, index_swap);
@@ -424,9 +467,8 @@ void WindowOverlayBar::UpdateOverlayButtons()
         //Dragging release
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
         {
-            OverlayButtonState& button_state = list_unique_data[drag_button_id];
-            button_state.starting_x = button_x - ImGui::GetWindowPos().x + ImGui::GetScrollX();
-            button_state.animation_progress = 0.0f;
+            drag_button_state.starting_x = drag_button_x - ImGui::GetWindowPos().x + ImGui::GetScrollX();
+            drag_button_state.animation_progress = 0.0f;
 
             drag_button_id = k_ulOverlayID_None;
             drag_overlay_id = k_ulOverlayID_None;
