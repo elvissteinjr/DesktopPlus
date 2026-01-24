@@ -4761,8 +4761,8 @@ bool OutputManager::HandleOpenVREvents()
                     if (!drag_or_select_mode_enabled)
                     {
                         //If leaving a WinRT window capture and the option is enabled, focus the active scene app
-                        if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) && 
-                             (ConfigManager::GetValue(configid_bool_windows_winrt_auto_focus_scene_app)) )
+                        if ( (!m_MouseIgnoreMoveEvent) && (ConfigManager::GetValue(configid_bool_windows_winrt_auto_focus_scene_app)) &&
+                             (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0) )
                         {
                             WindowManager::Get().FocusActiveVRSceneApp(&m_InputSim);
                         }
