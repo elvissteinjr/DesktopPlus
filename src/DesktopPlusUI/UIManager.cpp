@@ -1137,8 +1137,11 @@ void UIManager::OnProfileLoaded()
     //Hide window if overlay ID no longer in range
     if (m_WindowOverlayProperties.GetActiveOverlayID() >= OverlayManager::Get().GetOverlayCount())
     {
-        m_WindowOverlayProperties.SetActiveOverlayID(k_ulOverlayID_None, true);
-        m_WindowOverlayProperties.Hide();
+        if (m_WindowOverlayProperties.GetActiveOverlayID() != k_ulOverlayID_None)
+        {
+            m_WindowOverlayProperties.SetActiveOverlayID(k_ulOverlayID_None, true);
+            m_WindowOverlayProperties.Hide();
+        }
     }
     else //Just adjust switch if it is still is
     {
@@ -1151,6 +1154,7 @@ void UIManager::OnProfileLoaded()
         AddFontBuilderStringIfAnyUnmappedCharacters(OverlayManager::Get().GetConfigData(i).ConfigNameStr.c_str());
     }
 
+    m_IdleState.AddActiveTime(50);
     RepeatFrame();
 }
 
