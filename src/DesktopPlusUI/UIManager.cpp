@@ -861,6 +861,14 @@ void UIManager::HandleIPCMessage(const MSG& msg, bool handle_delayed)
 
                 switch (bool_id)
                 {
+                    case configid_bool_overlay_enabled:
+                    {
+                        if (m_WindowOverlayBar.IsVisibleOrFading())
+                        {
+                            m_IdleState.AddActiveTime(50);
+                        }
+                        break;
+                    }
                     case configid_bool_state_window_focused_process_elevated:
                     case configid_bool_state_misc_process_elevated:
                     case configid_bool_state_misc_elevated_mode_active:
