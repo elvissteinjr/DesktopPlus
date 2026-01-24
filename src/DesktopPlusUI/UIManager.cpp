@@ -2149,6 +2149,7 @@ void UIManager::PositionOverlay()
             if (!m_OvrlVisible)
             {
                 vr::VROverlay()->ShowOverlay(m_OvrlHandleOverlayBar);
+                m_WindowOverlayBar.Show();
                 m_OvrlVisible = true;
                 UpdateOverlayDimming();
                 m_OverlayDragger.UpdateTempStandingPosition();
@@ -2228,17 +2229,27 @@ void UIManager::PositionOverlay()
         {
             if (m_OvrlVisible)
             {
-                vr::VROverlay()->HideOverlay(m_OvrlHandleOverlayBar);
-                m_WindowOverlayBar.HideMenus();
-                UpdateOverlayDimming();
+                if (m_WindowOverlayBar.IsVisible())
+                {
+                    m_WindowOverlayBar.HideMenus();
+                    m_WindowOverlayBar.Hide();
 
-                m_OvrlVisible = false;
+                    m_IdleState.AddActiveTime();
+                }
+                else if (!m_WindowOverlayBar.IsVisibleOrFading()) //Wait for window fade-out to finish before hiding the overlay
+                {
+                    vr::VROverlay()->HideOverlay(m_OvrlHandleOverlayBar);
+                    m_OvrlVisible = false;
+
+                    UpdateOverlayDimming();
+                }
             }
         }
     }
     else if (m_OvrlVisible) //Dashboard overlay has gone missing, hide
     {
         vr::VROverlay()->HideOverlay(m_OvrlHandleOverlayBar);
+        m_WindowOverlayBar.Hide();
 
         m_OvrlVisible = false;
     }
