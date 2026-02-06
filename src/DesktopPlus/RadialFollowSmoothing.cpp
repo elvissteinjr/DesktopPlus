@@ -138,7 +138,7 @@ Vector2 RadialFollowCore::Filter(Vector2 target)
 
     //Catch NaNs and interrupted input
     if ( !((std::isfinite(m_LastPos.x)) && (std::isfinite(m_LastPos.y)) && (::GetTickCount64() <= m_LastTick + 50)) )
-	    m_LastPos = target;
+        m_LastPos = target;
 
     m_LastTick = ::GetTickCount64();
 
@@ -147,16 +147,16 @@ Vector2 RadialFollowCore::Filter(Vector2 target)
 
 void RadialFollowCore::UpdateDerivedParams()
 {
-	if (m_SoftKneeScale > 0.0001f)
-	{
-		m_XOffset   = GetXOffset();
-		m_ScaleComp = GetScaleComp();
-	}
-	else //Calculating them with functions would use / by 0
-	{
-		m_XOffset   = -1.0;
-		m_ScaleComp =  1.0;
-	}
+    if (m_SoftKneeScale > 0.0001f)
+    {
+        m_XOffset   = GetXOffset();
+        m_ScaleComp = GetScaleComp();
+    }
+    else //Calculating them with functions would use / by 0
+    {
+        m_XOffset   = -1.0;
+        m_ScaleComp =  1.0;
+    }
 }
 
 double RadialFollowCore::KneeFunc(double x)
