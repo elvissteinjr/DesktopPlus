@@ -3,6 +3,7 @@
 #include "openvr.h"
 #include "DPRect.h"
 #include "OUtoSBSConverter.h"
+#include "RadialFollowSmoothing.h"
 
 //About the Overlay class:
 //OutputManager's m_OvrlHandleDesktopTexture holds the actual texture handle for every other desktop duplication overlay created by SteamVR
@@ -33,7 +34,10 @@ class Overlay
         float m_Opacity;                      //This is the opacity the overlay is currently set at, which may differ from what the config value is
         DPRect m_ValidatedCropRect;           //Validated cropping rectangle used in OutputManager::Update() to check against dirty update regions
         OverlayTextureSource m_TextureSource;
+
         OUtoSBSConverter m_OUtoSBSConverter;
+        RadialFollowCore m_SmootherPos;
+        RadialFollowCore m_SmootherRot;
 
     public:
         Overlay(unsigned int id);
@@ -61,4 +65,7 @@ class Overlay
         void SetTextureSource(OverlayTextureSource tex_source);
         OverlayTextureSource GetTextureSource() const;
         void OnDesktopDuplicationUpdate();  //Called by OutputManager::RefreshOpenVROverlayTexture() for every overlay, but only if the texture has actually changed
+
+        RadialFollowCore& GetSmootherPos();
+        RadialFollowCore& GetSmootherRot();
 };

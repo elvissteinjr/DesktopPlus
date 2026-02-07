@@ -39,6 +39,7 @@ class WindowOverlayProperties : public FloatingWindow, public FloatingWindowDesk
         bool m_IsConfigDataModified;                 //Set to true on page enter and cleared when a page is saving data
 
         float m_OriginHMDFloorSettingsAnimationProgress;
+        float m_OriginHMDSettingsAnimationProgress;
         float m_OriginTheaterScreenSettingsAnimationProgress;
         float m_PerfMonStyleCheckboxAnimationProgress;
         std::string m_CropButtonLabel;

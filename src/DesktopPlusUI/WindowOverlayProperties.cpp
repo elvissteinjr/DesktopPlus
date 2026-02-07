@@ -27,6 +27,7 @@ WindowOverlayProperties::WindowOverlayProperties() :
     m_Column0Width(0.0f),
     m_IsConfigDataModified(false),
     m_OriginHMDFloorSettingsAnimationProgress(0.0f),
+    m_OriginHMDSettingsAnimationProgress(0.0f),
     m_OriginTheaterScreenSettingsAnimationProgress(0.0f),
     m_PerfMonStyleCheckboxAnimationProgress(0.0f),
     m_BufferOverlayName{0},
@@ -156,6 +157,7 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
         }
 
         m_OriginHMDFloorSettingsAnimationProgress      = (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_hmd_floor)      ? 1.0f : 0.0f;
+        m_OriginHMDSettingsAnimationProgress           = (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_hmd)            ? 1.0f : 0.0f;
         m_OriginTheaterScreenSettingsAnimationProgress = (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen) ? 1.0f : 0.0f;
         m_PerfMonStyleCheckboxAnimationProgress        = (ConfigManager::GetValue(configid_bool_performance_monitor_minimal_style))  ? 1.0f : 0.0f;
     }
@@ -562,12 +564,16 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
     ImGui::PopClipRect();
 
     ImGui::SetCursorScreenPos(backup_pos);
-    ImGui::NextColumn();
+    ImGui::Columns(1);
 
     //Origin-specific settings
-    ImGui::NextColumn();
-
+    //-Origin HMD Floor
     ImGui::BeginCollapsingArea("OriginHMDFloorSettings", (mode_origin == ovrl_origin_hmd_floor), m_OriginHMDFloorSettingsAnimationProgress);
+
+    ImGui::Columns(2, "ColumnOriginHMDFloorSettings", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
+    ImGui::NextColumn();
 
     bool& use_turning = ConfigManager::GetRef(configid_bool_overlay_origin_hmd_floor_use_turning);
 
@@ -577,8 +583,56 @@ void WindowOverlayProperties::UpdatePageMainCatPosition()
         IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_origin_hmd_floor_use_turning, use_turning);
     }
 
+    ImGui::NextColumn();
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionOriginConfigSmoothing));
+    ImGui::NextColumn();
+
+    int& origin_smoothing_level = ConfigManager::Get().GetRef(configid_int_overlay_origin_smoothing_level);
+    const int origin_smoothing_level_max = tstr_SettingsMouseSmoothingLevelVeryHigh - tstr_SettingsMouseSmoothingLevelNone;
+    origin_smoothing_level = clamp(origin_smoothing_level, 0, origin_smoothing_level_max);
+    if (ImGui::SliderWithButtonsInt("SmoothingLevelHMDFloor", origin_smoothing_level, 1, 1, 0, origin_smoothing_level_max, "##%d", ImGuiSliderFlags_NoInput, nullptr, 
+                                    TranslationManager::GetString( (TRMGRStrID)(tstr_SettingsMouseSmoothingLevelNone + origin_smoothing_level) )))
+    {
+        origin_smoothing_level = clamp(origin_smoothing_level, 0, origin_smoothing_level_max);
+
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_origin_smoothing_level, origin_smoothing_level);
+    }
+
+    ImGui::Columns(1);
+
     ImGui::Spacing();
     ImGui::EndCollapsingArea();
+
+    //-Origin HMD 
+    ImGui::BeginCollapsingArea("OriginHMDSettings", (mode_origin == ovrl_origin_hmd), m_OriginHMDSettingsAnimationProgress);
+
+    ImGui::Columns(2, "ColumnOriginHMDSettings", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsPositionOriginConfigSmoothing));
+    ImGui::NextColumn();
+
+    if (ImGui::SliderWithButtonsInt("SmoothingLevelHMD", origin_smoothing_level, 1, 1, 0, origin_smoothing_level_max, "##%d", ImGuiSliderFlags_NoInput, nullptr, 
+                                    TranslationManager::GetString( (TRMGRStrID)(tstr_SettingsMouseSmoothingLevelNone + origin_smoothing_level) )))
+    {
+        origin_smoothing_level = clamp(origin_smoothing_level, 0, origin_smoothing_level_max);
+
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_origin_smoothing_level, origin_smoothing_level);
+    }
+
+    ImGui::Columns(1);
+
+    ImGui::Spacing();
+    ImGui::EndCollapsingArea();
+
+    //-Origin Theater Screen
+    ImGui::Columns(2, "ColumnPosition2", false);
+    ImGui::SetColumnWidth(0, m_Column0Width);
+
+    ImGui::NextColumn();
 
     if (UIManager::Get()->IsOpenVRLoaded())
     {

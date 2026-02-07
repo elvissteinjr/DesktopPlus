@@ -148,6 +148,7 @@ enum ConfigID_Int
     configid_int_overlay_3D_mode,
     configid_int_overlay_display_mode,
     configid_int_overlay_origin,
+    configid_int_overlay_origin_smoothing_level,
     configid_int_overlay_update_limit_override_mode,
     configid_int_overlay_update_limit_override_fps,
     configid_int_overlay_browser_max_fps_override,

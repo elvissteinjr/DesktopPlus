@@ -60,6 +60,16 @@ void RadialFollowCore::SetSmoothingLeakCoefficient(double value)
     m_SmoothingLeakCoef = clamp(value, 0.0, 1.0);
 }
 
+bool RadialFollowCore::GetDetectInterruptions()
+{
+    return m_DetectInterruptions;
+}
+
+void RadialFollowCore::SetDetectInterruptions(bool value)
+{
+    m_DetectInterruptions = value;
+}
+
 void RadialFollowCore::ApplyPresetSettings(int preset_id)
 {
     preset_id = clamp(preset_id, 0, 5);
@@ -129,7 +139,7 @@ float RadialFollowCore::SampleRadialCurve(float dist)
     return (float)DeltaFn(dist, m_XOffset, m_ScaleComp);
 }
 
-Vector2 RadialFollowCore::Filter(Vector2 target)
+Vector2 RadialFollowCore::Filter(const Vector2& target)
 {
     Vector2 direction = target - m_LastPos;
     float distToMove = SampleRadialCurve(direction.length());
@@ -137,12 +147,67 @@ Vector2 RadialFollowCore::Filter(Vector2 target)
     m_LastPos = m_LastPos + (direction * distToMove);
 
     //Catch NaNs and interrupted input
-    if ( !((std::isfinite(m_LastPos.x)) && (std::isfinite(m_LastPos.y)) && (::GetTickCount64() <= m_LastTick + 50)) )
+    if ( !((std::isfinite(m_LastPos.x)) && (std::isfinite(m_LastPos.y))) || ((m_DetectInterruptions) && (::GetTickCount64() > m_LastTick + 50)) )
         m_LastPos = target;
 
     m_LastTick = ::GetTickCount64();
 
     return m_LastPos;
+}
+
+Vector3 RadialFollowCore::Filter(const Vector3& target)
+{
+    Vector3 direction = target - m_LastPos3;
+    float distToMove = SampleRadialCurve(direction.length());
+    direction.normalize();
+    m_LastPos3 = m_LastPos3 + (direction * distToMove);
+
+    //Catch NaNs and interrupted input
+    if ( !((std::isfinite(m_LastPos3.x)) && (std::isfinite(m_LastPos3.y)) && (std::isfinite(m_LastPos3.z))) || ((m_DetectInterruptions) && (::GetTickCount64() > m_LastTick + 50)) )
+        m_LastPos3 = target;
+
+    m_LastTick = ::GetTickCount64();
+
+    return m_LastPos3;
+}
+
+Vector3 RadialFollowCore::FilterWrapped(const Vector3& target, float value_min, float value_max)
+{
+    auto unwrap_to_nearest = [&](const float value_wrapped, const float value_prev)
+    {
+        //Unwrap value in a way that ensures close to the previous one
+        const float range_width = value_max - value_min;
+        const float value_in_range = value_wrapped - std::floor((value_wrapped - value_min) / range_width) * range_width;
+        //Shift by multiples of range_width so the value is +/- half range_width to the previous value
+        const float delta = value_prev - value_in_range;
+        return value_in_range + std::round(delta / range_width) * range_width;
+    };
+
+    Vector3 target_unwrapped = target;
+
+    target_unwrapped.x = unwrap_to_nearest(target.x, m_LastPos3.x);
+    target_unwrapped.y = unwrap_to_nearest(target.y, m_LastPos3.y);
+    target_unwrapped.z = unwrap_to_nearest(target.z, m_LastPos3.z);
+
+    Vector3 direction = target_unwrapped - m_LastPos3;
+    float distToMove = SampleRadialCurve(direction.length());
+    direction.normalize();
+    m_LastPos3 = m_LastPos3 + (direction * distToMove);
+
+    //Catch NaNs and interrupted input
+    if ( !((std::isfinite(m_LastPos3.x)) && (std::isfinite(m_LastPos3.y)) && (std::isfinite(m_LastPos3.z))) || ((m_DetectInterruptions) && (::GetTickCount64() > m_LastTick + 50)) )
+        m_LastPos3 = target;
+
+    m_LastTick = ::GetTickCount64();
+
+    return m_LastPos3;
+}
+
+void RadialFollowCore::ResetLastPos()
+{
+    //Filter() functions will already fall back to the target pos if any results aren't finite so this does the trick
+    m_LastPos.x  = INFINITY;
+    m_LastPos3.x = INFINITY;
 }
 
 void RadialFollowCore::UpdateDerivedParams()

@@ -349,6 +349,7 @@ enum TRMGRStrID
     tstr_OvrlPropsPositionOriginConfigHMDXYTurning,
     tstr_OvrlPropsPositionOriginConfigTheaterScreenEnter,
     tstr_OvrlPropsPositionOriginConfigTheaterScreenLeave,
+    tstr_OvrlPropsPositionOriginConfigSmoothing,
     tstr_OvrlPropsPositionOriginTheaterScreenTip,
     tstr_OvrlPropsPositionDispMode,
     tstr_OvrlPropsPositionDispModeAlways,

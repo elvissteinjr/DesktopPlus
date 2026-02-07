@@ -20,6 +20,9 @@ Overlay::Overlay(unsigned int id) : m_ID(id),
     {
         InitOverlay();
     }
+
+    m_SmootherPos.SetDetectInterruptions(false);
+    m_SmootherRot.SetDetectInterruptions(false);
 }
 
 Overlay::Overlay(Overlay&& b)
@@ -211,6 +214,9 @@ void Overlay::SetVisible(bool visible)
 {
     m_Visible = visible;
     (visible) ? vr::VROverlay()->ShowOverlay(m_OvrlHandle) : vr::VROverlay()->HideOverlay(m_OvrlHandle);
+
+    m_SmootherPos.ResetLastPos();
+    m_SmootherRot.ResetLastPos();
 }
 
 bool Overlay::IsVisible() const
@@ -414,4 +420,14 @@ void Overlay::OnDesktopDuplicationUpdate()
     {
         OutputManager::Get()->ConvertOUtoSBS(*this, m_OUtoSBSConverter);
     }
+}
+
+RadialFollowCore& Overlay::GetSmootherPos()
+{
+    return m_SmootherPos;
+}
+
+RadialFollowCore& Overlay::GetSmootherRot()
+{
+    return m_SmootherRot;
 }

@@ -181,6 +181,11 @@ void Matrix4::setRotation(float x, float y, float z)
     m[2]  =  cy * sx * sz - sy * cz; m[6] =  sy * sz + cy * sx * cz; m[10] =  cy * cx;
 }
 
+void Matrix4::setRotation(const Vector3& v)
+{
+    setRotation(v.x, v.y, v.z);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // transpose 4x4 matrix

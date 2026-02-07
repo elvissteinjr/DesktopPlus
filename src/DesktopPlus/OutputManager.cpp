@@ -84,6 +84,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlTempDragStartTick(0),
     m_PendingDashboardDummyHeight(0.0f),
     m_LastApplyTransformTick(0),
+    m_LastFrameTransformUpdateTick(0),
     m_MouseLastClickTick(0),
     m_MouseIgnoreMoveEvent(false),
     m_MouseCursorNeedsUpdate(false),
@@ -1777,6 +1778,19 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     case configid_int_overlay_origin:
                     {
                         DetachedTransformConvertOrigin(OverlayManager::Get().GetCurrentOverlayID(), (OverlayOrigin)previous_value, (OverlayOrigin)msg.lParam);
+                        ApplySettingTransform();
+                        break;
+                    }
+                    case configid_int_overlay_origin_smoothing_level:
+                    {
+                        //Reset smoothers if there was previously no smoothing enabled
+                        if (previous_value == 0)
+                        {
+                            Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+                            overlay.GetSmootherPos().ResetLastPos();
+                            overlay.GetSmootherRot().ResetLastPos();
+                        }
+
                         ApplySettingTransform();
                         break;
                     }
@@ -4882,6 +4896,7 @@ bool OutputManager::HandleOpenVREvents()
         dashboard_origin_was_updated = true;
     }
 
+    bool transform_frame_update_was_done = false; //Frame transform updates need to track the last time they were done, but only once for all overlays
     for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
     {
         OverlayManager::Get().SetCurrentOverlayID(i);
@@ -4903,9 +4918,12 @@ bool OutputManager::HandleOpenVREvents()
                         m_OverlayDragger.DragGestureUpdate();
                     }
                 }
-                else if (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_hmd_floor)
+                else if ((data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_hmd_floor) || (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_hmd))
                 {
-                    DetachedTransformUpdateHMDFloor();
+                    if (DetachedTransformFrameUpdate())
+                    {
+                        transform_frame_update_was_done = true;
+                    }
                 }
                 else if ( (dashboard_origin_was_updated) && (m_OverlayDragger.GetDragDeviceID() == -1) && (!m_OverlayDragger.IsDragGestureActive()) && 
                           (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_dashboard) )
@@ -4916,6 +4934,11 @@ bool OutputManager::HandleOpenVREvents()
 
             DetachedOverlayGazeFade();
         }
+    }
+
+    if (transform_frame_update_was_done)
+    {
+        m_LastFrameTransformUpdateTick = ::GetTickCount64();
     }
 
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
@@ -6239,7 +6262,7 @@ void OutputManager::ApplySettingTransform()
         }
         case ovrl_origin_hmd_floor:
         {
-            DetachedTransformUpdateHMDFloor();
+            DetachedTransformFrameUpdate();
             break;
         }
         case ovrl_origin_seated_universe:
@@ -6311,14 +6334,22 @@ void OutputManager::ApplySettingTransform()
         }
         case ovrl_origin_hmd:
         {
-            matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
+            //Unsmoothed uses device-relative transform, but smoothed ones are absolute updated each frame, like HMD Floor origin
+            if (ConfigManager::GetValue(configid_int_overlay_origin_smoothing_level) == 0)
+            {
+                matrix = ConfigManager::Get().GetOverlayDetachedTransform().toOpenVR34();
 
-            //Offset transform by additional offset values
-            vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
-                                                                        ConfigManager::GetValue(configid_float_overlay_offset_up),
-                                                                        ConfigManager::GetValue(configid_float_overlay_offset_forward));
+                //Offset transform by additional offset values
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix, ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                                                            ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                                                            ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
-            vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, vr::k_unTrackedDeviceIndex_Hmd, &matrix);
+                vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(ovrl_handle, vr::k_unTrackedDeviceIndex_Hmd, &matrix);
+            }
+            else
+            {
+                DetachedTransformFrameUpdate();
+            }
             break;
         }
         case ovrl_origin_right_hand:
@@ -7186,45 +7217,207 @@ void OutputManager::DetachedTransformConvertOrigin(unsigned int overlay_id, Over
 void OutputManager::DetachedTransformConvertOrigin(unsigned int overlay_id, OverlayOrigin origin_from, OverlayOrigin origin_to, 
                                                    const OverlayOriginConfig& origin_config_from, const OverlayOriginConfig& origin_config_to)
 {
+    Overlay& overlay = OverlayManager::Get().GetOverlay(overlay_id);
     OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
     Matrix4& transform = data.ConfigTransform;
 
-    OverlayOriginConfig origin_config = OverlayManager::Get().GetOriginConfigFromData(data);
-    Matrix4 mat_origin_from = m_OverlayDragger.GetBaseOffsetMatrix(origin_from, origin_config_from);
-
-    Matrix4 mat_origin_to_inverse = m_OverlayDragger.GetBaseOffsetMatrix(origin_to, origin_config_to);
-    mat_origin_to_inverse.invert();
-
-    //Apply origin-from matrix to get absolute transform
-    transform = mat_origin_from * transform;
-
-    if ( (origin_from == ovrl_origin_dashboard) || (origin_to == ovrl_origin_dashboard) )
+    //With origin smoothing, just take the current in-between overlay transform even if it's technically less correct
+    bool has_direct_transform = false;
+    if ( (origin_from == ovrl_origin_hmd_floor) && ((origin_from == ovrl_origin_hmd) && (data.ConfigInt[configid_int_overlay_origin_smoothing_level] != 0)) )
     {
-        //Apply or counteract origin offset used in ApplySettingTransform for dashboard origin
-        float height = GetOverlayHeight(overlay_id);
+        //Only trust that transform if the overlay is visible, however
+        if (vr::VROverlay()->IsOverlayVisible(overlay.GetHandle()))
+        {
+            vr::HmdMatrix34_t transform_ovr;
+            vr::TrackingUniverseOrigin origin;
+            vr::VROverlay()->GetOverlayTransformAbsolute(overlay.GetHandle(), &origin, &transform_ovr);
 
-        transform.translate_relative(0.0f, (origin_from == ovrl_origin_dashboard) ? height / 2.0f : height / -2.0f, 0.0f);
+            transform = transform_ovr;
+
+            //Undo additional offset present in transform
+            transform.translate_relative(-ConfigManager::GetValue(configid_float_overlay_offset_right),
+                                         -ConfigManager::GetValue(configid_float_overlay_offset_up),
+                                         -ConfigManager::GetValue(configid_float_overlay_offset_forward));
+
+            has_direct_transform = true;
+        }
+    }
+
+    //Usual case, not HMD Floor or origin smoothing applied
+    if (!has_direct_transform)
+    {
+        OverlayOriginConfig origin_config = OverlayManager::Get().GetOriginConfigFromData(data);
+        Matrix4 mat_origin_from = m_OverlayDragger.GetBaseOffsetMatrix(origin_from, origin_config_from);
+
+        //Apply origin-from matrix to get absolute transform
+        transform = mat_origin_from * transform;
+
+        if ( (origin_from == ovrl_origin_dashboard) || (origin_to == ovrl_origin_dashboard) )
+        {
+            //Apply or counteract origin offset used in ApplySettingTransform for dashboard origin
+            float height = GetOverlayHeight(overlay_id);
+
+            transform.translate_relative(0.0f, (origin_from == ovrl_origin_dashboard) ? height / 2.0f : height / -2.0f, 0.0f);
+        }
     }
 
     //Apply inverse of origin-to matrix to get transform relative to new origin
+    Matrix4 mat_origin_to_inverse = m_OverlayDragger.GetBaseOffsetMatrix(origin_to, origin_config_to);
+    mat_origin_to_inverse.invert();
+
     transform = mat_origin_to_inverse * transform;
 
     //Sync transform so the UI doesn't have the wrong idea if no drag occurs after this
     DetachedTransformSync(overlay_id);
+
+    //Reset smoothers to avoid potential hitching from previous uses
+    overlay.GetSmootherPos().ResetLastPos();
+    overlay.GetSmootherRot().ResetLastPos();
 }
 
-void OutputManager::DetachedTransformUpdateHMDFloor()
+bool OutputManager::DetachedTransformFrameUpdate()
 {
+    const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
+
+    //Skip if no frame level adjustments are needed
+    if (  (data.ConfigInt[configid_int_overlay_origin] != ovrl_origin_hmd_floor) && 
+         ((data.ConfigInt[configid_int_overlay_origin] != ovrl_origin_hmd) || (data.ConfigInt[configid_int_overlay_origin_smoothing_level] == 0)) )
+    {
+        return false;
+    }
+
+    //We need to update the overlay pos at a somewhat constant rate for smoothing to be actually smooth
+    //The way RadialFollowCore works doesn't take time into account however
+    //Ideally this would be offloaded into a separate thread doing this at a truly fixed rate, but for now we just skip if we're going too fast (active overlays already force minimum update rate)
+    if (::GetTickCount64() < m_LastFrameTransformUpdateTick + m_MaxActiveRefreshDelay - 3)
+    {
+        return false;
+    }
+
+    Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
+
     Matrix4 matrix = m_OverlayDragger.GetBaseOffsetMatrix();
     matrix *= ConfigManager::Get().GetOverlayDetachedTransform();
 
     //Offset transform by additional offset values
-    matrix.translate_relative(ConfigManager::GetValue(configid_float_overlay_offset_right),
-                              ConfigManager::GetValue(configid_float_overlay_offset_up),
-                              ConfigManager::GetValue(configid_float_overlay_offset_forward));
+    matrix.translate_relative(data.ConfigFloat[configid_float_overlay_offset_right],
+                              data.ConfigFloat[configid_float_overlay_offset_up],
+                              data.ConfigFloat[configid_float_overlay_offset_forward]);
+
+    //Use overlay's smoothers to filter the new matrix' position and rotation
+    if (data.ConfigInt[configid_int_overlay_origin_smoothing_level] != 0)
+    {
+        DetachedTransformFrameUpdateApplySmoothingParameters(overlay, data.ConfigInt[configid_int_overlay_origin_smoothing_level]);
+        matrix.setTranslation( overlay.GetSmootherPos().Filter(matrix.getTranslation()) );
+        matrix.setRotation(    overlay.GetSmootherRot().FilterWrapped(matrix.getRotation(), 0.0f, 360.0f) );
+    }
 
     vr::HmdMatrix34_t matrix_ovr = matrix.toOpenVR34();
     vr::VROverlay()->SetOverlayTransformAbsolute(OverlayManager::Get().GetCurrentOverlay().GetHandle(), vr::TrackingUniverseStanding, &matrix_ovr);
+
+    return true;
+}
+
+void OutputManager::DetachedTransformFrameUpdateApplySmoothingParameters(Overlay& overlay, int preset_id)
+{
+    preset_id = clamp(preset_id, 0, 5);
+
+    RadialFollowCore& smoother_pos = overlay.GetSmootherPos();
+    RadialFollowCore& smoother_rot = overlay.GetSmootherRot();
+
+    switch (preset_id)
+    {
+        case 0: //Not really used, calling Filter() is skipped entirely instead
+        {
+            smoother_pos.SetOuterRadius(0.0);
+            smoother_pos.SetInnerRadius(0.0);
+            smoother_pos.SetSmoothingCoefficient(0.0);
+            smoother_pos.SetSoftKneeScale(0.0);
+            smoother_pos.SetSmoothingLeakCoefficient(0.0);
+
+            smoother_rot.SetOuterRadius(0.0);
+            smoother_rot.SetInnerRadius(0.0);
+            smoother_rot.SetSmoothingCoefficient(0.0);
+            smoother_rot.SetSoftKneeScale(0.0);
+            smoother_rot.SetSmoothingLeakCoefficient(0.0);
+            break;
+        }
+        case 1:
+        {
+            smoother_pos.SetOuterRadius(0.0);
+            smoother_pos.SetInnerRadius(0.0);
+            smoother_pos.SetSmoothingCoefficient(0.85);
+            smoother_pos.SetSoftKneeScale(1.0);
+            smoother_pos.SetSmoothingLeakCoefficient(1.0);
+
+            smoother_rot.SetOuterRadius(0.0);
+            smoother_rot.SetInnerRadius(0.0);
+            smoother_rot.SetSmoothingCoefficient(0.8);
+            smoother_rot.SetSoftKneeScale(1.0);
+            smoother_rot.SetSmoothingLeakCoefficient(1.0);
+            break;
+        }
+        case 2:
+        {
+            smoother_pos.SetOuterRadius(0.0);
+            smoother_pos.SetInnerRadius(0.0);
+            smoother_pos.SetSmoothingCoefficient(0.90);
+            smoother_pos.SetSoftKneeScale(1.0);
+            smoother_pos.SetSmoothingLeakCoefficient(0.95);
+
+            smoother_rot.SetOuterRadius(0.5);
+            smoother_rot.SetInnerRadius(0.0);
+            smoother_rot.SetSmoothingCoefficient(0.85);
+            smoother_rot.SetSoftKneeScale(1.0);
+            smoother_rot.SetSmoothingLeakCoefficient(1.0);
+            break;
+        }
+        case 3:
+        {
+            smoother_pos.SetOuterRadius(0.02);
+            smoother_pos.SetInnerRadius(0.01);
+            smoother_pos.SetSmoothingCoefficient(0.95);
+            smoother_pos.SetSoftKneeScale(1.0);
+            smoother_pos.SetSmoothingLeakCoefficient(0.90);
+
+            smoother_rot.SetOuterRadius(1.0);
+            smoother_rot.SetInnerRadius(0.5);
+            smoother_rot.SetSmoothingCoefficient(0.75);
+            smoother_rot.SetSoftKneeScale(1.0);
+            smoother_rot.SetSmoothingLeakCoefficient(1.00);
+            break;
+        }
+        case 4:
+        {
+            smoother_pos.SetOuterRadius(0.10);
+            smoother_pos.SetInnerRadius(0.10);
+            smoother_pos.SetSmoothingCoefficient(0.93);
+            smoother_pos.SetSoftKneeScale(1.0);
+            smoother_pos.SetSmoothingLeakCoefficient(0.97);
+
+            smoother_rot.SetOuterRadius(7.5);
+            smoother_rot.SetInnerRadius(7.5);
+            smoother_rot.SetSmoothingCoefficient(0.75);
+            smoother_rot.SetSoftKneeScale(0.8);
+            smoother_rot.SetSmoothingLeakCoefficient(1.0);
+            break;
+        }
+        case 5:
+        {
+            smoother_pos.SetOuterRadius(0.25);
+            smoother_pos.SetInnerRadius(0.20);
+            smoother_pos.SetSmoothingCoefficient(0.95);
+            smoother_pos.SetSoftKneeScale(1.0);
+            smoother_pos.SetSmoothingLeakCoefficient(0.97);
+
+            smoother_rot.SetOuterRadius(30.0);
+            smoother_rot.SetInnerRadius(10.0);
+            smoother_rot.SetSmoothingCoefficient(0.96);
+            smoother_rot.SetSoftKneeScale(0.80);
+            smoother_rot.SetSmoothingLeakCoefficient(0.85);
+            break;
+        }
+    }
 }
 
 void OutputManager::DetachedTransformUpdateSeatedPosition()
@@ -7543,6 +7736,10 @@ void OutputManager::OnDragFinish()
         IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_origin, data.ConfigInt[configid_int_overlay_origin]);
         IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
     }
+
+    Overlay& overlay = OverlayManager::Get().GetOverlay(m_OverlayDragger.GetDragOverlayID());
+    overlay.GetSmootherPos().ResetLastPos();
+    overlay.GetSmootherRot().ResetLastPos();
 }
 
 void OutputManager::OnSetOverlayWinRTCaptureWindow(unsigned int overlay_id)

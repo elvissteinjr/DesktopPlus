@@ -27,11 +27,18 @@ class RadialFollowCore
         double GetSmoothingLeakCoefficient();
         void   SetSmoothingLeakCoefficient(double value);
 
+        bool GetDetectInterruptions();
+        void SetDetectInterruptions(bool value);
+
         void ApplyPresetSettings(int preset_id);
 
         float SampleRadialCurve(float dist);
 
-        Vector2 Filter(Vector2 target);
+        Vector2 Filter(const Vector2& target);
+        Vector3 Filter(const Vector3& target);
+        Vector3 FilterWrapped(const Vector3& target, float value_min, float value_max);	//Treats changes like max to min as small steps, but doesn't wrap the return value
+
+        void ResetLastPos();
 
     private:
         double m_RadiusOuter	   = 5.0;
@@ -42,7 +49,9 @@ class RadialFollowCore
         double m_GridScale		   = 1.0;
 
         Vector2 m_LastPos;
-        ULONGLONG m_LastTick = 0;
+        Vector3 m_LastPos3;
+        ULONGLONG m_LastTick	   = 0;
+        bool m_DetectInterruptions = true;
 
         double m_XOffset   = -1.0;
         double m_ScaleComp =  1.0;

@@ -140,7 +140,8 @@ class OutputManager
         void DetachedTransformConvertOrigin(unsigned int overlay_id, OverlayOrigin origin_from, OverlayOrigin origin_to);
         void DetachedTransformConvertOrigin(unsigned int overlay_id, OverlayOrigin origin_from, OverlayOrigin origin_to, 
                                             const OverlayOriginConfig& origin_config_from, const OverlayOriginConfig& origin_config_to);
-        void DetachedTransformUpdateHMDFloor();
+        bool DetachedTransformFrameUpdate();  //Returns if update was applied (not skipped)
+        void DetachedTransformFrameUpdateApplySmoothingParameters(Overlay& overlay, int preset_id);
         void DetachedTransformUpdateSeatedPosition();
 
         void DetachedInteractionAutoToggleAll();
@@ -222,6 +223,7 @@ class OutputManager
         ULONGLONG m_OvrlTempDragStartTick;
         float m_PendingDashboardDummyHeight;
         ULONGLONG m_LastApplyTransformTick;
+        ULONGLONG m_LastFrameTransformUpdateTick;
 
         Microsoft::WRL::ComPtr<ID3D11Texture2D> m_MouseTex;
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_MouseShaderRes;

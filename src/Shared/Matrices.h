@@ -169,6 +169,7 @@ public:
 
     void setTranslation(const Vector3 & v);
     void setRotation(float x, float y, float z);        //Set rotation with euler angles (ZYX rotation order). Resets scale to 1, if any
+    void setRotation(const Vector3& v);                 //^
 
     const float*      get() const;
     const float*      getTranspose();                   // return transposed matrix
