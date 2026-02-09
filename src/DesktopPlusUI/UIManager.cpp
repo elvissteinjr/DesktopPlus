@@ -2146,7 +2146,7 @@ void UIManager::PositionOverlay()
         //Set visibility
         if (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleDPlusDashboard))
         {
-            bool is_systemui_hovered = vr::VROverlay()->IsHoverTargetOverlay(m_OvrlHandleSystemUI);
+            bool is_systemui_hovered = ConfigManager::Get().IsLaserPointerTargetOverlay(m_OvrlHandleSystemUI);
 
             //Check for GamepadUI as well if it exists
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
