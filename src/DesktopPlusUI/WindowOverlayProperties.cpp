@@ -808,13 +808,15 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
 
     ImGui::NextColumn();
 
+    //Show Backside property relies on an overlay flag that is currently only available in the SteamVR Beta branch, so only show if it's that version (or running without VR)
+    const bool has_backside_flag = ((!UIManager::Get()->IsOpenVRLoaded()) || (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.15") != nullptr));
+
     //Crop
     if (ConfigManager::GetValue(configid_int_overlay_capture_source) != ovrl_capsource_ui) //Don't show crop settings for UI source overlays
     {
         bool& crop_enabled = ConfigManager::GetRef(configid_bool_overlay_crop_enabled);
 
         ImGui::Spacing();
-        ImGui::AlignTextToFramePadding();
         if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAppearanceCrop), &crop_enabled))
         {
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_crop_enabled, crop_enabled);
@@ -841,6 +843,24 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
         {
             PageGoForward(wndovrlprop_page_crop_change);
         }
+
+        ImGui::NextColumn();
+    }
+    else if (has_backside_flag) //We only want spacing once, but also not all if there's not going to be any elements after the sliders
+    {
+        ImGui::Spacing();
+    }
+
+    //Show Backside
+    if (has_backside_flag)
+    {
+        bool& show_backside = ConfigManager::GetRef(configid_bool_overlay_show_backside);
+
+        if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAppearanceShowBackside), &show_backside))
+        {
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_show_backside, show_backside);
+        }
+        ImGui::NextColumn();
     }
 
     ImGui::Columns(1);

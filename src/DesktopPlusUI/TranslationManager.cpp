@@ -398,6 +398,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsAppearanceBrightness",
     "tstr_OvrlPropsAppearanceCrop",
     "tstr_OvrlPropsAppearanceCropValueMax",
+    "tstr_OvrlPropsAppearanceShowBackside",
     "tstr_OvrlPropsCrop",
     "tstr_OvrlPropsCropHelp",
     "tstr_OvrlPropsCropManualAdjust",

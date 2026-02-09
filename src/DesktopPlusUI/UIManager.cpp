@@ -590,6 +590,15 @@ vr::EVRInitError UIManager::InitOverlay()
 
             //Set curve pitch for overlay bar. This adjusts the pitch to match the SteamVR dashboard
             vr::VROverlay()->SetOverlayPreCurvePitch(m_OvrlHandleOverlayBar, 0.25f);
+
+            //Enable backside rendering for all UI overlays by removing VROverlayFlags_NoBackside
+            //This flag isn't in the current SDK yet but it's harmless to use it
+            //It's assumed that the flag that gets added to all overlays created through an older OpenVR SDK version, meaning this will be unnecessary once the newer SDK is out and used
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleOverlayBar,        vr::VROverlayFlags_NoBackside, false);
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleSettings,          vr::VROverlayFlags_NoBackside, false);
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleOverlayProperties, vr::VROverlayFlags_NoBackside, false);
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleKeyboard,          vr::VROverlayFlags_NoBackside, false);
+            vr::VROverlay()->SetOverlayFlag(m_OvrlHandleAuxUI,             vr::VROverlayFlags_NoBackside, false);
         }
     }
 

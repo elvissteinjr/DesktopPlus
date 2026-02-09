@@ -264,6 +264,7 @@ unsigned int OverlayManager::AddOverlay(OverlayCaptureSource capture_source, int
     m_CurrentOverlayID = current_id_old;
 
     //Apply additional defaults
+    data.ConfigBool[configid_bool_overlay_show_backside]                       = true;
     data.ConfigInt[configid_int_overlay_capture_source]                        = capture_source;
     data.ConfigFloat[configid_float_overlay_width]                             = 0.3f;
     data.ConfigFloat[configid_float_overlay_curvature]                         = 0.0f;
@@ -423,10 +424,10 @@ void OverlayManager::SetTheaterOverlayID(unsigned int id)
 
         if (ovrl_error == vr::VROverlayError_None)
         {
-            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_NoDashboardTab,        true);
+            //vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_NoDashboardTab,        true);
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_EnableControlBar,      true);
             vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_EnableControlBarClose, true);
-            vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_MinimalControlBar,     true);
+            //vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_MinimalControlBar,     true);
 
             m_TheaterOverlayHandle = ovrl_handle;
 

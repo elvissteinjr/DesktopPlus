@@ -14,6 +14,9 @@
 
 #include "Matrices.h"
 
+//VROverlayFlags_NoBackside is not available in a public SDK yet, but we're being cheeky and use it already
+#define VROverlayFlags_NoBackside VROverlayFlags(1 << 29)
+
 namespace vr
 {
     class IVRSystemEx

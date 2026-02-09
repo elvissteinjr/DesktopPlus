@@ -1493,6 +1493,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         break;
                     }
                     case configid_bool_overlay_enabled:
+                    case configid_bool_overlay_show_backside:
                     case configid_bool_overlay_gazefade_enabled:
                     case configid_bool_overlay_update_invisible:
                     {
@@ -6428,6 +6429,9 @@ void OutputManager::ApplySettingTransform()
     //We use the logarithmic counterpart since the changes in higher steps are barely visible while the lower range can really use those additional steps
     float brightness = lin2log(ConfigManager::GetValue(configid_float_overlay_brightness)) * ConfigManager::GetValue(configid_float_overlay_state_brightness_extra_multiplier);
     vr::VROverlay()->SetOverlayColor(ovrl_handle, brightness, brightness, brightness);
+
+    //Set backside visibility
+    vr::VROverlay()->SetOverlayFlag(ovrl_handle, vr::VROverlayFlags_NoBackside, !data.ConfigBool[configid_bool_overlay_show_backside]);
 
     //Set last tick for dashboard dummy delayed update
     m_LastApplyTransformTick = ::GetTickCount64();

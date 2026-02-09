@@ -24,6 +24,7 @@ enum ConfigID_Bool
     configid_bool_overlay_name_custom,
     configid_bool_overlay_enabled,
     configid_bool_overlay_crop_enabled,
+    configid_bool_overlay_show_backside,
     configid_bool_overlay_browser_allow_transparency,
     configid_bool_overlay_3D_enabled,
     configid_bool_overlay_3D_swapped,
