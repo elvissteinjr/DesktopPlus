@@ -7892,7 +7892,8 @@ void OutputManager::UpdatePendingDashboardDummyHeight()
     float old_dummy_height = 0.0f;
     vr::VROverlay()->GetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, &old_dummy_height);
 
-    if (m_PendingDashboardDummyHeight != old_dummy_height)
+    //Check for dummy height changes but enforce a minimum difference as the underlying size seems to flicker under certain conditions in current SteamVR versions for some reason
+    if (fabs(m_PendingDashboardDummyHeight - old_dummy_height) > 0.01f)
     {
         vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleDashboardDummy, m_PendingDashboardDummyHeight);
 
