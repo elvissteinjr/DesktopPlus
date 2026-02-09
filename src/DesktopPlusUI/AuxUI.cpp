@@ -249,6 +249,9 @@ void WindowDragHint::UpdateOverlayPos()
 
         //Additional offset (move away from controller to avoid clipping, again value fits mostly for Index)
         mat.translate_relative(0.0f, 0.0f, 0.10f);
+
+        //At least on the controller we need to keep active time to keep rotation updated
+        UIManager::Get()->GetIdleState().AddActiveTime();
     }
 
     //Set transform
