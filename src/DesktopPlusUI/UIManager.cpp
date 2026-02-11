@@ -2129,6 +2129,7 @@ void UIManager::PositionOverlay()
         static float anti_flicker_y_last = anti_flicker_y;
         static int anti_flicker_block_count = 0;
 
+        const bool anti_flicker_moved_any = ((anti_flicker_x != anti_flicker_x_last) || (anti_flicker_y != anti_flicker_y_last));
         if ( (anti_flicker_x != anti_flicker_x_last) || (fabs(anti_flicker_y - anti_flicker_y_last) < 0.001f) || (anti_flicker_block_count >= 2) )
         {
             anti_flicker_can_move = true;
@@ -2160,7 +2161,7 @@ void UIManager::PositionOverlay()
             //Check for GamepadUI as well if it exists
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
-                is_systemui_hovered = (is_systemui_hovered || vr::VROverlay()->IsHoverTargetOverlay(handle_gamepad_ui));
+                is_systemui_hovered = (is_systemui_hovered || ConfigManager::Get().IsLaserPointerTargetOverlay(handle_gamepad_ui));
             }
 
             if (!m_OvrlVisible)
@@ -2211,7 +2212,7 @@ void UIManager::PositionOverlay()
                         }
                     }
                 }
-                else
+                else if (!anti_flicker_moved_any)   //Only fade-in again if the dashboard isn't moving around to avoid repeated fades while the dashboard is being dragged
                 {
                     m_SystemUIActiveTick = 0;
 
