@@ -8,57 +8,48 @@
 
 std::string StringConvertFromUTF16(LPCWSTR str)
 {
-    std::string stdstr;
     int length_utf8 = ::WideCharToMultiByte(CP_UTF8, 0, str, -1, nullptr, 0, nullptr, nullptr);
-
     if (length_utf8 != 0)
     {
-        auto str_utf8 = std::unique_ptr<char[]>{new char[length_utf8]};
-
-        if (::WideCharToMultiByte(CP_UTF8, 0, str, -1, str_utf8.get(), length_utf8, nullptr, nullptr) != 0)
+        std::string str_utf8(length_utf8 - 1, '\0');
+        if (::WideCharToMultiByte(CP_UTF8, 0, str, -1, &str_utf8[0], length_utf8, nullptr, nullptr) != 0)
         {
-            stdstr = str_utf8.get();
+            return str_utf8;
         }
     }
 
-    return stdstr;
+    return "";
 }
 
 std::wstring WStringConvertFromUTF8(const char * str)
 {
-    std::wstring wstr;
     int length_utf16 = ::MultiByteToWideChar(CP_UTF8, 0, str, -1, nullptr, 0);
-
     if (length_utf16 != 0)
     {
-        auto str_utf16 = std::unique_ptr<WCHAR[]>{new WCHAR[length_utf16]};
-
-        if (::MultiByteToWideChar(CP_UTF8, 0, str, -1, str_utf16.get(), length_utf16) != 0)
+        std::wstring str_utf16(length_utf16 - 1, L'\0');
+        if (::MultiByteToWideChar(CP_UTF8, 0, str, -1, &str_utf16[0], length_utf16) != 0)
         {
-            wstr = str_utf16.get();
+            return str_utf16;
         }
     }
 
-    return wstr;
+    return L"";
 }
 
 //This is only needed for std::error_code.message(), thanks to it being in the local ANSI codepage instead of UTF-8
 std::wstring WStringConvertFromLocalEncoding(const char* str)
 {
-    std::wstring wstr;
     int length_utf16 = ::MultiByteToWideChar(CP_ACP, 0, str, -1, nullptr, 0);
-
     if (length_utf16 != 0)
     {
-        auto str_utf16 = std::unique_ptr<WCHAR[]>{new WCHAR[length_utf16]};
-
-        if (::MultiByteToWideChar(CP_ACP, 0, str, -1, str_utf16.get(), length_utf16) != 0)
+        std::wstring str_utf16(length_utf16 - 1, L'\0');
+        if (::MultiByteToWideChar(CP_ACP, 0, str, -1, &str_utf16[0], length_utf16) != 0)
         {
-            wstr = str_utf16.get();
+            return str_utf16;
         }
     }
 
-    return wstr;
+    return L"";
 }
 
 DEVMODE GetDevmodeForDisplayID(int display_id, bool wmr_ignore_vscreens, HMONITOR* hmon)
