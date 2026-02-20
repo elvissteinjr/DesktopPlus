@@ -1,5 +1,8 @@
 #include "Util.h"
 
+#include <vector>
+#include <cassert>
+
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <shldisp.h>
@@ -50,6 +53,31 @@ std::wstring WStringConvertFromLocalEncoding(const char* str)
     }
 
     return L"";
+}
+
+std::wstring WStringConvertToTitleCase(LPCWSTR str)
+{
+    //We basically only use this to turn all-caps into title-case, but LCMapStringEx() will keep all-caps words as-is
+    //To work around this we convert them to lower-case first, though that technically breaks acronyms and such... which we don't deal with
+    int length_lower = ::LCMapStringEx(LOCALE_NAME_USER_DEFAULT, LCMAP_LOWERCASE, str, -1, nullptr, 0, nullptr, nullptr, 0);
+    if (length_lower != 0)
+    {
+        std::wstring str_lower(length_lower - 1, L'\0');
+        if (::LCMapStringEx(LOCALE_NAME_USER_DEFAULT, LCMAP_LOWERCASE, str, -1, &str_lower[0], length_lower, nullptr, nullptr, 0) != 0)
+        {
+            int length_title = ::LCMapStringEx(LOCALE_NAME_USER_DEFAULT, LCMAP_TITLECASE, str_lower.c_str(), (int)str_lower.size(), nullptr, 0, nullptr, nullptr, 0);
+            if (length_title != 0)
+            {
+                std::wstring str_title(length_title, L'\0');    //Careful: By having passed the input string length this time, the returned length doesn't include NUL
+                if (::LCMapStringEx(LOCALE_NAME_USER_DEFAULT, LCMAP_TITLECASE, str_lower.c_str(), (int)str_lower.size(), &str_title[0], length_title, nullptr, nullptr, 0) != 0)
+                {
+                    return str_title;
+                }
+            }
+        }
+    }
+
+    return str;
 }
 
 DEVMODE GetDevmodeForDisplayID(int display_id, bool wmr_ignore_vscreens, HMONITOR* hmon)
@@ -844,9 +872,83 @@ const unsigned char g_VK_name_order_list[256] =
 138, 139, 140, 141, 142, 143, 151, 152, 153, 154, 155, 156, 157, 158, 159, 216, 217, 218, 232, 255, 10, 11, 94, 184, 185, 193, 194, 195, 196, 197, 198, 199,
 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 224, 225 };
 
+//VKs that are layout specific and are attempted to get their name in their current layout set in the processed name list
+const unsigned char g_VK_layout_specific_list[] = {186, 191, 192, 219, 220, 221, 222, 223, 226};
+
+std::vector<std::string> g_VK_name_processed;
+
+std::wstring GetCurrentLayoutKeyNameForKeyCode(unsigned char keycode)
+{
+    //GetKeyNameTextW() wants scancodes, so get that and fill out the lparam bits expected
+    UINT scancode = ::MapVirtualKey(keycode, MAPVK_VK_TO_VSC);
+    UINT lparam = (scancode << 16);
+
+    //Additional extended bit if the scancode is extended (why tho)
+    BYTE highbyte = HIBYTE(scancode);
+    bool is_extended = ((highbyte == 0xe0) || (highbyte == 0xe1));
+    if (is_extended) 
+        lparam |= (1 << 24);
+
+    wchar_t buffer[128] = {0};
+    int written_length = ::GetKeyNameTextW((LONG)lparam, buffer, 128);
+    if (written_length != 0)
+    {
+        //GetKeyNameTextW() output ALL LOOKS LIKE THIS, which is kind of grating to look at, so convert to title case
+        //Though we don't do it for single character ones as capitalizing special characters can have unexpected results and wouldn't make a difference for normal letters anyways
+        if (written_length > 1)
+        {
+            return WStringConvertToTitleCase(buffer);
+        }
+        else
+        {
+            return std::wstring(buffer, written_length);
+        }
+    }
+
+    //This could go deeper in terms of fallbacks, but we only really care about a specific set of keys for this
+    return L"";
+}
+
+void ProcessKeyCodeNameList()
+{
+    g_VK_name_processed.clear();
+    g_VK_name_processed.reserve(256);
+    for (size_t keycode = 0; keycode < 256; ++keycode)
+    {
+        g_VK_name_processed.push_back(g_VK_name[keycode]);
+    }
+
+    WStringConvertToTitleCase(L"");
+
+    int specific_id = 1;
+    for (unsigned char keycode : g_VK_layout_specific_list)
+    {
+        std::wstring wstr = GetCurrentLayoutKeyNameForKeyCode(keycode);
+
+        if (!wstr.empty())
+        {
+            //Special case for VK_OEM_102, the others are encountered sequentially (but not sequential as keycodes...) and before this so this is okay
+            if (keycode == VK_OEM_102)
+            {
+                specific_id = 102;
+            }
+
+            //Replicate list entry but with the newly learned key name in it
+            g_VK_name_processed[keycode]  = "[Layout Specific " + std::to_string(specific_id) + "] " + StringConvertFromUTF16(wstr.c_str()) + " (" + std::to_string((int)keycode) + ")";
+        }
+
+        ++specific_id;
+    }
+}
+
 const char* GetStringForKeyCode(unsigned char keycode)
 {
-    return g_VK_name[keycode];
+    if (g_VK_name_processed.empty())
+        ProcessKeyCodeNameList();
+
+    assert(g_VK_name_processed.size() == 256);
+
+    return g_VK_name_processed[keycode].c_str();
 }
 
 unsigned char GetKeyCodeForListID(unsigned char list_id)

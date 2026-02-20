@@ -17,6 +17,7 @@
 std::string StringConvertFromUTF16(LPCWSTR str);
 std::wstring WStringConvertFromUTF8(const char* str);
 std::wstring WStringConvertFromLocalEncoding(const char* str);
+std::wstring WStringConvertToTitleCase(LPCWSTR str);
 
 //Algorithm helpers
 template <typename T> T clamp(const T& value, const T& value_min, const T& value_max) 
