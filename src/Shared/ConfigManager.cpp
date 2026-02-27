@@ -592,7 +592,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_performance_show_fps]                        = config.ReadBool("Performance", "ShowFPS", false);
     m_ConfigBool[configid_bool_performance_ui_auto_throttle]                = config.ReadBool("Performance", "UIAutoThrottle", true);
     m_ConfigInt[configid_int_performance_ui_frameskip]                      = config.ReadInt( "Performance", "UIFrameSkip", 0);
-    m_ConfigBool[configid_bool_performance_monitor_minimal_style]           = config.ReadBool("Performance", "PerformanceMonitorStyleMinimal", true);
+    m_ConfigBool[configid_bool_performance_monitor_minimal_style]           = config.ReadBool("Performance", "PerformanceMonitorStyleMinimal", false);
     m_ConfigBool[configid_bool_performance_monitor_large_style]             = config.ReadBool("Performance", "PerformanceMonitorStyleLarge", true);
     m_ConfigBool[configid_bool_performance_monitor_style_show_window]       = config.ReadBool("Performance", "PerformanceMonitorStyleShowWindow", true);
     m_ConfigBool[configid_bool_performance_monitor_style_show_text_outline] = config.ReadBool("Performance", "PerformanceMonitorStyleShowTextOutline", false);
