@@ -432,14 +432,18 @@ These settings allow tweaking the performance characteristics of Desktop+. Howev
   Sets the global limiter mode. May be overridden by overlay-specific update limiter settings.
   - **(Limit Slider)**:  
   Sets the limit in either ms or frames per second.
-  
+
 - **Desktop Duplication** (Adv.)
   - **[x] Reduce Laser Pointer Latency**:  
   When this is active, the cursor position is updated instantly while pointing at the overlay. This causes high CPU load, but makes the laser pointer more responsive.
   - **[x] Single Desktop Mirroring**:  
   Mirrors individual desktops instead of cropping from the combined desktop. All Desktop Duplication overlays will be showing the same desktop when this is active.  
   There can be a noticeable performance impact when multiple desktops update constantly. This setting can be used to mitigate it.
-  
+  - **[x] Alternative Cursor Rendering**:  
+  Enables use of alternative methods to retrieve the software cursor image, instead of relying on the cursor returned by the Desktop Duplication API.  
+  This rendering method is slightly slower than the regular one and doesn't support cursor animation. It is intended for users experiencing issues with the hardware cursor capture using Desktop Duplication.  
+  If other means to retrieve the current cursor fail, it may additionally fall back to using the default cursor image or a built-in alternative.
+
 - **[x] HDR Mirroring**  
   Enables mirroring of desktops and windows using higher bit-depth textures, supporting HDR output.  
   While the full bit-depth is passed to SteamVR, there are no known HMDs capable of making use of HDR output.  
@@ -448,9 +452,6 @@ These settings allow tweaking the performance characteristics of Desktop+. Howev
 - **[x] Show FPS in Floating UI**  
   When this is active, the number of captured or rendered frames per second, at which the overlay is updated, is displayed in the Floating UI.  
   This number will be the same for all Desktop Duplication overlays, since they share a single backing texture.
-- **[x] Adaptive UI Rendering Rate**  
-  Disabling this allows turning off UI optimizations that try to lower the rendering rate when not needed.  
-  This setting is temporary and will be removed at a later date once these optimizations are considered stable.
 
 #### Version Info
 
@@ -842,6 +843,9 @@ Click on the drop-down list to select the position origin of the overlay. This c
   - **Tracker #1** (only visible if a tracker is connected):  
   Attach overlay to the first connected SteamVR tracker device. Using other trackers as the origin is not supported at this time.
 
+- **Origin Smoothing** (only visible for HMD Floor Position and HMD origins):  
+Sets the level of smoothing/stabilization applied to the overlay origin.
+
 - **Display Mode**:  
 Click on the drop-down list to select a display mode. Display modes restricts under which condition the overlay is visible. For example, "Only In-Game" only shows the overlay while a game/scene application is active and hides it while the dashboard is visible.
 
@@ -1208,7 +1212,8 @@ Sets the type of the key. Some key types have their own specific properties, lis
 Sets the width and height of the key. 100% is the size of a standard key and compatible with common key size definitions.
 
 - **Label** (not available for "Blank Space"-type keys):  
-The label displayed on the key. The text is horizontally and vertically centered on the key as a whole (as opposed to per-line centering of action button labels). 100% height keys typically fit two lines of text.
+The label displayed on the key. The text is horizontally centered per-line, and vertically centered on the key as a whole. 100% height keys typically fit two lines of text (three fit barely, but not recommended).  
+Per-line centering can be changed to left or right alignment by appending "##L" or "##R" to the end of a line.
 
 - **Cluster**:  
 Assign clusters to keys to allow selectively disabling them in the settings later. As "Blank Space"-type keys are also part of clusters, the assignments has to be chosen carefully to not break the layout when toggling them.
