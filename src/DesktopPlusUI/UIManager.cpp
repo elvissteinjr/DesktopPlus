@@ -203,7 +203,7 @@ void UIManager::IdleState::OnImGuiNewFrame()
 
 void UIManager::IdleState::OnWindowMessage(UINT message_id)
 {
-    if ( ((message_id >= WM_MOUSEFIRST) && (message_id <= WM_MOUSELAST)) || ((message_id >= WM_KEYFIRST) && (message_id <= WM_KEYLAST)) )
+    if ( ((message_id >= WM_MOUSEFIRST) && (message_id <= WM_MOUSELAST)) || ((message_id >= WM_KEYFIRST) && (message_id <= WM_KEYLAST)) || (message_id == WM_SYSCOMMAND) )
     {
         //We may get periodic mouse move messages with no cursor moving, ignore those
         if (message_id == WM_MOUSEMOVE)
