@@ -4666,9 +4666,28 @@ bool OutputManager::HandleOpenVREvents()
             case vr::VREvent_Input_ActionManifestReloaded:
             case vr::VREvent_Input_BindingsUpdated:
             case vr::VREvent_Input_BindingLoadSuccessful:
+            {
+                m_VRInput.RefreshAnyGlobalActionBound();
+                break;
+            }
             case vr::VREvent_TrackedDeviceActivated:
             {
                 m_VRInput.RefreshAnyGlobalActionBound();
+
+                //Apply transforms of all device origin overlays in case a previously unavailable device was used by one of them
+                unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+                for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+                {
+                    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(i);
+
+                    if ((data.ConfigInt[configid_int_overlay_origin] >= ovrl_origin_left_hand) && (data.ConfigInt[configid_int_overlay_origin] <= ovrl_origin_aux))
+                    {
+                        OverlayManager::Get().SetCurrentOverlayID(i);
+                        ApplySettingTransform();
+                    }
+                }
+
+                OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
                 break;
             }
             case vr::VREvent_TrackedDeviceDeactivated:
