@@ -539,11 +539,14 @@ void WindowDesktopMode::UpdatePageAddWindowOverlay()
         {
             //Add overlay
             HWND window_handle = window_info.GetWindowHandle();
-            OverlayManager::Get().AddOverlay(ovrl_capsource_winrt_capture, -2, window_handle);
+            unsigned int overlay_id_new = OverlayManager::Get().AddOverlay(ovrl_capsource_winrt_capture, -2, window_handle);
 
             //Send to dashboard app
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_state_arg_hwnd, (LPARAM)window_handle);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, -2);
+
+            //Adjust width to a more suited default (done here as well so it's set even without dashboard app running)
+            OverlayManager::Get().GetConfigData(overlay_id_new).ConfigFloat[configid_float_overlay_width] = 1.0f;
 
             PageGoBack();
         }
@@ -733,7 +736,7 @@ void WindowDesktopMode::MenuAddOverlay()
             //Add overlay and sent to dashboard app
             unsigned int overlay_id_new = OverlayManager::Get().AddOverlay(capsource, new_overlay_desktop_id);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, new_overlay_desktop_id);
-
+            
             //Adjust width to a more suited default (done here as well so it's set even without dashboard app running)
             OverlayManager::Get().GetConfigData(overlay_id_new).ConfigFloat[configid_float_overlay_width] = 1.0f;
 
