@@ -216,6 +216,10 @@
       "binding_url": "input/action_bindings_vive_controller.json"
     },
     {
+      "controller_type": "svl_hand_interaction_augmented",
+      "binding_url": "input/action_bindings_svl_hand_interaction_augmented.json"
+    },
+    {
       "controller_type": "gamepad",
       "binding_url": "input/action_bindings_gamepad.json"
     },
