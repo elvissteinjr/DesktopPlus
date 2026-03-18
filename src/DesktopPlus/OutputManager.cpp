@@ -6521,11 +6521,21 @@ void OutputManager::ApplySettingCrop()
     {
         DPBrowserAPIClient::Get().DPBrowser_SetOverUnder3D(ovrl_handle, is_ou3d, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
     }
-    else //For Desktop Duplication, compare old to new bounds to see if a full refresh is required
+    else
     {
-        vr::VROverlay()->GetOverlayTextureBounds(ovrl_handle, &tex_bounds_prev);
+        //For Desktop Duplication, compare old to new bounds to see if a full refresh is required
+        //However, for Over-Under 3D this won't work and we just always do the full refresh
+        bool needs_full_refresh = is_ou3d;
 
-        if ((tex_bounds.uMin < tex_bounds_prev.uMin) || (tex_bounds.vMin < tex_bounds_prev.vMin) || (tex_bounds.uMax > tex_bounds_prev.uMax) || (tex_bounds.vMax > tex_bounds_prev.vMax))
+        if (!needs_full_refresh)
+        {
+            vr::VROverlay()->GetOverlayTextureBounds(ovrl_handle, &tex_bounds_prev);
+
+            needs_full_refresh = ((tex_bounds.uMin < tex_bounds_prev.uMin) || (tex_bounds.vMin < tex_bounds_prev.vMin) || 
+                                  (tex_bounds.uMax > tex_bounds_prev.uMax) || (tex_bounds.vMax > tex_bounds_prev.vMax));
+        }
+        
+        if (needs_full_refresh)
         {
             RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
         }
