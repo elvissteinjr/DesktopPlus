@@ -365,14 +365,8 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
         default: break;
     }
 
-    //If this overlay is the theater overlay, hide it so there's always proper release from the old texture source happening
-    if ( (m_TextureSource != tex_source) && (OverlayManager::Get().GetTheaterOverlayID() == m_ID) )
-    {
-        if (OutputManager* outmgr = OutputManager::Get())
-        {
-            outmgr->HideOverlay(m_ID);
-        }
-    }
+    //If this overlay is the theater overlay, mark for refresh down below if the source changed
+    bool theater_refresh_needed = ( (m_TextureSource != tex_source) && (OverlayManager::Get().GetTheaterOverlayID() == m_ID) );
 
     m_TextureSource = tex_source;
 
@@ -405,6 +399,17 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, m_ID);
             IPCManager::Get().PostConfigMessageToUIApp(configid_bool_overlay_state_no_output, has_no_output);
             IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_overlay_current_id_override, -1);
+        }
+    }
+
+    if (theater_refresh_needed)
+    {
+        if (OutputManager* outmgr = OutputManager::Get())
+        {
+            unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+            OverlayManager::Get().SetCurrentOverlayID(m_ID);
+            outmgr->ResetCurrentOverlay();
+            OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
         }
     }
 }
