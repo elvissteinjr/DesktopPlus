@@ -342,34 +342,7 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
             else
             {
                 //Move matrix towards normal dashboard overlay position
-                matrix.translate_relative(0.0f, 0.90f, 0.0f);
-
-                //Correct the tilt we get when an overlay with control bar is active
-                //The rotation may be off for overlays that don't use one, but without being able to detect this cleanly there doesn't seem much that can be done
-                //For now it's being done when the Desktop+ dashboard tab isn't selected which is fine for most cases
-                //The legacy dashboard is rarely used anyhow
-                vr::VROverlayHandle_t ovrl_handle_dplus;
-                vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &ovrl_handle_dplus);
-
-                if ((ovrl_handle_dplus == vr::k_ulOverlayHandleInvalid) || (!vr::VROverlay()->IsActiveDashboardOverlay(ovrl_handle_dplus)))
-                {
-                    //SteamVR 2.15.1 made changes that make the rotation no longer necessary
-                    //While this change is only in the beta branch, we conditionally skip applying the rotation on 2.15 runtimes
-                    const bool use_simple_offset = (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.15") != nullptr);
-                    if (use_simple_offset)
-                    {
-                        matrix.translate_relative(0.0f, 0.265f, 0.0f);
-                    }
-                    else
-                    {
-                        Matrix4 mat_rot;
-                        mat_rot.rotateX(40.0f);
-                        matrix = matrix * mat_rot;
-
-                        //Additional offset to make the position pretty much equal to D+ dashboard tab
-                        matrix.translate_relative(0.0f, -0.002f, 0.268f);
-                    }
-                }
+                matrix.translate_relative(0.0f, -1.57f, 0.07f);
             }
 
             break;

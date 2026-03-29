@@ -589,7 +589,7 @@ vr::EVRInitError UIManager::InitOverlay()
             vr::VROverlay()->SetOverlayTextureBounds(m_OvrlHandleKeyboard, &bounds);
 
             //Set curve pitch for overlay bar. This adjusts the pitch to match the SteamVR dashboard
-            vr::VROverlay()->SetOverlayPreCurvePitch(m_OvrlHandleOverlayBar, 0.25f);
+            vr::VROverlay()->SetOverlayPreCurvePitch(m_OvrlHandleOverlayBar, 0.20f);
         }
     }
 
@@ -2054,7 +2054,7 @@ void UIManager::PositionOverlay()
 
         if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
         {
-            curve = 0.19f;  //SteamVR 2 removed dashboard distance setting
+            curve = 0.1725f;  //SteamVR 2 removed dashboard distance setting
         }
         else
         {
@@ -2075,34 +2075,23 @@ void UIManager::PositionOverlay()
         {
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.247f, 0.400f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.373f, 0.470f);
             }
             else
             {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.272f, 0.195f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.413f, 0.265f);
             }
         }
         else
         {
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.200f, 0.390f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.326f, 0.460f);
             }
             else
             {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.225f, 0.185f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.376f, 0.255f);
             }
-        }
-
-        //SteamVR 2.15.1 made changes that affected offsets needed for Overlay Bar positioning and curvature
-        //While this change is only in the beta branch, we conditionally adjust properties on 2.15 runtimes to get back to the old position
-        const bool use_additional_offset = (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.15") != nullptr);
-        if (use_additional_offset)
-        {
-            vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.126f, 0.070f);
-
-            vr::VROverlay()->SetOverlayPreCurvePitch(m_OvrlHandleOverlayBar, 0.20f);
-            curve = 0.1725f;
         }
 
         //Rotate slightly forward (local rotation)

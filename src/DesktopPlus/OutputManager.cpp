@@ -6305,8 +6305,6 @@ void OutputManager::ApplySettingTransform()
             //SteamVR 2.15.1 made changes that affected legacy dashboard positioning in... odd ways
             //This more of a band-aid solution for the rarely used legacy dashboard, short of just not supporting it anymore
             bool has_applied_bandaid_fix = false;
-            const bool is_v2_15 = (strstr(vr::VRSystem()->GetRuntimeVersion(), "2.15") != nullptr);
-            if (is_v2_15)
             {
                 vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
                 vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
