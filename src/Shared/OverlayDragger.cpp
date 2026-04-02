@@ -297,28 +297,48 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
             {
                 //This code is prone to break when Valve makes changes to the dashboard
 
-                //Use GamepadUI as a reference if available since it's more stable due to the systemui overlay changing size depending on the active dashboard overlay's flags
-                vr::VROverlayHandle_t handle_dashboard = handle_gamepad_ui;
-
-                if (handle_dashboard == vr::k_ulOverlayHandleInvalid)
+                //Use GamepadUI as a reference if available
+                if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
                 {
-                    vr::VROverlay()->FindOverlay("system.systemui", &handle_dashboard);
-                }
-
-                //Double-checking dashboard overlay visibility for the case when IsDashboardVisible() is false while it's actually visible
-                if ( (handle_dashboard != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsOverlayVisible(handle_dashboard)) )
-                {
-                    vr::HmdMatrix34_t matrix_overlay_dashboard;
-
-                    vr::HmdVector2_t overlay_dashboard_size;
-                    vr::VROverlay()->GetOverlayMouseScale(handle_dashboard, &overlay_dashboard_size); //Coordinate size should be mouse scale
-
-                    vr::VROverlay()->GetTransformForOverlayCoordinates(handle_dashboard, universe_origin, { overlay_dashboard_size.v[0]/2.0f, 0.0f }, &matrix_overlay_dashboard);
-                    m_DashboardMatLast = matrix_overlay_dashboard;
-
-                    if (m_DashboardHMD_Y == -100.0f)    //If Desktop+ was started with the dashboard open, the value will still be default, so set it now
+                    //Double-checking dashboard overlay visibility for the case when IsDashboardVisible() is false while it's actually visible
+                    if (vr::VROverlay()->IsOverlayVisible(handle_gamepad_ui))
                     {
-                        UpdateDashboardHMD_Y();
+                        vr::HmdMatrix34_t matrix_overlay_dashboard;
+
+                        vr::HmdVector2_t overlay_dashboard_size;
+                        vr::VROverlay()->GetOverlayMouseScale(handle_gamepad_ui, &overlay_dashboard_size); //Coordinate size should be mouse scale
+
+                        vr::VROverlay()->GetTransformForOverlayCoordinates(handle_gamepad_ui, universe_origin, { overlay_dashboard_size.v[0]/2.0f, 0.0f }, &matrix_overlay_dashboard);
+                        m_DashboardMatLast = matrix_overlay_dashboard;
+
+                        if (m_DashboardHMD_Y == -100.0f)    //If Desktop+ was started with the dashboard open, the value will still be default, so set it now
+                        {
+                            UpdateDashboardHMD_Y();
+                        }
+                    }
+                }
+                else
+                {
+                    //Legacy dashboard is active... which is less than ideal
+                    //That dashboard lives on the systemui overlay which used to be okay, 
+                    //but nowadays taking coordinates from it gives transforms for docking elements which may or may not currently be in the dashboard
+                    //We do want to support operation on it still to some degree, so we take the seemingly only stable reference that's left: Our own dashboard tab
+                    vr::VROverlayHandle_t ovrl_handle_dplus;
+                    vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &ovrl_handle_dplus);
+
+                    if ((ovrl_handle_dplus != vr::k_ulOverlayHandleInvalid) && (vr::VROverlay()->IsOverlayVisible(ovrl_handle_dplus)))
+                    {
+                        vr::HmdMatrix34_t matrix_dplus_tab;
+                        vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
+
+                        vr::VROverlay()->GetTransformForOverlayCoordinates(ovrl_handle_dplus, origin, {0.5f, 0.0f}, &matrix_dplus_tab);
+
+                        m_DashboardMatLast = matrix_dplus_tab;
+
+                        if (m_DashboardHMD_Y == -100.0f)    //If Desktop+ was started with the dashboard open, the value will still be default, so set it now
+                        {
+                            UpdateDashboardHMD_Y();
+                        }
                     }
                 }
             }
@@ -342,7 +362,7 @@ Matrix4 OverlayDragger::GetBaseOffsetMatrix(OverlayOrigin overlay_origin, const 
             else
             {
                 //Move matrix towards normal dashboard overlay position
-                matrix.translate_relative(0.0f, -1.57f, 0.07f);
+                matrix.translate_relative(0.0f, 0.125f, 0.0f);
             }
 
             break;

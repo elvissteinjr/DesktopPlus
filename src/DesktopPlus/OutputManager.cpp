@@ -6302,48 +6302,18 @@ void OutputManager::ApplySettingTransform()
         {
             Matrix4 matrix_base = m_OverlayDragger.GetBaseOffsetMatrix() * ConfigManager::Get().GetOverlayDetachedTransform();
 
-            //SteamVR 2.15.1 made changes that affected legacy dashboard positioning in... odd ways
-            //This more of a band-aid solution for the rarely used legacy dashboard, short of just not supporting it anymore
-            bool has_applied_bandaid_fix = false;
-            {
-                vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
-                vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
-
-                if (handle_gamepad_ui == vr::k_ulOverlayHandleInvalid)
-                {
-                    if (is_primary_dashboard_overlay)
-                    {
-                        vr::HmdMatrix34_t matrix_dplus_tab;
-                        vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
-                        vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, origin, {0.5f, 0.5f}, &matrix_dplus_tab);
-                        matrix_base = matrix_dplus_tab;
-
-                        Vector3 translation = matrix_base.getTranslation();
-                        matrix_base.setTranslation({0.0f, 0.0f, 0.0f});
-                        matrix_base.scale(1.0f / GetDashboardScale());
-                        matrix_base.setTranslation(translation);
-
-                        has_applied_bandaid_fix = true;
-                        //Yes, this does not apply the overlay's transform at all
-                    }
-                }
-            }
-
             //Offset transform by additional offset values
             matrix_base.translate_relative(ConfigManager::GetValue(configid_float_overlay_offset_right),
                                            ConfigManager::GetValue(configid_float_overlay_offset_up),
                                            ConfigManager::GetValue(configid_float_overlay_offset_forward));
 
-            if (!has_applied_bandaid_fix)
+            //Apply origin offset, which basically adjusts transform to be aligned bottom-center instead of centered on both axes
+            if (height == 0.0f)     //Get overlay height if it's not set yet
             {
-                //Apply origin offset, which basically adjusts transform to be aligned bottom-center instead of centered on both axes
-                if (height == 0.0f)     //Get overlay height if it's not set yet
-                {
-                    height = GetOverlayHeight(overlay.GetID());
-                }
-
-                matrix_base.translate_relative(0.0f, height / 2.0f, 0.0f);
+                height = GetOverlayHeight(overlay.GetID());
             }
+
+            matrix_base.translate_relative(0.0f, height / 2.0f, 0.0f);
 
             matrix = matrix_base.toOpenVR34();
 
@@ -7843,33 +7813,33 @@ bool OutputManager::HasDashboardMoved()
     if (!vr::VROverlay()->IsDashboardVisible())
         return false;
 
+    Matrix4 matrix_new = m_DashboardTransformLast;
     vr::HmdMatrix34_t hmd_matrix = {0};
     vr::TrackingUniverseOrigin universe_origin = vr::TrackingUniverseStanding;
 
     if (vr::VROverlay()->IsOverlayVisible(m_OvrlHandleDashboardDummy))
     {
         vr::VROverlay()->GetTransformForOverlayCoordinates(m_OvrlHandleDashboardDummy, universe_origin, {0.0f, 0.0f}, &hmd_matrix);
+        matrix_new = hmd_matrix;
     }
     else
     {
         vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
         vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
 
-        //Use GamepadUI as a reference if available since it's more stable due to the systemui overlay changing size depending on the active dashboard overlay's flags
+        //Use GamepadUI as a reference. Legacy dashboard can't be reliably checked like this anymore and is unsupported beyond our own dashboard tab
         vr::VROverlayHandle_t handle_dashboard = handle_gamepad_ui;
 
-        if (handle_dashboard == vr::k_ulOverlayHandleInvalid)
+        if (handle_dashboard != vr::k_ulOverlayHandleInvalid)
         {
-            vr::VROverlay()->FindOverlay("system.systemui", &handle_dashboard);
+            vr::HmdVector2_t overlay_dashboard_size;
+            vr::VROverlay()->GetOverlayMouseScale(handle_dashboard, &overlay_dashboard_size); //Coordinate size should be mouse scale
+
+            vr::VROverlay()->GetTransformForOverlayCoordinates(handle_dashboard, universe_origin, { overlay_dashboard_size.v[0]/2.0f, 0.0f }, &hmd_matrix);
+
+            matrix_new = hmd_matrix;
         }
-
-        vr::HmdVector2_t overlay_dashboard_size;
-        vr::VROverlay()->GetOverlayMouseScale(handle_dashboard, &overlay_dashboard_size); //Coordinate size should be mouse scale
-
-        vr::VROverlay()->GetTransformForOverlayCoordinates(handle_dashboard, universe_origin, { overlay_dashboard_size.v[0]/2.0f, 0.0f }, &hmd_matrix);
     }
-
-    Matrix4 matrix_new = hmd_matrix;
 
     if (m_DashboardTransformLast != matrix_new)
     {
