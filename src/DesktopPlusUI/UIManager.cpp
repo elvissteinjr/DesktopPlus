@@ -2070,7 +2070,7 @@ void UIManager::PositionOverlay()
 
         //Offset the overlay
         //It's offset in so it's as close to the dashboard as possible while not messing up pointer input. 
-        //Most problematic dashboard element is the current application button (SystemUI) and dashboard reposition bar (GamepadUI).
+        //Most problematic dashboard element is the current application button (SystemUI) and dashboard reposition bar (GamepadUI & SystemUI).
         if (m_WindowOverlayBar.IsScrollBarVisible())
         {
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
@@ -2079,7 +2079,7 @@ void UIManager::PositionOverlay()
             }
             else
             {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.413f, 0.265f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.482f, 0.265f);
             }
         }
         else
@@ -2090,7 +2090,7 @@ void UIManager::PositionOverlay()
             }
             else
             {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.376f, 0.255f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.445f, 0.255f);
             }
         }
 
@@ -2139,6 +2139,7 @@ void UIManager::PositionOverlay()
             bool is_systemui_hovered = ConfigManager::Get().IsLaserPointerTargetOverlay(m_OvrlHandleSystemUI);
 
             //Check for GamepadUI as well if it exists
+            //Though SystemUI appears to not be returned as hovered in most cases anymore (Overlay Bar position was adjusted for this for the legacy dashboard)
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
                 is_systemui_hovered = (is_systemui_hovered || ConfigManager::Get().IsLaserPointerTargetOverlay(handle_gamepad_ui));
