@@ -520,6 +520,31 @@ void WindowSettings::UpdateWarnings()
         }
     }
 
+    //Legacy dashboard active warning
+    {
+        bool& hide_legacy_dashboard_warning = ConfigManager::GetRef(configid_bool_interface_warning_legacy_dashboard_hidden);
+
+        if ( (!hide_legacy_dashboard_warning) && (UIManager::Get()->IsLegacyDashboardActive()) )
+        {
+            SelectableWarning("##WarningLegacyDashboard", "DontShowAgain7", TranslationManager::GetString(tstr_SettingsWarningLegacyDashboard));
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, popup_alpha);
+            if (ImGui::BeginPopup("DontShowAgain7", ImGuiWindowFlags_NoMove))
+            {
+                if (ImGui::Selectable(TranslationManager::GetString(tstr_SettingsWarningMenuDontShowAgain)))
+                {
+                    hide_legacy_dashboard_warning = true;
+                }
+                ImGui::EndPopup();
+
+                popup_visible = true;
+            }
+            ImGui::PopStyleVar();
+
+            warning_displayed = true;
+        }
+    }
+
     //Focused process elevation warning
     {
         if (  (ConfigManager::GetValue(configid_bool_state_window_focused_process_elevated)) && (!ConfigManager::GetValue(configid_bool_state_misc_process_elevated)) && 
@@ -2097,6 +2122,8 @@ void WindowSettings::UpdatePageMainCatMisc()
             warning_hidden_count++;
         if (ConfigManager::GetValue(configid_bool_interface_warning_browser_version_mismatch_hidden))
             warning_hidden_count++;
+        if (ConfigManager::GetValue(configid_bool_interface_warning_legacy_dashboard_hidden))
+            warning_hidden_count++;
 
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsWarningsHidden));
@@ -2113,6 +2140,7 @@ void WindowSettings::UpdatePageMainCatMisc()
             ConfigManager::SetValue(configid_bool_interface_warning_elevated_mode_hidden,            false);
             ConfigManager::SetValue(configid_bool_interface_warning_browser_missing_hidden,          false);
             ConfigManager::SetValue(configid_bool_interface_warning_browser_version_mismatch_hidden, false);
+            ConfigManager::SetValue(configid_bool_interface_warning_legacy_dashboard_hidden,         false);
 
             UIManager::Get()->UpdateAnyWarningDisplayedState();
         }

@@ -116,18 +116,19 @@ class UIManager
 
         bool m_DesktopMode;
         bool m_KeyboardEditorMode;
-        bool m_OpenVRLoaded;         //Desktop mode can run with or without OpenVR and we want to avoid needlessly starting up SteamVR
-        bool m_NoRestartOnExit;      //Prevent auto-restart when closing from desktop mode while dashboard app is running (i.e. when using troubleshooting buttons)
+        bool m_OpenVRLoaded;          //Desktop mode can run with or without OpenVR and we want to avoid needlessly starting up SteamVR
+        bool m_NoRestartOnExit;       //Prevent auto-restart when closing from desktop mode while dashboard app is running (i.e. when using troubleshooting buttons)
 
         float m_UIScale;
         ImFont* m_FontCompact;
-        ImFont* m_FontLarge;         //Only loaded when the UI scale is set to large
+        ImFont* m_FontLarge;          //Only loaded when the UI scale is set to large
 
-        bool m_LowCompositorRes;     //Set when compositor's resolution is set below 100% during init. The user is warned about this as it affects overlay rendering
-        bool m_LowCompositorQuality; //Set when the compositor's quality setting to set to something other than High or Auto
-        bool m_HasAnyWarning;        //Set when there's any warning (by calling UpdateWarningState)
+        bool m_LowCompositorRes;      //Set when compositor's resolution is set below 100% during init. The user is warned about this as it affects overlay rendering
+        bool m_LowCompositorQuality;  //Set when the compositor's quality setting is set to something other than High or Auto
+        bool m_LegacyDashboardActive; //Set when the legacy dashboard is active. Only used to display warning, other code checks dashboard presence on its own
+        bool m_HasAnyWarning;         //Set when there's any warning (by calling UpdateWarningState)
         vr::EVROverlayError m_OverlayErrorLast; //Last encountered error when adding an overlay (usually just overlay limit exceeded)
-        HRESULT m_WinRTErrorLast;    //Last encountered error when a Graphics Capture thread crashed (ideally never happens)
+        HRESULT m_WinRTErrorLast;     //Last encountered error when a Graphics Capture thread crashed (ideally never happens)
 
         bool m_ElevatedTaskSetUp;
         bool m_ComInitDone;
@@ -243,6 +244,7 @@ class UIManager
         bool IsCompositorResolutionLow() const;
         bool IsCompositorRenderQualityLow() const;
         void UpdateCompositorRenderQualityLow();
+        bool IsLegacyDashboardActive() const;
         bool IsAnyWarningDisplayed() const;
         void UpdateAnyWarningDisplayedState();
         vr::EVROverlayError GetOverlayErrorLast() const;

@@ -257,6 +257,7 @@ UIManager::UIManager(bool desktop_mode, bool keyboard_editor_mode) :
     m_FontLarge(nullptr),
     m_LowCompositorRes(false),
     m_LowCompositorQuality(false),
+    m_LegacyDashboardActive(false),
     m_HasAnyWarning(false),
     m_OverlayErrorLast(vr::VROverlayError_None),
     m_WinRTErrorLast(S_OK),
@@ -1802,6 +1803,11 @@ void UIManager::UpdateCompositorRenderQualityLow()
     UpdateAnyWarningDisplayedState();
 }
 
+bool UIManager::IsLegacyDashboardActive() const
+{
+    return m_LegacyDashboardActive;
+}
+
 bool UIManager::IsAnyWarningDisplayed() const
 {
     return m_HasAnyWarning;
@@ -1851,6 +1857,13 @@ void UIManager::UpdateAnyWarningDisplayedState()
 
     //Browser version mismatch warning
     if ( (!ConfigManager::GetValue(configid_bool_interface_warning_browser_version_mismatch_hidden)) && (ConfigManager::GetValue(configid_bool_state_misc_browser_version_mismatch)) )
+    {
+        m_HasAnyWarning = true;
+        return;
+    }
+
+    //Legacy dashboard active warning
+    if ( (!ConfigManager::GetValue(configid_bool_interface_warning_legacy_dashboard_hidden)) && (m_LegacyDashboardActive) )
     {
         m_HasAnyWarning = true;
         return;
@@ -2043,6 +2056,14 @@ void UIManager::PositionOverlay()
         vr::VROverlayHandle_t handle_gamepad_ui = vr::k_ulOverlayHandleInvalid;
         vr::VROverlay()->FindOverlay("valve.steam.gamepadui.bar", &handle_gamepad_ui);
 
+        const bool is_legacy_dashboard_active = (handle_gamepad_ui == vr::k_ulOverlayHandleInvalid);
+
+        if (m_LegacyDashboardActive != is_legacy_dashboard_active)
+        {
+            m_LegacyDashboardActive = is_legacy_dashboard_active;
+            UpdateAnyWarningDisplayedState();
+        }
+
         //Imagine if SetOverlayTransformOverlayRelative() actually worked
         vr::HmdMatrix34_t matrix_ovr;
         vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
@@ -2052,7 +2073,7 @@ void UIManager::PositionOverlay()
         //Adjust curve for dashboard position
         float curve = 0.145f;
 
-        if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+        if (!is_legacy_dashboard_active)
         {
             curve = 0.1725f;  //SteamVR 2 removed dashboard distance setting
         }
@@ -2073,7 +2094,7 @@ void UIManager::PositionOverlay()
         //Most problematic dashboard element is the current application button (SystemUI) and dashboard reposition bar (GamepadUI & SystemUI).
         if (m_WindowOverlayBar.IsScrollBarVisible())
         {
-            if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+            if (!is_legacy_dashboard_active)
             {
                 vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.373f, 0.470f);
             }
@@ -2084,7 +2105,7 @@ void UIManager::PositionOverlay()
         }
         else
         {
-            if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
+            if (!is_legacy_dashboard_active)
             {
                 vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.326f, 0.460f);
             }

@@ -285,6 +285,16 @@ The installed version of Desktop+ Browser must be compatible with the running ve
 a new version to be installed, it is generally a recommended to use the latest builds of both.
 
 
+"The legacy SteamVR dashboard is active! Dashboard origin overlays are not able to update their position outside of the Desktop+
+dashboard tab.":
+-
+This message appears when an older variant of the SteamVR dashboard is active. This typically happens when the Steam client isn't
+running or the newer dashboard was explicitly disabled in the SteamVR configuration.
+While the legacy dashboard is still officially supported in SteamVR for Steam-less enterprise use and Desktop+ tries to remain
+compatible, internal changes in SteamVR rendered some positioning features infeasible with it.
+Positioning for dashboard origin overlays will be impacted as described in the message. Everything else will still work as usual.
+
+
 License
 -------
 Desktop+ is licensed under the GPL 3.0.

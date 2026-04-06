@@ -59,6 +59,7 @@ enum ConfigID_Bool
     configid_bool_interface_warning_elevated_mode_hidden,
     configid_bool_interface_warning_browser_missing_hidden,
     configid_bool_interface_warning_browser_version_mismatch_hidden,
+    configid_bool_interface_warning_legacy_dashboard_hidden,
     configid_bool_interface_warning_app_profile_active_hidden,
     configid_bool_interface_window_settings_restore_state,
     configid_bool_interface_window_properties_restore_state,

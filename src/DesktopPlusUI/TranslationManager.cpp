@@ -32,6 +32,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_SettingsWarningElevatedProcessFocus",
     "tstr_SettingsWarningBrowserMissing",
     "tstr_SettingsWarningBrowserMismatch",
+    "tstr_SettingsWarningLegacyDashboard",
     "tstr_SettingsWarningUIAccessLost",
     "tstr_SettingsWarningOverlayCreationErrorLimit",
     "tstr_SettingsWarningOverlayCreationErrorOther",
