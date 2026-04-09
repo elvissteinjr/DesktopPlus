@@ -14,6 +14,7 @@
 WindowOverlayBar::WindowOverlayBar() : m_Visible(true),
                                        m_Alpha(1.0f), 
                                        m_IsScrollBarVisible(false),
+                                       m_OverlayHoveredID(k_ulOverlayID_None),
                                        m_OverlayButtonActiveMenuID(k_ulOverlayID_None),
                                        m_IsAddOverlayButtonActive(false),
                                        m_MenuAlpha(0.0f),
@@ -132,7 +133,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
     static unsigned int left_down_overlay_id  = k_ulOverlayID_None;
     static unsigned int right_down_overlay_id = k_ulOverlayID_None;
     static unsigned int hovered_overlay_id_last = k_ulOverlayID_None;
-    unsigned int hovered_overlay_id = k_ulOverlayID_None;
+    m_OverlayHoveredID = k_ulOverlayID_None;
 
     //Lambda for an overlay button widget. Interactions are implemented separately where needed
     auto overlay_button = [&](unsigned int overlay_id)
@@ -310,7 +311,7 @@ void WindowOverlayBar::UpdateOverlayButtons()
             //Remember hovered overlay for highlighting
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
             {
-                hovered_overlay_id = i;
+                m_OverlayHoveredID = i;
             }
 
             //Tooltip, but don't show while dragging or animating position
@@ -489,10 +490,10 @@ void WindowOverlayBar::UpdateOverlayButtons()
     }
 
     //Don't change overlay highlight while mouse down as it won't be correct while dragging and flicker just before it
-    if ( (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) && ((hovered_overlay_id_last != k_ulOverlayID_None) || (hovered_overlay_id != k_ulOverlayID_None)) )
+    if ( (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) && ((hovered_overlay_id_last != k_ulOverlayID_None) || (m_OverlayHoveredID != k_ulOverlayID_None)) )
     {
-        UIManager::Get()->HighlightOverlay(hovered_overlay_id);
-        hovered_overlay_id_last = hovered_overlay_id;
+        UIManager::Get()->HighlightOverlay(m_OverlayHoveredID);
+        hovered_overlay_id_last = m_OverlayHoveredID;
     }
 
     //Always leave cursor where the last unmoved button would've left it (leaves blank space during during drags if necessary)
@@ -836,6 +837,13 @@ void WindowOverlayBar::Update()
             m_Alpha = 1.0f;
         else if (m_Alpha < 0.0f)
             m_Alpha = 0.0f;
+
+        //Prevent overlay highlight from sticking around
+        if ((m_Alpha == 0.0f) && (m_OverlayHoveredID != k_ulOverlayID_None))
+        {
+            UIManager::Get()->HighlightOverlay(k_ulOverlayID_None);
+            m_OverlayHoveredID = k_ulOverlayID_None;
+        }
     }
 
     //We need to not skip on alpha 0.0 at least twice to get the real height of the bar. 32.0f is the placeholder width ImGui seems to use until then

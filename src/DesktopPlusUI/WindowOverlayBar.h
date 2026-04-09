@@ -15,6 +15,7 @@ class WindowOverlayBar
         float m_Alpha;
         bool m_IsScrollBarVisible;
 
+        unsigned int m_OverlayHoveredID;
         unsigned int m_OverlayButtonActiveMenuID;
         bool m_IsAddOverlayButtonActive;
         float m_MenuAlpha;
