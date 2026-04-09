@@ -2160,10 +2160,32 @@ void UIManager::PositionOverlay()
             bool is_systemui_hovered = ConfigManager::Get().IsLaserPointerTargetOverlay(m_OvrlHandleSystemUI);
 
             //Check for GamepadUI as well if it exists
-            //Though SystemUI appears to not be returned as hovered in most cases anymore (Overlay Bar position was adjusted for this for the legacy dashboard)
+            //Though SystemUI appears to not be returned as hovered in some cases anymore (Overlay Bar position was adjusted for this for the legacy dashboard)
             if (handle_gamepad_ui != vr::k_ulOverlayHandleInvalid)
             {
                 is_systemui_hovered = (is_systemui_hovered || ConfigManager::Get().IsLaserPointerTargetOverlay(handle_gamepad_ui));
+
+                //Attempt to detect the drag handle, even though it's on SystemUI and may not be detectable
+                //This is done through an additional intersection check with an offset controller position, attempting to extend the GamepadUI surface down to the drag handle area
+                //This actual works okay and failure isn't super tragic either.
+                
+                //Overlay Bar still takes priority on top, so check that first
+                if (!ConfigManager::Get().IsLaserPointerTargetOverlay(m_OvrlHandleOverlayBar))
+                {
+                    vr::VROverlayIntersectionResults_t results;
+                    vr::VROverlayIntersectionParams_t params = {0};
+
+                    if (vr::IVROverlayEx::GetOverlayIntersectionParamsForDevice(params, vr::VROverlay()->GetPrimaryDashboardDevice(), vr::TrackingUniverseStanding, true))
+                    {
+                        //Move controller Y down a bit
+                        params.vSource.v[1] += 0.04f;
+
+                        if (vr::VROverlay()->ComputeOverlayIntersection(handle_gamepad_ui, &params, &results))
+                        {
+                            is_systemui_hovered = true;
+                        }
+                    }
+                }
             }
 
             if (!m_OvrlVisible)
