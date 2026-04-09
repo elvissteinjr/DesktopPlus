@@ -74,6 +74,9 @@ namespace vr
             //Returns true if the system laser pointer is likely to be active. There may be edge-cases with this depending on SteamVR behavior
             static bool IsSystemLaserPointerActive();
 
+            //Dirty function docking a dashboard overlay to the Theater Screen. Relies on undocumented tools shipped with SteamVR. May fail. Returns false if anything went wrong.
+            static bool DockOverlayToTheaterScreen(VROverlayHandle_t overlay_handle);
+
             //-OverlayTextureEx functions
             //These functions wrap around base OpenVR functions to keep track texture sizes and shared texture handles (when used once)
             //This is under the assumption that nothing except these functions invalidate existing shared texture handles

@@ -224,6 +224,7 @@ class OutputManager
         float m_PendingDashboardDummyHeight;
         ULONGLONG m_LastApplyTransformTick;
         ULONGLONG m_LastFrameTransformUpdateTick;
+        bool m_OvrlTheaterJustDocked;           //Current implementation will receive one OvrlHidden event right after docking which we need to ignore
 
         Microsoft::WRL::ComPtr<ID3D11Texture2D> m_MouseTex;
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_MouseShaderRes;

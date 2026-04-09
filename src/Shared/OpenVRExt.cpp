@@ -4,6 +4,7 @@
 
 #include "openvr.h"
 #include "Matrices.h"
+#include "Util.h"
 
 namespace vr
 {
@@ -151,6 +152,79 @@ namespace vr
     {
         //IsSteamVRDrawingControllers() appears to only return true while the laser pointer is active even if SteamVR is drawing controllers from no scene app running or similar
         return (VROverlay()->IsDashboardVisible() || VRSystem()->IsSteamVRDrawingControllers());
+    }
+
+    bool IVROverlayEx::DockOverlayToTheaterScreen(VROverlayHandle_t overlay_handle)
+    {
+        //If this function looks like a horrible hack, it's because it is
+
+        //This will break in weird ways if the HMD isn't worn, so check for activity first
+        EDeviceActivityLevel hmd_activity = VRSystem()->GetTrackedDeviceActivityLevel(k_unTrackedDeviceIndex_Hmd);
+
+        if ((hmd_activity != k_EDeviceActivityLevel_UserInteraction) && (hmd_activity != k_EDeviceActivityLevel_UserInteraction_Timeout))
+            return false;
+
+        //Get runtime path to build path to vrcmd tool
+        uint32_t path_buffer_size = 0; 
+        char path_buffer_dummy = '\0';  //VR_GetRuntimePath() always writes at least a null character to the provided buffer so we can't just pass nullptr
+
+        VR_GetRuntimePath(&path_buffer_dummy, 1, &path_buffer_size);
+        if (path_buffer_size != 0)
+        {
+            std::string path_str(path_buffer_size - 1, '\0');
+            if (!VR_GetRuntimePath(&path_str[0], path_buffer_size, &path_buffer_size))
+                return false;
+
+            path_str += "\\bin\\win64\\vrcmd";
+
+            //Get overlay key
+            char buffer_overlay_key[k_unVROverlayMaxKeyLength];
+            VROverlay()->GetOverlayKey(overlay_handle, buffer_overlay_key, k_unVROverlayMaxKeyLength);
+
+            std::string arg_str = "--dock-overlay theater " + std::string(buffer_overlay_key);
+
+            //Hide dashboard if it's visible, as some SteamVR versions don't let us switch away from our own dashboard tab...
+            if (VROverlay()->IsDashboardVisible())
+            {
+                ::ShellExecute(nullptr, nullptr, L"vrmonitor://debugcommands/system_dashboard_toggle", nullptr, nullptr, SW_HIDE);
+            }
+
+            //Wait for the dashboard to disappear
+            for (size_t i = 0; i < 50; ++i)
+            {
+                if (!VROverlay()->IsDashboardVisible())
+                {
+                    break;
+                }
+
+                ::Sleep(100);
+            }
+
+            //Set the target overlay to be the active dashboard overlay (but bail if it won't work)
+            for (size_t i = 0; i < 50; ++i)
+            {
+                VROverlay()->ShowDashboard(buffer_overlay_key);
+
+                if (VROverlay()->IsActiveDashboardOverlay(overlay_handle))
+                {
+                    //Call vrcmd tool to dock it to the theater screen
+                    std::wstring path_wstr = WStringConvertFromUTF8(path_str.c_str());
+                    std::wstring arg_wstr  = WStringConvertFromUTF8(arg_str.c_str());
+
+                    if (!path_wstr.empty())
+                    {
+                        ::ShellExecute(nullptr, nullptr, path_wstr.c_str(), arg_wstr.c_str(), nullptr, SW_HIDE);
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                ::Sleep(100);
+            }
+        }
+
+        return false;
     }
 
     EVROverlayError IVROverlayEx::SetOverlayTextureEx(VROverlayHandle_t overlay_handle, const Texture_t* texture_ptr, Vector2Int texture_size, bool* out_shared_texture_invalidated_ptr)

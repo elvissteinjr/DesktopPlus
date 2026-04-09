@@ -85,6 +85,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_PendingDashboardDummyHeight(0.0f),
     m_LastApplyTransformTick(0),
     m_LastFrameTransformUpdateTick(0),
+    m_OvrlTheaterJustDocked(false),
     m_MouseLastClickTick(0),
     m_MouseIgnoreMoveEvent(false),
     m_MouseCursorNeedsUpdate(false),
@@ -2570,6 +2571,16 @@ void OutputManager::ShowTheaterOverlay(unsigned int id)
     ResetCurrentOverlay();
     OverlayManager::Get().GetCurrentOverlay().AssignDesktopDuplicationTexture();    //Desktop Duplication texture isn't reset and only assigned on change, so do it manually
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
+    if (vr::IVROverlayEx::DockOverlayToTheaterScreen(OverlayManager::Get().GetTheaterOverlayHandle()))
+    {
+        m_OvrlTheaterJustDocked = true;
+    }
+    else
+    {
+        LOG_F(WARNING, "Failed to dock overlay \"%s\" (ID % u) to Theater Screen", OverlayManager::Get().GetCurrentConfigData().ConfigNameStr.c_str(), OverlayManager::Get().GetCurrentOverlayID());
+        SetOverlayEnabled(id, false);
+    }
 }
 
 void OutputManager::HideOverlay(unsigned int id)
@@ -4841,7 +4852,12 @@ bool OutputManager::HandleOpenVREvents()
                     //though it's mostly harmless if this doesn't work (phantom dashboard tab)
                     if (OverlayManager::Get().GetTheaterOverlayID() == i)
                     {
-                        SetOverlayEnabled(i, false);
+                        if (!m_OvrlTheaterJustDocked)
+                        {
+                            SetOverlayEnabled(i, false);
+                        }
+
+                        m_OvrlTheaterJustDocked = false;
                     }
                     break;
                 }
@@ -4973,9 +4989,11 @@ bool OutputManager::HandleOpenVREvents()
     //but IsActiveDashboardOverlay() is true if it's visible on the screen so it doesn't help either to detected this.
     //So we instead check if its middle transform gets too close to the dashboard (transform is based on Theater Screen if it's on there, otherwise the dashboard tab). 
     //The case of this happening in normal use is fairly low, so it'll have to do for now
-    if (OverlayManager::Get().GetTheaterOverlayID() != k_ulOverlayID_None)
+    //
+    //This doesn't work with the current methods but we also don't have the close button to worry about anymore
+    /*if (OverlayManager::Get().GetTheaterOverlayID() != k_ulOverlayID_None)
     {
-        if (vr::VROverlay()->IsDashboardVisible())
+        if ((!m_OvrlTheaterJustDocked) && (vr::VROverlay()->IsDashboardVisible()))
         {
             vr::VROverlayHandle_t system_dashboard;
             vr::VROverlay()->FindOverlay("system.systemui", &system_dashboard);
@@ -4996,7 +5014,7 @@ bool OutputManager::HandleOpenVREvents()
                 SetOverlayEnabled(OverlayManager::Get().GetTheaterOverlayID(), false);
             }
         }
-    }
+    }*/
 
     //Handle delayed dashboard dummy updates
     if ( (m_PendingDashboardDummyHeight != 0.0f) && (m_LastApplyTransformTick + 100 < ::GetTickCount64()) )
