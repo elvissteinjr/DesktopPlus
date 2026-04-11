@@ -19,6 +19,7 @@ using namespace DirectX;
 
 #include "WindowManager.h"
 #include "Util.h"
+#include "COMWrapper.h"
 #include "OpenVRExt.h"
 #include "Logging.h"
 
@@ -1090,7 +1091,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                 }
                 case ipcact_switch_task:
                 {
-                    ShowWindowSwitcher();
+                    COMWrapper::Get().CallShowWindowSwitcher();
                     break;
                 }
                 case ipcact_overlay_duplicate:
@@ -2894,19 +2895,6 @@ void OutputManager::CropToActiveWindowToggle(unsigned int overlay_id)
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 }
 
-void OutputManager::ShowWindowSwitcher()
-{
-    InitComIfNeeded();
-
-    Microsoft::WRL::ComPtr<IShellDispatch5> shell_dispatch;
-    HRESULT sc = ::CoCreateInstance(CLSID_Shell, nullptr, CLSCTX_SERVER, IID_PPV_ARGS(&shell_dispatch));
-
-    if (SUCCEEDED(sc))
-    {
-        shell_dispatch->WindowSwitcher();
-    }
-}
-
 void OutputManager::SwitchToWindow(HWND window, bool warp_cursor)
 {
     WindowManager::Get().RaiseAndFocusWindow(window, &m_InputSim);
@@ -3210,17 +3198,6 @@ bool OutputManager::CropToActiveWindow(int& crop_x, int& crop_y, int& crop_width
     }
 
     return false;
-}
-
-void OutputManager::InitComIfNeeded()
-{
-    if (!m_ComInitDone)
-    {
-        if (::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) != RPC_E_CHANGED_MODE)
-        {
-            m_ComInitDone = true;
-        }
-    }
 }
 
 void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter)

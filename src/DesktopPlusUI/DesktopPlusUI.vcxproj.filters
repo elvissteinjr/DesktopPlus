@@ -103,6 +103,9 @@
     <ClCompile Include="..\Shared\OpenVRExt.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\Shared\COMWrapper.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imstb_truetype.h">
@@ -207,6 +210,9 @@
     <ClInclude Include="WindowKeyboardEditor.h" />
     <ClInclude Include="VRKeyboardCommon.h" />
     <ClInclude Include="..\Shared\OpenVRExt.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\COMWrapper.h">
       <Filter>Shared</Filter>
     </ClInclude>
   </ItemGroup>

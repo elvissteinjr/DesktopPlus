@@ -11,6 +11,7 @@
 #include "ConfigManager.h"
 #include "OverlayManager.h"
 #include "Util.h"
+#include "COMWrapper.h"
 #include "OpenVRExt.h"
 #include "WindowManager.h"
 
@@ -262,7 +263,6 @@ UIManager::UIManager(bool desktop_mode, bool keyboard_editor_mode) :
     m_OverlayErrorLast(vr::VROverlayError_None),
     m_WinRTErrorLast(S_OK),
     m_ElevatedTaskSetUp(false),
-    m_ComInitDone(false),
     m_OvrlHandleOverlayBar(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleFloatingUI(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleSettings(vr::k_ulOverlayHandleInvalid),
@@ -1124,14 +1124,10 @@ void UIManager::OnExit()
     //Release any held down keys
     m_VRKeyboard.ResetState();
 
-    if (m_ComInitDone)
-    {
-        ::CoUninitialize();
-    }
-
     m_SharedTextureRef.Reset();
 
     WindowManager::Get().SetActive(false);
+    COMWrapper::Get().SetActive(false);
 
     vr::VR_Shutdown();
 }
@@ -1464,12 +1460,7 @@ void UIManager::RestartDashboardApp(bool force_steam)
 
         if (ConfigManager::GetValue(configid_bool_state_misc_uiaccess_enabled)) //UIAccess enabled executable doesn't run straight from CreateProcess()
         {
-            if (!m_ComInitDone) //Let's only do this if really needed
-            {
-                m_ComInitDone = (::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) != RPC_E_CHANGED_MODE);
-            }
-
-            ::ShellExecute(nullptr, nullptr, path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+            COMWrapper::Get().CallShellExecute(path, L"", L"", SW_SHOWNORMAL);
         }
         else
         {

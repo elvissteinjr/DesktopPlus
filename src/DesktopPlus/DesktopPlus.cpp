@@ -14,6 +14,7 @@
 #include "DPBrowserAPIClient.h"
 
 #include "Util.h"
+#include "COMWrapper.h"
 #include "DisplayManager.h"
 #include "DuplicationManager.h"
 #include "OutputManager.h"
@@ -529,6 +530,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     //Do other shutdown steps, like undimming the dashboard if needed
     OutMgr.OnExit();
+    COMWrapper::Get().SetActive(false);
 
     //Kindly ask elevated mode process to quit if it exists
     if (HWND window = ::FindWindow(g_WindowClassNameElevatedMode, nullptr))

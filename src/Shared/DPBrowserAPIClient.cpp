@@ -2,7 +2,7 @@
 
 #include "ConfigManager.h"
 #include "InterprocessMessaging.h"
-#include "Util.h"
+#include "COMWrapper.h"
 #include "Logging.h"
 
 #ifdef DPLUS_UI
@@ -44,10 +44,8 @@ bool DPBrowserAPIClient::LaunchServerIfNotRunning()
         //Only the dashboard app can be elevated in normal operation, so it's restricted to that
         if (OutputManager* outmgr = OutputManager::Get())
         {
-            outmgr->InitComIfNeeded();
-
             //Launch browser process unelevated if possible. May fail under certain circumstances, but we won't fall back to normal launch
-            if (!ShellExecuteUnelevated(browser_exe_path.c_str(), browser_arg_buffer.get(), browser_working_dir.c_str()))
+            if (!COMWrapper::Get().CallShellExecuteUnelevated(browser_exe_path, browser_args_wstr, browser_working_dir))
             {
                 LOG_F(ERROR, "Failed to launch Desktop+ Browser as unelevated process");
                 return false;

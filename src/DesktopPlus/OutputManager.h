@@ -80,7 +80,6 @@ class OutputManager
 
         void SetOverlayEnabled(unsigned int overlay_id, bool is_enabled);
         void CropToActiveWindowToggle(unsigned int overlay_id);
-        void ShowWindowSwitcher();
         void SwitchToWindow(HWND window, bool warp_cursor);
         void OverlayDirectDragStart(unsigned int overlay_id);
         void OverlayDirectDragFinish(unsigned int overlay_id);
@@ -94,7 +93,6 @@ class OutputManager
         int EnumerateOutputs(int target_desktop_id = -1, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_preferred = nullptr, Microsoft::WRL::ComPtr<IDXGIAdapter>* out_adapter_vr = nullptr);
         void CropToDisplay(int display_id, int& crop_x, int& crop_y, int& crop_width, int& crop_height);
         bool CropToActiveWindow(int& crop_x, int& crop_y, int& crop_width, int& crop_height);             //Returns true if values have changed
-        void InitComIfNeeded();
 
         void ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter);
 

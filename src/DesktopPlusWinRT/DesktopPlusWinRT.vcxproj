@@ -94,6 +94,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Shared\COMWrapper.cpp" />
     <ClCompile Include="..\Shared\OpenVRExt.cpp" />
     <ClCompile Include="..\Shared\OUtoSBSConverter.cpp" />
     <ClCompile Include="..\Shared\Util.cpp" />
@@ -102,6 +103,7 @@
     <ClCompile Include="OverlayCapture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Shared\COMWrapper.h" />
     <ClInclude Include="..\Shared\DPRect.h" />
     <ClInclude Include="..\Shared\openvr.h" />
     <ClInclude Include="..\Shared\OpenVRExt.h" />

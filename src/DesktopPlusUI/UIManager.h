@@ -131,7 +131,6 @@ class UIManager
         HRESULT m_WinRTErrorLast;     //Last encountered error when a Graphics Capture thread crashed (ideally never happens)
 
         bool m_ElevatedTaskSetUp;
-        bool m_ComInitDone;
 
         vr::VROverlayHandle_t m_OvrlHandleOverlayBar;
         vr::VROverlayHandle_t m_OvrlHandleFloatingUI;

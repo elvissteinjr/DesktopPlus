@@ -6,9 +6,8 @@
 #include "InputSimulator.h"
 #include "WindowManager.h"
 #include "Util.h"
+#include "COMWrapper.h"
 #include "Logging.h"
-
-static bool g_ElevatedMode_ComInitDone = false;
 
 LRESULT CALLBACK WndProcElevated(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 bool HandleIPCMessage(MSG msg);
@@ -88,14 +87,8 @@ int ElevatedModeEnter(HINSTANCE hinstance)
     IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_state_misc_elevated_mode_active, false);
     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_elevated_mode_active, false);
 
-    //Uninitialize COM if it was used
-    if (!g_ElevatedMode_ComInitDone)
-    {
-        ::CoUninitialize();
-        g_ElevatedMode_ComInitDone = false;
-    }
-
     WindowManager::Get().ClearTempTopMostWindow();
+    COMWrapper::Get().SetActive(false);
 
     return 0;
 }
@@ -283,22 +276,13 @@ bool HandleIPCMessage(MSG msg)
                 }
                 case ipceact_launch_application:
                 {
-                    //Init COM if necessary
-                    if (!g_ElevatedMode_ComInitDone)
-                    {
-                        if (::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) != RPC_E_CHANGED_MODE)
-                        {
-                            g_ElevatedMode_ComInitDone = true;
-                        }
-                    }
-
                     //Convert path and arg to utf16
                     std::wstring path_wstr = WStringConvertFromUTF8(action_exe_path.c_str());
                     std::wstring arg_wstr  = WStringConvertFromUTF8(action_exe_arg.c_str());
 
                     if (!path_wstr.empty())
-                    {   
-                        ::ShellExecute(nullptr, nullptr, path_wstr.c_str(), arg_wstr.c_str(), nullptr, SW_SHOWNORMAL);
+                    {
+                        COMWrapper::Get().CallShellExecute(path_wstr, arg_wstr, L"", SW_SHOWNORMAL);
                     }
                     break;
                 }

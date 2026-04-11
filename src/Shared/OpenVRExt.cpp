@@ -5,6 +5,7 @@
 #include "openvr.h"
 #include "Matrices.h"
 #include "Util.h"
+#include "COMWrapper.h"
 
 namespace vr
 {
@@ -186,7 +187,7 @@ namespace vr
             //Hide dashboard if it's visible, as some SteamVR versions don't let us switch away from our own dashboard tab...
             if (VROverlay()->IsDashboardVisible())
             {
-                ::ShellExecute(nullptr, nullptr, L"vrmonitor://debugcommands/system_dashboard_toggle", nullptr, nullptr, SW_HIDE);
+                COMWrapper::Get().CallShellExecute(L"vrmonitor://debugcommands/system_dashboard_toggle", L"", L"", SW_HIDE);
             }
 
             //Wait for the dashboard to disappear
@@ -213,7 +214,7 @@ namespace vr
 
                     if (!path_wstr.empty())
                     {
-                        ::ShellExecute(nullptr, nullptr, path_wstr.c_str(), arg_wstr.c_str(), nullptr, SW_HIDE);
+                        COMWrapper::Get().CallShellExecute(path_wstr, arg_wstr, L"", SW_HIDE);
                         return true;
                     }
 

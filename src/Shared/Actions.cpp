@@ -14,6 +14,7 @@
 #include "InterprocessMessaging.h"
 #include "OverlayManager.h"
 #include "Util.h"
+#include "COMWrapper.h"
 #include "Logging.h"
 #include "Ini.h"
 
@@ -349,12 +350,7 @@ void ActionManager::DoLaunchAppCommand(const ActionCommand& command, OverlayIDLi
 
     if (!path_wstr.empty())
     {
-        if (OutputManager* outmgr = OutputManager::Get())
-        {
-            outmgr->InitComIfNeeded();
-
-            ::ShellExecute(nullptr, nullptr, path_wstr.c_str(), arg_wstr.c_str(), nullptr, SW_SHOWNORMAL);
-        }
+        COMWrapper::Get().CallShellExecute(path_wstr, arg_wstr, L"", SW_SHOWNORMAL);
     }
 }
 
@@ -446,10 +442,7 @@ void ActionManager::DoSwitchTaskCommand(const ActionCommand& command, OverlayIDL
 
     if (show_window_switcher)
     {
-        if (OutputManager* outmgr = OutputManager::Get())
-        {
-            outmgr->ShowWindowSwitcher();
-        }
+        COMWrapper::Get().CallShowWindowSwitcher();
     }
     else    //Focus Window
     {
