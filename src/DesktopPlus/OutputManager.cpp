@@ -1938,8 +1938,9 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
             const Overlay& overlay  = OverlayManager::Get().GetOverlay(overlay_id);
             OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
 
-            //Skip if no real change
-            if ((data.ConfigInt[configid_int_overlay_state_content_width] == content_width) && (data.ConfigInt[configid_int_overlay_state_content_height] == content_height))
+            //Skip if no real change or not even WinRT overlay (can happen with duplicated captures getting stopped)
+            if (  (overlay.GetTextureSource() != ovrl_texsource_winrt_capture) ||
+                 ((data.ConfigInt[configid_int_overlay_state_content_width] == content_width) && (data.ConfigInt[configid_int_overlay_state_content_height] == content_height)) )
             {
                 break;
             }
