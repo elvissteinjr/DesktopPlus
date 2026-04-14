@@ -1993,6 +1993,9 @@ void OutputManager::HandleWinRTMessage(const MSG& msg)
             Overlay& overlay = OverlayManager::Get().GetOverlay(overlay_id);
             OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
 
+            //Reset HWND as it's very likely no longer valid and may be reused worst case (but don't send it to UI as it'll save it as no capture)
+            data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = 0;
+
             //Hide affected overlay if setting enabled
             if ( (data.ConfigBool[configid_bool_overlay_enabled]) && (ConfigManager::GetValue(configid_int_windows_winrt_capture_lost_behavior) == window_caplost_hide_overlay) )
             {
