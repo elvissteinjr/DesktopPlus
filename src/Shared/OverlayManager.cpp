@@ -155,52 +155,6 @@ Matrix4 OverlayManager::GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handl
     return matrix;
 }
 
-#ifndef DPLUS_UI
-
-void OverlayManager::TheaterOverlayForwardCapture(const Overlay& ovrl_source)
-{
-    if (ovrl_source.GetTextureSource() == ovrl_texsource_winrt_capture)
-    {
-        DPWinRT_StartCaptureFromOverlay(m_TheaterOverlayHandle, m_CurrentTheaterOverlayOrigHandle);
-        DPWinRT_PauseCapture(m_TheaterOverlayHandle, !ovrl_source.IsVisible());
-        DPWinRT_PauseCapture(m_CurrentTheaterOverlayOrigHandle, true);
-    }
-    else if (ovrl_source.GetTextureSource() == ovrl_texsource_ui)
-    {
-        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, IPCManager::GetUIAppProcessID());
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlays_ui_reset);
-    }
-    else if (ovrl_source.GetTextureSource() == ovrl_texsource_browser)
-    {
-        DPBrowserAPIClient::Get().DPBrowser_DuplicateBrowserOutput(m_CurrentTheaterOverlayOrigHandle, m_TheaterOverlayHandle);
-        DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(m_TheaterOverlayHandle, !ovrl_source.IsVisible());
-        DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(m_CurrentTheaterOverlayOrigHandle, true);
-
-        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, DPBrowserAPIClient::Get().GetServerAppProcessID());
-    }
-}
-
-void OverlayManager::TheaterOverlayReturnCapture(const Overlay& ovrl_source)
-{
-    if (ovrl_source.GetTextureSource() == ovrl_texsource_winrt_capture)
-    {
-        DPWinRT_StopCapture(m_TheaterOverlayHandle);
-    }
-    else if (ovrl_source.GetTextureSource() == ovrl_texsource_ui)
-    {
-        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, ::GetCurrentProcessId());
-        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlays_ui_reset);
-    }
-    else if (ovrl_source.GetTextureSource() == ovrl_texsource_browser)
-    {
-        DPBrowserAPIClient::Get().DPBrowser_StopBrowser(m_TheaterOverlayHandle);
-
-        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, ::GetCurrentProcessId());
-    }
-}
-
-#endif //ifndef DPLUS_UI
-
 unsigned int OverlayManager::DuplicateOverlay(const OverlayConfigData& data, unsigned int source_id)
 {
     unsigned int id = (unsigned int)m_OverlayConfigData.size();
@@ -399,6 +353,11 @@ vr::VROverlayHandle_t OverlayManager::GetTheaterOverlayHandle() const
     return m_TheaterOverlayHandle;
 }
 
+vr::VROverlayHandle_t OverlayManager::GetTheaterOverlayOriginalHandle() const
+{
+    return m_CurrentTheaterOverlayOrigHandle;
+}
+
 unsigned int OverlayManager::GetTheaterOverlayID() const
 {
     return m_CurrentTheaterOverlayID;
@@ -478,7 +437,7 @@ void OverlayManager::SetTheaterOverlayID(unsigned int id)
 
         IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_theater_orig_overlay_handle, vr::k_ulOverlayHandleInvalid);
 
-        TheaterOverlayReturnCapture(ovrl_source_prev);
+        ReturnTheaterOverlayCapture(ovrl_source_prev);
     }
 
     m_CurrentTheaterOverlayOrigHandle = ovrl_source.GetHandle();
@@ -500,7 +459,7 @@ void OverlayManager::SetTheaterOverlayID(unsigned int id)
 
         IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_theater_orig_overlay_handle, m_CurrentTheaterOverlayOrigHandle);
 
-        TheaterOverlayForwardCapture(ovrl_source);
+        ForwardTheaterOverlayCapture(ovrl_source);
     }
 
     //Keep active overlay count correct
@@ -533,7 +492,7 @@ void OverlayManager::ClearTheaterOverlay(bool no_ui_update)
             IPCManager::Get().PostConfigMessageToUIApp(configid_handle_state_theater_orig_overlay_handle, vr::k_ulOverlayHandleInvalid);
         }
 
-        TheaterOverlayReturnCapture(ovrl_source_prev);
+        ReturnTheaterOverlayCapture(ovrl_source_prev);
     }
 
     if (m_TheaterOverlayHandle != vr::k_ulOverlayHandleInvalid)
@@ -555,6 +514,48 @@ void OverlayManager::ClearTheaterOverlay(bool no_ui_update)
     if (OutputManager* outmgr = OutputManager::Get())
     {
         outmgr->ResetOverlayActiveCount();
+    }
+}
+
+void OverlayManager::ForwardTheaterOverlayCapture(const Overlay& ovrl_source)
+{
+    if (ovrl_source.GetTextureSource() == ovrl_texsource_winrt_capture)
+    {
+        DPWinRT_StartCaptureFromOverlay(m_TheaterOverlayHandle, m_CurrentTheaterOverlayOrigHandle);
+        DPWinRT_PauseCapture(m_TheaterOverlayHandle, !ovrl_source.IsVisible());
+        DPWinRT_PauseCapture(m_CurrentTheaterOverlayOrigHandle, true);
+    }
+    else if (ovrl_source.GetTextureSource() == ovrl_texsource_ui)
+    {
+        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, IPCManager::GetUIAppProcessID());
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlays_ui_reset);
+    }
+    else if (ovrl_source.GetTextureSource() == ovrl_texsource_browser)
+    {
+        DPBrowserAPIClient::Get().DPBrowser_DuplicateBrowserOutput(m_CurrentTheaterOverlayOrigHandle, m_TheaterOverlayHandle);
+        DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(m_TheaterOverlayHandle, !ovrl_source.IsVisible());
+        DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(m_CurrentTheaterOverlayOrigHandle, true);
+
+        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, DPBrowserAPIClient::Get().GetServerAppProcessID());
+    }
+}
+
+void OverlayManager::ReturnTheaterOverlayCapture(const Overlay& ovrl_source)
+{
+    if (ovrl_source.GetTextureSource() == ovrl_texsource_winrt_capture)
+    {
+        DPWinRT_StopCapture(m_TheaterOverlayHandle);
+    }
+    else if (ovrl_source.GetTextureSource() == ovrl_texsource_ui)
+    {
+        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, ::GetCurrentProcessId());
+        IPCManager::Get().PostMessageToUIApp(ipcmsg_action, ipcact_overlays_ui_reset);
+    }
+    else if (ovrl_source.GetTextureSource() == ovrl_texsource_browser)
+    {
+        DPBrowserAPIClient::Get().DPBrowser_StopBrowser(m_TheaterOverlayHandle);
+
+        vr::VROverlay()->SetOverlayRenderingPid(m_TheaterOverlayHandle, ::GetCurrentProcessId());
     }
 }
 

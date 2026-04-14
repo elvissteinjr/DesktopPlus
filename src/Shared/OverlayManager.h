@@ -42,28 +42,26 @@ class OverlayManager
 
         Matrix4 GetOverlayTransformBase(vr::VROverlayHandle_t ovrl_handle, unsigned int id, bool add_bottom_offset) const;
 
-        #ifndef DPLUS_UI
-            void TheaterOverlayForwardCapture(const Overlay& ovrl_source);
-            void TheaterOverlayReturnCapture(const Overlay& ovrl_source);
-        #endif
-
     public:
         static OverlayManager& Get();
 
         OverlayManager();
         unsigned int DuplicateOverlay(const OverlayConfigData& data, unsigned int source_id = k_ulOverlayID_None);
         unsigned int AddOverlay(OverlayCaptureSource capture_source, int desktop_id = -2, HWND window_handle = nullptr);
-        unsigned int AddUIOverlay();                                    //Adds UI overlay without using any base data
+        unsigned int AddUIOverlay();                                        //Adds UI overlay without using any base data
         #ifndef DPLUS_UI
-            Overlay& GetOverlay(unsigned int id);                       //Returns m_OverlayNull on error
-            const Overlay& GetOverlay(unsigned int id) const;           //Returns m_OverlayNull on error
+            Overlay& GetOverlay(unsigned int id);                           //Returns m_OverlayNull on error
+            const Overlay& GetOverlay(unsigned int id) const;               //Returns m_OverlayNull on error
             Overlay& GetCurrentOverlay();
-            Overlay& GetPrimaryDashboardOverlay();                      //Returns first visible overlay with dashboard origin, or m_OverlayNull if none exists
+            Overlay& GetPrimaryDashboardOverlay();                          //Returns first visible overlay with dashboard origin, or m_OverlayNull if none exists
 
-            vr::VROverlayHandle_t GetTheaterOverlayHandle() const;      //Returns theater overlay handle (may be invalid if no overlay ID is assinged)
+            vr::VROverlayHandle_t GetTheaterOverlayHandle() const;          //Returns theater overlay handle (may be invalid if no overlay ID is assinged)
+            vr::VROverlayHandle_t GetTheaterOverlayOriginalHandle() const;  //Returns handle of overlay originally held by current theater overlay (may be invalid if no overlay ID is assinged)
             unsigned int GetTheaterOverlayID() const;
             void SetTheaterOverlayID(unsigned int id);
             void ClearTheaterOverlay(bool no_ui_update = false);
+            void ForwardTheaterOverlayCapture(const Overlay& ovrl_source);
+            void ReturnTheaterOverlayCapture(const Overlay& ovrl_source);
         #endif
         OverlayConfigData& GetConfigData(unsigned int id);
         const OverlayConfigData& GetConfigData(unsigned int id) const;

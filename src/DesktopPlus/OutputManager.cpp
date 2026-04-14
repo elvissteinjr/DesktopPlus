@@ -2577,14 +2577,25 @@ void OutputManager::ShowTheaterOverlay(unsigned int id)
     OverlayManager::Get().GetCurrentOverlay().AssignDesktopDuplicationTexture();    //Desktop Duplication texture isn't reset and only assigned on change, so do it manually
     OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
 
-    if (vr::IVROverlayEx::DockOverlayToTheaterScreen(OverlayManager::Get().GetTheaterOverlayHandle()))
+    //Set output error again if we're showing an error'd overlay (why)
+    Overlay& overlay = OverlayManager::Get().GetOverlay(id);
+    if (overlay.GetTextureSource() == ovrl_texsource_none)
     {
-        m_OvrlTheaterJustDocked = true;
+        SetOutputErrorTexture(overlay.GetHandle());
     }
-    else
+
+    //Do the docking if it's not already there... or try to
+    if (!vr::VROverlay()->IsOverlayVisible(OverlayManager::Get().GetTheaterOverlayHandle()))
     {
-        LOG_F(WARNING, "Failed to dock overlay \"%s\" (ID % u) to Theater Screen", OverlayManager::Get().GetCurrentConfigData().ConfigNameStr.c_str(), OverlayManager::Get().GetCurrentOverlayID());
-        SetOverlayEnabled(id, false);
+        if (vr::IVROverlayEx::DockOverlayToTheaterScreen(OverlayManager::Get().GetTheaterOverlayHandle()))
+        {
+            m_OvrlTheaterJustDocked = true;
+        }
+        else
+        {
+            LOG_F(WARNING, "Failed to dock overlay \"%s\" (ID % u) to Theater Screen", OverlayManager::Get().GetCurrentConfigData().ConfigNameStr.c_str(), OverlayManager::Get().GetCurrentOverlayID());
+            SetOverlayEnabled(id, false);
+        }
     }
 }
 
@@ -2797,6 +2808,12 @@ void OutputManager::SetOutputErrorTexture(vr::VROverlayHandle_t overlay_handle)
 
     //Mouse scale needs to be updated as well
     ApplySettingMouseInput();
+
+    //If this was called on the theater overlay, we need to make sure the original is also error'd
+    if (OverlayManager::Get().GetTheaterOverlayHandle() == overlay_handle)
+    {
+        SetOutputErrorTexture(OverlayManager::Get().GetTheaterOverlayOriginalHandle());
+    }
 }
 
 void OutputManager::SetOutputInvalid()
@@ -5950,6 +5967,14 @@ void OutputManager::ApplySettingCaptureSource()
 {
     Overlay& overlay = OverlayManager::Get().GetCurrentOverlay();
 
+    //Captures for theater screen need to be started on the original source handle and then be mirrored over afterwards
+    vr::VROverlayHandle_t ovrl_handle_capture_target = overlay.GetHandle();
+    const bool theater_refresh_needed = (OverlayManager::Get().GetTheaterOverlayID() == overlay.GetID());
+    if (theater_refresh_needed)
+    {
+        ovrl_handle_capture_target = OverlayManager::Get().GetTheaterOverlayOriginalHandle();
+    }
+
     switch (ConfigManager::GetValue(configid_int_overlay_capture_source))
     {
         case ovrl_capsource_desktop_duplication:
@@ -5988,7 +6013,7 @@ void OutputManager::ApplySettingCaptureSource()
                             data.ConfigStr[configid_str_overlay_winrt_last_window_exe_name]   = window_info->GetExeName();
                         }
 
-                        if (DPWinRT_StartCaptureFromHWND(overlay.GetHandle(), (HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]))
+                        if (DPWinRT_StartCaptureFromHWND(ovrl_handle_capture_target, (HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]))
                         {
                             overlay.SetTextureSource(ovrl_texsource_winrt_capture);
                             ApplySetting3DMode(); //Syncs 3D state if needed
@@ -5997,7 +6022,7 @@ void OutputManager::ApplySettingCaptureSource()
                             //Pause if not visible
                             if (!overlay.IsVisible())
                             {
-                                DPWinRT_PauseCapture(overlay.GetHandle(), true);
+                                DPWinRT_PauseCapture(ovrl_handle_capture_target, true);
                             }
 
                             if (ConfigManager::GetValue(configid_bool_windows_winrt_auto_focus))
@@ -6009,7 +6034,7 @@ void OutputManager::ApplySettingCaptureSource()
                     }
                     else if (data.ConfigInt[configid_int_overlay_winrt_desktop_id] != -2)
                     {
-                        if (DPWinRT_StartCaptureFromDesktop(overlay.GetHandle(), data.ConfigInt[configid_int_overlay_winrt_desktop_id]))
+                        if (DPWinRT_StartCaptureFromDesktop(ovrl_handle_capture_target, data.ConfigInt[configid_int_overlay_winrt_desktop_id]))
                         {
                             overlay.SetTextureSource(ovrl_texsource_winrt_capture);
                             ApplySetting3DMode();
@@ -6018,7 +6043,7 @@ void OutputManager::ApplySettingCaptureSource()
                             //Pause if not visible
                             if (!overlay.IsVisible())
                             {
-                                DPWinRT_PauseCapture(overlay.GetHandle(), true);
+                                DPWinRT_PauseCapture(ovrl_handle_capture_target, true);
                             }
                         }
                         break;
@@ -6048,17 +6073,17 @@ void OutputManager::ApplySettingCaptureSource()
                     OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
                     //Load placeholder texture and apply input mode now since browser startup can take a few seconds
-                    vr::VROverlay()->SetOverlayFromFile(overlay.GetHandle(), (ConfigManager::Get().GetApplicationPath() + "images/browser_load.png").c_str());
+                    vr::VROverlay()->SetOverlayFromFile(ovrl_handle_capture_target, (ConfigManager::Get().GetApplicationPath() + "images/browser_load.png").c_str());
                     ApplySettingInputMode();
 
                     if (data.ConfigInt[configid_int_overlay_duplication_id] == -1)
                     {
-                        DPBrowserAPIClient::Get().DPBrowser_StartBrowser(overlay.GetHandle(), data.ConfigStr[configid_str_overlay_browser_url], 
+                        DPBrowserAPIClient::Get().DPBrowser_StartBrowser(ovrl_handle_capture_target, data.ConfigStr[configid_str_overlay_browser_url], 
                                                                          data.ConfigBool[configid_bool_overlay_browser_allow_transparency]);
 
-                        DPBrowserAPIClient::Get().DPBrowser_SetResolution(overlay.GetHandle(), data.ConfigInt[configid_int_overlay_user_width], data.ConfigInt[configid_int_overlay_user_height]);
-                        DPBrowserAPIClient::Get().DPBrowser_SetFPS(overlay.GetHandle(),        data.ConfigInt[configid_int_overlay_browser_max_fps_override]);
-                        DPBrowserAPIClient::Get().DPBrowser_SetZoomLevel(overlay.GetHandle(),  data.ConfigFloat[configid_float_overlay_browser_zoom]);
+                        DPBrowserAPIClient::Get().DPBrowser_SetResolution(ovrl_handle_capture_target, data.ConfigInt[configid_int_overlay_user_width], data.ConfigInt[configid_int_overlay_user_height]);
+                        DPBrowserAPIClient::Get().DPBrowser_SetFPS(ovrl_handle_capture_target,        data.ConfigInt[configid_int_overlay_browser_max_fps_override]);
+                        DPBrowserAPIClient::Get().DPBrowser_SetZoomLevel(ovrl_handle_capture_target,  data.ConfigFloat[configid_float_overlay_browser_zoom]);
 
                         has_started_browser = true;
                     }
@@ -6069,8 +6094,8 @@ void OutputManager::ApplySettingCaptureSource()
                         //Source overlay may be invalid on launch or not have texture source set up if duplication ID is higher than this overlay's ID
                         if ( (overlay_src.GetHandle() != vr::k_ulOverlayHandleInvalid) && (overlay_src.GetTextureSource() == ovrl_texsource_browser) )
                         {
-                            DPBrowserAPIClient::Get().DPBrowser_DuplicateBrowserOutput(overlay_src.GetHandle(), overlay.GetHandle());
-                            DPBrowserAPIClient::Get().DPBrowser_SetFPS(overlay.GetHandle(), data.ConfigInt[configid_int_overlay_browser_max_fps_override]);
+                            DPBrowserAPIClient::Get().DPBrowser_DuplicateBrowserOutput(overlay_src.GetHandle(), ovrl_handle_capture_target);
+                            DPBrowserAPIClient::Get().DPBrowser_SetFPS(ovrl_handle_capture_target, data.ConfigInt[configid_int_overlay_browser_max_fps_override]);
                             has_started_browser = true;
                         }
                     }
@@ -6082,7 +6107,7 @@ void OutputManager::ApplySettingCaptureSource()
                     ApplySettingUpdateLimiter();
 
                     //Set pause state in case overlay is hidden or differs from duplication source
-                    DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(overlay.GetHandle(), !overlay.IsVisible());
+                    DPBrowserAPIClient::Get().DPBrowser_PauseBrowser(ovrl_handle_capture_target, !overlay.IsVisible());
                 }
 
                 //Set texture source to browser if possible, which sets the rendering PID to the browser server process
@@ -6096,6 +6121,11 @@ void OutputManager::ApplySettingCaptureSource()
             //Unknown capture source, perhaps from the future. Set to texture source none.
             overlay.SetTextureSource(ovrl_texsource_none);
         }
+    }
+
+    if (theater_refresh_needed)
+    {
+        OverlayManager::Get().ForwardTheaterOverlayCapture(overlay);
     }
 
     ApplySettingExtraBrightness();

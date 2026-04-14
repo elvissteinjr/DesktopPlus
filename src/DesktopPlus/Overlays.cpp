@@ -339,17 +339,30 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
     if ( (m_TextureSource == tex_source) && (tex_source != ovrl_texsource_ui) && (tex_source != ovrl_texsource_browser) )
         return;
 
+    //If theater overlay, mark for refresh down below if the source changed
+    const bool theater_refresh_needed = ( (m_TextureSource != tex_source) && (OverlayManager::Get().GetTheaterOverlayID() == m_ID) );
+
+    //If theater overlay, make sure to use the original handle as capture target, not the theater handle that took its place
+    vr::VROverlayHandle_t ovrl_handle_capture_target = m_OvrlHandle;
+    if (theater_refresh_needed)
+    {
+        ovrl_handle_capture_target = OverlayManager::Get().GetTheaterOverlayOriginalHandle();
+
+        //Also manually return the capture to handle sources that get an additional overlay target assigned when theater overlay is used
+        OverlayManager::Get().ReturnTheaterOverlayCapture(*this);
+    }
+
     //Cleanup old sources if needed
     switch (m_TextureSource)
     {
         case ovrl_texsource_desktop_duplication_3dou_converted: m_OUtoSBSConverter.CleanRefs();    break;
-        case ovrl_texsource_winrt_capture:                      DPWinRT_StopCapture(m_OvrlHandle); break;
+        case ovrl_texsource_winrt_capture:                      DPWinRT_StopCapture(ovrl_handle_capture_target); break;
         case ovrl_texsource_ui:
         {
             if (tex_source != ovrl_texsource_ui)
             {
-                vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, ::GetCurrentProcessId());
-                vr::VROverlay()->SetOverlayIntersectionMask(m_OvrlHandle, nullptr, 0);
+                vr::VROverlay()->SetOverlayRenderingPid(ovrl_handle_capture_target, ::GetCurrentProcessId());
+                vr::VROverlay()->SetOverlayIntersectionMask(ovrl_handle_capture_target, nullptr, 0);
             }
             break;
         }
@@ -357,16 +370,13 @@ void Overlay::SetTextureSource(OverlayTextureSource tex_source)
         {
             if (tex_source != ovrl_texsource_browser)
             {
-                DPBrowserAPIClient::Get().DPBrowser_StopBrowser(m_OvrlHandle);
-                vr::VROverlay()->SetOverlayRenderingPid(m_OvrlHandle, ::GetCurrentProcessId());
+                DPBrowserAPIClient::Get().DPBrowser_StopBrowser(ovrl_handle_capture_target);
+                vr::VROverlay()->SetOverlayRenderingPid(ovrl_handle_capture_target, ::GetCurrentProcessId());
             }
             break;
         }
         default: break;
     }
-
-    //If this overlay is the theater overlay, mark for refresh down below if the source changed
-    bool theater_refresh_needed = ( (m_TextureSource != tex_source) && (OverlayManager::Get().GetTheaterOverlayID() == m_ID) );
 
     m_TextureSource = tex_source;
 
