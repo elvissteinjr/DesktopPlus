@@ -181,6 +181,12 @@ void Overlay::SetOpacity(float opacity)
     if (outmgr == nullptr)
         return;
 
+    const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_ID);
+
+    //We don't want to hide on 0% for Theater Screen, but SteamVR does that even if we don't so, avoid 0% entirely there
+    if (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen)
+        opacity = std::max(opacity, 0.00001f);
+
     vr::VROverlay()->SetOverlayAlpha(m_OvrlHandle, opacity);
 
     if (m_Opacity == 0.0f) //If it was previously 0%, show if needed
@@ -227,11 +233,6 @@ bool Overlay::IsVisible() const
 bool Overlay::ShouldBeVisible() const
 {
     const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_ID);
-    
-    if ( (m_Opacity == 0.0f) && (!data.ConfigBool[configid_bool_overlay_update_invisible]) )
-        return false;
-
-    bool should_be_visible = false;
 
     if (!data.ConfigBool[configid_bool_overlay_enabled])
         return false;
@@ -240,9 +241,14 @@ bool Overlay::ShouldBeVisible() const
     if (data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen)
         return true;
 
+    if ( (m_Opacity == 0.0f) && (!data.ConfigBool[configid_bool_overlay_update_invisible]) )
+        return false;
+
     OutputManager* outmgr = OutputManager::Get();
     if (outmgr == nullptr)
         return false;
+
+    bool should_be_visible = false;
 
     switch (data.ConfigInt[configid_int_overlay_display_mode])
     {
