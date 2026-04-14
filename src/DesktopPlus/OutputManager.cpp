@@ -1698,7 +1698,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     {
                         if (previous_value != msg.lParam)
                         {
-                            OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_none);
+                            OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_invalid);
                             ResetCurrentOverlay();
                         }
                         break;
@@ -7780,7 +7780,7 @@ void OutputManager::OnSetOverlayWinRTCaptureWindow(unsigned int overlay_id)
     Overlay& overlay        = OverlayManager::Get().GetCurrentOverlay();
     OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
-    overlay.SetTextureSource(ovrl_texsource_none);
+    overlay.SetTextureSource(ovrl_texsource_invalid);
     ResetCurrentOverlay();
 
     //Reset config_str_overlay_winrt_last_* strings when HWND was explicitly set to null

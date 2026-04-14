@@ -3051,8 +3051,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
 
             SetActiveOverlayID(m_ActiveOverlayID);
 
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, (LPARAM)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id,            data.ConfigInt[configid_int_overlay_winrt_desktop_id]);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, (LPARAM)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd]);
 
             m_IsConfigDataModified = false;
         }
@@ -3137,8 +3137,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
             OverlayManager::Get().SetCurrentOverlayNameAuto();
             SetActiveOverlayID(m_ActiveOverlayID);
 
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, 0);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id, winrt_selected_desktop);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, 0);
 
             UIManager::Get()->RepeatFrame();
         }
@@ -3179,8 +3179,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
             OverlayManager::Get().SetCurrentOverlayNameAuto();
             SetActiveOverlayID(m_ActiveOverlayID);
 
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, 0);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id, winrt_selected_desktop);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, 0);
 
             UIManager::Get()->RepeatFrame();
         }
@@ -3223,8 +3223,8 @@ void WindowOverlayProperties::UpdatePageGraphicsCaptureSource(bool only_restore_
             OverlayManager::Get().SetCurrentOverlayNameAuto();
             SetActiveOverlayID(m_ActiveOverlayID);
 
-            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id, -2);
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_handle_overlay_state_winrt_hwnd, (LPARAM)winrt_selected_window);
+            IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_overlay_winrt_desktop_id, -2);
 
             UIManager::Get()->RepeatFrame();
         }
