@@ -279,23 +279,28 @@ bool DPWinRT_StartCaptureFromOverlay(vr::VROverlayHandle_t overlay_handle, vr::V
 {
     #ifndef DPLUSWINRT_STUB
 
-    std::lock_guard<std::mutex> lock(g_ThreadsMutex);
+    //Make sure this overlay handle is not already used by a thread
+    DPWinRT_StopCapture(overlay_handle);
 
-    //Find thread with the source overlay assigned and add the other overlay to it with duplicated state
-    //This means this function is only good for adding capture after an overlay was duplicated, otherwise some state needs to be adjusted right after
-    for (auto& thread : g_Threads)
     {
-        auto it = std::find_if(thread.Overlays.begin(), thread.Overlays.end(), [&](const auto& data){ return (data.Handle == overlay_handle_source); });
+        std::lock_guard<std::mutex> lock(g_ThreadsMutex);
 
-        if (it != thread.Overlays.end())
+        //Find thread with the source overlay assigned and add the other overlay to it with duplicated state
+        //This means this function is only good for adding capture after an overlay was duplicated, otherwise some state needs to be adjusted right after
+        for (auto& thread : g_Threads)
         {
-            DPWinRTOverlayData overlay_data = *it;
-            overlay_data.Handle = overlay_handle;
+            auto it = std::find_if(thread.Overlays.begin(), thread.Overlays.end(), [&](const auto& data){ return (data.Handle == overlay_handle_source); });
 
-            thread.Overlays.push_back(overlay_data);
+            if (it != thread.Overlays.end())
+            {
+                DPWinRTOverlayData overlay_data = *it;
+                overlay_data.Handle = overlay_handle;
 
-            ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_UPDATE_DATA, 0, 0);
-            return true;
+                thread.Overlays.push_back(overlay_data);
+
+                ::PostThreadMessage(thread.ThreadID, WM_DPLUSWINRT_UPDATE_DATA, 0, 0);
+                return true;
+            }
         }
     }
 
