@@ -106,8 +106,30 @@ void LaserPointer::UpdateDeviceOverlay(vr::TrackedDeviceIndex_t device_index)
     transform_tip = transform_tip * transform_offset;
     //A smart person could probably figure out how to also have the overlay spin towards the HMD so it doesn't appear flat
 
-    vr::HmdMatrix34_t transform_openvr = transform_tip.toOpenVR34();
-    vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(lp_device.OvrlHandle, (lp_device.UseHMDAsOrigin) ? vr::k_unTrackedDeviceIndex_Hmd : device_index, &transform_openvr);
+    //Detect if controller offsets are configured in the input bindings
+    //Problem here is that device overlay origin doesn't use them but also is the way to get the smooth following laser overlay
+    //Controller offsets are transparent to the application, but we can compare overlay transforms to what we get as controller transforms and try to detect something
+    if (DetectDeviceOverlayCustomOffsets(device_index, transform_tip))
+    {
+        //Controller offsets detected, use absolute transform which will be more correct, but also lag behind a little
+        vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+
+        if (!poses[device_index].bPoseIsValid)
+            return;
+
+        Matrix4 transform_ovrl = poses[device_index].mDeviceToAbsoluteTracking;
+        transform_ovrl *= transform_tip;
+        vr::HmdMatrix34_t transform_openvr = transform_ovrl.toOpenVR34();
+
+        vr::VROverlay()->SetOverlayTransformAbsolute(lp_device.OvrlHandle, vr::TrackingUniverseStanding, &transform_openvr);
+    }
+    else
+    {
+        //No offsets, glue overlay to controller
+        vr::HmdMatrix34_t transform_openvr = transform_tip.toOpenVR34();
+        vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(lp_device.OvrlHandle, (lp_device.UseHMDAsOrigin) ? vr::k_unTrackedDeviceIndex_Hmd : device_index, &transform_openvr);
+    }
 
     //Adjust pointer alpha/brightness
     bool is_primary_device = (device_index == (vr::TrackedDeviceIndex_t)ConfigManager::GetValue(configid_int_state_dplus_laser_pointer_device));
@@ -139,6 +161,72 @@ void LaserPointer::UpdateDeviceOverlay(vr::TrackedDeviceIndex_t device_index)
     {
         vr::VROverlay()->ShowOverlay(lp_device.OvrlHandle);
     }
+}
+
+bool LaserPointer::DetectDeviceOverlayCustomOffsets(vr::TrackedDeviceIndex_t device_index, const Matrix4& mat_tip_offset)
+{
+    if (device_index >= vr::k_unMaxTrackedDeviceCount)
+        return false;
+
+    static const int k_lOffsetDetectionCountMax = 60;
+    LaserPointerDevice& lp_device = m_Devices[device_index];
+
+    //Early out when HMD (doesn't render laser)
+    if (lp_device.UseHMDAsOrigin)
+        return false;
+
+    //Consider it permanently detected after k_lOffsetDetectionCountMax times
+    if (lp_device.CustomOffsetDetectionCount >= k_lOffsetDetectionCountMax)
+        return true;
+
+    vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+
+    vr::TrackedDevicePose_t& device_pose = poses[device_index];
+
+    if (!device_pose.bPoseIsValid)
+        return false;
+
+    Vector3 vel(device_pose.vVelocity);
+    Vector3 vel_anglular(device_pose.vAngularVelocity);
+
+    if ((vel.length() < 0.06f) && (vel_anglular.length() < 0.32f))
+    {
+        //Offset detection heuristics
+        //For angle adjustments this is pretty reliable
+        //For position adjustments less so (returned overlay positions lag behind a bit). To combat this, a relatively still-held controller is required to pass the check.
+        vr::HmdMatrix34_t mat_ovrl_device_rel_openvr = {0};
+        vr::VROverlay()->GetTransformForOverlayCoordinates(lp_device.OvrlHandle, vr::TrackingUniverseStanding, {0.5f, 0.5f}, &mat_ovrl_device_rel_openvr);
+
+        Matrix4 mat_ovrl_device_rel = mat_ovrl_device_rel_openvr;
+
+        //Distance at the tip position. Angle adjustments won't make a difference here, but positional checks work better here as high tolerance required would break on the other check
+        Matrix4 mat_ovrl = device_pose.mDeviceToAbsoluteTracking;
+        mat_ovrl *= mat_tip_offset;
+        float dist = mat_ovrl_device_rel.getTranslation().distance(mat_ovrl.getTranslation());
+
+        //Distance 50 meters out. Angle adjustments result in easily measureable differences here
+        mat_ovrl_device_rel.translate_relative(0.0f, 0.0f, 50.0f);
+        mat_ovrl.translate_relative(0.0f, 0.0f, 50.0f);
+        float dist2 = mat_ovrl_device_rel.getTranslation().distance(mat_ovrl.getTranslation());
+
+        if ((dist2 > 1.00f) || (dist > 0.01f))
+        {
+            //Some false positives can still happen, but not frequently. Reset counter if it's been more than 5 seconds since the last detection
+            if (::GetTickCount64() > lp_device.CustomOffsetDetectionLastTick + 5000)
+            {
+                lp_device.CustomOffsetDetectionCount = 0;
+            }
+
+            lp_device.CustomOffsetDetectionCount++;
+            lp_device.CustomOffsetDetectionLastTick = ::GetTickCount64();
+
+            //Forward result only after it's locked in to avoid flicker and such
+            return (lp_device.CustomOffsetDetectionCount >= k_lOffsetDetectionCountMax);
+        }
+    }
+
+    return false;
 }
 
 void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)

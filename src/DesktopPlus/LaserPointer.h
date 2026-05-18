@@ -13,6 +13,8 @@ struct LaserPointerDevice
     bool UseHMDAsOrigin = false;
     bool IsVisible = false;
     float LaserLength = 0.0f;
+    int CustomOffsetDetectionCount = 0;
+    ULONGLONG CustomOffsetDetectionLastTick = 0;
 
     vr::VROverlayHandle_t OvrlHandleTargetLast = vr::k_ulOverlayHandleInvalid;
     OverlayTextureSource OvrlHandleTargetLastTextureSource = ovrl_texsource_none;
@@ -32,7 +34,7 @@ enum LaserPointerActivationOrigin
 //Custom laser pointer implementation for use outside of the dashboard
 //Operates on Desktop+ and Desktop+ UI overlays, sending overlay events matching SteamVR laser input behavior as closely as possible
 //Actually sends middle mouse events when bound
-//Supports use of any tracked device that has the corrects inputs bound, though IsAnyOverlayHovered() only checks handed controllers for auto interaction toggle
+//Supports use of any tracked device that has the correct inputs bound, though IsAnyOverlayHovered() only checks handed controllers for auto interaction toggle
 //Paralell/Multi-Laser input is supported for certain overlays that can handle it (currently only the VR keyboard)
 class LaserPointer
 {
@@ -58,6 +60,7 @@ class LaserPointer
 
         void CreateDeviceOverlay(vr::TrackedDeviceIndex_t device_index);
         void UpdateDeviceOverlay(vr::TrackedDeviceIndex_t device_index);
+        bool DetectDeviceOverlayCustomOffsets(vr::TrackedDeviceIndex_t device_index, const Matrix4& mat_tip_offset);
         void UpdateIntersection(vr::TrackedDeviceIndex_t device_index);
 
         void SendDirectDragCommand(vr::VROverlayHandle_t overlay_handle_target, bool do_start_drag);
