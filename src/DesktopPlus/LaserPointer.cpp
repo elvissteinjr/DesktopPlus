@@ -96,15 +96,37 @@ void LaserPointer::UpdateDeviceOverlay(vr::TrackedDeviceIndex_t device_index)
     //Position laser
     Matrix4 transform_tip, transform_offset;
 
-    //Perform rotation locally and offset laser forward so it starts at the tip
-    transform_offset.rotateX(-90.0f);
-    transform_offset.translate_relative(0.0f, lp_device.LaserLength / 2.0f, 0.0f);
-
     //Use tip if there is one
     transform_tip = vr::IVRSystemEx::GetControllerTipMatrix( vr::VRSystem()->GetControllerRoleForTrackedDeviceIndex(device_index) );
 
+    //Spin the laser around its forward axis so its flat face points towards the HMD, so it doesn't appear flat
+    float laser_spin = 0.0f;
+    {
+        vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unMaxTrackedDeviceCount);
+
+        if (poses[device_index].bPoseIsValid && poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+        {
+            //Controller tip transform in world space
+            Matrix4 mat_tip_world = Matrix4(poses[device_index].mDeviceToAbsoluteTracking) * transform_tip;
+            Matrix4 mat_tip_world_inv = mat_tip_world;
+            mat_tip_world_inv.invert();
+
+            //Direction from the tip towards the HMD, expressed in tip-local space
+            Vector3 dir_to_hmd = Matrix4(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking).getTranslation() - mat_tip_world.getTranslation();
+            Vector3 local_dir  = mat_tip_world_inv * dir_to_hmd;
+
+            //After the -90 X rotation below the overlay normal is +Y; rotating around the forward (Z) axis swings that normal to (-sin, cos) in the tip plane, aiming it at the HMD
+            laser_spin = atan2f(-local_dir.x, local_dir.y) * (180.0f / 3.14159265f);
+        }
+    }
+
+    //Perform rotation locally and offset laser forward so it starts at the tip
+    transform_offset.rotateX(-90.0f);
+    transform_offset.rotateZ(laser_spin);
+    transform_offset.translate_relative(0.0f, lp_device.LaserLength / 2.0f, 0.0f);
+
     transform_tip = transform_tip * transform_offset;
-    //A smart person could probably figure out how to also have the overlay spin towards the HMD so it doesn't appear flat
 
     //Detect if controller offsets are configured in the input bindings
     //Problem here is that device overlay origin doesn't use them but also is the way to get the smooth following laser overlay
