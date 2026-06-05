@@ -673,11 +673,15 @@ bool DisplayInitError(vr::EVRInitError vr_init_error, vr::EVROverlayError vr_ove
     {
         if ( (vr_init_error == vr::VRInitError_Init_HmdNotFound) || (vr_init_error == vr::VRInitError_Init_HmdNotFoundPresenceFailed) )
         {
-            DisplayMsg(L"Failed to init OpenVR: HMD not found.\nRe-launch application with a HMD connected.", L"Desktop+ Error", E_FAIL);
+            DisplayMsg(L"Failed to init OpenVR: HMD not found (108).\nRe-launch application with a HMD connected.", L"Desktop+ Error", E_FAIL);
         }
-        else if (vr_init_error == vr::VRInitError_Init_InvalidInterface)
+        else if ( (vr_init_error == vr::VRInitError_Init_InvalidInterface) || (vr_init_error == vr::VRInitError_Init_InterfaceNotFound) )
         {
-            DisplayMsg(L"Failed to init OpenVR: Invalid Interface.\nMake sure to have the latest version of SteamVR installed.", L"Desktop+ Error", E_FAIL);
+            std::wstring error_str = L"Failed to init OpenVR: ";
+            error_str += WStringConvertFromUTF8(vr::VR_GetVRInitErrorAsEnglishDescription(vr_init_error));
+            error_str += L".\nMake sure to have the latest version of SteamVR installed.";
+
+            DisplayMsg(error_str.c_str(), L"Desktop+ Error", E_FAIL);
         }
         else if (vr_init_error != vr::VRInitError_Init_InitCanceledByUser) //Exclude canceled, supposed to be always silent exit
         {
