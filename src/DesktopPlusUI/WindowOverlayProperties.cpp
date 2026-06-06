@@ -2448,6 +2448,18 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
     bool& snap_rotation_y    = ConfigManager::GetRef(configid_bool_input_drag_snap_rotation_y);
     bool& snap_rotation_z    = ConfigManager::GetRef(configid_bool_input_drag_snap_rotation_z);
     int& snap_rotation_angle = ConfigManager::GetRef(configid_int_input_drag_snap_rotation_angle);
+    bool& face_hmd           = ConfigManager::GetRef(configid_bool_input_drag_face_hmd);
+
+    //Facing the HMD fully determines the rotation, so rotation snapping is disabled while it's active
+    if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsFaceHMD), &face_hmd))
+    {
+        IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_drag_face_hmd, face_hmd);
+    }
+    ImGui::NextColumn();
+    ImGui::NextColumn();
+
+    if (face_hmd)
+        ImGui::PushItemDisabled();
 
     //This checkbox is somewhat redundant and is mostly there for aesthetical reasons
     if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsPositionChangeDragSettingsSnapRotation), &snap_rotation))
@@ -2456,7 +2468,7 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
     }
     ImGui::NextColumn();
 
-    if (!snap_rotation)
+    if ((!snap_rotation) || (face_hmd))
         ImGui::PushItemDisabled();
 
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("SnapRotationAngle") );
@@ -2490,7 +2502,10 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
     }
     ImGui::SameLine();
 
-    if (!snap_rotation)
+    if ((!snap_rotation) || (face_hmd))
+        ImGui::PopItemDisabled();
+
+    if (face_hmd)
         ImGui::PopItemDisabled();
 
     ImGui::Columns(1);
