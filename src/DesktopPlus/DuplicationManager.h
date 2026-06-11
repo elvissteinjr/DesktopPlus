@@ -6,27 +6,24 @@
 //
 // Handles the task of duplicating an output.
 //
-class DUPLICATIONMANAGER
+class DDPDuplicationManager
 {
     public:
-        DUPLICATIONMANAGER();
-        ~DUPLICATIONMANAGER();
-        _Success_(*Timeout == false && return == DUPL_RETURN_SUCCESS) DUPL_RETURN GetFrame(_Out_ FRAME_DATA* Data, _Out_ bool* Timeout);
-        DUPL_RETURN DoneWithFrame();
-        DUPL_RETURN InitDupl(_In_ ID3D11Device* Device, UINT Output, bool WMRIgnoreVScreens, bool UseHDR);
-        DUPL_RETURN GetMouse(_Inout_ PTR_INFO* PtrInfo, _In_ DXGI_OUTDUPL_FRAME_INFO* FrameInfo, INT OffsetX, INT OffsetY);
-        void GetOutputDesc(_Out_ DXGI_OUTPUT_DESC* DescPtr);
+        _Success_(Timeout == false && return == ddp_dupl_return_success) DDPDuplReturn GetFrame(DDPFrameData& Data, bool& Timeout);
+        DDPDuplReturn DoneWithFrame();
+        DDPDuplReturn InitDupl(const Microsoft::WRL::ComPtr<ID3D11Device>& Device, UINT Output, bool WMRIgnoreVScreens, bool UseHDR);
+        DDPDuplReturn GetMouse(DDPPtrInfo& PtrInfo, DXGI_OUTDUPL_FRAME_INFO& FrameInfo, INT OffsetX, INT OffsetY);
+        void GetOutputDesc(DXGI_OUTPUT_DESC& DescOut);
 
     private:
 
     // vars
-        IDXGIOutputDuplication* m_DeskDupl;
-        ID3D11Texture2D* m_AcquiredDesktopImage;
-        _Field_size_bytes_(m_MetaDataSize) BYTE* m_MetaDataBuffer;
-        UINT m_MetaDataSize;
-        UINT m_OutputNumber;
-        DXGI_OUTPUT_DESC m_OutputDesc;
-        ID3D11Device* m_Device;
+        Microsoft::WRL::ComPtr<IDXGIOutputDuplication> m_DeskDupl;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_AcquiredDesktopImage;
+        std::vector<BYTE> m_MetaDataBuffer;
+        UINT m_OutputNumber = 0;
+        DXGI_OUTPUT_DESC m_OutputDesc = {};
+        Microsoft::WRL::ComPtr<ID3D11Device> m_Device;
 };
 
 #endif

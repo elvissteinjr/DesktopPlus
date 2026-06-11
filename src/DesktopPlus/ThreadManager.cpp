@@ -2,157 +2,76 @@
 
 DWORD WINAPI CaptureThreadEntry(_In_ void* Param);
 
-THREADMANAGER::THREADMANAGER() : m_ThreadCount(0),
-                                 m_ThreadHandles(nullptr),
-                                 m_ThreadData(nullptr)
-{
-
-}
-
-THREADMANAGER::~THREADMANAGER()
-{
-    Clean();
-}
-
 //
 // Clean up resources
 //
-void THREADMANAGER::Clean()
+void DDPThreadManager::Clean()
 {
-    m_PtrInfo = PTR_INFO();
+    m_PtrInfo = DDPPtrInfo();
 
-    if (m_ThreadHandles)
+    for (const auto& thread_handle : m_ThreadHandles)
     {
-        for (UINT i = 0; i < m_ThreadCount; ++i)
-        {
-            if (m_ThreadHandles[i])
-            {
-                CloseHandle(m_ThreadHandles[i]);
-            }
-        }
-        delete [] m_ThreadHandles;
-        m_ThreadHandles = nullptr;
+        ::CloseHandle(thread_handle);
     }
+    m_ThreadHandles.clear();
 
-    if (m_ThreadData)
-    {
-        for (UINT i = 0; i < m_ThreadCount; ++i)
-        {
-            CleanDx(&m_ThreadData[i].DxRes);
-        }
-        delete [] m_ThreadData;
-        m_ThreadData = nullptr;
-    }
-
-    m_ThreadCount = 0;
+    m_ThreadData.clear();
 }
 
-//
-// Clean up DX_RESOURCES
-//
-void THREADMANAGER::CleanDx(_Inout_ DX_RESOURCES* Data)
-{
-    if (Data->Device)
-    {
-        Data->Device->Release();
-        Data->Device = nullptr;
-    }
-
-    if (Data->Context)
-    {
-        Data->Context->Release();
-        Data->Context = nullptr;
-    }
-
-    if (Data->VertexShader)
-    {
-        Data->VertexShader->Release();
-        Data->VertexShader = nullptr;
-    }
-
-    if (Data->PixelShader)
-    {
-        Data->PixelShader->Release();
-        Data->PixelShader = nullptr;
-    }
-
-    if (Data->InputLayout)
-    {
-        Data->InputLayout->Release();
-        Data->InputLayout = nullptr;
-    }
-
-    if (Data->Sampler)
-    {
-        Data->Sampler->Release();
-        Data->Sampler = nullptr;
-    }
-}
 
 //
 // Start up threads for DDA
 //
-DUPL_RETURN THREADMANAGER::Initialize(INT SingleOutput, UINT OutputCount, HANDLE UnexpectedErrorEvent, HANDLE ExpectedErrorEvent, HANDLE NewFrameProcessedEvent,
-                                      HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent, HANDLE TerminateThreadsEvent,
-                                      HANDLE SharedHandle, _In_ RECT* DesktopDim, IDXGIAdapter* DXGIAdapter, bool WMRIgnoreVScreens)
+DDPDuplReturn DDPThreadManager::Initialize(INT SingleOutput, UINT OutputCount, HANDLE UnexpectedErrorEvent, HANDLE ExpectedErrorEvent, HANDLE NewFrameProcessedEvent,
+                                           HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent, HANDLE TerminateThreadsEvent,
+                                           HANDLE SharedHandle, const RECT& DesktopDim, Microsoft::WRL::ComPtr<IDXGIAdapter> DXGIAdapter, bool WMRIgnoreVScreens)
 {
-    m_ThreadCount = OutputCount;
-    m_ThreadHandles = new (std::nothrow) HANDLE[m_ThreadCount];
-    m_ThreadData = new (std::nothrow) THREAD_DATA[m_ThreadCount];
-    if (!m_ThreadHandles || !m_ThreadData)
-    {
-        return ProcessFailure(nullptr, L"Failed to allocate array for threads", L"Desktop+ Error", E_OUTOFMEMORY);
-    }
+    m_ThreadData.resize(OutputCount);
 
     // Create appropriate # of threads for duplication
-    DUPL_RETURN Ret = DUPL_RETURN_SUCCESS;
-    for (UINT i = 0; i < m_ThreadCount; ++i)
+    DDPDuplReturn Ret = ddp_dupl_return_success;
+    for (UINT i = 0; i < m_ThreadData.size(); ++i)
     {
-        m_ThreadData[i].UnexpectedErrorEvent = UnexpectedErrorEvent;
-        m_ThreadData[i].ExpectedErrorEvent = ExpectedErrorEvent;
-        m_ThreadData[i].NewFrameProcessedEvent = NewFrameProcessedEvent;
-        m_ThreadData[i].PauseDuplicationEvent = PauseDuplicationEvent;
-        m_ThreadData[i].ResumeDuplicationEvent = ResumeDuplicationEvent;
-        m_ThreadData[i].TerminateThreadsEvent = TerminateThreadsEvent;
-        m_ThreadData[i].Output = (SingleOutput < 0) ? i : SingleOutput;
-        m_ThreadData[i].TexSharedHandle = SharedHandle;
-        m_ThreadData[i].OffsetX = DesktopDim->left;
-        m_ThreadData[i].OffsetY = DesktopDim->top;
-        m_ThreadData[i].PtrInfo = &m_PtrInfo;
-        m_ThreadData[i].DirtyRegionTotal = &m_DirtyRegionTotal;
-        m_ThreadData[i].WMRIgnoreVScreens = WMRIgnoreVScreens;
+        DDPThreadData& ThreadData = m_ThreadData[i];
 
-        RtlZeroMemory(&m_ThreadData[i].DxRes, sizeof(DX_RESOURCES));
-        Ret = InitializeDx(&m_ThreadData[i].DxRes, DXGIAdapter);
-        if (Ret != DUPL_RETURN_SUCCESS)
+        ThreadData.UnexpectedErrorEvent   = UnexpectedErrorEvent;
+        ThreadData.ExpectedErrorEvent     = ExpectedErrorEvent;
+        ThreadData.NewFrameProcessedEvent = NewFrameProcessedEvent;
+        ThreadData.PauseDuplicationEvent  = PauseDuplicationEvent;
+        ThreadData.ResumeDuplicationEvent = ResumeDuplicationEvent;
+        ThreadData.TerminateThreadsEvent  = TerminateThreadsEvent;
+        ThreadData.Output                 = (SingleOutput < 0) ? i : SingleOutput;
+        ThreadData.TexSharedHandle        = SharedHandle;
+        ThreadData.OffsetX                = DesktopDim.left;
+        ThreadData.OffsetY                = DesktopDim.top;
+        ThreadData.PtrInfo                = &m_PtrInfo;
+        ThreadData.DirtyRegionTotal       = &m_DirtyRegionTotal;
+        ThreadData.WMRIgnoreVScreens      = WMRIgnoreVScreens;
+
+        Ret = InitializeDx(ThreadData.DxRes, DXGIAdapter.Get());
+        if (Ret != ddp_dupl_return_success)
         {
-            if (DXGIAdapter != nullptr)
-                DXGIAdapter->Release();
-
             return Ret;
         }
 
         DWORD ThreadId;
-        m_ThreadHandles[i] = CreateThread(nullptr, 0, CaptureThreadEntry, &m_ThreadData[i], 0, &ThreadId);
-        if (m_ThreadHandles[i] == nullptr)
-        {
-            if (DXGIAdapter != nullptr)
-                DXGIAdapter->Release();
+        HANDLE ThreadHandle = CreateThread(nullptr, 0, CaptureThreadEntry, &ThreadData, 0, &ThreadId);
 
+        if (ThreadHandle == nullptr)
+        {
             return ProcessFailure(nullptr, L"Failed to create thread", L"Desktop+ Error", E_FAIL);
         }
-    }
 
-    if (DXGIAdapter != nullptr)
-        DXGIAdapter->Release();
+        m_ThreadHandles.push_back(ThreadHandle);
+    }
 
     return Ret;
 }
 
 //
-// Get DX_RESOURCES
+// Get DDPDxResources
 //
-DUPL_RETURN THREADMANAGER::InitializeDx(_Out_ DX_RESOURCES* Data, IDXGIAdapter* DXGIAdapter)
+DDPDuplReturn DDPThreadManager::InitializeDx(DDPDxResources& Data, IDXGIAdapter* DXGIAdapter)
 {
     HRESULT hr = S_OK;
 
@@ -178,8 +97,7 @@ DUPL_RETURN THREADMANAGER::InitializeDx(_Out_ DX_RESOURCES* Data, IDXGIAdapter* 
     D3D_FEATURE_LEVEL FeatureLevel;
 
     // Create device
-    hr = D3D11CreateDevice(DXGIAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, FeatureLevels, NumFeatureLevels,
-                            D3D11_SDK_VERSION, &Data->Device, &FeatureLevel, &Data->Context);
+    hr = D3D11CreateDevice(DXGIAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, FeatureLevels, NumFeatureLevels, D3D11_SDK_VERSION, &Data.Device, &FeatureLevel, &Data.Context);
 
     if (FAILED(hr))
     {
@@ -188,10 +106,10 @@ DUPL_RETURN THREADMANAGER::InitializeDx(_Out_ DX_RESOURCES* Data, IDXGIAdapter* 
 
     // VERTEX shader
     UINT Size = ARRAYSIZE(g_VS);
-    hr = Data->Device->CreateVertexShader(g_VS, Size, nullptr, &Data->VertexShader);
+    hr = Data.Device->CreateVertexShader(g_VS, Size, nullptr, &Data.VertexShader);
     if (FAILED(hr))
     {
-        return ProcessFailure(Data->Device, L"Failed to create vertex shader for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(Data.Device.Get(), L"Failed to create vertex shader for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // Input layout
@@ -201,49 +119,49 @@ DUPL_RETURN THREADMANAGER::InitializeDx(_Out_ DX_RESOURCES* Data, IDXGIAdapter* 
         {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0}
     };
     UINT NumElements = ARRAYSIZE(Layout);
-    hr = Data->Device->CreateInputLayout(Layout, NumElements, g_VS, Size, &Data->InputLayout);
+    hr = Data.Device->CreateInputLayout(Layout, NumElements, g_VS, Size, &Data.InputLayout);
     if (FAILED(hr))
     {
-        return ProcessFailure(Data->Device, L"Failed to create input layout for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(Data.Device.Get(), L"Failed to create input layout for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
-    Data->Context->IASetInputLayout(Data->InputLayout);
+    Data.Context->IASetInputLayout(Data.InputLayout.Get());
 
     // Pixel shader
     Size = ARRAYSIZE(g_PS);
-    hr = Data->Device->CreatePixelShader(g_PS, Size, nullptr, &Data->PixelShader);
+    hr = Data.Device->CreatePixelShader(g_PS, Size, nullptr, &Data.PixelShader);
     if (FAILED(hr))
     {
-        return ProcessFailure(Data->Device, L"Failed to create pixel shader for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(Data.Device.Get(), L"Failed to create pixel shader for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // Set up sampler
     D3D11_SAMPLER_DESC SampDesc;
     RtlZeroMemory(&SampDesc, sizeof(SampDesc));
-    SampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-    SampDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-    SampDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-    SampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    SampDesc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    SampDesc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
+    SampDesc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
+    SampDesc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
     SampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-    SampDesc.MinLOD = 0;
-    SampDesc.MaxLOD = D3D11_FLOAT32_MAX;
-    hr = Data->Device->CreateSamplerState(&SampDesc, &Data->Sampler);
+    SampDesc.MinLOD         = 0;
+    SampDesc.MaxLOD         = D3D11_FLOAT32_MAX;
+    hr = Data.Device->CreateSamplerState(&SampDesc, &Data.Sampler);
     if (FAILED(hr))
     {
-        return ProcessFailure(Data->Device, L"Failed to create sampler state for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(Data.Device.Get(), L"Failed to create sampler state for thread", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
-    return DUPL_RETURN_SUCCESS;
+    return ddp_dupl_return_success;
 }
 
 //
-// Getter for the PTR_INFO structure
+// Getter for the DDPPtrInfo structure
 //
-PTR_INFO* THREADMANAGER::GetPointerInfo()
+DDPPtrInfo& DDPThreadManager::GetPointerInfo()
 {
-    return &m_PtrInfo;
+    return m_PtrInfo;
 }
 
-DPRect& THREADMANAGER::GetDirtyRegionTotal()
+DPRect& DDPThreadManager::GetDirtyRegionTotal()
 {
     return m_DirtyRegionTotal;
 }
@@ -251,10 +169,10 @@ DPRect& THREADMANAGER::GetDirtyRegionTotal()
 //
 // Waits infinitely for all spawned threads to terminate
 //
-void THREADMANAGER::WaitForThreadTermination()
+void DDPThreadManager::WaitForThreadTermination()
 {
-    if (m_ThreadCount != 0)
+    if (m_ThreadHandles.size() != 0)
     {
-        WaitForMultipleObjectsEx(m_ThreadCount, m_ThreadHandles, TRUE, INFINITE, FALSE);
+        WaitForMultipleObjectsEx(m_ThreadHandles.size(), m_ThreadHandles.data(), TRUE, INFINITE, FALSE);
     }
 }

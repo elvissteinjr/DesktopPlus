@@ -85,7 +85,7 @@ void Overlay::InitOverlay()
 {
     unsigned int id_offset = 0;
     std::string key;
-    vr::VROverlayHandle_t overlay_handle_find;
+    vr::VROverlayHandle_t overlay_handle_find = vr::k_ulOverlayHandleInvalid;
 
     //Generate overlay key from ID and check if it's not used yet, add to it if it's not
     //Overlay keys & handles are fixed and don't change when overlays are re-ordered or deleted

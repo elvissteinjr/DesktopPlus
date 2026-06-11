@@ -44,19 +44,6 @@ OutputManager* OutputManager::Get()
 //
 
 OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent) :
-    m_Device(nullptr),
-    m_DeviceContext(nullptr),
-    m_Sampler(nullptr),
-    m_BlendState(nullptr),
-    m_RasterizerState(nullptr),
-    m_VertexShader(nullptr),
-    m_PixelShader(nullptr),
-    m_PixelShaderCursor(nullptr),
-    m_InputLayout(nullptr),
-    m_SharedSurf(nullptr),
-    m_VertexBuffer(nullptr),
-    m_ShaderResource(nullptr),
-    m_KeyMutex(nullptr),
     m_WindowHandle(nullptr),
     m_PauseDuplicationEvent(PauseDuplicationEvent),
     m_ResumeDuplicationEvent(ResumeDuplicationEvent),
@@ -75,8 +62,6 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlHandleIcon(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleDashboardDummy(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleDesktopTexture(vr::k_ulOverlayHandleInvalid),
-    m_OvrlTex(nullptr),
-    m_OvrlRTV(nullptr),
     m_OvrlActiveCount(0),
     m_OvrlDesktopDuplActiveCount(0),
     m_OvrlDashboardActive(false),
@@ -99,12 +84,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MouseLaserPointerScrollDeltaStart{0},
     m_MouseLaserPointerScrollDeltaFrequency{0},
     m_IsFirstLaunch(false),
-    m_ComInitDone(false),
     m_DashboardActivatedOnce(false),
-    m_MultiGPUTargetDevice(nullptr),
-    m_MultiGPUTargetDeviceContext(nullptr),
-    m_MultiGPUTexStaging(nullptr),
-    m_MultiGPUTexTarget(nullptr),
     m_PerformanceFrameCount(0),
     m_PerformanceFrameCountStartTick(0),
     m_PerformanceUpdateLimiterDelay{0},
@@ -140,141 +120,43 @@ void OutputManager::CleanRefs()
         vr::VROverlayEx()->ReleaseSharedOverlayTexture(m_OvrlHandleDesktopTexture);
     }
 
-    if (m_VertexShader)
-    {
-        m_VertexShader->Release();
-        m_VertexShader = nullptr;
-    }
-
-    if (m_PixelShader)
-    {
-        m_PixelShader->Release();
-        m_PixelShader = nullptr;
-    }
-
-    if (m_PixelShaderCursor)
-    {
-        m_PixelShaderCursor->Release();
-        m_PixelShaderCursor = nullptr;
-    }
-
-    if (m_InputLayout)
-    {
-        m_InputLayout->Release();
-        m_InputLayout = nullptr;
-    }
-
-    if (m_Sampler)
-    {
-        m_Sampler->Release();
-        m_Sampler = nullptr;
-    }
-
-    if (m_BlendState)
-    {
-        m_BlendState->Release();
-        m_BlendState = nullptr;
-    }
-
-    if (m_RasterizerState)
-    {
-        m_RasterizerState->Release();
-        m_RasterizerState = nullptr;
-    }
-
-    if (m_DeviceContext)
-    {
-        m_DeviceContext->Release();
-        m_DeviceContext = nullptr;
-    }
-
-    if (m_Device)
-    {
-        m_Device->Release();
-        m_Device = nullptr;
-    }
-
-    if (m_SharedSurf)
-    {
-        m_SharedSurf->Release();
-        m_SharedSurf = nullptr;
-    }
-
-    if (m_VertexBuffer)
-    {
-        m_VertexBuffer->Release();
-        m_VertexBuffer = nullptr;
-    }
-
-    if (m_ShaderResource)
-    {
-        m_ShaderResource->Release();
-        m_ShaderResource = nullptr;
-    }
-
-    if (m_OvrlTex)
-    {
-        m_OvrlTex->Release();
-        m_OvrlTex = nullptr;
-    }
-
-    if (m_OvrlRTV)
-    {
-        m_OvrlRTV->Release();
-        m_OvrlRTV = nullptr;
-    }
-
+    m_VertexShader.Reset();
+    m_PixelShader.Reset();
+    m_PixelShaderCursor.Reset();
+    m_InputLayout.Reset();
+    m_Sampler.Reset();
+    m_BlendState.Reset();
+    m_RasterizerState.Reset();
+    m_SharedSurf.Reset();
+    m_KeyMutex.Reset();
+    m_VertexBuffer.Reset();
+    m_ShaderResource.Reset();
+    m_OvrlTex.Reset();
+    m_OvrlRTV.Reset();
     m_MouseTex.Reset();
     m_MouseShaderRes.Reset();
+    m_MouseVertexBuffer.Reset();
+    m_DeviceContext.Reset();
+    m_Device.Reset();
+
+    m_MultiGPUTexStaging.Reset();
+    m_MultiGPUTexTarget.Reset();
+    m_MultiGPUTargetDeviceContext.Reset();
+    m_MultiGPUTargetDevice.Reset();
 
     //Reset mouse state variables too
     m_MouseLastClickTick = 0;
     m_MouseIgnoreMoveEvent = false;
-    m_MouseLastInfo = PTR_INFO();
+    m_MouseLastInfo = DDPPtrInfo();
     m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
     m_MouseLastLaserPointerX = -1;
     m_MouseLastLaserPointerY = -1;
-
-    if (m_KeyMutex)
-    {
-        m_KeyMutex->Release();
-        m_KeyMutex = nullptr;
-    }
-
-    if (m_ComInitDone)
-    {
-        ::CoUninitialize();
-    }
-
-    if (m_MultiGPUTargetDevice)
-    {
-        m_MultiGPUTargetDevice->Release();
-        m_MultiGPUTargetDevice = nullptr;
-    }
-
-    if (m_MultiGPUTargetDeviceContext)
-    {
-        m_MultiGPUTargetDeviceContext->Release();
-        m_MultiGPUTargetDeviceContext = nullptr;
-    }
-
-    if (m_MultiGPUTexStaging)
-    {
-        m_MultiGPUTexStaging->Release();
-        m_MultiGPUTexStaging = nullptr;
-    }
-
-    if (m_MultiGPUTexTarget)
-    {
-        m_MultiGPUTexTarget->Release();
-        m_MultiGPUTexTarget = nullptr;
-    }
 }
 
 //
 // Initialize all state
 //
-DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds)
+DDPDuplReturn OutputManager::InitOutput(HWND Window, INT& SingleOutput, UINT& OutCount, RECT& DeskBounds)
 {
     LOG_F(INFO, "Initializing Desktop Duplication...");
 
@@ -290,7 +172,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     {
         SingleOutput = -1;
     }
-    
+
     // Store window handle
     m_WindowHandle = Window;
 
@@ -360,7 +242,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
             if (SUCCEEDED(hr))
             {
                 //Device creation succeeded. Take adapter from the device so it can be used further down
-                adapter_ptr_preferred.Attach(GetDXGIAdapter());
+                adapter_ptr_preferred = GetDXGIAdapter();
                 break;
             }
         }
@@ -368,7 +250,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Device creation failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Device creation failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Create multi-gpu target device if needed
@@ -379,7 +261,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
         if (FAILED(hr))
         {
-            return ProcessFailure(m_Device, L"Secondary device creation failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+            return ProcessFailure(m_Device.Get(), L"Secondary device creation failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
 
         adapter_ptr_vr = nullptr;
@@ -416,22 +298,22 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     #endif
 
     // Create shared texture
-    DUPL_RETURN Return = CreateTextures(SingleOutput, OutCount, DeskBounds);
-    if (Return != DUPL_RETURN_SUCCESS)
+    DDPDuplReturn Return = CreateTextures(SingleOutput, OutCount, DeskBounds);
+    if (Return != ddp_dupl_return_success)
     {
         return Return;
     }
 
     // Make new render target view
     Return = MakeRTV();
-    if (Return != DUPL_RETURN_SUCCESS)
+    if (Return != ddp_dupl_return_success)
     {
         return Return;
     }
 
     // Set view port
-    D3D11_VIEWPORT VP;
-    VP.Width = static_cast<FLOAT>(m_DesktopWidth);
+    D3D11_VIEWPORT VP = {};
+    VP.Width  = static_cast<FLOAT>(m_DesktopWidth);
     VP.Height = static_cast<FLOAT>(m_DesktopHeight);
     VP.MinDepth = 0.0f;
     VP.MaxDepth = 1.0f;
@@ -452,11 +334,11 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     hr = m_Device->CreateSamplerState(&SampDesc, &m_Sampler);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create sampler state", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to create sampler state", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     // Create the blend state
-    D3D11_BLEND_DESC BlendStateDesc;
+    D3D11_BLEND_DESC BlendStateDesc = {};
     BlendStateDesc.AlphaToCoverageEnable = FALSE;
     BlendStateDesc.IndependentBlendEnable = FALSE;
     BlendStateDesc.RenderTarget[0].BlendEnable = TRUE;
@@ -470,7 +352,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     hr = m_Device->CreateBlendState(&BlendStateDesc, &m_BlendState);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create blend state", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to create blend state", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Create the rasterizer state
@@ -483,12 +365,12 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     hr = m_Device->CreateRasterizerState(&RasterizerDesc, &m_RasterizerState);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create rasterizer state", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to create rasterizer state", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
-    m_DeviceContext->RSSetState(m_RasterizerState);
+    m_DeviceContext->RSSetState(m_RasterizerState.Get());
 
     //Create vertex buffer for drawing whole texture
-    VERTEX Vertices[NUMVERTICES] =
+    DDPVertex Vertices[DDP_NUMVERTICES] =
     {
         { XMFLOAT3(-1.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
         { XMFLOAT3(-1.0f,  1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
@@ -501,7 +383,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     D3D11_BUFFER_DESC BufferDesc;
     RtlZeroMemory(&BufferDesc, sizeof(BufferDesc));
     BufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    BufferDesc.ByteWidth = sizeof(VERTEX) * NUMVERTICES;
+    BufferDesc.ByteWidth = sizeof(DDPVertex) * DDP_NUMVERTICES;
     BufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     BufferDesc.CPUAccessFlags = 0;
     D3D11_SUBRESOURCE_DATA InitData;
@@ -512,7 +394,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
     hr = m_Device->CreateBuffer(&BufferDesc, &InitData, &m_VertexBuffer);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create vertex buffer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to create vertex buffer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Set scissor rect to full
@@ -521,7 +403,7 @@ DUPL_RETURN OutputManager::InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out
 
     // Initialize shaders
     Return = InitShaders();
-    if (Return != DUPL_RETURN_SUCCESS)
+    if (Return != ddp_dupl_return_success)
     {
         return Return;
     }
@@ -734,11 +616,11 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
 //
 // Update Overlay and handle events
 //
-DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& DirtyRectTotal, bool NewFrame, bool SkipFrame)
+DDPDuplReturnUpdate OutputManager::Update(DDPPtrInfo& PointerInfoDDP,  DPRect& DirtyRectTotal, bool NewFrame, bool SkipFrame)
 {
     if (HandleOpenVREvents())   //If quit event received, quit.
     {
-        return DUPL_RETURN_UPD_QUIT;
+        return ddp_dupl_return_update_quit;
     }
 
     UINT64 sync_key = 1; //Key used by duplication threads to lock for this function (duplication threads lock with 1, Update() with 0 and unlock vice versa)
@@ -762,13 +644,13 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     if ( (SkipFrame) && (!NewFrame) )
     {
         m_OutputPendingSkippedFrame = true; //Process the frame next time we can
-        return DUPL_RETURN_UPD_SUCCESS;
+        return ddp_dupl_return_update_success;
     }
 
     //When invalid output is set, key mutex can be null, so just do nothing
     if (m_KeyMutex == nullptr)
     {
-        return DUPL_RETURN_UPD_SUCCESS;
+        return ddp_dupl_return_update_success;
     }
 
     // Try and acquire sync on common display buffer (needed to safely access the PointerInfo)
@@ -776,16 +658,17 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     if (hr == static_cast<HRESULT>(WAIT_TIMEOUT))
     {
         // Another thread has the keyed mutex so try again later
-        return DUPL_RETURN_UPD_RETRY;
+        return ddp_dupl_return_update_retry;
     }
     else if (FAILED(hr))
     {
-        return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to acquire keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return (DDPDuplReturnUpdate)ProcessFailure(m_Device.Get(), L"Failed to acquire keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
-    DUPL_RETURN_UPD ret = DUPL_RETURN_UPD_SUCCESS;
+    DDPDuplReturnUpdate ret = ddp_dupl_return_update_success;
 
     //If alternative cursor rendering is enabled, try to get software cursor data and use that as PointerInfo instead
+    DDPPtrInfo* PointerInfo = &PointerInfoDDP;
     if (ConfigManager::GetValue(configid_bool_performance_alternative_cursor_rendering))
     {
         m_MouseAlternativeCursor.SynthesizeDDPCursorInfo();
@@ -834,7 +717,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         m_OutputPendingSkippedFrame = true;
         hr = m_KeyMutex->ReleaseSync(0);
 
-        return DUPL_RETURN_UPD_SUCCESS;
+        return ddp_dupl_return_update_success;
     }
     else if (m_OutputPendingDirtyRect.GetTL().x != -1) //Add previously collected dirty rects if there are any
     {
@@ -894,7 +777,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         //Only handle cursor if it's in cropping region
         if (mouse_rect.Overlaps(DirtyRectTotal))
         {
-            DrawMouseToOverlayTex(PointerInfo);
+            DrawMouseToOverlayTex(*PointerInfo);
         }
         else if (PointerInfo->CursorShapeChanged) //But remember if the cursor changed for next time
         {
@@ -908,7 +791,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
         const D3D11_RECT rect_scissor_full = { 0, 0, m_DesktopWidth, m_DesktopHeight };
         m_DeviceContext->RSSetScissorRects(1, &rect_scissor_full);
 
-        has_updated_overlay = (ret == DUPL_RETURN_UPD_SUCCESS_REFRESHED_OVERLAY);
+        has_updated_overlay = (ret == ddp_dupl_return_update_success_refreshed_overlay);
     }
     else if (PointerInfo->CursorShapeChanged) //But remember if the cursor changed for next time
     {
@@ -930,7 +813,7 @@ DUPL_RETURN_UPD OutputManager::Update(_In_ PTR_INFO* PointerInfo,  _In_ DPRect& 
     hr = m_KeyMutex->ReleaseSync(0);
     if (FAILED(hr))
     {
-        return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return (DDPDuplReturnUpdate)ProcessFailure(m_Device.Get(), L"Failed to Release keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Count frames
@@ -976,7 +859,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
     if (msg.message == WM_COPYDATA)
     {
         COPYDATASTRUCT* pcds = (COPYDATASTRUCT*)msg.lParam;
-        
+
         //Arbitrary size limit to prevent some malicous applications from sending bad data, especially when this is running elevated
         if ( (pcds->dwData < configid_str_MAX) && (pcds->cbData <= 4096) ) 
         {
@@ -2102,35 +1985,31 @@ HANDLE OutputManager::GetSharedHandle()
     HANDLE Hnd = nullptr;
 
     // QI IDXGIResource interface to synchronized shared surface.
-    IDXGIResource* DXGIResource = nullptr;
-    HRESULT hr = m_SharedSurf->QueryInterface(__uuidof(IDXGIResource), reinterpret_cast<void**>(&DXGIResource));
+    Microsoft::WRL::ComPtr<IDXGIResource> DXGIResource;
+    HRESULT hr = m_SharedSurf.As(&DXGIResource);
     if (SUCCEEDED(hr))
     {
         // Obtain handle to IDXGIResource object.
         DXGIResource->GetSharedHandle(&Hnd);
-        DXGIResource->Release();
-        DXGIResource = nullptr;
     }
 
     return Hnd;
 }
 
-IDXGIAdapter* OutputManager::GetDXGIAdapter()
+Microsoft::WRL::ComPtr<IDXGIAdapter> OutputManager::GetDXGIAdapter()
 {
     HRESULT hr;
 
     // Get DXGI factory
-    IDXGIDevice* DxgiDevice = nullptr;
-    hr = m_Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DxgiDevice));
+    Microsoft::WRL::ComPtr<IDXGIDevice> DxgiDevice;
+    hr = m_Device.As(&DxgiDevice);
     if (FAILED(hr))
     {
         return nullptr;
     }
 
-    IDXGIAdapter* DxgiAdapter = nullptr;
-    hr = DxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&DxgiAdapter));
-    DxgiDevice->Release();
-    DxgiDevice = nullptr;
+    Microsoft::WRL::ComPtr<IDXGIAdapter> DxgiAdapter;
+    hr = DxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(DxgiAdapter.GetAddressOf()));
     if (FAILED(hr))
     {
         return nullptr;
@@ -2209,12 +2088,12 @@ void OutputManager::ResetCurrentOverlay()
 
 ID3D11Texture2D* OutputManager::GetOverlayTexture() const
 {
-    return m_OvrlTex;
+    return m_OvrlTex.Get();
 }
 
 ID3D11Texture2D* OutputManager::GetMultiGPUTargetTexture() const
 {
-    return m_MultiGPUTexTarget;
+    return m_MultiGPUTexTarget.Get();
 }
 
 vr::VROverlayHandle_t OutputManager::GetDesktopTextureOverlay() const
@@ -3226,12 +3105,12 @@ void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter
     //Convert()'s arguments are almost all stuff from OutputManager, so we take this roundabout way of calling it
     const DPRect& crop_rect = overlay.GetValidatedCropRect();
 
-    HRESULT hr = converter.Convert(m_Device, m_DeviceContext, m_MultiGPUTargetDevice, m_MultiGPUTargetDeviceContext, m_OvrlTex,
+    HRESULT hr = converter.Convert(m_Device.Get(), m_DeviceContext.Get(), m_MultiGPUTargetDevice.Get(), m_MultiGPUTargetDeviceContext.Get(), m_OvrlTex.Get(),
                                    m_DesktopWidth, m_DesktopHeight, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
 
     if (hr == S_OK)
     {
-        vr::Texture_t vrtex;
+        vr::Texture_t vrtex = {};
         vrtex.eType = vr::TextureType_DirectX;
         vrtex.eColorSpace = vr::ColorSpace_Gamma;
         vrtex.handle = converter.GetTexture(); //OUtoSBSConverter takes care of multi-gpu support automatically, so no further processing needed
@@ -3240,7 +3119,7 @@ void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter
     }
     else
     {
-        ProcessFailure(m_Device, L"Failed to convert OU texture to SBS", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        ProcessFailure(m_Device.Get(), L"Failed to convert OU texture to SBS", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 }
 
@@ -3248,14 +3127,14 @@ void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter
 //
 // Process both masked and monochrome pointers
 //
-DUPL_RETURN OutputManager::ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
+DDPDuplReturn OutputManager::ProcessMonoMask(bool is_mono, DDPPtrInfo& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
                                            Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box)
 {
     out_tex_format = DXGI_FORMAT_UNKNOWN;
 
     //ShapeBuffer can sometimes be empty when the secure desktop is active, skip
     if (ptr_info.ShapeBuffer.empty())
-        return DUPL_RETURN_SUCCESS;
+        return ddp_dupl_return_success;
 
     //Desktop dimensions
     D3D11_TEXTURE2D_DESC FullDesc;
@@ -3325,7 +3204,7 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int
     HRESULT hr = m_Device->CreateTexture2D(&copy_buffer_desc, nullptr, &copy_buffer);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed creating staging texture for pointer", L"Desktop+ Error", S_OK, SystemTransitionsExpectedErrors); //Shouldn't be critical
+        return ProcessFailure(m_Device.Get(), L"Failed creating staging texture for pointer", L"Desktop+ Error", S_OK, SystemTransitionsExpectedErrors); //Shouldn't be critical
     }
 
     //Copy needed part of desktop image
@@ -3333,7 +3212,7 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int
     box.top    = ptr_top;
     box.right  = ptr_left + ptr_width;
     box.bottom = ptr_top  + ptr_height;
-    m_DeviceContext->CopySubresourceRegion(copy_buffer.Get(), 0, 0, 0, 0, m_SharedSurf, 0, &box);
+    m_DeviceContext->CopySubresourceRegion(copy_buffer.Get(), 0, 0, 0, 0, m_SharedSurf.Get(), 0, &box);
 
     //QI for IDXGISurface
     Microsoft::WRL::ComPtr<IDXGISurface> copy_surface;
@@ -3348,7 +3227,7 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int
     hr = copy_surface->Map(&mapped_surface, DXGI_MAP_READ);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to map surface for pointer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to map surface for pointer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //New mouseshape buffer
@@ -3423,7 +3302,7 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int
     hr = copy_surface->Unmap();
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to unmap surface for pointer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to unmap surface for pointer", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Create texture
@@ -3456,22 +3335,22 @@ DUPL_RETURN OutputManager::ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int
     hr = m_Device->CreateTexture2D(&tex_desc, &init_data, &out_tex);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to create mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     out_tex_format = tex_desc.Format;
 
-    return DUPL_RETURN_SUCCESS;
+    return ddp_dupl_return_success;
 }
 
-DUPL_RETURN OutputManager::ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
-                                                  Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box)
+DDPDuplReturn OutputManager::ProcessMonoMaskFloat16(bool is_mono, DDPPtrInfo& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
+                                                    Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box)
 {
     out_tex_format = DXGI_FORMAT_UNKNOWN;
 
     //ShapeBuffer can sometimes be empty when the secure desktop is active, skip
     if (ptr_info.ShapeBuffer.empty())
-        return DUPL_RETURN_SUCCESS;
+        return ddp_dupl_return_success;
 
     //Desktop dimensions
     D3D11_TEXTURE2D_DESC FullDesc;
@@ -3541,7 +3420,7 @@ DUPL_RETURN OutputManager::ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_in
     HRESULT hr = m_Device->CreateTexture2D(&copy_buffer_desc, nullptr, &copy_buffer);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed creating staging texture for pointer", L"Desktop+ Error", S_OK, SystemTransitionsExpectedErrors); //Shouldn't be critical
+        return ProcessFailure(m_Device.Get(), L"Failed creating staging texture for pointer", L"Desktop+ Error", S_OK, SystemTransitionsExpectedErrors); //Shouldn't be critical
     }
 
     //Copy needed part of desktop image
@@ -3549,7 +3428,7 @@ DUPL_RETURN OutputManager::ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_in
     box.top    = ptr_top;
     box.right  = ptr_left + ptr_width;
     box.bottom = ptr_top  + ptr_height;
-    m_DeviceContext->CopySubresourceRegion(copy_buffer.Get(), 0, 0, 0, 0, m_SharedSurf, 0, &box);
+    m_DeviceContext->CopySubresourceRegion(copy_buffer.Get(), 0, 0, 0, 0, m_SharedSurf.Get(), 0, &box);
 
     //QI for IDXGISurface
     Microsoft::WRL::ComPtr<IDXGISurface> copy_surface;
@@ -3564,7 +3443,7 @@ DUPL_RETURN OutputManager::ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_in
     hr = copy_surface->Map(&mapped_surface, DXGI_MAP_READ);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to map surface for pointer", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to map surface for pointer", L"Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //New mouseshape buffer
@@ -3703,7 +3582,7 @@ DUPL_RETURN OutputManager::ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_in
     hr = copy_surface->Unmap();
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to unmap surface for pointer", L"Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to unmap surface for pointer", L"Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Create texture
@@ -3736,18 +3615,18 @@ DUPL_RETURN OutputManager::ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_in
     hr = m_Device->CreateTexture2D(&tex_desc, &init_data, &out_tex);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to create mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     out_tex_format = tex_desc.Format;
 
-    return DUPL_RETURN_SUCCESS;
+    return ddp_dupl_return_success;
 }
 
 //
 // Reset render target view
 //
-DUPL_RETURN OutputManager::MakeRTV()
+DDPDuplReturn OutputManager::MakeRTV()
 {
     D3D11_TEXTURE2D_DESC desc_ovrl_tex;
     m_OvrlTex->GetDesc(&desc_ovrl_tex);
@@ -3759,15 +3638,15 @@ DUPL_RETURN OutputManager::MakeRTV()
     ovrl_tex_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
     ovrl_tex_rtv_desc.Texture2D.MipSlice = 0;
 
-    m_Device->CreateRenderTargetView(m_OvrlTex, &ovrl_tex_rtv_desc, &m_OvrlRTV);
+    m_Device->CreateRenderTargetView(m_OvrlTex.Get(), &ovrl_tex_rtv_desc, &m_OvrlRTV);
 
-    return DUPL_RETURN_SUCCESS;
+    return ddp_dupl_return_success;
 }
 
 //
 // Initialize shaders for drawing
 //
-DUPL_RETURN OutputManager::InitShaders()
+DDPDuplReturn OutputManager::InitShaders()
 {
     HRESULT hr;
 
@@ -3775,7 +3654,7 @@ DUPL_RETURN OutputManager::InitShaders()
     hr = m_Device->CreateVertexShader(g_VS, Size, nullptr, &m_VertexShader);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create vertex shader", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to create vertex shader", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     D3D11_INPUT_ELEMENT_DESC Layout[] =
@@ -3787,34 +3666,34 @@ DUPL_RETURN OutputManager::InitShaders()
     hr = m_Device->CreateInputLayout(Layout, NumElements, g_VS, Size, &m_InputLayout);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create input layout", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to create input layout", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
-    m_DeviceContext->IASetInputLayout(m_InputLayout);
+    m_DeviceContext->IASetInputLayout(m_InputLayout.Get());
 
     Size = ARRAYSIZE(g_PS);
     hr = m_Device->CreatePixelShader(g_PS, Size, nullptr, &m_PixelShader);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create pixel shader", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to create pixel shader", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
     Size = ARRAYSIZE(g_PSCURSOR);
     hr = m_Device->CreatePixelShader(g_PSCURSOR, Size, nullptr, &m_PixelShaderCursor);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create cursor pixel shader", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to create cursor pixel shader", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
-    return DUPL_RETURN_SUCCESS;
+    return ddp_dupl_return_success;
 }
 
 
 //
 // Recreate textures
 //
-DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds)
+DDPDuplReturn OutputManager::CreateTextures(INT SingleOutput, UINT& OutCount, RECT& DeskBounds)
 {
     HRESULT hr;
-    *OutCount = 0;
+    OutCount = 0;
     const int desktop_count = m_DesktopRects.size();
 
     //Output doesn't exist. This will result in a soft-error invalid output state (system may be in an transition state, in which case we'll automatically recover)
@@ -3825,7 +3704,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
         m_DesktopWidth  = -1;
         m_DesktopHeight = -1;
 
-        return DUPL_RETURN_ERROR_EXPECTED;
+        return ddp_dupl_return_error_expected;
     }
 
     //Figure out right dimensions for full size desktop texture
@@ -3833,8 +3712,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
     if (SingleOutput < 0)
     {
         //Combined desktop, also count desktops on the used adapter
-        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr;
-        adapter_ptr.Attach(GetDXGIAdapter());
+        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_ptr = GetDXGIAdapter();
 
         UINT output_index_adapter = 0;
         hr = S_OK;
@@ -3864,7 +3742,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
             ++output_index_adapter;
         }
 
-        *OutCount = output_index_adapter - 1;
+        OutCount = output_index_adapter - 1;
     }
     else
     {
@@ -3872,7 +3750,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
         if (SingleOutput < desktop_count)
         {
             output_rect_total = m_DesktopRects[SingleOutput];
-            *OutCount = 1;
+            OutCount = 1;
         }
     }
 
@@ -3882,10 +3760,10 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
     m_DesktopWidth  = output_rect_total.GetWidth();
     m_DesktopHeight = output_rect_total.GetHeight();
 
-    DeskBounds->left   = output_rect_total.GetTL().x;
-    DeskBounds->top    = output_rect_total.GetTL().y;
-    DeskBounds->right  = output_rect_total.GetBR().x;
-    DeskBounds->bottom = output_rect_total.GetBR().y;
+    DeskBounds.left   = output_rect_total.GetTL().x;
+    DeskBounds.top    = output_rect_total.GetTL().y;
+    DeskBounds.right  = output_rect_total.GetBR().x;
+    DeskBounds.bottom = output_rect_total.GetBR().y;
 
     //Set it as mouse scale on the desktop texture overlay for the UI to read the resolution from there
     vr::HmdVector2_t mouse_scale = {0};
@@ -3923,37 +3801,36 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
             // complete desktop image and blit updates from the per output DDA interface.  The GPU can
             // always support a texture size of the maximum resolution of any single output but there is no
             // guarantee that it can support a texture size of the desktop.
-            return ProcessFailure(m_Device, L"Failed to create shared texture. Combined desktop texture size may be larger than the maximum supported supported size of the GPU", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+            return ProcessFailure(m_Device.Get(), L"Failed to create shared texture. Combined desktop texture size may be larger than the maximum supported supported size of the GPU", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
         else
         {
-            return ProcessFailure(m_Device, L"Failed to create shared texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+            return ProcessFailure(m_Device.Get(), L"Failed to create shared texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
     }
 
     // Get keyed mutex
-    hr = m_SharedSurf->QueryInterface(__uuidof(IDXGIKeyedMutex), reinterpret_cast<void**>(&m_KeyMutex));
-
+    hr = m_SharedSurf.As(&m_KeyMutex);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to query for keyed mutex", L"Desktop+ Error", hr);
+        return ProcessFailure(m_Device.Get(), L"Failed to query for keyed mutex", L"Desktop+ Error", hr);
     }
 
     //Create shader resource for shared texture
     D3D11_TEXTURE2D_DESC FrameDesc;
     m_SharedSurf->GetDesc(&FrameDesc);
 
-    D3D11_SHADER_RESOURCE_VIEW_DESC ShaderDesc;
+    D3D11_SHADER_RESOURCE_VIEW_DESC ShaderDesc = {};
     ShaderDesc.Format = FrameDesc.Format;
     ShaderDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
     ShaderDesc.Texture2D.MostDetailedMip = FrameDesc.MipLevels - 1;
     ShaderDesc.Texture2D.MipLevels = FrameDesc.MipLevels;
 
     // Create new shader resource view
-    hr = m_Device->CreateShaderResourceView(m_SharedSurf, &ShaderDesc, &m_ShaderResource);
+    hr = m_Device->CreateShaderResourceView(m_SharedSurf.Get(), &ShaderDesc, &m_ShaderResource);
     if (FAILED(hr))
     {
-        return ProcessFailure(m_Device, L"Failed to create shader resource", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        return ProcessFailure(m_Device.Get(), L"Failed to create shader resource", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     //Create textures for multi GPU handling if needed
@@ -3969,7 +3846,7 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
 
         if (FAILED(hr))
         {
-            return ProcessFailure(m_Device, L"Failed to create staging texture", L"Desktop+ Error", hr);
+            return ProcessFailure(m_Device.Get(), L"Failed to create staging texture", L"Desktop+ Error", hr);
         }
 
         //Copy-target texture
@@ -3982,11 +3859,11 @@ DUPL_RETURN OutputManager::CreateTextures(INT SingleOutput, _Out_ UINT* OutCount
 
         if (FAILED(hr))
         {
-            return ProcessFailure(m_MultiGPUTargetDevice, L"Failed to create copy-target texture", L"Desktop+ Error", hr);
+            return ProcessFailure(m_MultiGPUTargetDevice.Get(), L"Failed to create copy-target texture", L"Desktop+ Error", hr);
         }
     }
 
-    return DUPL_RETURN_SUCCESS;
+    return ddp_dupl_return_success;
 }
 
 void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
@@ -3994,7 +3871,7 @@ void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
     //Do a straight copy if there are no issues with that or do the alpha check if it's still pending
     if ((!m_OutputAlphaCheckFailed) || (m_OutputAlphaChecksPending > 0))
     {
-        m_DeviceContext->CopyResource(m_OvrlTex, m_SharedSurf);
+        m_DeviceContext->CopyResource(m_OvrlTex.Get(), m_SharedSurf.Get());
 
         if (m_OutputAlphaChecksPending > 0)
         {
@@ -4010,50 +3887,45 @@ void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
     if (m_OutputAlphaCheckFailed)
     {
         // Set resources
-        UINT Stride = sizeof(VERTEX);
+        UINT Stride = sizeof(DDPVertex);
         UINT Offset = 0;
         const FLOAT blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
         m_DeviceContext->OMSetBlendState(nullptr, blendFactor, 0xffffffff);
-        m_DeviceContext->OMSetRenderTargets(1, &m_OvrlRTV, nullptr);
-        m_DeviceContext->VSSetShader(m_VertexShader, nullptr, 0);
-        m_DeviceContext->PSSetShader(m_PixelShader, nullptr, 0);
-        m_DeviceContext->PSSetShaderResources(0, 1, &m_ShaderResource);
-        m_DeviceContext->PSSetSamplers(0, 1, &m_Sampler);
+        m_DeviceContext->OMSetRenderTargets(1, m_OvrlRTV.GetAddressOf(), nullptr);
+        m_DeviceContext->VSSetShader(m_VertexShader.Get(), nullptr, 0);
+        m_DeviceContext->PSSetShader(m_PixelShader.Get(), nullptr, 0);
+        m_DeviceContext->PSSetShaderResources(0, 1, m_ShaderResource.GetAddressOf());
+        m_DeviceContext->PSSetSamplers(0, 1, m_Sampler.GetAddressOf());
         m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        m_DeviceContext->IASetVertexBuffers(0, 1, &m_VertexBuffer, &Stride, &Offset);
+        m_DeviceContext->IASetVertexBuffers(0, 1, m_VertexBuffer.GetAddressOf(), &Stride, &Offset);
 
         // Draw textured quad onto render target
         if (clear_rtv)
         {
             const float bgColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-            m_DeviceContext->ClearRenderTargetView(m_OvrlRTV, bgColor);
+            m_DeviceContext->ClearRenderTargetView(m_OvrlRTV.Get(), bgColor);
         }
 
-        m_DeviceContext->Draw(NUMVERTICES, 0);
+        m_DeviceContext->Draw(DDP_NUMVERTICES, 0);
     }
 }
 
 //
 // Draw mouse provided in buffer to overlay texture
 //
-DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
+DDPDuplReturn OutputManager::DrawMouseToOverlayTex(DDPPtrInfo& PtrInfo)
 {
     //Just return if we don't need to render it
-    if ((!ConfigManager::GetValue(configid_bool_input_mouse_render_cursor)) || (!PtrInfo->Visible))
+    if ((!ConfigManager::GetValue(configid_bool_input_mouse_render_cursor)) || (!PtrInfo.Visible))
     {
-        return DUPL_RETURN_SUCCESS;
+        return ddp_dupl_return_success;
     }
 
-    ID3D11Buffer* VertexBuffer = nullptr;
-
-    // Vars to be used
-    D3D11_SUBRESOURCE_DATA InitData = {};
-    D3D11_TEXTURE2D_DESC Desc = {};
-    D3D11_SHADER_RESOURCE_VIEW_DESC SDesc = {};
+    HRESULT hr = S_OK;
 
     // Position will be changed based on mouse position
-    VERTEX Vertices[NUMVERTICES] =
+    DDPVertex Vertices[DDP_NUMVERTICES] =
     {
         { XMFLOAT3(-1.0f, -1.0f, 0), XMFLOAT2(0.0f, 1.0f) },
         { XMFLOAT3(-1.0f,  1.0f, 0), XMFLOAT2(0.0f, 0.0f) },
@@ -4083,34 +3955,34 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     Box.back  = 1;
 
     //Process shape (or just get position when not new cursor)
-    switch (PtrInfo->ShapeInfo.Type)
+    switch (PtrInfo.ShapeInfo.Type)
     {
         case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR:
         {
-            PtrLeft = PtrInfo->Position.x;
-            PtrTop  = PtrInfo->Position.y;
+            PtrLeft = PtrInfo.Position.x;
+            PtrTop  = PtrInfo.Position.y;
 
-            PtrWidth  = static_cast<INT>(PtrInfo->ShapeInfo.Width);
-            PtrHeight = static_cast<INT>(PtrInfo->ShapeInfo.Height);
+            PtrWidth  = static_cast<INT>(PtrInfo.ShapeInfo.Width);
+            PtrHeight = static_cast<INT>(PtrInfo.ShapeInfo.Height);
 
             break;
         }
         case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME:
         case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MASKED_COLOR:
         {
-            PtrInfo->CursorShapeChanged = true; //Texture content is screen dependent
-            const bool is_mono_cursor = (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME);
+            PtrInfo.CursorShapeChanged = true; //Texture content is screen dependent
+            const bool is_mono_cursor = (PtrInfo.ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME);
 
             //Process for HDR is needed
             if ((m_OutputHDRAvailable) && (ConfigManager::GetValue(configid_bool_performance_hdr_mirroring)))
             {
-                ProcessMonoMaskFloat16(is_mono_cursor, *PtrInfo, PtrWidth, PtrHeight, PtrLeft, PtrTop, CursorTexNew, CursorTexNewFormat, Box);
+                ProcessMonoMaskFloat16(is_mono_cursor, PtrInfo, PtrWidth, PtrHeight, PtrLeft, PtrTop, CursorTexNew, CursorTexNewFormat, Box);
             }
             else
             {
-                ProcessMonoMask(is_mono_cursor, *PtrInfo, PtrWidth, PtrHeight, PtrLeft, PtrTop, CursorTexNew, CursorTexNewFormat, Box);
+                ProcessMonoMask(is_mono_cursor, PtrInfo, PtrWidth, PtrHeight, PtrLeft, PtrTop, CursorTexNew, CursorTexNewFormat, Box);
             }
-            
+
             break;
         }
         default: break;
@@ -4118,7 +3990,7 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
 
     if (m_MouseCursorNeedsUpdate)
     {
-        PtrInfo->CursorShapeChanged = true;
+        PtrInfo.CursorShapeChanged = true;
     }
 
     // VERTEX creation
@@ -4135,33 +4007,41 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
     Vertices[5].Pos.x = ((PtrLeft + PtrWidth) - CenterX) / CenterX;
     Vertices[5].Pos.y = -1 * (PtrTop - CenterY) / CenterY;
 
-    //Vertex buffer description
-    D3D11_BUFFER_DESC BDesc;
-    ZeroMemory(&BDesc, sizeof(D3D11_BUFFER_DESC));
-    BDesc.Usage = D3D11_USAGE_DEFAULT;
-    BDesc.ByteWidth = sizeof(VERTEX) * NUMVERTICES;
-    BDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    BDesc.CPUAccessFlags = 0;
-
-    ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
-    InitData.pSysMem = Vertices;
-
-    // Create vertex buffer
-    HRESULT hr = m_Device->CreateBuffer(&BDesc, &InitData, &VertexBuffer);
-    if (FAILED(hr))
+    if (m_MouseVertexBuffer == nullptr)
     {
-        m_MouseShaderRes.Reset();
-        m_MouseTex.Reset();
+        //Vertex buffer description
+        D3D11_BUFFER_DESC BDesc = {};
+        BDesc.Usage = D3D11_USAGE_DYNAMIC;
+        BDesc.ByteWidth = sizeof(DDPVertex) * DDP_NUMVERTICES;
+        BDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        BDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
-        return ProcessFailure(m_Device, L"Failed to create mouse pointer vertex buffer in OutputManager", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        D3D11_SUBRESOURCE_DATA InitData = {};
+        InitData.pSysMem = Vertices;
+
+        // Create vertex buffer
+        hr = m_Device->CreateBuffer(&BDesc, &InitData, &m_MouseVertexBuffer);
+        if (FAILED(hr))
+        {
+            return ProcessFailure(m_Device.Get(), L"Failed to create mouse pointer vertex buffer in OutputManager", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        }
+    }
+    else
+    {
+        //Update existing buffer
+        D3D11_MAPPED_SUBRESOURCE mapped_resource = {};
+        m_DeviceContext->Map(m_MouseVertexBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+        memcpy(mapped_resource.pData, Vertices, sizeof(DDPVertex) * DDP_NUMVERTICES);
+        m_DeviceContext->Unmap(m_MouseVertexBuffer.Get(), 0);
     }
 
     //It can occasionally happen that no cursor shape update is detected after resetting duplication, so the m_MouseTex check is more of a workaround, but unproblematic
-    if ( (PtrInfo->CursorShapeChanged) || (m_MouseTex == nullptr) ) 
+    if ( (PtrInfo.CursorShapeChanged) || (m_MouseTex == nullptr) ) 
     {
         //Only create a texture here for regular color cursors (mask/mono were already created)
-        if (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR)
+        if (PtrInfo.ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR)
         {
+            D3D11_TEXTURE2D_DESC Desc = {};
             Desc.Width              = PtrWidth;
             Desc.Height             = PtrHeight;
             Desc.MipLevels          = 1;
@@ -4175,15 +4055,16 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
             Desc.MiscFlags          = 0;
 
             //Set up init data
-            InitData.pSysMem          = PtrInfo->ShapeBuffer.data();
-            InitData.SysMemPitch      = PtrInfo->ShapeInfo.Pitch;
+            D3D11_SUBRESOURCE_DATA InitData = {};
+            InitData.pSysMem          = PtrInfo.ShapeBuffer.data();
+            InitData.SysMemPitch      = PtrInfo.ShapeInfo.Pitch;
             InitData.SysMemSlicePitch = 0;
 
             // Create mouseshape as texture
             hr = m_Device->CreateTexture2D(&Desc, &InitData, &m_MouseTex);
             if (FAILED(hr))
             {
-                return ProcessFailure(m_Device, L"Failed to create mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+                return ProcessFailure(m_Device.Get(), L"Failed to create mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
         }
         else
@@ -4194,7 +4075,8 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
         if (m_MouseTex != nullptr)
         {
             //Set shader resource properties
-            SDesc.Format                    = (PtrInfo->ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR) ? DXGI_FORMAT_B8G8R8A8_UNORM : CursorTexNewFormat;
+            D3D11_SHADER_RESOURCE_VIEW_DESC SDesc = {};
+            SDesc.Format                    = (PtrInfo.ShapeInfo.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR) ? DXGI_FORMAT_B8G8R8A8_UNORM : CursorTexNewFormat;
             SDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
             SDesc.Texture2D.MostDetailedMip = 0;
             SDesc.Texture2D.MipLevels       = 1;
@@ -4204,46 +4086,39 @@ DUPL_RETURN OutputManager::DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo)
             if (FAILED(hr))
             {
                 m_MouseTex.Reset();
-                return ProcessFailure(m_Device, L"Failed to create shader resource from mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+                return ProcessFailure(m_Device.Get(), L"Failed to create shader resource from mouse pointer texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
         }
     }
 
     // Set resources
     FLOAT BlendFactor[4] = { 0.f, 0.f, 0.f, 0.f };
-    UINT Stride = sizeof(VERTEX);
+    UINT Stride = sizeof(DDPVertex);
     UINT Offset = 0;
-    m_DeviceContext->IASetVertexBuffers(0, 1, &VertexBuffer, &Stride, &Offset);
-    m_DeviceContext->OMSetBlendState(m_BlendState, BlendFactor, 0xFFFFFFFF);
-    m_DeviceContext->OMSetRenderTargets(1, &m_OvrlRTV, nullptr);
-    m_DeviceContext->VSSetShader(m_VertexShader, nullptr, 0);
-    m_DeviceContext->PSSetShader(m_PixelShaderCursor, nullptr, 0);
+    m_DeviceContext->IASetVertexBuffers(0, 1, m_MouseVertexBuffer.GetAddressOf(), &Stride, &Offset);
+    m_DeviceContext->OMSetBlendState(m_BlendState.Get(), BlendFactor, 0xFFFFFFFF);
+    m_DeviceContext->OMSetRenderTargets(1, m_OvrlRTV.GetAddressOf(), nullptr);
+    m_DeviceContext->VSSetShader(m_VertexShader.Get(), nullptr, 0);
+    m_DeviceContext->PSSetShader(m_PixelShaderCursor.Get(), nullptr, 0);
     m_DeviceContext->PSSetShaderResources(0, 1, m_MouseShaderRes.GetAddressOf());
-    m_DeviceContext->PSSetSamplers(0, 1, &m_Sampler);
+    m_DeviceContext->PSSetSamplers(0, 1, m_Sampler.GetAddressOf());
 
     // Draw
-    m_DeviceContext->Draw(NUMVERTICES, 0);
-
-    // Clean
-    if (VertexBuffer)
-    {
-        VertexBuffer->Release();
-        VertexBuffer = nullptr;
-    }
+    m_DeviceContext->Draw(DDP_NUMVERTICES, 0);
 
     m_MouseCursorNeedsUpdate = false;
 
-    return DUPL_RETURN_SUCCESS;
+    return ddp_dupl_return_success;
 }
 
-DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy)
+DDPDuplReturnUpdate OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy)
 {
     if ((m_OvrlHandleDesktopTexture != vr::k_ulOverlayHandleInvalid) && (m_OvrlTex))
     {
-        vr::Texture_t vrtex;
+        vr::Texture_t vrtex = {};
         vrtex.eType       = vr::TextureType_DirectX;
         vrtex.eColorSpace = ((m_OutputHDRAvailable) && (ConfigManager::GetValue(configid_bool_performance_hdr_mirroring))) ? vr::ColorSpace_Linear : vr::ColorSpace_Gamma;
-        vrtex.handle      = m_OvrlTex;
+        vrtex.handle      = m_OvrlTex.Get();
 
         //The intermediate texture can be assumed to be not complete when a full copy is forced, so redraw that
         if (force_full_copy)
@@ -4255,11 +4130,11 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
                 //Another thread has the keyed mutex so there will be a new frame ready after this.
                 //Bail out and just set the pending dirty region to full so everything gets drawn over on the next update
                 m_OutputPendingDirtyRect = {0, 0, m_DesktopWidth, m_DesktopHeight};
-                return DUPL_RETURN_UPD_RETRY;
+                return ddp_dupl_return_update_retry;
             }
             else if (FAILED(hr))
             {
-                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to acquire keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+                return (DDPDuplReturnUpdate)ProcessFailure(m_Device.Get(), L"Failed to acquire keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
 
             DrawFrameToOverlayTex(true);
@@ -4268,7 +4143,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
             hr = m_KeyMutex->ReleaseSync(0);
             if (FAILED(hr))
             {
-                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to Release keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+                return (DDPDuplReturnUpdate)ProcessFailure(m_Device.Get(), L"Failed to Release keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
 
             //We don't draw the cursor here as this can lead to tons of issues for little gain. We might not even know what the cursor looks like if it was cropped out previously, etc.
@@ -4285,32 +4160,32 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
         if (m_MultiGPUTargetDevice != nullptr)
         {
             //This isn't very fast but the only way to my knowledge. Happy to receive improvements on this though
-            m_DeviceContext->CopyResource(m_MultiGPUTexStaging, m_OvrlTex);
+            m_DeviceContext->CopyResource(m_MultiGPUTexStaging.Get(), m_OvrlTex.Get());
 
             D3D11_MAPPED_SUBRESOURCE mapped_resource_staging;
             RtlZeroMemory(&mapped_resource_staging, sizeof(D3D11_MAPPED_SUBRESOURCE));
-            HRESULT hr = m_DeviceContext->Map(m_MultiGPUTexStaging, 0, D3D11_MAP_READ, 0, &mapped_resource_staging);
+            HRESULT hr = m_DeviceContext->Map(m_MultiGPUTexStaging.Get(), 0, D3D11_MAP_READ, 0, &mapped_resource_staging);
 
             if (FAILED(hr))
             {
-                return (DUPL_RETURN_UPD)ProcessFailure(m_Device, L"Failed to map staging texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+                return (DDPDuplReturnUpdate)ProcessFailure(m_Device.Get(), L"Failed to map staging texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
 
             D3D11_MAPPED_SUBRESOURCE mapped_resource_target;
             RtlZeroMemory(&mapped_resource_target, sizeof(D3D11_MAPPED_SUBRESOURCE));
-            hr = m_MultiGPUTargetDeviceContext->Map(m_MultiGPUTexTarget, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource_target);
+            hr = m_MultiGPUTargetDeviceContext->Map(m_MultiGPUTexTarget.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource_target);
 
             if (FAILED(hr))
             {
-                return (DUPL_RETURN_UPD)ProcessFailure(m_MultiGPUTargetDevice, L"Failed to map copy-target texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+                return (DDPDuplReturnUpdate)ProcessFailure(m_MultiGPUTargetDevice.Get(), L"Failed to map copy-target texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
 
             memcpy(mapped_resource_target.pData, mapped_resource_staging.pData, m_DesktopHeight * mapped_resource_staging.RowPitch);
 
-            m_DeviceContext->Unmap(m_MultiGPUTexStaging, 0);
-            m_MultiGPUTargetDeviceContext->Unmap(m_MultiGPUTexTarget, 0);
+            m_DeviceContext->Unmap(m_MultiGPUTexStaging.Get(), 0);
+            m_MultiGPUTargetDeviceContext->Unmap(m_MultiGPUTexTarget.Get(), 0);
 
-            vrtex.handle = m_MultiGPUTexTarget;
+            vrtex.handle = m_MultiGPUTexTarget.Get();
         }
 
         //Do a simple full copy (done below) if the rect covers the whole texture (this isn't slower than a full rect copy and works with size changes)
@@ -4326,7 +4201,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
 
             if (ovrl_shader_rsv != nullptr)
             {
-                ID3D11DeviceContext* device_context = (m_MultiGPUTargetDevice != nullptr) ? m_MultiGPUTargetDeviceContext : m_DeviceContext;
+                ID3D11DeviceContext* device_context = (m_MultiGPUTargetDevice != nullptr) ? m_MultiGPUTargetDeviceContext.Get() : m_DeviceContext.Get();
 
                 Microsoft::WRL::ComPtr<ID3D11Resource> ovrl_tex;
                 ovrl_shader_rsv->GetResource(&ovrl_tex);
@@ -4377,7 +4252,7 @@ DUPL_RETURN_UPD OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTota
         }
     }
 
-    return DUPL_RETURN_UPD_SUCCESS_REFRESHED_OVERLAY;
+    return ddp_dupl_return_update_success_refreshed_overlay;
 }
 
 bool OutputManager::DesktopTextureAlphaCheck()
@@ -4429,7 +4304,7 @@ bool OutputManager::DesktopTextureAlphaCheck()
         box.top    = clamp(rect.GetTL().y - m_DesktopY, 0, m_DesktopHeight - 1);
         box.bottom = clamp(box.top + 1, 1u, (UINT)m_DesktopHeight);
 
-        m_DeviceContext->CopySubresourceRegion(tex_staging.Get(), 0, dst_x, 0, 0, m_OvrlTex, 0, &box);
+        m_DeviceContext->CopySubresourceRegion(tex_staging.Get(), 0, dst_x, 0, 0, m_OvrlTex.Get(), 0, &box);
         dst_x++;
     }
 
@@ -6464,8 +6339,8 @@ void OutputManager::ApplySettingCrop()
         return;
 
     //Set up overlay cropping
-    vr::VRTextureBounds_t tex_bounds;
-    vr::VRTextureBounds_t tex_bounds_prev;
+    vr::VRTextureBounds_t tex_bounds = {};
+    vr::VRTextureBounds_t tex_bounds_prev = {};
 
     const int content_width  = data.ConfigInt[configid_int_overlay_state_content_width];
     const int content_height = data.ConfigInt[configid_int_overlay_state_content_height];
@@ -6531,7 +6406,7 @@ void OutputManager::ApplySettingCrop()
             needs_full_refresh = ((tex_bounds.uMin < tex_bounds_prev.uMin) || (tex_bounds.vMin < tex_bounds_prev.vMin) || 
                                   (tex_bounds.uMax > tex_bounds_prev.uMax) || (tex_bounds.vMax > tex_bounds_prev.vMax));
         }
-        
+
         if (needs_full_refresh)
         {
             RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
@@ -6656,7 +6531,7 @@ void OutputManager::ApplySettingMouseInput()
 
             for (const DPRect& rect : m_DesktopRects)
             {
-                vr::VROverlayIntersectionMaskPrimitive_t primitive;
+                vr::VROverlayIntersectionMaskPrimitive_t primitive = {};
                 primitive.m_nPrimitiveType = vr::OverlayIntersectionPrimitiveType_Rectangle;
                 primitive.m_Primitive.m_Rectangle.m_flTopLeftX = rect.GetTL().x - m_DesktopX;
                 primitive.m_Primitive.m_Rectangle.m_flTopLeftY = rect.GetTL().y - m_DesktopY;
@@ -7085,7 +6960,7 @@ void OutputManager::DetachedTransformReset(unsigned int overlay_id_ref)
                 vr::VRInput()->GetInputSourceHandle("/user/hand/right", &input_value);
                 vr::RenderModel_ControllerMode_State_t controller_state = {0};
                 vr::RenderModel_ComponentState_t component_state = {0};
-            
+
                 if (vr::VRRenderModels()->GetComponentStateForDevicePath(buffer, vr::k_pch_Controller_Component_HandGrip, input_value, &controller_state, &component_state))
                 {
                     transform = component_state.mTrackingToComponentLocal;
@@ -7105,7 +6980,7 @@ void OutputManager::DetachedTransformReset(unsigned int overlay_id_ref)
                 vr::VRInput()->GetInputSourceHandle("/user/hand/left", &input_value);
                 vr::RenderModel_ControllerMode_State_t controller_state = {0};
                 vr::RenderModel_ComponentState_t component_state = {0};
-            
+
                 if (vr::VRRenderModels()->GetComponentStateForDevicePath(buffer, vr::k_pch_Controller_Component_HandGrip, input_value, &controller_state, &component_state))
                 {
                     transform = component_state.mTrackingToComponentLocal;

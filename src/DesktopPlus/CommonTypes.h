@@ -20,6 +20,7 @@
 #include <new>
 #include <warning.h>
 #include <DirectXMath.h>
+#include <wrl/client.h>
 #include <string>
 #include <vector>
 
@@ -29,10 +30,7 @@
 #include "PixelShaderCursor.h"
 #include "VertexShader.h"
 
-#define NUMVERTICES 6
-#define BPP         4
-
-#define OCCLUSION_STATUS_MSG WM_USER
+#define DDP_NUMVERTICES 6
 
 extern HRESULT SystemTransitionsExpectedErrors[];
 extern HRESULT CreateDuplicationExpectedErrors[];
@@ -40,105 +38,104 @@ extern HRESULT FrameInfoExpectedErrors[];
 extern HRESULT AcquireFrameExpectedError[];
 extern HRESULT EnumOutputsExpectedErrors[];
 
-typedef _Return_type_success_(return == DUPL_RETURN_SUCCESS) enum
+enum DDPDuplReturn
 {
-    DUPL_RETURN_SUCCESS             = 0,
-    DUPL_RETURN_ERROR_EXPECTED      = 1,
-    DUPL_RETURN_ERROR_UNEXPECTED    = 2
-}DUPL_RETURN;
+    ddp_dupl_return_success          = 0,
+    ddp_dupl_return_error_expected   = 1,
+    ddp_dupl_return_error_unexpected = 2
+};
 
 //
-// Used by OutputManager::Update(), maps to DUPL_RETURN values where applicable
+// Used by OutputManager::Update(), maps to DDP_DuplReturn values where applicable
 //
-typedef _Return_type_success_(return == DUPL_RETURN_UPD_SUCCESS) enum
+enum DDPDuplReturnUpdate
 {
-    DUPL_RETURN_UPD_SUCCESS = 0,
-    DUPL_RETURN_UPD_ERROR_EXPECTED = 1,
-    DUPL_RETURN_UPD_ERROR_UNEXPECTED = 2,
-    DUPL_RETURN_UPD_QUIT = 3,
-    DUPL_RETURN_UPD_RETRY = 4,
-    DUPL_RETURN_UPD_SUCCESS_REFRESHED_OVERLAY = 5
-}DUPL_RETURN_UPD;
+    ddp_dupl_return_update_success                   = 0,
+    ddp_dupl_return_update_error_expected            = 1,
+    ddp_dupl_return_update_error_unexpected          = 2,
+    ddp_dupl_return_update_quit                      = 3,
+    ddp_dupl_return_update_retry                     = 4,
+    ddp_dupl_return_update_success_refreshed_overlay = 5
+};
 
-_Post_satisfies_(return != DUPL_RETURN_SUCCESS)
-DUPL_RETURN ProcessFailure(_In_opt_ ID3D11Device* device, _In_ LPCWSTR str, _In_ LPCWSTR title, HRESULT hr, _In_opt_z_ HRESULT* expected_errors = nullptr);
+DDPDuplReturn ProcessFailure(_In_opt_ ID3D11Device* device, _In_ LPCWSTR str, _In_ LPCWSTR title, HRESULT hr, _In_opt_z_ HRESULT* expected_errors = nullptr);
 
 void DisplayMsg(_In_ LPCWSTR str, _In_ LPCWSTR title, HRESULT hr);
 
 //
 // Holds info about the pointer/cursor
 //
-typedef struct _PTR_INFO
+struct DDPPtrInfo
 {
     std::vector<BYTE> ShapeBuffer;
-    DXGI_OUTDUPL_POINTER_SHAPE_INFO ShapeInfo = {0};
+    DXGI_OUTDUPL_POINTER_SHAPE_INFO ShapeInfo = {};
     POINT Position = {0, 0};
     bool Visible = false;
     UINT WhoUpdatedPositionLast = 0;
     LARGE_INTEGER LastTimeStamp = {0};
     bool CursorShapeChanged = false;
-} PTR_INFO;
+};
 
 //
 // Structure that holds D3D resources not directly tied to any one thread
 //
-typedef struct _DX_RESOURCES
+struct DDPDxResources
 {
-    ID3D11Device* Device;
-    ID3D11DeviceContext* Context;
-    ID3D11VertexShader* VertexShader;
-    ID3D11PixelShader* PixelShader;
-    ID3D11InputLayout* InputLayout;
-    ID3D11SamplerState* Sampler;
-} DX_RESOURCES;
+    Microsoft::WRL::ComPtr<ID3D11Device> Device;
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext> Context;
+    Microsoft::WRL::ComPtr<ID3D11VertexShader> VertexShader;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader> PixelShader;
+    Microsoft::WRL::ComPtr<ID3D11InputLayout> InputLayout;
+    Microsoft::WRL::ComPtr<ID3D11SamplerState> Sampler;
+};
 
 //
 // Structure to pass to a new thread
 //
-typedef struct _THREAD_DATA
+struct DDPThreadData
 {
     // Used to indicate abnormal error condition
-    HANDLE UnexpectedErrorEvent;
+    HANDLE UnexpectedErrorEvent = nullptr;
 
     // Used to indicate a transition event occurred e.g. PnpStop, PnpStart, mode change, TDR, desktop switch and the application needs to recreate the duplication interface
-    HANDLE ExpectedErrorEvent;
+    HANDLE ExpectedErrorEvent = nullptr;
 
-    HANDLE NewFrameProcessedEvent;
-    HANDLE PauseDuplicationEvent;
-    HANDLE ResumeDuplicationEvent;
+    HANDLE NewFrameProcessedEvent = nullptr;
+    HANDLE PauseDuplicationEvent  = nullptr;
+    HANDLE ResumeDuplicationEvent = nullptr;
 
     // Used by WinProc to signal to threads to exit
-    HANDLE TerminateThreadsEvent;
+    HANDLE TerminateThreadsEvent = nullptr;
 
-    HANDLE TexSharedHandle;
-    UINT Output;
-    INT OffsetX;
-    INT OffsetY;
-    PTR_INFO* PtrInfo;
-    DX_RESOURCES DxRes;
-    DPRect* DirtyRegionTotal;
-    bool WMRIgnoreVScreens;
-} THREAD_DATA;
+    HANDLE TexSharedHandle = nullptr;
+    UINT Output = 0;
+    INT OffsetX = 0;
+    INT OffsetY = 0;
+    DDPPtrInfo* PtrInfo = nullptr;                  //Should only be called when shared surface mutex has be aquired, always points to DDPThreadManager::m_PtrInfo
+    DDPDxResources DxRes;
+    DPRect* DirtyRegionTotal = nullptr;             //Should only be called when shared surface mutex has be aquired, always points to DDPThreadManager::m_DirtyRegionTotal
+    bool WMRIgnoreVScreens = false;
+};
 
 //
-// FRAME_DATA holds information about an acquired frame
+// FrameData holds information about an acquired frame
 //
-typedef struct _FRAME_DATA
+struct DDPFrameData
 {
-    ID3D11Texture2D* Frame;
-    DXGI_OUTDUPL_FRAME_INFO FrameInfo;
-    _Field_size_bytes_((MoveCount * sizeof(DXGI_OUTDUPL_MOVE_RECT)) + (DirtyCount * sizeof(RECT))) BYTE* MetaData;
-    UINT DirtyCount;
-    UINT MoveCount;
-} FRAME_DATA;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> Frame;
+    DXGI_OUTDUPL_FRAME_INFO FrameInfo = {};
+    std::vector<BYTE>* MetaDataBuffer = nullptr;    //Should only be called when shared surface mutex has be aquired, always points to DDPDuplicationManager::m_MetaDataBuffer
+    UINT DirtyCount = 0;
+    UINT MoveCount = 0;
+};
 
 //
 // A vertex with a position and texture coordinate
 //
-typedef struct _VERTEX
+struct DDPVertex
 {
-    DirectX::XMFLOAT3 Pos;
-    DirectX::XMFLOAT2 TexCoord;
-} VERTEX;
+    DirectX::XMFLOAT3 Pos = {};
+    DirectX::XMFLOAT2 TexCoord = {};
+};
 
 #endif

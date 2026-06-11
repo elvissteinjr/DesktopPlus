@@ -35,9 +35,9 @@ class OutputManager
         OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent);
         ~OutputManager();
         void CleanRefs();
-        DUPL_RETURN InitOutput(HWND Window, _Out_ INT& SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
+        DDPDuplReturn InitOutput(HWND Window, INT& SingleOutput, UINT& OutCount, RECT& DeskBounds);
         std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> InitOverlay();  //Returns error state <InitError, OverlayError, VRInputInitSuccess>
-        DUPL_RETURN_UPD Update(_In_ PTR_INFO* PointerInfo, _In_ DPRect& DirtyRegionTotal, bool NewFrame, bool SkipFrame);
+        DDPDuplReturnUpdate Update(DDPPtrInfo& PointerInfo, DPRect& DirtyRegionTotal, bool NewFrame, bool SkipFrame);
         void BusyUpdate();                        //Updates minimal state (i.e. OverlayDragger) during busy waits (i.e. waiting for browser startup) to appear more responsive
         bool HandleIPCMessage(const MSG& msg);    //Returns true if message caused a duplication reset (i.e. desktop switch)
         void HandleWinRTMessage(const MSG& msg);  //Messages sent by the Desktop+ WinRT library
@@ -46,7 +46,7 @@ class OutputManager
 
         HWND GetWindowHandle();
         HANDLE GetSharedHandle();
-        IDXGIAdapter* GetDXGIAdapter(); //Don't forget to call Release() on the returned pointer when done with it
+        Microsoft::WRL::ComPtr<IDXGIAdapter> GetDXGIAdapter();
 
         void ResetOverlays();
         void ResetCurrentOverlay();
@@ -97,16 +97,16 @@ class OutputManager
         void ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter);
 
     private:
-        DUPL_RETURN ProcessMonoMask(bool is_mono, PTR_INFO& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
-                                    Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box);
-        DUPL_RETURN ProcessMonoMaskFloat16(bool is_mono, PTR_INFO& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
-                                           Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box);
-        DUPL_RETURN MakeRTV();
-        DUPL_RETURN InitShaders();
-        DUPL_RETURN CreateTextures(INT SingleOutput, _Out_ UINT* OutCount, _Out_ RECT* DeskBounds);
+        DDPDuplReturn ProcessMonoMask(bool is_mono, DDPPtrInfo& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
+                                      Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box);
+        DDPDuplReturn ProcessMonoMaskFloat16(bool is_mono, DDPPtrInfo& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
+                                             Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box);
+        DDPDuplReturn MakeRTV();
+        DDPDuplReturn InitShaders();
+        DDPDuplReturn CreateTextures(INT SingleOutput, UINT& OutCount, RECT& DeskBounds);
         void DrawFrameToOverlayTex(bool clear_rtv = true);
-        DUPL_RETURN DrawMouseToOverlayTex(_In_ PTR_INFO* PtrInfo);
-        DUPL_RETURN_UPD RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy = false); //Refreshes the overlay texture of the VR runtime with content of the m_OvrlTex backing texture
+        DDPDuplReturn DrawMouseToOverlayTex(DDPPtrInfo& PtrInfo);
+        DDPDuplReturnUpdate RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy = false); //Refreshes the overlay texture of the VR runtime with content of the m_OvrlTex backing texture
         bool DesktopTextureAlphaCheck();
 
         bool HandleOpenVREvents();  //Returns true if quit event happened
@@ -173,19 +173,19 @@ class OutputManager
         OverlayDragger m_OverlayDragger;
         LaserPointer m_LaserPointer;
 
-        ID3D11Device* m_Device;
-        ID3D11DeviceContext* m_DeviceContext;
-        ID3D11SamplerState* m_Sampler;
-        ID3D11BlendState* m_BlendState;
-        ID3D11RasterizerState* m_RasterizerState;
-        ID3D11VertexShader* m_VertexShader;
-        ID3D11PixelShader* m_PixelShader;
-        ID3D11PixelShader* m_PixelShaderCursor;
-        ID3D11InputLayout* m_InputLayout;
-        ID3D11Texture2D* m_SharedSurf;
-        ID3D11Buffer* m_VertexBuffer;
-        ID3D11ShaderResourceView* m_ShaderResource;
-        IDXGIKeyedMutex* m_KeyMutex;
+        Microsoft::WRL::ComPtr<ID3D11Device> m_Device;
+        Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_DeviceContext;
+        Microsoft::WRL::ComPtr<ID3D11SamplerState> m_Sampler;
+        Microsoft::WRL::ComPtr<ID3D11BlendState> m_BlendState;
+        Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_RasterizerState;
+        Microsoft::WRL::ComPtr<ID3D11VertexShader> m_VertexShader;
+        Microsoft::WRL::ComPtr<ID3D11PixelShader> m_PixelShader;
+        Microsoft::WRL::ComPtr<ID3D11PixelShader> m_PixelShaderCursor;
+        Microsoft::WRL::ComPtr<ID3D11InputLayout> m_InputLayout;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_SharedSurf;
+        Microsoft::WRL::ComPtr<IDXGIKeyedMutex> m_KeyMutex;
+        Microsoft::WRL::ComPtr<ID3D11Buffer> m_VertexBuffer;
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_ShaderResource;
         HWND m_WindowHandle;
         //These handles are not created or closed by this class, they're valid for the entire runtime though
         HANDLE m_PauseDuplicationEvent;
@@ -211,8 +211,8 @@ class OutputManager
         vr::VROverlayHandle_t m_OvrlHandleDashboardDummy;
         vr::VROverlayHandle_t m_OvrlHandleIcon;
         vr::VROverlayHandle_t m_OvrlHandleDesktopTexture;
-        ID3D11Texture2D* m_OvrlTex;
-        ID3D11RenderTargetView* m_OvrlRTV;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_OvrlTex;
+        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_OvrlRTV;
         int m_OvrlActiveCount;
         int m_OvrlDesktopDuplActiveCount;
         bool m_OvrlDashboardActive;
@@ -226,12 +226,13 @@ class OutputManager
 
         Microsoft::WRL::ComPtr<ID3D11Texture2D> m_MouseTex;
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_MouseShaderRes;
+        Microsoft::WRL::ComPtr<ID3D11Buffer> m_MouseVertexBuffer;
 
         SoftwareCursorGrabber m_MouseAlternativeCursor;
         ULONGLONG m_MouseLastClickTick;
         bool m_MouseIgnoreMoveEvent;
         bool m_MouseCursorNeedsUpdate;
-        PTR_INFO m_MouseLastInfo;
+        DDPPtrInfo m_MouseLastInfo;
         Vector2Int m_MouseLastCursorSize;
         bool m_MouseLaserPointerUsedLastUpdate;
         bool m_MouseLastLaserPointerMoveBlocked;
@@ -244,17 +245,16 @@ class OutputManager
         LARGE_INTEGER m_MouseLaserPointerScrollDeltaFrequency;
 
         bool m_IsFirstLaunch;
-        bool m_ComInitDone;
 
         bool m_DashboardActivatedOnce;
         Matrix4 m_DashboardTransformLast;       //This is only used to check if the dashboard has moved from events we can't detect otherwise
         Matrix4 m_SeatedTransformLast;
 
         //These are only used when duplicating outputs from a different GPU
-        ID3D11Device* m_MultiGPUTargetDevice;   //Target D3D11 device, meaning the one the HMD is connected to
-        ID3D11DeviceContext* m_MultiGPUTargetDeviceContext;
-        ID3D11Texture2D* m_MultiGPUTexStaging;  //Staging texture, owned by m_Device
-        ID3D11Texture2D* m_MultiGPUTexTarget;   //Target texture to copy to, owned by m_MultiGPUTargetDevice
+        Microsoft::WRL::ComPtr<ID3D11Device> m_MultiGPUTargetDevice;   //Target D3D11 device, meaning the one the HMD is connected to
+        Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_MultiGPUTargetDeviceContext;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_MultiGPUTexStaging;  //Staging texture, owned by m_Device
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_MultiGPUTexTarget;   //Target texture to copy to, owned by m_MultiGPUTargetDevice
 
         int m_PerformanceFrameCount;
         ULONGLONG m_PerformanceFrameCountStartTick;

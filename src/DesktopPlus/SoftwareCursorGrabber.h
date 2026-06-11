@@ -4,12 +4,12 @@
 #include "CommonTypes.h"
 
 //Alternative method to grab the cursor image data
-//Stores the data in the same way the DuplicationManager class does for Desktop Duplication cursor output to act as a drop-in alternative
+//Stores the data in the same way the DDPDuplicationManager class does for Desktop Duplication cursor output to act as a drop-in alternative
 class SoftwareCursorGrabber
 {
     private:
         CURSORINFO m_CursorInfoLast = {};
-        PTR_INFO m_DDPPointerInfo = {};
+        DDPPtrInfo m_DDPPointerInfo = {};
         std::unordered_map<HCURSOR, bool> m_CursorUseMaskCache;
 
         //Log things only once per session as it would be quite spammy otherwise
@@ -23,5 +23,5 @@ class SoftwareCursorGrabber
 
     public:
         bool SynthesizeDDPCursorInfo();
-        PTR_INFO& GetDDPCursorInfo();
+        DDPPtrInfo& GetDDPCursorInfo();
 };

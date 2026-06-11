@@ -241,7 +241,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     }
 
     // Register class
-    WNDCLASSEXW Wc;
+    WNDCLASSEXW Wc = {};
     Wc.cbSize           = sizeof(WNDCLASSEXW);
     Wc.style            = 0;
     Wc.lpfnWndProc      = WndProc;
@@ -283,7 +283,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     //Allow IPC messages even when elevated
     IPCManager::Get().DisableUIPForRegisteredMessages(WindowHandle);
 
-    THREADMANAGER ThreadMgr;
+    DDPThreadManager ThreadMgr;
     OutputManager OutMgr(PauseDuplicationEvent, ResumeDuplicationEvent);
     RECT DeskBounds;
     UINT OutputCount;
@@ -299,14 +299,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     //Message loop
     MSG msg = {0};
-    DUPL_RETURN Ret = DUPL_RETURN_SUCCESS;
-    DUPL_RETURN_UPD RetUpdate = DUPL_RETURN_UPD_SUCCESS;
+    DDPDuplReturn Ret = ddp_dupl_return_success;
+    DDPDuplReturnUpdate RetUpdate = ddp_dupl_return_update_success;
     bool FirstTime = true;
 
     DYNAMIC_WAIT DynamicWait;
 
-    LARGE_INTEGER UpdateLimiterStartingTime, UpdateLimiterEndingTime, UpdateLimiterElapsedMicroseconds;
-    LARGE_INTEGER UpdateLimiterFrequency;
+    LARGE_INTEGER UpdateLimiterStartingTime = {0}, UpdateLimiterEndingTime = {0}, UpdateLimiterElapsedMicroseconds = {0};
+    LARGE_INTEGER UpdateLimiterFrequency = {0};
 
     bool IsNewFrame = false;
     bool SkipFrame = false;
@@ -380,7 +380,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 if (DisplayInitError(std::get<vr::EVRInitError>(init_error), std::get<vr::EVROverlayError>(init_error), std::get<bool>(init_error)))
                 {
                     //An error message was displayed, abort
-                    Ret = DUPL_RETURN_ERROR_UNEXPECTED;
+                    Ret = ddp_dupl_return_error_unexpected;
                     break;
                 }
 
@@ -394,21 +394,21 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 }
             }
 
-            Ret = OutMgr.InitOutput(WindowHandle, SingleOutput, &OutputCount, &DeskBounds);
-            if (Ret == DUPL_RETURN_SUCCESS)
+            Ret = OutMgr.InitOutput(WindowHandle, SingleOutput, OutputCount, DeskBounds);
+            if (Ret == ddp_dupl_return_success)
             {
                 HANDLE SharedHandle = OutMgr.GetSharedHandle();
                 if (SharedHandle)
                 {
                     Ret = ThreadMgr.Initialize(SingleOutput, OutputCount, UnexpectedErrorEvent, ExpectedErrorEvent, NewFrameProcessedEvent, PauseDuplicationEvent,
-                                               ResumeDuplicationEvent, TerminateThreadsEvent, SharedHandle, &DeskBounds, OutMgr.GetDXGIAdapter(), 
+                                               ResumeDuplicationEvent, TerminateThreadsEvent, SharedHandle, DeskBounds, OutMgr.GetDXGIAdapter(), 
                                                (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1));
                 }
                 else
                 {
                     DisplayMsg(L"Failed to get handle of shared surface", L"Desktop+ Error", E_FAIL);
 
-                    Ret = DUPL_RETURN_ERROR_UNEXPECTED;
+                    Ret = ddp_dupl_return_error_unexpected;
                 }
 
                 if (FirstTime)
@@ -421,12 +421,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                     ForceScreenRefresh();
                 }
             }
-            else if (Ret == DUPL_RETURN_ERROR_EXPECTED)
+            else if (Ret == ddp_dupl_return_error_expected)
             {
                 if (OutputCount == 0) //No outputs right now, oops
                 {
                     OutMgr.SetOutputInvalid();
-                    Ret = DUPL_RETURN_SUCCESS; //Entered "valid" state now, prevent auto-retry to needlessly kick in
+                    Ret = ddp_dupl_return_success; //Entered "valid" state now, prevent auto-retry to needlessly kick in
                 }
 
                 FirstTime = false;
@@ -442,7 +442,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             }
             else
             {
-                IsNewFrame = (RetUpdate == DUPL_RETURN_UPD_RETRY); //Retry is treated as if it's new frame, otherwise false
+                IsNewFrame = (RetUpdate == ddp_dupl_return_update_retry); //Retry is treated as if it's new frame, otherwise false
             }
 
             //Update limiter/skipper
@@ -468,13 +468,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             //Map return value to DUPL_RETRUN Ret
             switch (RetUpdate)
             {
-                case DUPL_RETURN_UPD_QUIT:                      Ret = DUPL_RETURN_ERROR_UNEXPECTED; break;
-                case DUPL_RETURN_UPD_RETRY:                     Ret = DUPL_RETURN_SUCCESS;          break;
-                case DUPL_RETURN_UPD_SUCCESS_REFRESHED_OVERLAY: Ret = DUPL_RETURN_SUCCESS;          break;
-                default:                                        Ret = (DUPL_RETURN)RetUpdate;
+                case ddp_dupl_return_update_quit:                      Ret = ddp_dupl_return_error_unexpected; break;
+                case ddp_dupl_return_update_retry:                     Ret = ddp_dupl_return_success;          break;
+                case ddp_dupl_return_update_success_refreshed_overlay: Ret = ddp_dupl_return_success;          break;
+                default:                                               Ret = (DDPDuplReturn)RetUpdate;
             }
 
-            if ( (RetUpdate == DUPL_RETURN_UPD_SUCCESS_REFRESHED_OVERLAY) && (update_limiter_active) )
+            if ( (RetUpdate == ddp_dupl_return_update_success_refreshed_overlay) && (update_limiter_active) )
             {
                 QueryPerformanceCounter(&UpdateLimiterStartingTime);
             }
@@ -483,9 +483,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
 
         // Check if for errors
-        if (Ret != DUPL_RETURN_SUCCESS)
+        if (Ret != ddp_dupl_return_success)
         {
-            if (Ret == DUPL_RETURN_ERROR_EXPECTED)
+            if (Ret == ddp_dupl_return_error_expected)
             {
                 // Some type of system transition is occurring so retry
                 SetEvent(ExpectedErrorEvent);
@@ -577,7 +577,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     }
                 }
 
-                
                 msg.hwnd = hWnd;
                 msg.message = message;
                 msg.wParam = wParam;
@@ -720,27 +719,29 @@ bool DisplayInitError(vr::EVRInitError vr_init_error, vr::EVROverlayError vr_ove
 //
 DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
 {
+    // Data passed in from thread creation
+    if (Param == nullptr)
+        return -1;
+
+    DDPThreadData& TData = *reinterpret_cast<DDPThreadData*>(Param);
+
     // Classes
-    DISPLAYMANAGER DispMgr;
-    DUPLICATIONMANAGER DuplMgr;
+    DDPDisplayManager DispMgr;
+    DDPDuplicationManager DuplMgr;
 
     // D3D objects
-    ID3D11Texture2D* SharedSurf = nullptr;
-    IDXGIKeyedMutex* KeyMutex = nullptr;
-
-    // Data passed in from thread creation
-    THREAD_DATA* TData = reinterpret_cast<THREAD_DATA*>(Param);
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> SharedSurf;
+    Microsoft::WRL::ComPtr<IDXGIKeyedMutex> KeyMutex;
 
     // Get desktop
-    DUPL_RETURN Ret;
+    DDPDuplReturn Ret;
     HDESK CurrentDesktop = nullptr;
     CurrentDesktop = OpenInputDesktop(0, FALSE, GENERIC_ALL);
     if (!CurrentDesktop)
     {
         // We do not have access to the desktop so request a retry
-        SetEvent(TData->ExpectedErrorEvent);
-        Ret = DUPL_RETURN_ERROR_EXPECTED;
-        goto Exit;
+        SetEvent(TData.ExpectedErrorEvent);
+        return 0;
     }
 
     // Attach desktop to this thread
@@ -750,61 +751,64 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
     if (!DesktopAttached)
     {
         // We do not have access to the desktop so request a retry
-        Ret = DUPL_RETURN_ERROR_EXPECTED;
-        goto Exit;
+        SetEvent(TData.ExpectedErrorEvent);
+        return 0;
     }
 
     // New display manager
-    DispMgr.InitD3D(&TData->DxRes);
+    DispMgr.InitD3D(TData.DxRes);
 
     // Obtain handle to sync shared Surface
-    HRESULT hr = TData->DxRes.Device->OpenSharedResource(TData->TexSharedHandle, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&SharedSurf));
+    HRESULT hr = TData.DxRes.Device->OpenSharedResource(TData.TexSharedHandle, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(SharedSurf.GetAddressOf()));
     if (FAILED (hr))
     {
-        Ret = ProcessFailure(TData->DxRes.Device, L"Opening shared texture failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
-        goto Exit;
+        Ret = ProcessFailure(TData.DxRes.Device.Get(), L"Opening shared texture failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        SetEvent((Ret == ddp_dupl_return_error_expected) ? TData.ExpectedErrorEvent : TData.UnexpectedErrorEvent);
+        return 0;
     }
 
-    hr = SharedSurf->QueryInterface(__uuidof(IDXGIKeyedMutex), reinterpret_cast<void**>(&KeyMutex));
+    hr = SharedSurf.As(&KeyMutex);
     if (FAILED(hr))
     {
         Ret = ProcessFailure(nullptr, L"Failed to get keyed mutex interface in spawned thread", L"Desktop+ Error", hr);
-        goto Exit;
+        SetEvent((Ret == ddp_dupl_return_error_expected) ? TData.ExpectedErrorEvent : TData.UnexpectedErrorEvent);
+        return 0;
     }
 
     D3D11_TEXTURE2D_DESC SharedSurfDesc;
     SharedSurf->GetDesc(&SharedSurfDesc);
 
     // Make duplication manager
-    Ret = DuplMgr.InitDupl(TData->DxRes.Device, TData->Output, TData->WMRIgnoreVScreens, SharedSurfDesc.Format != DXGI_FORMAT_B8G8R8A8_UNORM);
-    if (Ret != DUPL_RETURN_SUCCESS)
+    Ret = DuplMgr.InitDupl(TData.DxRes.Device.Get(), TData.Output, TData.WMRIgnoreVScreens, SharedSurfDesc.Format != DXGI_FORMAT_B8G8R8A8_UNORM);
+    if (Ret != ddp_dupl_return_success)
     {
-        goto Exit;
+        SetEvent((Ret == ddp_dupl_return_error_expected) ? TData.ExpectedErrorEvent : TData.UnexpectedErrorEvent);
+        return 0;
     }
 
     // Get output description
     DXGI_OUTPUT_DESC DesktopDesc;
     RtlZeroMemory(&DesktopDesc, sizeof(DXGI_OUTPUT_DESC));
-    DuplMgr.GetOutputDesc(&DesktopDesc);
+    DuplMgr.GetOutputDesc(DesktopDesc);
 
     // Main duplication loop
     bool WaitToProcessCurrentFrame = false;
-    FRAME_DATA CurrentData;
+    DDPFrameData CurrentData;
 
-    while ((WaitForSingleObjectEx(TData->TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT))
+    while ((WaitForSingleObjectEx(TData.TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT))
     {
         //Wait if pause event was signaled
-        if ((WaitForSingleObjectEx(TData->PauseDuplicationEvent, 0, FALSE) == WAIT_OBJECT_0))
+        if ((WaitForSingleObjectEx(TData.PauseDuplicationEvent, 0, FALSE) == WAIT_OBJECT_0))
         {
-            WaitForSingleObjectEx(TData->ResumeDuplicationEvent, INFINITE, FALSE); //Wait forever. Thread shutdown will also signal resume
+            WaitForSingleObjectEx(TData.ResumeDuplicationEvent, INFINITE, FALSE); //Wait forever. Thread shutdown will also signal resume
         }
 
         if (!WaitToProcessCurrentFrame)
         {
             // Get new frame from desktop duplication
             bool TimeOut;
-            Ret = DuplMgr.GetFrame(&CurrentData, &TimeOut);
-            if (Ret != DUPL_RETURN_SUCCESS)
+            Ret = DuplMgr.GetFrame(CurrentData, TimeOut);
+            if (Ret != ddp_dupl_return_success)
             {
                 // An error occurred getting the next frame drop out of loop which
                 // will check if it was expected or not
@@ -831,7 +835,7 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
         else if (FAILED(hr))
         {
             // Generic unknown failure
-            Ret = ProcessFailure(TData->DxRes.Device, L"Unexpected error acquiring keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+            Ret = ProcessFailure(TData.DxRes.Device.Get(), L"Unexpected error acquiring keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             DuplMgr.DoneWithFrame();
             break;
         }
@@ -840,8 +844,8 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
         WaitToProcessCurrentFrame = false;
 
         // Get mouse info
-        Ret = DuplMgr.GetMouse(TData->PtrInfo, &(CurrentData.FrameInfo), TData->OffsetX, TData->OffsetY);
-        if (Ret != DUPL_RETURN_SUCCESS)
+        Ret = DuplMgr.GetMouse(*TData.PtrInfo, CurrentData.FrameInfo, TData.OffsetX, TData.OffsetY);
+        if (Ret != ddp_dupl_return_success)
         {
             DuplMgr.DoneWithFrame();
             KeyMutex->ReleaseSync(1);
@@ -849,12 +853,12 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
         }
 
         // Process new frame
-        Ret = DispMgr.ProcessFrame(&CurrentData, SharedSurf, TData->OffsetX, TData->OffsetY, &DesktopDesc, *TData->DirtyRegionTotal);
-        if (Ret != DUPL_RETURN_SUCCESS)
+        Ret = DispMgr.ProcessFrame(CurrentData, SharedSurf.Get(), TData.OffsetX, TData.OffsetY, DesktopDesc, *TData.DirtyRegionTotal);
+        if (Ret != ddp_dupl_return_success)
         {
             DuplMgr.DoneWithFrame();
             KeyMutex->ReleaseSync(1);
-            SetEvent(TData->NewFrameProcessedEvent);
+            SetEvent(TData.NewFrameProcessedEvent);
             break;
         }
 
@@ -862,53 +866,39 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
         hr = KeyMutex->ReleaseSync(1);
         if (FAILED(hr))
         {
-            Ret = ProcessFailure(TData->DxRes.Device, L"Unexpected error releasing the keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+            Ret = ProcessFailure(TData.DxRes.Device.Get(), L"Unexpected error releasing the keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             DuplMgr.DoneWithFrame();
             break;
         }
 
         // Release frame back to desktop duplication
         Ret = DuplMgr.DoneWithFrame();
-        if (Ret != DUPL_RETURN_SUCCESS)
+        if (Ret != ddp_dupl_return_success)
         {
             break;
         }
 
-        SetEvent(TData->NewFrameProcessedEvent);
+        SetEvent(TData.NewFrameProcessedEvent);
     }
 
-Exit:
-    if (Ret != DUPL_RETURN_SUCCESS)
+    if (Ret != ddp_dupl_return_success)
     {
-        if (Ret == DUPL_RETURN_ERROR_EXPECTED)
+        if (Ret == ddp_dupl_return_error_expected)
         {
             // The system is in a transition state so request the duplication be restarted
-            SetEvent(TData->ExpectedErrorEvent);
+            SetEvent(TData.ExpectedErrorEvent);
         }
         else
         {
             // Unexpected error so exit the application
-            SetEvent(TData->UnexpectedErrorEvent);
+            SetEvent(TData.UnexpectedErrorEvent);
         }
-    }
-
-    if (SharedSurf)
-    {
-        SharedSurf->Release();
-        SharedSurf = nullptr;
-    }
-
-    if (KeyMutex)
-    {
-        KeyMutex->Release();
-        KeyMutex = nullptr;
     }
 
     return 0;
 }
 
-_Post_satisfies_(return != DUPL_RETURN_SUCCESS)
-DUPL_RETURN ProcessFailure(_In_opt_ ID3D11Device* device, _In_ LPCWSTR str, _In_ LPCWSTR title, HRESULT hr, _In_opt_z_ HRESULT* expected_errors)
+DDPDuplReturn ProcessFailure(_In_opt_ ID3D11Device* device, _In_ LPCWSTR str, _In_ LPCWSTR title, HRESULT hr, _In_opt_z_ HRESULT* expected_errors)
 {
     HRESULT translated_hr;
 
@@ -955,7 +945,7 @@ DUPL_RETURN ProcessFailure(_In_opt_ ID3D11Device* device, _In_ LPCWSTR str, _In_
         {
             if (*(current_result++) == translated_hr)
             {
-                return DUPL_RETURN_ERROR_EXPECTED;
+                return ddp_dupl_return_error_expected;
             }
         }
     }
@@ -963,7 +953,7 @@ DUPL_RETURN ProcessFailure(_In_opt_ ID3D11Device* device, _In_ LPCWSTR str, _In_
     // Error was not expected so display the message box
     DisplayMsg(str, title, translated_hr);
 
-    return DUPL_RETURN_ERROR_UNEXPECTED;
+    return ddp_dupl_return_error_unexpected;
 }
 
 //

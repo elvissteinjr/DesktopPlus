@@ -254,7 +254,7 @@ bool SoftwareCursorGrabber::SynthesizeDDPCursorInfo()
     return ret;
 }
 
-PTR_INFO& SoftwareCursorGrabber::GetDDPCursorInfo()
+DDPPtrInfo& SoftwareCursorGrabber::GetDDPCursorInfo()
 {
     return m_DDPPointerInfo;
 }
