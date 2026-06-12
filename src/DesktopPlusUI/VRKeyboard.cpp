@@ -558,9 +558,9 @@ void VRKeyboard::SetStringDown(const std::string text, bool down)
         }
         return;
     }
-    
+
     std::wstring wstr = WStringConvertFromUTF8(text.c_str());
-    
+
     if (m_InputTarget == kbdtarget_desktop)
     {
         //If it's a single character, send as wchar so it checks if it can be pressed on the current windows keyboard layout

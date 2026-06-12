@@ -58,7 +58,7 @@ CaptureManager::CaptureManager(DPWinRTThreadData& thread_data, DWORD global_main
     {
         hr = D3D11CreateDevice(adapter_ptr_vr.get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT, nullptr, 0, D3D11_SDK_VERSION, d3d_device.put(), nullptr, nullptr);
     }
-    
+
     if (d3d_device == nullptr)   //Try something else, but it probably won't work either
     {
         HRESULT hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT, nullptr, 0, D3D11_SDK_VERSION, d3d_device.put(), nullptr, nullptr);

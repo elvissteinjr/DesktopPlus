@@ -171,7 +171,6 @@ bool HandleIPCMessage(MSG msg)
                     break;
                 }
             }
-            
         }
     }
     else

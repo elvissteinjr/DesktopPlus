@@ -613,7 +613,7 @@ bool FloatingWindow::InputOverlayTags(const char* str_id, char* buffer_tags, siz
             ImGui::PushItemDisabledNoVisual();
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
         }
-    
+
         //Add some frame padding in VR mode only to have a more square-ish button that is also easier to hit
         //Due to how we do style-scaling this isn't necessary in desktop mode
         if (!UIManager::Get()->IsInDesktopMode())
@@ -1183,7 +1183,7 @@ bool FloatingWindow::ActionAddSelector(ActionManager::ActionList& list_actions_t
     {
         //List actions
         const float cursor_x_past_checkbox = ImGui::GetCursorPosX() + ImGui::GetFrameHeightWithSpacing();
-        
+
         int index = 0;
         for (const auto& entry : state.ActionsList)
         {
@@ -1508,7 +1508,7 @@ void FloatingWindow::SetTransform(const Matrix4& transform)
 
     //Store size multiplier
     float current_width = m_OvrlWidth;
-    
+
     if (vr::VROverlay()->GetOverlayWidthInMeters(GetOverlayHandle(), &current_width) == vr::VROverlayError_None)
     {
         m_OverlayStateCurrent->Size = current_width / m_OvrlWidth;

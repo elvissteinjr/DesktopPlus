@@ -547,7 +547,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
                 //Wait for VR frame sync, optionally repeatedly to achieve lower synched frame rates
                 g_pd3dDeviceContext->Flush();
-                
+
                 const int sync_count = idle_state.GetFrameSkipValue() + 1;
                 for (int i = 0; i < sync_count; ++i)
                 {
@@ -654,7 +654,7 @@ bool CreateDeviceD3D(HWND hWnd, bool desktop_mode)
         sd.SampleDesc.Quality = 0;
         sd.Windowed = TRUE;
         sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;   //DXGI_SWAP_EFFECT_FLIP_DISCARD also would work, but we still support Windows 8
-        
+
         if (D3D11CreateDeviceAndSwapChain(adapter_ptr_desktop.Get(), (adapter_ptr_desktop != nullptr) ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, featureLevelArray, 2, D3D11_SDK_VERSION, 
                                           &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
         {

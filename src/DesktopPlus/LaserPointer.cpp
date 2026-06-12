@@ -567,7 +567,7 @@ void LaserPointer::UpdateIntersection(vr::TrackedDeviceIndex_t device_index)
         }
 
         //Scrolling
-        
+
         //Get scroll mode from overlay and set it for VRInput
         bool send_scroll_discrete = false, send_scroll_smooth = false;
         vr::VROverlay()->GetOverlayFlag(nearest_target_overlay, vr::VROverlayFlags_SendVRDiscreteScrollEvents, &send_scroll_discrete);

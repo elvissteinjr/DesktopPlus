@@ -738,7 +738,7 @@ ini_t* ini_load( char const* data, void* memctx )
             /* trim leading whitespace */
             while( *ptr && *ptr <=' ' )
                 ++ptr;
-            
+
             /* done? */
             if( !*ptr ) break;
 
@@ -1004,7 +1004,7 @@ int ini_find_property( ini_t const* ini, int section, char const* name, int name
 int ini_section_add( ini_t* ini, char const* name, int length )
     {
     struct ini_internal_section_t* new_sections;
-    
+
     if( ini && name )
         {
         if( length <= 0 ) length = (int) INI_STRLEN( name );
@@ -1056,7 +1056,7 @@ void ini_property_add( ini_t* ini, int section, char const* name, int name_lengt
             INI_FREE( ini->memctx, ini->properties );
             ini->properties = new_properties;
             }
-        
+
         ini->properties[ ini->property_count ].section = section;
         ini->properties[ ini->property_count ].name_large = 0;
         ini->properties[ ini->property_count ].value_large = 0;
@@ -1108,7 +1108,7 @@ void ini_section_remove( ini_t* ini, int section )
             }
 
         ini->sections[ section ] = ini->sections[ --ini->section_count  ];
-        
+
         for( p = 0; p < ini->property_count; ++p ) 
             {
             if( ini->properties[ p ].section == ini->section_count )
@@ -1143,7 +1143,7 @@ void ini_section_name_set( ini_t* ini, int section, char const* name, int length
         if( length <= 0 ) length = (int) INI_STRLEN( name );
         if( ini->sections[ section ].name_large ) INI_FREE( ini->memctx, ini->sections[ section ].name_large );
         ini->sections[ section ].name_large = 0;
-        
+
         if( length + 1 >= sizeof( ini->sections[ 0 ].name ) )
             {
             ini->sections[ section ].name_large = (char*) INI_MALLOC( ini->memctx, (size_t) length + 1 );

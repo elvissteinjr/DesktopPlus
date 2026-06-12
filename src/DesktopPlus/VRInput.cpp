@@ -272,7 +272,7 @@ void VRInput::RefreshAnyGlobalActionBound()
                 return true;
             }
         }
-        
+
         return false;
     };
 

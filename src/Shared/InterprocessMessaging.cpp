@@ -33,7 +33,7 @@ void IPCManager::DisableUIPForRegisteredMessages(HWND window_handle) const
 
     //Also allow message ID used by DPBrowserAPI
     ::ChangeWindowMessageFilterEx(window_handle, DPBrowserAPIClient::Get().GetRegisteredMessageID(), MSGFLT_ALLOW, nullptr);
-    
+
     //We could return the success state of this, but the resulting behavior wouldn't change. Should usually not fail anyways.
 }
 

@@ -662,7 +662,7 @@ void WindowManager::MoveWindowIntoWorkArea(HWND window)
     int offset_x = 0, offset_y = 0;
     RECT window_rect, dwm_rect;
     ::GetWindowRect(window, &window_rect);
-    
+
     if (::DwmGetWindowAttribute(window, DWMWA_EXTENDED_FRAME_BOUNDS, &dwm_rect, sizeof(dwm_rect)) == S_OK)
     {
         //We take the frame bounds as well since the window rect contains the window shadows, but we don't want those to to take up any space in the calculations
@@ -781,7 +781,7 @@ void WindowManager::HandleWinEvent(DWORD win_event, HWND hwnd, LONG id_object, L
             if ( (id_object == OBJID_WINDOW) && (id_child == CHILDID_SELF) && (hwnd != nullptr) && (GetAncestor(hwnd, GA_ROOT) == hwnd) && (GetWindowTextLengthW(hwnd) > 0) )
             {
                 WindowInfo info(hwnd);
-                
+
                 if (IsCapturableWindow(info))
                 {
                     #ifdef DPLUS_UI

@@ -736,7 +736,7 @@ void WindowDesktopMode::MenuAddOverlay()
             //Add overlay and sent to dashboard app
             unsigned int overlay_id_new = OverlayManager::Get().AddOverlay(capsource, new_overlay_desktop_id);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new, new_overlay_desktop_id);
-            
+
             //Adjust width to a more suited default (done here as well so it's set even without dashboard app running)
             OverlayManager::Get().GetConfigData(overlay_id_new).ConfigFloat[configid_float_overlay_width] = 1.0f;
 

@@ -258,7 +258,7 @@ void WindowSettings::WindowUpdate()
             m_PageStack.pop_back();
         }
     }
-    
+
     //Set appearing value when the whole window appeared again
     if ((m_PageAnimationDir == 0) && (m_IsWindowAppearing))
     {
@@ -1985,7 +1985,7 @@ void WindowSettings::UpdatePageMainCatBrowser()
         HelpMarker(TranslationManager::GetString(tstr_SettingsBrowserContentBlockerTip));
 
         ImGui::NextColumn();
-        
+
         static int block_list_count_last = -1;
 
         if ( (m_BrowserBlockListCountText.empty()) || (ConfigManager::GetValue(configid_int_state_browser_content_blocker_list_count) != block_list_count_last) )
@@ -2325,7 +2325,7 @@ void WindowSettings::UpdatePagePersistentUI()
             //Headers
             ImGui::NextColumn();
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStateGlobal));
-    
+
             ImGui::NextColumn();
             ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsInterfacePersistentUIWindowsStateDashboardTab));
             ImGui::NextColumn();
@@ -2465,7 +2465,7 @@ void WindowSettings::UpdatePagePersistentUI()
                     window.ApplyCurrentOverlayState();
                 }
             }
-            
+
             if ( (ImGui::IsItemDeactivated()) && (use_lazy_resize) && (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_room) )
             {
                 window.ApplyCurrentOverlayState();
@@ -2484,7 +2484,7 @@ void WindowSettings::UpdatePagePersistentUI()
                     window.ApplyCurrentOverlayState();
                 }
             }
-            
+
             if ( (ImGui::IsItemDeactivated()) && (use_lazy_resize) && (window.GetOverlayStateCurrentID() == floating_window_ovrl_state_dashboard_tab) )
             {
                 window.ApplyCurrentOverlayState();
@@ -2767,7 +2767,7 @@ void WindowSettings::UpdatePageKeyboardLayout(bool only_restore_settings)
     {
         PageGoBack();
     }
-    
+
     if (UIManager::Get()->IsInDesktopMode())
     {
         ImGui::SameLine();
@@ -3072,10 +3072,10 @@ void WindowSettings::UpdatePageProfilesOverlaySelect()
                                     { 
                                        auto it = std::find_if(list_profiles_w.begin(), list_profiles_w.end(), 
                                                               [&profile_name](const auto& list_entry){ return (::StrCmpIW(profile_name, list_entry.c_str()) == 0); });
-                                    
+
                                        return (it != list_profiles_w.end());
                                     };
-    
+
     if (m_PageAppearing == wndsettings_page_profiles_overlay_select)
     {
         appearing_framecount = ImGui::GetFrameCount();
@@ -3286,7 +3286,7 @@ void WindowSettings::UpdatePageProfilesOverlaySelect()
 
         static unsigned int hovered_overlay_id_last = k_ulOverlayID_None;
         unsigned int hovered_overlay_id = k_ulOverlayID_None;
-        
+
         int index = 0;
         for (const auto& pair : list_overlays)
         {
@@ -3469,7 +3469,7 @@ void WindowSettings::UpdatePageAppProfiles()
 
         UIManager::Get()->RepeatFrame();
     }
-    
+
     if (list_id >= m_AppList.size())
     {
         list_id = (m_AppList.empty()) ? -1 : 0;
@@ -3624,7 +3624,7 @@ void WindowSettings::UpdatePageAppProfiles()
 
         ImGui::Columns(2, "ColumnAppProfile", false);
         ImGui::SetColumnWidth(0, m_Column0Width);
-        
+
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsProfilesAppsProfileOverlayProfile));
         ImGui::NextColumn();
@@ -6354,7 +6354,7 @@ void WindowSettings::RefreshAppList()
                     app_name = app_prop_buffer;
                 }
             }
-            
+
             //Fall back to last known application name if we can't get it from SteamVR
             if (app_name.empty())
             {

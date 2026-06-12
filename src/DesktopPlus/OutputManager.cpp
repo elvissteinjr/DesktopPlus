@@ -5024,7 +5024,7 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 {
                     //Reset input and WindowManager state manually to block the drag but still move the cursor on the next mouse move event
                     (use_pen) ? m_InputSim.PenSetPrimaryDown(false) : m_InputSim.MouseSetLeftDown(false);
-                    
+
                     WindowManager::Get().SetTargetWindow(nullptr);
 
                     //Start overlay drag if setting enabled

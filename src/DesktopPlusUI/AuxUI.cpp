@@ -441,7 +441,7 @@ void WindowGazeFadeAutoHint::Update()
     {
         ImGui::SetNextWindowPos(m_Pos, ImGuiCond_Always);
     }
-    
+
     ImGui::Begin("WindowGazeFadeAutoHint", nullptr, flags);
 
     ImGui::TextUnformatted(m_Label.c_str());

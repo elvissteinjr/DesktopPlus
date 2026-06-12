@@ -422,7 +422,7 @@ void ActionManager::DoShowOverlayCommand(const ActionCommand& command, OverlayID
         for (unsigned int overlay_id : (use_command_tags) ? overlay_targets_command : overlay_targets)
         {
             const OverlayConfigData& data = OverlayManager::Get().GetConfigData(overlay_id);
-            
+
             bool is_enabled = true;
             switch (command_arg)
             {
@@ -430,7 +430,7 @@ void ActionManager::DoShowOverlayCommand(const ActionCommand& command, OverlayID
                 case ActionCommand::command_arg_always_show: is_enabled = true;                                            break;
                 case ActionCommand::command_arg_always_hide: is_enabled = false;                                           break;
             }
-            
+
             outmgr->SetOverlayEnabled(overlay_id, is_enabled);
         }
     }
@@ -594,7 +594,7 @@ bool ActionManager::LoadActionsFromFile(const char* filename)
             action.NameTranslationID  = GetTranslationIDForName(action.Name);
             action.LabelTranslationID = GetTranslationIDForName(action.Label);
         #endif
-        
+
         int command_count = afile.ReadInt(uid_str.c_str(), "CommandCount", 0);
 
         for (int i = 0; i < command_count; ++i)
@@ -838,7 +838,7 @@ uint64_t ActionManager::GenerateUID() const
     std::random_device seed;
     std::mt19937 generator(seed());
     std::uniform_int_distribution<uint32_t> distribute(0, UINT_MAX);
-    
+
     //Create UID out of random number and timestamp until there's no ID conflict
     uint64_t uid = 0;
     do
@@ -1100,7 +1100,7 @@ std::string ActionManager::GetCommandDescription(const ActionCommand& command, f
                 case ActionCommand::command_arg_always_hide: str = TranslationManager::GetString(tstr_SettingsActionsEditCommandDescOverlayHide);   break;
                 default:                                     str = TranslationManager::GetString(tstr_SettingsActionsEditCommandDescUnknown);       break;
             }
-            
+
             StringReplaceAll(str, "%TAGS%", (LOWORD(command.UIntID) == 1) ? command.StrMain : TranslationManager::GetString(tstr_SettingsActionsEditCommandDescOverlayTargetDefault));
 
             break;

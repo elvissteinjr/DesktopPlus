@@ -145,7 +145,7 @@ void WindowOverlayProperties::SetActiveOverlayID(unsigned int overlay_id, bool s
 
         bool has_win32_window_icon = false;
         m_WindowIcon = TextureManager::Get().GetOverlayIconTextureID(data, true, &has_win32_window_icon);
-    
+
         if (has_win32_window_icon)
         {
             m_WindowIconWin32IconCacheID = TextureManager::Get().GetWindowIconCacheID((HWND)data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd], 
@@ -326,7 +326,7 @@ void WindowOverlayProperties::WindowUpdate()
             m_PageStack.pop_back();
         }
     }
-    
+
     //Set appearing value when the whole window appeared again
     if ((m_PageAnimationDir == 0) && (ImGui::IsWindowAppearing()))
     {
@@ -2206,7 +2206,7 @@ void WindowOverlayProperties::UpdatePagePositionChange(bool only_restore_setting
 
         if (is_active)
             ImGui::PopStyleColor();
-    
+
         ImGui::PopID();
 
         if (io.NavVisible)

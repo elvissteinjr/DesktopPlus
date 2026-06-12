@@ -197,7 +197,7 @@ void InputSimulator::MouseMove(int x, int y)
     input_event.mi.dx      = LONG((x + m_SpaceOffsetX) * m_SpaceMultiplierX);
     input_event.mi.dy      = LONG((y + m_SpaceOffsetY) * m_SpaceMultiplierY);
     input_event.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK | MOUSEEVENTF_ABSOLUTE;
-    
+
     ::SendInput(1, &input_event, sizeof(INPUT));
 }
 

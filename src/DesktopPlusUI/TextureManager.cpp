@@ -224,7 +224,7 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
 
             if (FileExists(L"C:\\Windows\\Fonts\\msyh.ttc"))
                 io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\msyh.ttc", font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);
-            
+
             //Thai font
             if (FileExists(L"C:\\Windows\\Fonts\\LeelawUI.ttf"))
                 io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\LeelawUI.ttf", font_base_size * UIManager::Get()->GetUIScale(), config, ranges.Data);

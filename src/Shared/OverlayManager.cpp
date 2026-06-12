@@ -235,7 +235,7 @@ unsigned int OverlayManager::AddOverlay(OverlayCaptureSource capture_source, int
         {
             data.ConfigInt[configid_int_overlay_winrt_desktop_id]       = desktop_id; //This just so happens to be -2 (unset) if called from ipcact_overlay_new_drag with HWND
             data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] = (intptr_t)window_handle;
-           
+
             #ifdef DPLUS_UI
                 const WindowInfo* window_info = WindowManager::Get().WindowListFindWindow(window_handle);
 

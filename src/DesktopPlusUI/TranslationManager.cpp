@@ -782,7 +782,7 @@ void TranslationManager::LoadTranslationFromFile(const std::string& filename)
             // if the country code file does not exist, try to load the language file without the country code (e.g. en.ini)
             lang_filename = lang + ".ini";
         }
-        
+
         ConfigManager::SetValue(configid_str_interface_language_file, lang_filename);
         LoadTranslationFromFile(lang_filename);
 

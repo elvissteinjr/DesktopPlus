@@ -486,7 +486,7 @@ void WindowFloatingUIActionBar::UpdateDesktopButtons(unsigned int overlay_id)
     ConfigID_Int current_configid = configid_int_overlay_desktop_id;
     bool disable_normal = false;
     bool disable_combined = false;
-        
+
     if (overlay_config.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
     {
         current_configid = configid_int_overlay_winrt_desktop_id;

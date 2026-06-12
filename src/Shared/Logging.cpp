@@ -80,7 +80,7 @@ void DPLog_SteamVR_SystemInfo()
         LOG_F(INFO, "SteamVR is not loaded");
         return;
     }
-    
+
     //Get some info that might be useful for debugging...
     LOG_F(INFO, "SteamVR Runtime Version: %s", vr::VRSystem()->GetRuntimeVersion());
     LOG_F(INFO, "OpenVR API Version: %u.%u.%u", vr::k_nSteamVRVersionMajor, vr::k_nSteamVRVersionMinor, vr::k_nSteamVRVersionBuild);

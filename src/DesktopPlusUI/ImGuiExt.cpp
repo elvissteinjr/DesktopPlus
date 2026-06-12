@@ -331,7 +331,7 @@ namespace ImGui
         ImGui::SameLine(0.0f, 0.0f);
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() - size.x - style.FramePadding.x);
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + style.FramePadding.y);
-        
+
         //Prevent child window moving line pos
         float cursor_max_pos_prev_y = window->DC.CursorMaxPos.y;
 

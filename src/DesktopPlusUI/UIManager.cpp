@@ -305,7 +305,7 @@ UIManager::UIManager(bool desktop_mode, bool keyboard_editor_mode) :
 
         m_ElevatedTaskSetUp = (exit_code == 0);
     }
-    
+
     ::CloseHandle(pi.hProcess);
     ::CloseHandle(pi.hThread);
 }
@@ -414,7 +414,7 @@ UITexspaceID UIManager::GetTexspaceIDForOverlayHandle(vr::VROverlayHandle_t over
         overlay_texspace = ui_texspace_keyboard;
     else if (overlay_handle == m_OvrlHandleAuxUI)
         overlay_texspace = ui_texspace_aux_ui;
-    
+
     return overlay_texspace;
 }
 
@@ -1453,7 +1453,7 @@ void UIManager::RestartDashboardApp(bool force_steam)
             use_steam = false;
         }
     }
-    
+
     if (!use_steam)
     {
         std::wstring path = WStringConvertFromUTF8(ConfigManager::Get().GetApplicationPath().c_str()) + L"DesktopPlus.exe";
@@ -1768,7 +1768,7 @@ void UIManager::UpdateOverlayDimming()
         {
             vr::VROverlay()->SetOverlayColor(overlay_handle, 1.0f, 1.0f, 1.0f);
         }
-        
+
         ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 0.96f;
     }
 }
@@ -2159,7 +2159,7 @@ void UIManager::PositionOverlay()
                 //Attempt to detect the drag handle, even though it's on SystemUI and may not be detectable
                 //This is done through an additional intersection check with an offset controller position, attempting to extend the GamepadUI surface down to the drag handle area
                 //This actual works okay and failure isn't super tragic either.
-                
+
                 //Overlay Bar still takes priority on top, so check that first
                 if (!ConfigManager::Get().IsLaserPointerTargetOverlay(m_OvrlHandleOverlayBar))
                 {
