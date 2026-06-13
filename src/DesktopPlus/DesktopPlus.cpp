@@ -800,7 +800,10 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
         //Wait if pause event was signaled
         if ((WaitForSingleObjectEx(TData.PauseDuplicationEvent, 0, FALSE) == WAIT_OBJECT_0))
         {
-            WaitForSingleObjectEx(TData.ResumeDuplicationEvent, INFINITE, FALSE); //Wait forever. Thread shutdown will also signal resume
+            //Let DisplayManager release resources not needed while idle
+            DispMgr.OnPause();
+            //Wait forever. Thread shutdown will also signal resume
+            WaitForSingleObjectEx(TData.ResumeDuplicationEvent, INFINITE, FALSE);
         }
 
         if (!WaitToProcessCurrentFrame)

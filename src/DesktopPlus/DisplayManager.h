@@ -11,6 +11,7 @@ class DDPDisplayManager
     public:
         void InitD3D(const DDPDxResources& Data);
         DDPDuplReturn ProcessFrame(const DDPFrameData& Data, _Inout_ ID3D11Texture2D* SharedSurf, INT OffsetX, INT OffsetY, const DXGI_OUTPUT_DESC& DeskDesc, _Inout_ DPRect& DirtyRectTotal);
+        void OnPause();
 
     private:
     // methods

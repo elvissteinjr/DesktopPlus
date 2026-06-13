@@ -48,6 +48,23 @@ DDPDuplReturn DDPDisplayManager::ProcessFrame(const DDPFrameData& Data, _Inout_ 
     return Ret;
 }
 
+void DDPDisplayManager::OnPause()
+{
+    //Release intermediate move texture to reduce memory while idle
+    m_MoveSurf.Reset();
+
+    //Flush, clear state & trim to free memory right away
+    m_DeviceContext->Flush();
+    m_DeviceContext->ClearState();
+
+    Microsoft::WRL::ComPtr<IDXGIDevice3> DxgiDevice3;
+    HRESULT hr = m_Device.As(&DxgiDevice3);
+    if (SUCCEEDED(hr))
+    {
+        DxgiDevice3->Trim();
+    }
+}
+
 //
 // Set appropriate source and destination rects for move rects
 //
