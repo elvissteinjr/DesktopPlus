@@ -204,6 +204,24 @@ void OutputManager::CleanRefsDesktopDuplicationOnly()
         }
     }
 
+    //Flush and clear state to free memory right away
+    if (m_DeviceContext)
+    {
+        m_DeviceContext->Flush();
+        m_DeviceContext->ClearState();
+    }
+
+    //Trim to get rid of even more
+    if (m_Device)
+    {
+        Microsoft::WRL::ComPtr<IDXGIDevice3> DxgiDevice3;
+        HRESULT hr = m_Device.As(&DxgiDevice3);
+        if (SUCCEEDED(hr))
+        {
+            DxgiDevice3->Trim();
+        }
+    }
+
     //Reset mouse state variables too
     m_MouseLastClickTick = 0;
     m_MouseIgnoreMoveEvent = false;
