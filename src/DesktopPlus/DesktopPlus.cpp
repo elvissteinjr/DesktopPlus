@@ -363,7 +363,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
                 // Clean up
                 ThreadMgr.Clean();
-                OutMgr.CleanRefs();
+                OutMgr.CleanRefsDesktopDuplicationOnly();
 
                 // As we have encountered an error due to a system transition we wait before trying again, using this dynamic wait
                 // the wait periods will get progressively long to avoid wasting too much system resource if this state lasts a long time

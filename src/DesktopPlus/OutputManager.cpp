@@ -114,11 +114,61 @@ OutputManager::~OutputManager()
 //
 void OutputManager::CleanRefs()
 {
-    //Release the shared desktop overlay texture since we're destroying the D3D11 device it's attached to (don't need this after shutting down OpenVR though)
+    m_VertexShader.Reset();
+    m_PixelShader.Reset();
+    m_PixelShaderCursor.Reset();
+    m_InputLayout.Reset();
+    m_Sampler.Reset();
+    m_BlendState.Reset();
+    m_RasterizerState.Reset();
+    m_SharedSurf.Reset();
+    m_KeyMutex.Reset();
+    m_VertexBuffer.Reset();
+    m_ShaderResource.Reset();
+    m_OvrlTex.Reset();
+    m_OvrlRTV.Reset();
+    m_MouseTex.Reset();
+    m_MouseShaderRes.Reset();
+    m_MouseVertexBuffer.Reset();
+
+    //Clear Desktop Duplication overlays and release shared texture references by doing so (don't need this after shutting down OpenVR though)
     if (vr::VROverlay() != nullptr)
     {
-        vr::VROverlayEx()->ReleaseSharedOverlayTexture(m_OvrlHandleDesktopTexture);
+        vr::VROverlayEx()->ClearOverlayTextureEx(m_OvrlHandleDesktopTexture);
+
+        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+        {
+            const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
+
+            if (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication)
+            {
+                vr::VROverlayEx()->ClearOverlayTextureEx(overlay.GetHandle());
+            }
+        }
     }
+
+    m_DeviceContext.Reset();
+    m_Device.Reset();
+
+    m_MultiGPUTexStaging.Reset();
+    m_MultiGPUTexTarget.Reset();
+    m_MultiGPUTargetDeviceContext.Reset();
+    m_MultiGPUTargetDevice.Reset();
+
+    //Reset mouse state variables too
+    m_MouseLastClickTick = 0;
+    m_MouseIgnoreMoveEvent = false;
+    m_MouseLastInfo = DDPPtrInfo();
+    m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
+    m_MouseLastLaserPointerX = -1;
+    m_MouseLastLaserPointerY = -1;
+}
+
+void OutputManager::CleanRefsDesktopDuplicationOnly()
+{
+    //Only cleanup things necessary for Desktop Duplication restart
+    //SteamVR keeps holding a reference to our D3D11 device, so releasing that is actually a bad idea (and not necessary)
+    //This does mean we don't handle GPU device changes/removal but having that during a VR session is less than ideal to begin with (if SteamVR doesn't just break first)
 
     m_VertexShader.Reset();
     m_PixelShader.Reset();
@@ -136,13 +186,23 @@ void OutputManager::CleanRefs()
     m_MouseTex.Reset();
     m_MouseShaderRes.Reset();
     m_MouseVertexBuffer.Reset();
-    m_DeviceContext.Reset();
-    m_Device.Reset();
 
     m_MultiGPUTexStaging.Reset();
     m_MultiGPUTexTarget.Reset();
-    m_MultiGPUTargetDeviceContext.Reset();
-    m_MultiGPUTargetDevice.Reset();
+
+    //Clear Desktop Duplication overlays and release shared texture references by doing so
+    //This doesn't seem to affect memory use at all, but is probably a good idea to do in case the textures don't get set again right away
+    vr::VROverlayEx()->ClearOverlayTextureEx(m_OvrlHandleDesktopTexture);
+
+    for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+    {
+        const Overlay& overlay = OverlayManager::Get().GetOverlay(i);
+
+        if (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication)
+        {
+            vr::VROverlayEx()->ClearOverlayTextureEx(overlay.GetHandle());
+        }
+    }
 
     //Reset mouse state variables too
     m_MouseLastClickTick = 0;
@@ -198,75 +258,79 @@ DDPDuplReturn OutputManager::InitOutput(HWND Window, INT& SingleOutput, UINT& Ou
         adapter_ptr_vr = nullptr;
     }
 
-    // Driver types supported
-    D3D_DRIVER_TYPE DriverTypes[] =
+    //We might still have D3D11 devices if this was called after a Desktop Duplication reset. Keep them in that case
+    if (m_Device == nullptr)
     {
-        D3D_DRIVER_TYPE_HARDWARE,
-        D3D_DRIVER_TYPE_WARP,       //WARP shouldn't work, but this was like this in the duplication sample, so eh
-        D3D_DRIVER_TYPE_REFERENCE,
-    };
-    UINT NumDriverTypes = ARRAYSIZE(DriverTypes);
-
-    // Feature levels supported
-    D3D_FEATURE_LEVEL FeatureLevels[] =
-    {
-        D3D_FEATURE_LEVEL_11_0,
-        D3D_FEATURE_LEVEL_10_1,
-        D3D_FEATURE_LEVEL_10_0,
-        D3D_FEATURE_LEVEL_9_1
-    };
-    UINT NumFeatureLevels = ARRAYSIZE(FeatureLevels);
-    D3D_FEATURE_LEVEL FeatureLevel;
-
-    // Create device
-    if (adapter_ptr_preferred != nullptr) //Try preferred adapter first if we have one
-    {
-        hr = D3D11CreateDevice(adapter_ptr_preferred.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, FeatureLevels, NumFeatureLevels,
-                               D3D11_SDK_VERSION, &m_Device, &FeatureLevel, &m_DeviceContext);
-
-        if (FAILED(hr))
+        // Driver types supported
+        D3D_DRIVER_TYPE DriverTypes[] =
         {
-            adapter_ptr_preferred = nullptr;
-        }
-    }
+            D3D_DRIVER_TYPE_HARDWARE,
+            D3D_DRIVER_TYPE_WARP,       //WARP shouldn't work, but this was like this in the duplication sample, so eh
+            D3D_DRIVER_TYPE_REFERENCE,
+        };
+        UINT NumDriverTypes = ARRAYSIZE(DriverTypes);
 
-    if (adapter_ptr_preferred == nullptr)
-    {
-        LOG_F(WARNING, "Output enumeration did not return a preferred GPU. Trying first available device...");
-
-        for (UINT DriverTypeIndex = 0; DriverTypeIndex < NumDriverTypes; ++DriverTypeIndex)
+        // Feature levels supported
+        D3D_FEATURE_LEVEL FeatureLevels[] =
         {
-            hr = D3D11CreateDevice(nullptr, DriverTypes[DriverTypeIndex], nullptr, 0, FeatureLevels, NumFeatureLevels,
+            D3D_FEATURE_LEVEL_11_0,
+            D3D_FEATURE_LEVEL_10_1,
+            D3D_FEATURE_LEVEL_10_0,
+            D3D_FEATURE_LEVEL_9_1
+        };
+        UINT NumFeatureLevels = ARRAYSIZE(FeatureLevels);
+        D3D_FEATURE_LEVEL FeatureLevel;
+
+        // Create device
+        if (adapter_ptr_preferred != nullptr) //Try preferred adapter first if we have one
+        {
+            hr = D3D11CreateDevice(adapter_ptr_preferred.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, FeatureLevels, NumFeatureLevels,
                                    D3D11_SDK_VERSION, &m_Device, &FeatureLevel, &m_DeviceContext);
 
-            if (SUCCEEDED(hr))
+            if (FAILED(hr))
             {
-                //Device creation succeeded. Take adapter from the device so it can be used further down
-                adapter_ptr_preferred = GetDXGIAdapter();
-                break;
+                adapter_ptr_preferred = nullptr;
             }
         }
-    }
 
-    if (FAILED(hr))
-    {
-        return ProcessFailure(m_Device.Get(), L"Device creation failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
-    }
+        if (adapter_ptr_preferred == nullptr)
+        {
+            LOG_F(WARNING, "Output enumeration did not return a preferred GPU. Trying first available device...");
 
-    //Create multi-gpu target device if needed
-    if (adapter_ptr_vr != nullptr)
-    {
-        hr = D3D11CreateDevice(adapter_ptr_vr.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, FeatureLevels, NumFeatureLevels,
-                               D3D11_SDK_VERSION, &m_MultiGPUTargetDevice, &FeatureLevel, &m_MultiGPUTargetDeviceContext);
+            for (UINT DriverTypeIndex = 0; DriverTypeIndex < NumDriverTypes; ++DriverTypeIndex)
+            {
+                hr = D3D11CreateDevice(nullptr, DriverTypes[DriverTypeIndex], nullptr, 0, FeatureLevels, NumFeatureLevels,
+                                       D3D11_SDK_VERSION, &m_Device, &FeatureLevel, &m_DeviceContext);
+
+                if (SUCCEEDED(hr))
+                {
+                    //Device creation succeeded. Take adapter from the device so it can be used further down
+                    adapter_ptr_preferred = GetDXGIAdapter();
+                    break;
+                }
+            }
+        }
 
         if (FAILED(hr))
         {
-            return ProcessFailure(m_Device.Get(), L"Secondary device creation failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+            return ProcessFailure(m_Device.Get(), L"Device creation failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
 
-        adapter_ptr_vr = nullptr;
+        //Create multi-gpu target device if needed
+        if (adapter_ptr_vr != nullptr)
+        {
+            hr = D3D11CreateDevice(adapter_ptr_vr.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, FeatureLevels, NumFeatureLevels,
+                                   D3D11_SDK_VERSION, &m_MultiGPUTargetDevice, &FeatureLevel, &m_MultiGPUTargetDeviceContext);
 
-        LOG_F(INFO, "Using cross-GPU copy");
+            if (FAILED(hr))
+            {
+                return ProcessFailure(m_Device.Get(), L"Secondary device creation failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+            }
+
+            adapter_ptr_vr = nullptr;
+
+            LOG_F(INFO, "Using cross-GPU copy");
+        }
     }
 
     //Check Desktop Duplication HDR support

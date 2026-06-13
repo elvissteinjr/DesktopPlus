@@ -35,6 +35,7 @@ class OutputManager
         OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicationEvent);
         ~OutputManager();
         void CleanRefs();
+        void CleanRefsDesktopDuplicationOnly();
         DDPDuplReturn InitOutput(HWND Window, INT& SingleOutput, UINT& OutCount, RECT& DeskBounds);
         std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> InitOverlay();  //Returns error state <InitError, OverlayError, VRInputInitSuccess>
         DDPDuplReturnUpdate Update(DDPPtrInfo& PointerInfo, DPRect& DirtyRegionTotal, bool NewFrame, bool SkipFrame);
