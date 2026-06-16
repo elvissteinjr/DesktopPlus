@@ -758,19 +758,19 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
     // New display manager
     DispMgr.InitD3D(TData.DxRes);
 
-    // Obtain handle to sync shared Surface
-    HRESULT hr = TData.DxRes.Device->OpenSharedResource(TData.TexSharedHandle, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(SharedSurf.GetAddressOf()));
-    if (FAILED (hr))
-    {
-        Ret = ProcessFailure(TData.DxRes.Device.Get(), L"Opening shared texture failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
-        SetEvent((Ret == ddp_dupl_return_error_expected) ? TData.ExpectedErrorEvent : TData.UnexpectedErrorEvent);
-        return 0;
-    }
-
-    hr = SharedSurf.As(&KeyMutex);
+    // Obtain handle to sync shared Surface (same as on thread resume)
+    HRESULT hr = DispMgr.OnThreadResume(SharedSurf, KeyMutex, TData.TexSharedHandle);
     if (FAILED(hr))
     {
-        Ret = ProcessFailure(nullptr, L"Failed to get keyed mutex interface in spawned thread", L"Desktop+ Error", hr);
+        if (SharedSurf == nullptr)
+        {
+            Ret = ProcessFailure(TData.DxRes.Device.Get(), L"Opening shared texture failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+        }
+        else
+        {
+            Ret = ProcessFailure(nullptr, L"Failed to get keyed mutex interface in spawned thread", L"Desktop+ Error", hr);
+        }
+
         SetEvent((Ret == ddp_dupl_return_error_expected) ? TData.ExpectedErrorEvent : TData.UnexpectedErrorEvent);
         return 0;
     }
@@ -795,15 +795,26 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
     bool WaitToProcessCurrentFrame = false;
     DDPFrameData CurrentData;
 
-    while ((WaitForSingleObjectEx(TData.TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT))
+    while (WaitForSingleObjectEx(TData.TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT)
     {
         //Wait if pause event was signaled
-        if ((WaitForSingleObjectEx(TData.PauseDuplicationEvent, 0, FALSE) == WAIT_OBJECT_0))
+        if (WaitForSingleObjectEx(TData.PauseDuplicationEvent, 0, FALSE) == WAIT_OBJECT_0)
         {
             //Let DisplayManager release resources not needed while idle
-            DispMgr.OnPause();
+            DispMgr.OnThreadPause(SharedSurf, KeyMutex);
+
             //Wait forever. Thread shutdown will also signal resume
             WaitForSingleObjectEx(TData.ResumeDuplicationEvent, INFINITE, FALSE);
+
+            //Restore released resources when resuming
+            hr = DispMgr.OnThreadResume(SharedSurf, KeyMutex, TData.TexSharedHandle);
+
+            if (FAILED(hr))
+            {
+                Ret = ProcessFailure(TData.DxRes.Device.Get(), L"Resuming capture thread failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+                SetEvent((Ret == ddp_dupl_return_error_expected) ? TData.ExpectedErrorEvent : TData.UnexpectedErrorEvent);
+                return 0;
+            }
         }
 
         if (!WaitToProcessCurrentFrame)

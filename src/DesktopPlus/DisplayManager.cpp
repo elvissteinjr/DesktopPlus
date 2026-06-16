@@ -48,10 +48,27 @@ DDPDuplReturn DDPDisplayManager::ProcessFrame(const DDPFrameData& Data, _Inout_ 
     return Ret;
 }
 
-void DDPDisplayManager::OnPause()
+HRESULT DDPDisplayManager::OnThreadResume(Microsoft::WRL::ComPtr<ID3D11Texture2D>& SharedSurf, Microsoft::WRL::ComPtr<IDXGIKeyedMutex>& KeyMutex, HANDLE TexSharedHandle)
+{
+    HRESULT hr = m_Device->OpenSharedResource(TexSharedHandle, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(SharedSurf.ReleaseAndGetAddressOf()));
+    if (FAILED (hr))
+    {
+        return hr;
+    }
+
+    hr = SharedSurf.As(&KeyMutex);
+    return hr;
+}
+
+void DDPDisplayManager::OnThreadPause(Microsoft::WRL::ComPtr<ID3D11Texture2D>& SharedSurf, Microsoft::WRL::ComPtr<IDXGIKeyedMutex>& KeyMutex)
 {
     //Release intermediate move texture to reduce memory while idle
     m_MoveSurf.Reset();
+
+    //Release shared surface and related objects for this thread. This should typically reduce memory use as shared textures seem to use up VRAM for each thread despite being shared
+    SharedSurf.Reset();
+    KeyMutex.Reset();
+    m_RTV.Reset();
 
     //Flush, clear state & trim to free memory right away
     m_DeviceContext->Flush();
@@ -336,6 +353,7 @@ DDPDuplReturn DDPDisplayManager::CopyDirty(_In_ ID3D11Texture2D* SrcSurface, _In
     m_DeviceContext->PSSetShader(m_PixelShader.Get(), nullptr, 0);
     m_DeviceContext->PSSetShaderResources(0, 1, m_DirtyVertexShaderResource.GetAddressOf());
     m_DeviceContext->PSSetSamplers(0, 1, m_SamplerLinear.GetAddressOf());
+    m_DeviceContext->IASetInputLayout(m_InputLayout.Get());
     m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     // Create space for vertices for the dirty rects if the current space isn't large enough and reset cached buffer
