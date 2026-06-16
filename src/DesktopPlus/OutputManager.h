@@ -265,6 +265,7 @@ class OutputManager
         Microsoft::WRL::ComPtr<ID3D11Texture2D> m_MultiGPUTexTarget;   //Target texture to copy to, owned by m_MultiGPUTargetDevice
 
         int m_PerformanceFrameCount;
+        int m_PerformanceFrameCountLast;
         ULONGLONG m_PerformanceFrameCountStartTick;
         LARGE_INTEGER m_PerformanceUpdateLimiterDelay;
 

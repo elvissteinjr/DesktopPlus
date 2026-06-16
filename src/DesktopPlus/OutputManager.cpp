@@ -1274,6 +1274,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
 
                         IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_width,  data.ConfigInt[configid_int_overlay_state_content_width]);
                         IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_content_height, data.ConfigInt[configid_int_overlay_state_content_height]);
+                        IPCManager::Get().PostConfigMessageToUIApp(configid_int_overlay_state_fps,            data.ConfigInt[configid_int_overlay_state_fps]);
 
                         //Send over current HWND if there's an active capture
                         if ( (overlay.GetTextureSource() == ovrl_texsource_winrt_capture) && (data.ConfigHandle[configid_handle_overlay_state_winrt_hwnd] != 0))
@@ -1293,6 +1294,7 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     }
 
                     //Global config state
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_performance_duplication_fps,           ConfigManager::GetValue(configid_int_state_performance_duplication_fps));
                     IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_interface_desktop_count,               ConfigManager::GetValue(configid_int_state_interface_desktop_count));
                     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_dragmode,                     ConfigManager::GetValue(configid_bool_state_overlay_dragmode));
                     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_selectmode,                   ConfigManager::GetValue(configid_bool_state_overlay_selectmode));
@@ -2977,8 +2979,11 @@ void OutputManager::UpdatePerformanceStates()
     if (::GetTickCount64() >= m_PerformanceFrameCountStartTick + 1000)
     {
         //A second has passed, reset the value
-        ConfigManager::SetValue(configid_int_state_performance_duplication_fps, m_PerformanceFrameCount);
-        IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_performance_duplication_fps, m_PerformanceFrameCount);
+        if (m_PerformanceFrameCount != ConfigManager::GetValue(configid_int_state_performance_duplication_fps))
+        {
+            ConfigManager::SetValue(configid_int_state_performance_duplication_fps, m_PerformanceFrameCount);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_performance_duplication_fps, m_PerformanceFrameCount);
+        }
 
         m_PerformanceFrameCountStartTick = ::GetTickCount64();
         m_PerformanceFrameCount = 0;
