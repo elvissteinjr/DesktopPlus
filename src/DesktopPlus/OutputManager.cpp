@@ -62,8 +62,11 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlHandleIcon(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleDashboardDummy(vr::k_ulOverlayHandleInvalid),
     m_OvrlHandleDesktopTexture(vr::k_ulOverlayHandleInvalid),
+    m_OvrlTexDesc{},
+    m_OvrlTexViewport{},
     m_OvrlActiveCount(0),
     m_OvrlDesktopDuplActiveCount(0),
+    m_OvrlDesktopDuplInactiveTick{0},
     m_OvrlDashboardActive(false),
     m_OvrlInputActive(false),
     m_OvrlDirectDragActive(false),
@@ -93,6 +96,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
 {
     m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
     ::QueryPerformanceFrequency(&m_MouseLaserPointerScrollDeltaFrequency);
+    m_OvrlDesktopDuplInactiveTick = ::GetTickCount64();
 
     //Initialize ConfigManager and set first launch state based on existence of config file (used to detect first launch in Steam version)
     m_IsFirstLaunch = !ConfigManager::Get().LoadConfigFromFile();
@@ -386,22 +390,14 @@ DDPDuplReturn OutputManager::InitOutput(HWND Window, INT& SingleOutput, UINT& Ou
         return Return;
     }
 
-    // Make new render target view
-    Return = MakeRTV();
-    if (Return != ddp_dupl_return_success)
-    {
-        return Return;
-    }
-
     // Set view port
-    D3D11_VIEWPORT VP = {};
-    VP.Width  = static_cast<FLOAT>(m_DesktopWidth);
-    VP.Height = static_cast<FLOAT>(m_DesktopHeight);
-    VP.MinDepth = 0.0f;
-    VP.MaxDepth = 1.0f;
-    VP.TopLeftX = 0;
-    VP.TopLeftY = 0;
-    m_DeviceContext->RSSetViewports(1, &VP);
+    m_OvrlTexViewport.Width  = static_cast<FLOAT>(m_DesktopWidth);
+    m_OvrlTexViewport.Height = static_cast<FLOAT>(m_DesktopHeight);
+    m_OvrlTexViewport.MinDepth = 0.0f;
+    m_OvrlTexViewport.MaxDepth = 1.0f;
+    m_OvrlTexViewport.TopLeftX = 0;
+    m_OvrlTexViewport.TopLeftY = 0;
+    m_DeviceContext->RSSetViewports(1, &m_OvrlTexViewport);
 
     // Create the sample state
     D3D11_SAMPLER_DESC SampDesc;
@@ -732,6 +728,18 @@ DDPDuplReturnUpdate OutputManager::Update(DDPPtrInfo& PointerInfoDDP,  DPRect& D
     //When invalid output is set, key mutex can be null, so just do nothing
     if (m_KeyMutex == nullptr)
     {
+        return ddp_dupl_return_update_success;
+    }
+
+    //Release intermediate overlay texture when no Desktop Duplication overlays are active and we're sure there won't be any remaining frame updates before threads pausing
+    if ((m_OvrlDesktopDuplActiveCount == 0) && (m_OvrlTex != nullptr) && (::GetTickCount64() >= m_OvrlDesktopDuplInactiveTick + 3000))
+    {
+        DesktopTextureIdleRelease();
+        return ddp_dupl_return_update_success;
+    }
+    else if ((m_OvrlDesktopDuplActiveCount == 0) && (m_OvrlTex == nullptr))
+    {
+        //We already entered idle state. There won't be any cursor updates to check for
         return ddp_dupl_return_update_success;
     }
 
@@ -2168,8 +2176,14 @@ void OutputManager::ResetCurrentOverlay()
     }
 }
 
-ID3D11Texture2D* OutputManager::GetOverlayTexture() const
+ID3D11Texture2D* OutputManager::GetOverlayTexture()
 {
+    //Create on-demand (idling can cause it to be released)
+    if (m_OvrlTex == nullptr)
+    {
+        RecreateOverlayTex();
+    }
+
     return m_OvrlTex.Get();
 }
 
@@ -2466,10 +2480,7 @@ void OutputManager::ShowOverlay(unsigned int id)
         if (m_OvrlDesktopDuplActiveCount == 0) //First Desktop Duplication overlay to become active
         {
             //Signal duplication threads to resume in case they're paused
-            ::ResetEvent(m_PauseDuplicationEvent);
-            ::SetEvent(m_ResumeDuplicationEvent);
-
-            ForceScreenRefresh();
+            DesktopDuplicationResume();
         }
 
         m_OvrlDesktopDuplActiveCount++;
@@ -2597,8 +2608,7 @@ void OutputManager::HideOverlay(unsigned int id)
         if (m_OvrlDesktopDuplActiveCount == 0) //Last Desktop Duplication overlay to become inactive
         {
             //Signal duplication threads to pause since we don't need them to do needless work
-            ::ResetEvent(m_ResumeDuplicationEvent);
-            ::SetEvent(m_PauseDuplicationEvent);
+            DesktopDuplicationPause();
         }
     }
     else if (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_winrt_capture)
@@ -2647,16 +2657,12 @@ void OutputManager::ResetOverlayActiveCount()
     if ( (desktop_duplication_was_paused) && (m_OvrlDesktopDuplActiveCount > 0) )
     {
         //Signal duplication threads to resume
-        ::ResetEvent(m_PauseDuplicationEvent);
-        ::SetEvent(m_ResumeDuplicationEvent);
-
-        ForceScreenRefresh();
+        DesktopDuplicationResume();
     }
     else if ( (!desktop_duplication_was_paused) && (m_OvrlDesktopDuplActiveCount == 0) )
     {
         //Signal duplication threads to pause
-        ::ResetEvent(m_ResumeDuplicationEvent);
-        ::SetEvent(m_PauseDuplicationEvent);
+        DesktopDuplicationPause();
     }
 
     //Fixup WindowManager state
@@ -3187,7 +3193,7 @@ void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter
     //Convert()'s arguments are almost all stuff from OutputManager, so we take this roundabout way of calling it
     const DPRect& crop_rect = overlay.GetValidatedCropRect();
 
-    HRESULT hr = converter.Convert(m_Device.Get(), m_DeviceContext.Get(), m_MultiGPUTargetDevice.Get(), m_MultiGPUTargetDeviceContext.Get(), m_OvrlTex.Get(),
+    HRESULT hr = converter.Convert(m_Device.Get(), m_DeviceContext.Get(), m_MultiGPUTargetDevice.Get(), m_MultiGPUTargetDeviceContext.Get(), GetOverlayTexture(),
                                    m_DesktopWidth, m_DesktopHeight, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
 
     if (hr == S_OK)
@@ -3706,26 +3712,6 @@ DDPDuplReturn OutputManager::ProcessMonoMaskFloat16(bool is_mono, DDPPtrInfo& pt
 }
 
 //
-// Reset render target view
-//
-DDPDuplReturn OutputManager::MakeRTV()
-{
-    D3D11_TEXTURE2D_DESC desc_ovrl_tex;
-    m_OvrlTex->GetDesc(&desc_ovrl_tex);
-
-    //Create render target view for overlay texture
-    D3D11_RENDER_TARGET_VIEW_DESC ovrl_tex_rtv_desc = {};
-
-    ovrl_tex_rtv_desc.Format = desc_ovrl_tex.Format;
-    ovrl_tex_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-    ovrl_tex_rtv_desc.Texture2D.MipSlice = 0;
-
-    m_Device->CreateRenderTargetView(m_OvrlTex.Get(), &ovrl_tex_rtv_desc, &m_OvrlRTV);
-
-    return ddp_dupl_return_success;
-}
-
-//
 // Initialize shaders for drawing
 //
 DDPDuplReturn OutputManager::InitShaders()
@@ -3868,13 +3854,7 @@ DDPDuplReturn OutputManager::CreateTextures(INT SingleOutput, UINT& OutCount, RE
     TexD.MiscFlags        = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
 
     hr = m_Device->CreateTexture2D(&TexD, nullptr, &m_SharedSurf);
-
-    if (!FAILED(hr))
-    {
-        TexD.MiscFlags = 0;
-        hr = m_Device->CreateTexture2D(&TexD, nullptr, &m_OvrlTex);
-    }
-
+ 
     if (FAILED(hr))
     {
         if (output_rect_total.GetWidth() != 0)
@@ -3890,6 +3870,10 @@ DDPDuplReturn OutputManager::CreateTextures(INT SingleOutput, UINT& OutCount, RE
             return ProcessFailure(m_Device.Get(), L"Failed to create shared texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
         }
     }
+
+    //Keep used texture desc around for OvrlTex on-demand creation
+    m_OvrlTexDesc = TexD;
+    m_OvrlTexDesc.MiscFlags = 0;
 
     // Get keyed mutex
     hr = m_SharedSurf.As(&m_KeyMutex);
@@ -3953,7 +3937,7 @@ void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
     //Do a straight copy if there are no issues with that or do the alpha check if it's still pending
     if ((!m_OutputAlphaCheckFailed) || (m_OutputAlphaChecksPending > 0))
     {
-        m_DeviceContext->CopyResource(m_OvrlTex.Get(), m_SharedSurf.Get());
+        m_DeviceContext->CopyResource(GetOverlayTexture(), m_SharedSurf.Get());
 
         if (m_OutputAlphaChecksPending > 0)
         {
@@ -3968,6 +3952,8 @@ void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
     //Draw the frame to the texture with the alpha channel fixing pixel shader if we have to
     if (m_OutputAlphaCheckFailed)
     {
+        GetOverlayTexture();
+
         // Set resources
         UINT Stride = sizeof(DDPVertex);
         UINT Offset = 0;
@@ -4174,10 +4160,12 @@ DDPDuplReturn OutputManager::DrawMouseToOverlayTex(DDPPtrInfo& PtrInfo)
     }
 
     // Set resources
+    GetOverlayTexture();
     FLOAT BlendFactor[4] = { 0.f, 0.f, 0.f, 0.f };
     UINT Stride = sizeof(DDPVertex);
     UINT Offset = 0;
     m_DeviceContext->IASetVertexBuffers(0, 1, m_MouseVertexBuffer.GetAddressOf(), &Stride, &Offset);
+    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_DeviceContext->OMSetBlendState(m_BlendState.Get(), BlendFactor, 0xFFFFFFFF);
     m_DeviceContext->OMSetRenderTargets(1, m_OvrlRTV.GetAddressOf(), nullptr);
     m_DeviceContext->VSSetShader(m_VertexShader.Get(), nullptr, 0);
@@ -4195,12 +4183,12 @@ DDPDuplReturn OutputManager::DrawMouseToOverlayTex(DDPPtrInfo& PtrInfo)
 
 DDPDuplReturnUpdate OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy)
 {
-    if ((m_OvrlHandleDesktopTexture != vr::k_ulOverlayHandleInvalid) && (m_OvrlTex))
+    if (m_OvrlHandleDesktopTexture != vr::k_ulOverlayHandleInvalid)
     {
         vr::Texture_t vrtex = {};
         vrtex.eType       = vr::TextureType_DirectX;
         vrtex.eColorSpace = ((m_OutputHDRAvailable) && (ConfigManager::GetValue(configid_bool_performance_hdr_mirroring))) ? vr::ColorSpace_Linear : vr::ColorSpace_Gamma;
-        vrtex.handle      = m_OvrlTex.Get();
+        vrtex.handle      = GetOverlayTexture();
 
         //The intermediate texture can be assumed to be not complete when a full copy is forced, so redraw that
         if (force_full_copy)
@@ -4337,16 +4325,50 @@ DDPDuplReturnUpdate OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRect
     return ddp_dupl_return_update_success_refreshed_overlay;
 }
 
+bool OutputManager::RecreateOverlayTex()
+{
+    HRESULT hr = m_Device->CreateTexture2D(&m_OvrlTexDesc, nullptr, &m_OvrlTex);
+
+    if (SUCCEEDED(hr))
+    {
+        //Also create render target view
+        D3D11_RENDER_TARGET_VIEW_DESC ovrl_tex_rtv_desc = {};
+        ovrl_tex_rtv_desc.Format = m_OvrlTexDesc.Format;
+        ovrl_tex_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+        ovrl_tex_rtv_desc.Texture2D.MipSlice = 0;
+
+        hr = m_Device->CreateRenderTargetView(m_OvrlTex.Get(), &ovrl_tex_rtv_desc, &m_OvrlRTV);
+
+        if (SUCCEEDED(hr))
+        {
+            //Re-apply necessary render state
+            m_DeviceContext->RSSetViewports(1, &m_OvrlTexViewport);
+            m_DeviceContext->IASetInputLayout(m_InputLayout.Get());
+
+            return true;
+        }
+        else
+        {
+            LOG_F(ERROR, "Failed to create overlay backing texture render target view!");
+
+            m_OvrlTex.Reset();
+        }
+    }
+    else
+    {
+        LOG_F(ERROR, "Failed to create overlay backing texture!");
+    }
+
+    return false;
+}
+
 bool OutputManager::DesktopTextureAlphaCheck()
 {
     if (m_DesktopRects.empty())
         return false;
 
     //Sanity check texture dimensions
-    D3D11_TEXTURE2D_DESC desc_ovrl_tex;
-    m_OvrlTex->GetDesc(&desc_ovrl_tex);
-
-    if ( ((UINT)m_DesktopWidth != desc_ovrl_tex.Width) || ((UINT)m_DesktopHeight != desc_ovrl_tex.Height) )
+    if ( ((UINT)m_DesktopWidth != m_OvrlTexDesc.Width) || ((UINT)m_DesktopHeight != m_OvrlTexDesc.Height) )
         return false;
 
     //Read one pixel for each desktop
@@ -4358,7 +4380,7 @@ bool OutputManager::DesktopTextureAlphaCheck()
     desc.Height             = 1;
     desc.MipLevels          = 1;
     desc.ArraySize          = 1;
-    desc.Format             = desc_ovrl_tex.Format;
+    desc.Format             = m_OvrlTexDesc.Format;
     desc.SampleDesc.Count   = 1;
     desc.SampleDesc.Quality = 0;
     desc.Usage              = D3D11_USAGE_STAGING;
@@ -4386,7 +4408,7 @@ bool OutputManager::DesktopTextureAlphaCheck()
         box.top    = clamp(rect.GetTL().y - m_DesktopY, 0, m_DesktopHeight - 1);
         box.bottom = clamp(box.top + 1, 1u, (UINT)m_DesktopHeight);
 
-        m_DeviceContext->CopySubresourceRegion(tex_staging.Get(), 0, dst_x, 0, 0, m_OvrlTex.Get(), 0, &box);
+        m_DeviceContext->CopySubresourceRegion(tex_staging.Get(), 0, dst_x, 0, 0, GetOverlayTexture(), 0, &box);
         dst_x++;
     }
 
@@ -4433,6 +4455,46 @@ bool OutputManager::DesktopTextureAlphaCheck()
     m_DeviceContext->Unmap(tex_staging.Get(), 0);
 
     return ret;
+}
+
+void OutputManager::DesktopTextureIdleRelease()
+{
+    m_OvrlTex.Reset();
+    m_OvrlRTV.Reset();
+
+    //Flush and clear state to free memory right away
+    if (m_DeviceContext)
+    {
+        m_DeviceContext->Flush();
+        m_DeviceContext->ClearState();
+    }
+
+    //Trim to get rid of even more
+    if (m_Device)
+    {
+        Microsoft::WRL::ComPtr<IDXGIDevice3> DxgiDevice3;
+        HRESULT hr = m_Device.As(&DxgiDevice3);
+        if (SUCCEEDED(hr))
+        {
+            DxgiDevice3->Trim();
+        }
+    }
+}
+
+void OutputManager::DesktopDuplicationPause()
+{
+    ::ResetEvent(m_ResumeDuplicationEvent);
+    ::SetEvent(m_PauseDuplicationEvent);
+
+    m_OvrlDesktopDuplInactiveTick = ::GetTickCount64();
+}
+
+void OutputManager::DesktopDuplicationResume()
+{
+    ::ResetEvent(m_PauseDuplicationEvent);
+    ::SetEvent(m_ResumeDuplicationEvent);
+
+    ForceScreenRefresh();
 }
 
 bool OutputManager::HandleOpenVREvents()

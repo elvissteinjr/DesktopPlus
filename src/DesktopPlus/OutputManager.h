@@ -52,7 +52,7 @@ class OutputManager
         void ResetOverlays();
         void ResetCurrentOverlay();
 
-        ID3D11Texture2D* GetOverlayTexture() const; //This returns m_OvrlTex, the backing texture used by the desktop texture overlay (and all overlays stealing its texture)
+        ID3D11Texture2D* GetOverlayTexture(); //This returns m_OvrlTex, the backing texture used by the desktop texture overlay (and all overlays stealing its texture), may trigger texture creation if needed
         ID3D11Texture2D* GetMultiGPUTargetTexture() const;
         vr::VROverlayHandle_t GetDesktopTextureOverlay() const;
         bool GetOverlayActive() const;
@@ -102,13 +102,17 @@ class OutputManager
                                       Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box);
         DDPDuplReturn ProcessMonoMaskFloat16(bool is_mono, DDPPtrInfo& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 
                                              Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box);
-        DDPDuplReturn MakeRTV();
         DDPDuplReturn InitShaders();
         DDPDuplReturn CreateTextures(INT SingleOutput, UINT& OutCount, RECT& DeskBounds);
         void DrawFrameToOverlayTex(bool clear_rtv = true);
         DDPDuplReturn DrawMouseToOverlayTex(DDPPtrInfo& PtrInfo);
         DDPDuplReturnUpdate RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy = false); //Refreshes the overlay texture of the VR runtime with content of the m_OvrlTex backing texture
+        bool RecreateOverlayTex();
         bool DesktopTextureAlphaCheck();
+        void DesktopTextureIdleRelease();
+
+        void DesktopDuplicationPause();
+        void DesktopDuplicationResume();
 
         bool HandleOpenVREvents();  //Returns true if quit event happened
         void OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned int& current_overlay_old);
@@ -212,10 +216,13 @@ class OutputManager
         vr::VROverlayHandle_t m_OvrlHandleDashboardDummy;
         vr::VROverlayHandle_t m_OvrlHandleIcon;
         vr::VROverlayHandle_t m_OvrlHandleDesktopTexture;
-        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_OvrlTex;
+        D3D11_TEXTURE2D_DESC m_OvrlTexDesc;
+        D3D11_VIEWPORT m_OvrlTexViewport;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_OvrlTex;          //This and m_OvrlRTV may be release during idle, use GetOverlayTexture() to access to ensure it's there
         Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_OvrlRTV;
         int m_OvrlActiveCount;
         int m_OvrlDesktopDuplActiveCount;
+        ULONGLONG m_OvrlDesktopDuplInactiveTick; //Tick when m_OvrlDesktopDuplActiveCount went 0, for delayed idle cleanup
         bool m_OvrlDashboardActive;
         bool m_OvrlInputActive;
         bool m_OvrlDirectDragActive;
