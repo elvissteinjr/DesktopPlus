@@ -3204,11 +3204,11 @@ void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter
     if (hr == S_OK)
     {
         vr::Texture_t vrtex = {};
-        vrtex.eType = vr::TextureType_DirectX;
+        vrtex.eType       = vr::TextureType_DirectX;
         vrtex.eColorSpace = vr::ColorSpace_Gamma;
-        vrtex.handle = converter.GetTexture(); //OUtoSBSConverter takes care of multi-gpu support automatically, so no further processing needed
+        vrtex.handle      = converter.GetTexture(); //OUtoSBSConverter takes care of multi-gpu support automatically, so no further processing needed
 
-        vr::VROverlay()->SetOverlayTexture(overlay.GetHandle(), &vrtex);
+        vr::VROverlayEx()->SetOverlayTextureEx(overlay.GetHandle(), &vrtex, converter.GetTextureSizeSBS());
     }
     else
     {
