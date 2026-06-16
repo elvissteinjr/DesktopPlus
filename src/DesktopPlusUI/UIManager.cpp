@@ -2166,7 +2166,7 @@ void UIManager::PositionOverlay()
                 //This actual works okay and failure isn't super tragic either.
 
                 //Overlay Bar still takes priority on top, so check that first
-                if (!ConfigManager::Get().IsLaserPointerTargetOverlay(m_OvrlHandleOverlayBar))
+                if ((!ConfigManager::Get().IsLaserPointerTargetOverlay(m_OvrlHandleOverlayBar)) && (!ConfigManager::Get().IsLaserPointerTargetOverlay(m_OvrlHandleAuxUI)))
                 {
                     vr::VROverlayIntersectionResults_t results;
                     vr::VROverlayIntersectionParams_t params = {0};
