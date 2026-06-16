@@ -223,6 +223,11 @@ void Overlay::SetVisible(bool visible)
 
     m_SmootherPos.ResetLastPos();
     m_SmootherRot.ResetLastPos();
+
+    if ((!visible) && (m_TextureSource == ovrl_texsource_desktop_duplication_3dou_converted))
+    {
+        m_OUtoSBSConverter.CleanRefs();
+    }
 }
 
 bool Overlay::IsVisible() const
