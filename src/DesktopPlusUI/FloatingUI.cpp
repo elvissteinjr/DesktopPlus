@@ -291,6 +291,9 @@ void FloatingUI::UpdateUITargetState()
             matrix.translate_relative(0.0f, smoothstep(m_TheaterOffsetAnimationProgress, 0.0f, -0.22f), 0.0f);
         }
 
+        //Move forward a bit to avoid tooltips clipping when curvature is involved
+        matrix.translate_relative(0.0f, 0.0f, 0.002f);
+
         //Don't update position if dummy transform is unstable unless it's target is not primary dashboard overlay or we're newly appearing
         if ( (is_newly_visible) || (!UIManager::Get()->IsDummyOverlayTransformUnstable()) || (ovrl_id_hover_target != ovrl_id_primary_dashboard) )
         {
