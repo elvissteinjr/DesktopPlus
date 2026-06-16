@@ -8,6 +8,7 @@
 #include "imgui_impl_dx11_openvr.h"
 #include "implot.h"
 #include <d3d11.h>
+#include <dxgi1_3.h>
 #include <wrl/client.h>
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
@@ -370,8 +371,20 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         {
             ::Sleep(64);                 //Could wait longer, but it doesn't really make much of a difference in load and we stay more responsive like this)
             idle_state.DoIdleTimestep(); //Delta time won't be updated by ImGui while idle, but some parts of the app still rely on it so we do it ourselves
+
+            //Deep idle allows us to free some resources while idle for longer times. Only makes sense in VR mode, though
+            if ((!desktop_mode) && (g_vrTex) && (idle_state.ShouldDeepIdle()))
+            {
+                CleanupRenderTarget();
+            }
+
             continue;
         }
+        else if ((!desktop_mode) && (!g_vrTex) && (!idle_state.ShouldDeepIdle()))   //Restore render target after exiting deep idle
+        {
+            CreateRenderTarget(desktop_mode);
+        }
+
 
         // Start the Dear ImGui frame
         ImGui_ImplDX11_NewFrame();
@@ -749,6 +762,18 @@ void CleanupRenderTarget()
     g_desktopRenderTargetView.Reset();
     g_vrRenderTargetView.Reset();
     g_vrTex.Reset();
+    UIManager::Get()->SetSharedTextureRef(nullptr);
+
+    //Flush, clear state & trim to free memory right away
+    g_pd3dDeviceContext->Flush();
+    g_pd3dDeviceContext->ClearState();
+
+    Microsoft::WRL::ComPtr<IDXGIDevice3> DxgiDevice3;
+    HRESULT hr = g_pd3dDevice.As(&DxgiDevice3);
+    if (SUCCEEDED(hr))
+    {
+        DxgiDevice3->Trim();
+    }
 }
 
 void RefreshOverlayTextureSharing()

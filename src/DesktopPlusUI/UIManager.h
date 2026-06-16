@@ -70,7 +70,8 @@ class UIManager
         class IdleState
         {
             private:
-                static const unsigned int s_MsBeforeIdle = 1000;    //A general 1 second buffer before idling saves us from adding active time for every short animation
+                static const unsigned int s_MsBeforeIdle     = 1000;    //A general 1 second buffer before idling saves us from adding active time for every short animation
+                static const unsigned int s_MsBeforeDeepIdle = 10000;   //Deep idle causes some GPU resources to be freed. Should be as trigger happy as normal idle
 
                 ULONGLONG m_LastActiveTick = 0;
                 ULONGLONG m_LastCaretTick  = 0;
@@ -86,6 +87,7 @@ class UIManager
                 IdleState();
 
                 bool ShouldIdle();
+                bool ShouldDeepIdle();
                 int GetFrameSkipValue();
 
                 void OnImGuiNewFrame();

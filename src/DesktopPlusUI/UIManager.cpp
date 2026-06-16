@@ -184,6 +184,11 @@ bool UIManager::IdleState::ShouldIdle()
     return false;
 }
 
+bool UIManager::IdleState::ShouldDeepIdle()
+{
+    return ((ShouldIdle()) && (m_LastActiveTick + s_MsBeforeDeepIdle < ::GetTickCount64()));
+}
+
 int UIManager::IdleState::GetFrameSkipValue()
 {
     //If outside of active time, throttle to 1 frameskip or just use user frameskip value if it's higher
