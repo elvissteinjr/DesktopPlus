@@ -84,6 +84,7 @@ void DPLog_SteamVR_SystemInfo()
     //Get some info that might be useful for debugging...
     LOG_F(INFO, "SteamVR Runtime Version: %s", vr::VRSystem()->GetRuntimeVersion());
     LOG_F(INFO, "OpenVR API Version: %u.%u.%u", vr::k_nSteamVRVersionMajor, vr::k_nSteamVRVersionMinor, vr::k_nSteamVRVersionBuild);
+    LOG_F(INFO, "Compositor Render Target Scale: %.2fx", vr::VRSettings()->GetFloat("GpuSpeed", "gpuSpeedRenderTargetScale"));
 
     {
         char buffer[vr::k_unMaxPropertyStringSize];
