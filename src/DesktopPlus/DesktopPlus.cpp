@@ -349,7 +349,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         {
             if (!FirstTime)
             {
-                LOG_F(INFO, "System transition occured, reinitializing...");
+                LOG_F(INFO, "System transition occured. Reinitializing...");
 
                 // Terminate other threads
                 ResetEvent(PauseDuplicationEvent);
@@ -599,7 +599,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             //Update desktop count and rects
             if (OutputManager::Get())
             {
-                LOG_F(INFO, "WM_DISPLAYCHANGE recieved, re-enumerating outputs...");
+                LOG_F(INFO, "WM_DISPLAYCHANGE recieved. Re-enumerating outputs...");
                 OutputManager::Get()->EnumerateOutputs();
             }
             break;

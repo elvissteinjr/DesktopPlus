@@ -516,7 +516,7 @@ void ActionManager::UpdateActionOrderListUI()
     //Start fresh, put everything in and sort by name (this shouldn't happen unless default config is blank)
     if (m_ActionOrderUI.empty())
     {
-        LOG_F(INFO, "Action order list is empty, recreating...");
+        LOG_F(INFO, "Action order list is empty. Recreating...");
 
         for (const auto& action_pair : m_Actions)
         {
@@ -539,7 +539,7 @@ void ActionManager::UpdateActionOrderListUI()
     ValidateActionOrderList(m_ActionOrderUI);
 
     //Look for whatever is missing and add it (not fast but this doesn't happen in normal execution)
-    LOG_F(INFO, "Action order list is missing entries, adding missing actions...");
+    LOG_F(INFO, "Action order list is missing entries. Adding missing actions...");
 
     for (const auto& action_pair : m_Actions)
     {

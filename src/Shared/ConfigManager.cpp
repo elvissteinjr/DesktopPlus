@@ -707,13 +707,13 @@ bool ConfigManager::LoadConfigFromFile()
         {
             if (IPCManager::Get().IsDashboardAppRunning())
             {
-                LOG_F(INFO, "Legacy config migration finished, saving new config and restarting dashboard app...");
+                LOG_F(INFO, "Legacy config migration finished. Saving new config and restarting dashboard app...");
                 SaveConfigToFile();
                 UIManager::Get()->RestartDashboardApp();
             }
             else
             {
-                LOG_F(INFO, "Legacy config migration finished, saving new config...");
+                LOG_F(INFO, "Legacy config migration finished. Saving new config...");
                 SaveConfigToFile();
             }
         }
@@ -962,7 +962,7 @@ void ConfigManager::MigrateLegacyConfig(Ini& config, bool only_rename_config_fil
                         }
 
                         save_path = save_path_with_sub;
-                        LOG_F(INFO, "Profile already existed in new location, saving as \"%s\" instead...", StringConvertFromUTF16(filename_log.c_str()).c_str());
+                        LOG_F(INFO, "Profile already existed in new location. Saving as \"%s\" instead...", StringConvertFromUTF16(filename_log.c_str()).c_str());
                     }
 
                     config_profile.Save(save_path);

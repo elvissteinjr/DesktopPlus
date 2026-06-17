@@ -638,7 +638,7 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     //Add application manifest and set app key to Steam one if needed (setting the app key will make it load Steam input bindings even when not launched by it)
     if (!is_steam_app)
     {
-        LOG_F(INFO, "Process was not launched by Steam, setting SteamVR application identity");
+        LOG_F(INFO, "Process was not launched by Steam. Setting SteamVR application identity");
 
         vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
         m_IsFirstLaunch = (!vr::VRApplications()->IsApplicationInstalled(g_AppKeyDashboardApp));
