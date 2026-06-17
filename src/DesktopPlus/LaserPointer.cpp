@@ -4,6 +4,7 @@
 #include "OverlayManager.h"
 #include "OutputManager.h"
 #include "Util.h"
+#include "Logging.h"
 #include "OpenVRExt.h"
 
 #define LASER_POINTER_OVERLAY_WIDTH 0.0025f
@@ -244,7 +245,11 @@ bool LaserPointer::DetectDeviceOverlayCustomOffsets(vr::TrackedDeviceIndex_t dev
             lp_device.CustomOffsetDetectionLastTick = ::GetTickCount64();
 
             //Forward result only after it's locked in to avoid flicker and such
-            return (lp_device.CustomOffsetDetectionCount >= k_lOffsetDetectionCountMax);
+            if (lp_device.CustomOffsetDetectionCount >= k_lOffsetDetectionCountMax)
+            {
+                LOG_F(INFO, "Custom controller offsets detected. Using alternative laser pointer positioning method");
+                return true;
+            }
         }
     }
 
