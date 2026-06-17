@@ -23,9 +23,9 @@
                },
                "mode" : "button",
                "parameters" : {
-                  "click_activate_threshold" : "0.65",
-                  "click_deactivate_threshold" : "0.6",
-                  "haptic_amplitude" : "0"
+                  "click_activate_threshold" : "0.5",
+                  "click_deactivate_threshold" : "0.45",
+                  "off_haptic_amplitude" : "0"
                },
                "path" : "/user/hand/right/input/trigger"
             },
@@ -37,16 +37,25 @@
                },
                "mode" : "button",
                "parameters" : {
-                  "click_activate_threshold" : "0.65",
-                  "click_deactivate_threshold" : "0.6",
-                  "haptic_amplitude" : "0"
+                  "click_activate_threshold" : "0.5",
+                  "click_deactivate_threshold" : "0.45",
+                  "off_haptic_amplitude" : "0"
                },
                "path" : "/user/hand/left/input/trigger"
+            },
+			{
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/LeftClick"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/right/input/bumper"
             },
             {
                "inputs" : {
                   "click" : {
-                     "output" : "/actions/laserpointer/in/RightClick"
+                     "output" : "/actions/laserpointer/in/LeftClick"
                   }
                },
                "mode" : "button",
@@ -58,8 +67,53 @@
                      "output" : "/actions/laserpointer/in/RightClick"
                   }
                },
+               "mode" : "joystick",
+               "path" : "/user/hand/left/input/thumbstick"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/RightClick"
+                  }
+               },
+               "mode" : "joystick",
+               "path" : "/user/hand/right/input/thumbstick"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/MiddleClick"
+                  }
+               },
+               "mode" : "joystick",
+               "path" : "/user/hand/left/input/dpad_right"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/MiddleClick"
+                  }
+               },
+               "mode" : "joystick",
+               "path" : "/user/hand/right/input/x"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/Aux01Click"
+                  }
+               },
                "mode" : "button",
-               "path" : "/user/hand/right/input/bumper"
+               "path" : "/user/hand/left/input/dpad_left"
+            },
+            {
+               "inputs" : {
+                  "click" : {
+                     "output" : "/actions/laserpointer/in/Aux01Click"
+                  }
+               },
+               "mode" : "button",
+               "path" : "/user/hand/right/input/b"
             },
             {
                "inputs" : {
@@ -77,7 +131,7 @@
                   }
                },
                "mode" : "button",
-               "path" : "/user/hand/right/input/b"
+               "path" : "/user/hand/right/input/a"
             }
          ]
       },
