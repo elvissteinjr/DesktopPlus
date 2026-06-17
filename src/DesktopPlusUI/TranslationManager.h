@@ -458,6 +458,7 @@ enum TRMGRStrID
     tstr_OvrlPropsAdvancedOU,
     tstr_OvrlPropsAdvanced3DSwap,
     tstr_OvrlPropsAdvancedGazeFade,
+    tstr_OvrlPropsAdvancedGazeFadeDragModeActiveWarning,
     tstr_OvrlPropsAdvancedGazeFadeAuto,
     tstr_OvrlPropsAdvancedGazeFadeDistance,
     tstr_OvrlPropsAdvancedGazeFadeDistanceValueInf,

@@ -1623,6 +1623,14 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
         {
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_gazefade_enabled, gazefade_enabled);
         }
+
+        //Having Gaze Fade not working while drag mode is active makes sense, but can be confusing at first, so have a warning in place
+        const bool drag_or_select_mode_enabled = ( (ConfigManager::GetValue(configid_bool_state_overlay_dragmode)) || (ConfigManager::GetValue(configid_bool_state_overlay_selectmode)) );
+        if ((gazefade_enabled) && (drag_or_select_mode_enabled))
+        {
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeDragModeActiveWarning), "(!)");
+        }
         ImGui::NextColumn();
 
         if (!UIManager::Get()->IsOpenVRLoaded())
