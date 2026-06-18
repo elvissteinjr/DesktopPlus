@@ -515,12 +515,19 @@ void OverlayDragger::DragUpdate()
             //Apply drag settings if managed overlay (while most would work on UI overlays, they're more of a hindrance most of the time)
             if (m_DragModeOverlayID != k_ulOverlayID_None)
             {
-                //Snap rotation if enabled
-                if (ConfigManager::GetValue(configid_bool_input_drag_snap_rotation))
+                //Face HMD or snap rotation if enabled (mutually exclusive, facing the HMD fully determines the rotation)
+                if (ConfigManager::GetValue(configid_bool_input_drag_face_hmd))
                 {
-                    TransformSnapRotation(m_DragModeMatrixTargetCurrent, (float)ConfigManager::GetValue(configid_int_input_drag_snap_rotation_angle), 
-                                                                                ConfigManager::GetValue(configid_bool_input_drag_snap_rotation_x), 
-                                                                                ConfigManager::GetValue(configid_bool_input_drag_snap_rotation_y), 
+                    if (poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+                    {
+                        vr::IVRSystemEx::TransformLookAt(m_DragModeMatrixTargetCurrent, Matrix4(poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking).getTranslation());
+                    }
+                }
+                else if (ConfigManager::GetValue(configid_bool_input_drag_snap_rotation))
+                {
+                    TransformSnapRotation(m_DragModeMatrixTargetCurrent, (float)ConfigManager::GetValue(configid_int_input_drag_snap_rotation_angle),
+                                                                                ConfigManager::GetValue(configid_bool_input_drag_snap_rotation_x),
+                                                                                ConfigManager::GetValue(configid_bool_input_drag_snap_rotation_y),
                                                                                 ConfigManager::GetValue(configid_bool_input_drag_snap_rotation_z));
                 }
 
