@@ -2258,6 +2258,16 @@ int OutputManager::GetDesktopHeight() const
     return m_DesktopHeight;
 }
 
+int OutputManager::GetDesktopX() const
+{
+    return m_DesktopX;
+}
+
+int OutputManager::GetDesktopY() const
+{
+    return m_DesktopY;
+}
+
 const std::vector<DPRect>& OutputManager::GetDesktopRects() const
 {
     return m_DesktopRects;

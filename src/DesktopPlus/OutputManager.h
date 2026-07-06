@@ -61,6 +61,8 @@ class OutputManager
         float GetHMDFrameRate() const;
         int GetDesktopWidth() const;
         int GetDesktopHeight() const;
+        int GetDesktopX() const;
+        int GetDesktopY() const;
         const std::vector<DPRect>& GetDesktopRects() const;
         float GetDesktopHDRWhiteLevelAdjustment(int desktop_id, bool is_for_graphics_capture, bool wmr_ignore_vscreens) const;
 
