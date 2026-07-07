@@ -109,6 +109,7 @@ enum ConfigID_Bool
     configid_bool_input_drag_snap_rotation_x,
     configid_bool_input_drag_snap_rotation_y,
     configid_bool_input_drag_snap_rotation_z,
+    configid_bool_input_drag_face_hmd,
     configid_bool_windows_auto_focus_scene_app_dashboard,
     configid_bool_windows_winrt_auto_focus,
     configid_bool_windows_winrt_keep_on_screen,

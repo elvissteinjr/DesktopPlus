@@ -391,6 +391,7 @@ enum TRMGRStrID
     tstr_OvrlPropsPositionChangeDragSettingsSnapRotationPitch,
     tstr_OvrlPropsPositionChangeDragSettingsSnapRotationYaw,
     tstr_OvrlPropsPositionChangeDragSettingsSnapRotationRoll,
+    tstr_OvrlPropsPositionChangeDragSettingsFaceHMD,
     tstr_OvrlPropsAppearanceWidth,
     tstr_OvrlPropsAppearanceCurve,
     tstr_OvrlPropsAppearanceOpacity,

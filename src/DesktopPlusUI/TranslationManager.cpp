@@ -393,6 +393,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_OvrlPropsPositionChangeDragSettingsSnapRotationPitch",
     "tstr_OvrlPropsPositionChangeDragSettingsSnapRotationYaw",
     "tstr_OvrlPropsPositionChangeDragSettingsSnapRotationRoll",
+    "tstr_OvrlPropsPositionChangeDragSettingsFaceHMD",
     "tstr_OvrlPropsAppearanceWidth",
     "tstr_OvrlPropsAppearanceCurve",
     "tstr_OvrlPropsAppearanceOpacity",
