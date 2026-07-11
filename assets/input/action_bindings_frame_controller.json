@@ -43,7 +43,7 @@
                },
                "path" : "/user/hand/left/input/trigger"
             },
-			{
+            {
                "inputs" : {
                   "click" : {
                      "output" : "/actions/laserpointer/in/LeftClick"
@@ -157,7 +157,7 @@
             }
          ]
       },
-	  "/actions/scroll_smooth" : {
+      "/actions/scroll_smooth" : {
          "sources" : [
             {
                "inputs" : {

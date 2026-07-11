@@ -32,12 +32,12 @@
     "/actions/laserpointer/in/MiddleClick" : "ホイールクリック",
     "/actions/laserpointer/in/Aux01Click"  : "補助 1 クリック",
     "/actions/laserpointer/in/Aux02Click"  : "補助 2 クリック",
-	
-	"/actions/scroll_discrete" : "マウスホイール スクロール",
-	
+
+    "/actions/scroll_discrete" : "マウスホイール スクロール",
+
     "/actions/scroll_discrete/in/ScrollDiscrete" : "スクロールオーバーレイ",
-	
-	"/actions/scroll_smooth" : "スムーズ スクロール",
-	
+
+    "/actions/scroll_smooth" : "スムーズ スクロール",
+
     "/actions/scroll_smooth/in/ScrollSmooth" : "スクロールオーバーレイ"
 }

@@ -33,12 +33,12 @@
     "/actions/laserpointer/in/Aux01Click"  : "辅助1点击",
     "/actions/laserpointer/in/Aux02Click"  : "辅助2点击",
     "/actions/laserpointer/in/Drag"        : "拖动叠加",
-	
-	"/actions/scroll_discrete" : "鼠标滚轮滚动",
-	
+
+    "/actions/scroll_discrete" : "鼠标滚轮滚动",
+
     "/actions/scroll_discrete/in/ScrollDiscrete" : "滚动叠加",
-	
-	"/actions/scroll_smooth" : "平滑滚动",
-	
+
+    "/actions/scroll_smooth" : "平滑滚动",
+
     "/actions/scroll_smooth/in/ScrollSmooth" : "滚动叠加"
 }

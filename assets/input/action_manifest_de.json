@@ -33,12 +33,12 @@
     "/actions/laserpointer/in/Aux01Click"  : "Extra 1-Klick",
     "/actions/laserpointer/in/Aux02Click"  : "Extra 2-Klick",
     "/actions/laserpointer/in/Drag"        : "Overlay ziehen",
-	
-	"/actions/scroll_discrete" : "Mausrad-Bildlauf",
-	
+
+    "/actions/scroll_discrete" : "Mausrad-Bildlauf",
+
     "/actions/scroll_discrete/in/ScrollDiscrete" : "Overlay scrollen",
-	
-	"/actions/scroll_smooth" : "Weicher Bildlauf",
-	
+
+    "/actions/scroll_smooth" : "Weicher Bildlauf",
+
     "/actions/scroll_smooth/in/ScrollSmooth"   : "Overlay scrollen"
 }

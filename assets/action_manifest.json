@@ -199,7 +199,7 @@
       "controller_type": "holographic",
       "binding_url": "input/action_bindings_holographic.json"
     },
-	{
+    {
       "controller_type": "oculus_touch",
       "binding_url": "input/action_bindings_touch.json"
     },
@@ -207,7 +207,7 @@
       "controller_type": "vive_cosmos_controller",
       "binding_url": "input/action_bindings_vive_cosmos.json"
     },
-	{
+    {
       "controller_type": "knuckles_ev1",
       "binding_url": "input/action_bindings_knuckles_ev1.json"
     },

@@ -183,7 +183,7 @@
             }
          ]
       },
-	  "/actions/scroll_smooth" : {
+      "/actions/scroll_smooth" : {
          "sources" : [
             {
                "inputs" : {

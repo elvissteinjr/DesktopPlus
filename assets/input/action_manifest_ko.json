@@ -33,12 +33,12 @@
     "/actions/laserpointer/in/Aux01Click"  : "측면 1 클릭",
     "/actions/laserpointer/in/Aux02Click"  : "측면 2 클릭",
     "/actions/laserpointer/in/Drag"        : "오버레이 드래그",
-	
-	"/actions/scroll_discrete" : "마우스 휠 스크롤",
-	
+
+    "/actions/scroll_discrete" : "마우스 휠 스크롤",
+
     "/actions/scroll_discrete/in/ScrollDiscrete" : "오버레이 스크롤",
-	
-	"/actions/scroll_smooth" : "부드러운 스크롤",
-	
+
+    "/actions/scroll_smooth" : "부드러운 스크롤",
+
     "/actions/scroll_smooth/in/ScrollSmooth" : "오버레이 스크롤"
 }

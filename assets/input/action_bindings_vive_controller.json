@@ -59,7 +59,7 @@
                "mode" : "dpad_click",
                "path" : "/user/hand/right/input/trackpad"
             },
-			{
+            {
                "inputs" : {
                   "click" : {
                      "output" : "/actions/laserpointer/in/Aux01Click"
@@ -68,7 +68,7 @@
                "mode" : "button",
                "path" : "/user/hand/left/input/grip"
             },
-			{
+            {
                "inputs" : {
                   "click" : {
                      "output" : "/actions/laserpointer/in/Aux01Click"
@@ -97,7 +97,7 @@
             }
          ]
       },
-	  "/actions/scroll_discrete" : {
+      "/actions/scroll_discrete" : {
          "sources" : [
             {
                "inputs" : {
@@ -141,7 +141,7 @@
             }
          ]
       },
-	  "/actions/scroll_smooth" : {
+      "/actions/scroll_smooth" : {
          "sources" : [
             {
                "inputs" : {
