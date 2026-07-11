@@ -40,5 +40,9 @@
 
     "/actions/scroll_smooth" : "Smooth Scrolling",
 
-    "/actions/scroll_smooth/in/ScrollSmooth" : "Scroll Overlay"
+    "/actions/scroll_smooth/in/ScrollSmooth" : "Scroll Overlay",
+
+    "/actions/hmd" : "Headset",
+
+    "/actions/hmd/in/eye_tracking" : "Eye Tracking"
 }

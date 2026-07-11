@@ -1651,7 +1651,7 @@ void WindowSettings::UpdatePageMainCatInput()
         {
             IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_input_mouse_simulate_pen_input, simulate_pen);
         }
-        if (!ConfigManager::GetValue(configid_bool_state_pen_simulation_supported))
+        if (!ConfigManager::GetValue(configid_bool_state_input_pen_simulation_supported))
         {
             ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsMouseSimulatePenUnsupported), "(!)");

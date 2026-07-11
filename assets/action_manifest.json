@@ -149,6 +149,11 @@
       "name": "/actions/laserpointer/out/Haptic",
       "requirement": "suggested",
       "type": "vibration"
+    },
+    {
+      "name": "/actions/hmd/in/EyeTracking",
+      "requirement": "optional",
+      "type": "eyetracking"
     }
   ],
   "action_sets": [
@@ -168,6 +173,10 @@
     {
       "name": "/actions/scroll_smooth",
       "display_with": "/actions/laserpointer",
+      "usage": "single"
+    },
+    {
+      "name": "/actions/hmd",
       "usage": "single"
     }
   ],
@@ -224,10 +233,14 @@
       "binding_url": "input/action_bindings_gamepad.json"
     },
     {
+      "controller_type": "generic_hmd",
+      "binding_url": "input/action_bindings_generic_hmd.json"
+    },
+    {
       "controller_type": "generic",
       "binding_url": "input/action_bindings_generic.json"
     }
   ],
-  "version": 5,
+  "version": 6,
   "minimum_required_version": 2
 }

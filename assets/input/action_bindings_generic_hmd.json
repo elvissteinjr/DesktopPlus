@@ -1,0 +1,21 @@
+{
+   "action_manifest_version" : 6,
+   "alias_info" : {},
+   "app_key" : "steam.overlay.1494460",
+   "bindings" : {
+      "/actions/hmd" : {
+         "eyetracking": [
+            {
+              "output": "/actions/default/in/EyeTracking",
+              "path": "/user/head/eyetracking"
+            }
+          ]
+      }
+   },
+   "category" : "steamvr_input",
+   "controller_type" : "generic_hmd",
+   "description" : "",
+   "name" : "Default Desktop+ bindings for Generic HMDs",
+   "options" : {},
+   "simulated_actions" : []
+}

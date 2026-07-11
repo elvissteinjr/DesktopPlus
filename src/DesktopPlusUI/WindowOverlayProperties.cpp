@@ -1707,6 +1707,25 @@ void WindowOverlayProperties::UpdatePageMainCatAdvanced()
                 IPCManager::Get().PostConfigMessageToDashboardApp(configid_float_overlay_gazefade_opacity, target_opacity);
             }
             vr_keyboard.VRKeyboardInputEnd();
+            ImGui::NextColumn();
+
+            if ( (ConfigManager::GetValue(configid_bool_state_input_eyetracking_available)) || 
+                 ((!UIManager::Get()->IsOpenVRLoaded()) && (ConfigManager::GetValue(configid_bool_input_eyetracking_was_available))) )
+            {
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeEyeTracking));
+                ImGui::NextColumn();
+
+                bool& is_eyetracking_enabled = ConfigManager::GetRef(configid_bool_overlay_gazefade_eyetracking_enabled);
+
+                if (ImGui::Checkbox(TranslationManager::GetString(tstr_OvrlPropsAdvancedGazeFadeEyeTrackingCheckbox), &is_eyetracking_enabled))
+                {
+                    IPCManager::Get().PostConfigMessageToDashboardApp(configid_bool_overlay_gazefade_eyetracking_enabled, is_eyetracking_enabled);
+                }
+                ImGui::NextColumn();
+            }
+
+            ImGui::NextColumn();
 
             if (!gazefade_enabled)
                 ImGui::PopItemDisabled();

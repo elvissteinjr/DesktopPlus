@@ -28,6 +28,7 @@ class VRInput
         vr::VRActionSetHandle_t m_HandleActionsetLaserPointer;
         vr::VRActionSetHandle_t m_HandleActionsetScrollDiscrete;
         vr::VRActionSetHandle_t m_HandleActionsetScrollSmooth;
+        vr::VRActionSetHandle_t m_HandleActionsetHMD;
 
         vr::VRActionHandle_t m_HandleActionEnableGlobalLaserPointer;
         std::vector<vr::VRActionHandle_t> m_HandleActionDoGlobalShortcuts;
@@ -42,8 +43,11 @@ class VRInput
         vr::VRActionHandle_t m_HandleActionLaserPointerScrollSmooth;
         vr::VRActionHandle_t m_HandleActionLaserPointerHaptic;
 
+        vr::VRActionHandle_t m_HandleActionHMDEyeTracking;
+
         bool m_IsAnyGlobalActionBound;            //"Bound" meaning assigned and the device is actually active
         bool m_IsAnyGlobalActionBoundStateValid;
+        bool m_IsEyeTrackingActionBound;
 
         bool m_IsLaserPointerInputActive;
         VRInputScrollMode m_LaserPointerScrollMode;
@@ -76,12 +80,14 @@ class VRInput
         vr::InputAnalogActionData_t GetLaserPointerScrollDiscreteState() const;
         vr::InputAnalogActionData_t GetLaserPointerScrollSmoothState()   const;
         vr::InputDigitalActionData_t GetLaserPointerDragState(vr::VRInputValueHandle_t restrict_to_device = vr::k_ulInvalidInputValueHandle)  const;
+        vr::VREyeTrackingData_t GetEyeTrackingState()  const;
 
         void SetLaserPointerActive(bool is_active);
         void SetLaserPointerScrollMode(VRInputScrollMode scroll_mode);
         VRInputScrollMode GetLaserPointerScrollMode() const;
 
         bool IsAnyGlobalActionBound() const;
+        bool IsEyeTrackingAvailable() const;
         vr::VRInputValueHandle_t GetKeyboardDeviceInputValueHandle() const;
 };
 

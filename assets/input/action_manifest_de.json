@@ -40,5 +40,9 @@
 
     "/actions/scroll_smooth" : "Weicher Bildlauf",
 
-    "/actions/scroll_smooth/in/ScrollSmooth"   : "Overlay scrollen"
+    "/actions/scroll_smooth/in/ScrollSmooth" : "Overlay scrollen",
+
+    "/actions/hmd" : "Headset",
+
+    "/actions/hmd/in/eye_tracking" : "Eye-Tracking"
 }

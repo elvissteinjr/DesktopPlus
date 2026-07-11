@@ -99,7 +99,7 @@ ConfigManager::ConfigManager() : m_IsSteamInstall(false)
     m_ConfigInt[configid_int_state_interface_desktop_count] = ::GetSystemMetrics(SM_CMONITORS);
 
     //Assume pen simulation is supported by default, as that's true for most users
-    m_ConfigBool[configid_bool_state_pen_simulation_supported] = true;
+    m_ConfigBool[configid_bool_state_input_pen_simulation_supported] = true;
 
     //Init laser pointer hint to HMD (not controllers since they could be disconnected)
     m_ConfigInt[configid_int_state_laser_pointer_device_hint]  = vr::k_unTrackedDeviceIndex_Hmd;
@@ -212,6 +212,7 @@ void ConfigManager::LoadOverlayProfile(const Ini& config, unsigned int overlay_i
     data.ConfigFloat[configid_float_overlay_gazefade_distance]          = config.ReadInt(section.c_str(),    "GazeFadeDistance", 0) / 100.0f;
     data.ConfigFloat[configid_float_overlay_gazefade_rate]              = config.ReadInt(section.c_str(),    "GazeFadeRate", 100) / 100.0f;
     data.ConfigFloat[configid_float_overlay_gazefade_opacity]           = config.ReadInt(section.c_str(),    "GazeFadeOpacity", 0) / 100.0f;
+    data.ConfigBool[configid_bool_overlay_gazefade_eyetracking_enabled] = config.ReadBool(section.c_str(),   "GazeFadeEyeTrackingEnabled", true);
     data.ConfigInt[configid_int_overlay_update_limit_override_mode]     = config.ReadInt(section.c_str(),    "UpdateLimitModeOverride", update_limit_mode_off);
     data.ConfigFloat[configid_float_overlay_update_limit_override_ms]   = config.ReadInt(section.c_str(),    "UpdateLimitMS", 0) / 100.0f;
     data.ConfigInt[configid_int_overlay_update_limit_override_fps]      = config.ReadInt(section.c_str(),    "UpdateLimitFPS", update_limit_fps_30);
@@ -333,22 +334,23 @@ void ConfigManager::SaveOverlayProfile(Ini& config, unsigned int overlay_id)
     config.WriteInt( section.c_str(), "CroppingWidth",          data.ConfigInt[configid_int_overlay_crop_width]);
     config.WriteInt( section.c_str(), "CroppingHeight",         data.ConfigInt[configid_int_overlay_crop_height]);
 
-    config.WriteBool(section.c_str(),   "ShowBackside",           data.ConfigBool[configid_bool_overlay_show_backside]);
-    config.WriteBool(section.c_str(),   "3DEnabled",              data.ConfigBool[configid_bool_overlay_3D_enabled]);
-    config.WriteInt( section.c_str(),   "3DMode",                 data.ConfigInt[configid_int_overlay_3D_mode]);
-    config.WriteBool(section.c_str(),   "3DSwapped",              data.ConfigBool[configid_bool_overlay_3D_swapped]);
-    config.WriteBool(section.c_str(),   "GazeFade",               data.ConfigBool[configid_bool_overlay_gazefade_enabled]);
-    config.WriteInt( section.c_str(),   "GazeFadeDistance",   int(data.ConfigFloat[configid_float_overlay_gazefade_distance] * 100.0f));
-    config.WriteInt( section.c_str(),   "GazeFadeRate",       int(data.ConfigFloat[configid_float_overlay_gazefade_rate]     * 100.0f));
-    config.WriteInt( section.c_str(),   "GazeFadeOpacity",    int(data.ConfigFloat[configid_float_overlay_gazefade_opacity]  * 100.0f));
-    config.WriteInt( section.c_str(),   "UpdateLimitModeOverride",data.ConfigInt[configid_int_overlay_update_limit_override_mode]);
-    config.WriteInt( section.c_str(),   "UpdateLimitMS",      int(data.ConfigFloat[configid_float_overlay_update_limit_override_ms] * 100.0f));
-    config.WriteInt( section.c_str(),   "UpdateLimitFPS",         data.ConfigInt[configid_int_overlay_update_limit_override_fps]);
-    config.WriteInt( section.c_str(),   "BrowserMaxFPSOverride",  data.ConfigInt[configid_int_overlay_browser_max_fps_override]);
-    config.WriteBool(section.c_str(),   "InputEnabled",           data.ConfigBool[configid_bool_overlay_input_enabled]);
-    config.WriteBool(section.c_str(),   "InputDPlusLPEnabled",    data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]);
-    config.WriteString(section.c_str(), "Tags",                   data.ConfigStr[configid_str_overlay_tags].c_str());
-    config.WriteBool(section.c_str(),   "UpdateInvisible",        data.ConfigBool[configid_bool_overlay_update_invisible]);
+    config.WriteBool(section.c_str(),   "ShowBackside",               data.ConfigBool[configid_bool_overlay_show_backside]);
+    config.WriteBool(section.c_str(),   "3DEnabled",                  data.ConfigBool[configid_bool_overlay_3D_enabled]);
+    config.WriteInt( section.c_str(),   "3DMode",                     data.ConfigInt[configid_int_overlay_3D_mode]);
+    config.WriteBool(section.c_str(),   "3DSwapped",                  data.ConfigBool[configid_bool_overlay_3D_swapped]);
+    config.WriteBool(section.c_str(),   "GazeFade",                   data.ConfigBool[configid_bool_overlay_gazefade_enabled]);
+    config.WriteInt( section.c_str(),   "GazeFadeDistance",       int(data.ConfigFloat[configid_float_overlay_gazefade_distance] * 100.0f));
+    config.WriteInt( section.c_str(),   "GazeFadeRate",           int(data.ConfigFloat[configid_float_overlay_gazefade_rate]     * 100.0f));
+    config.WriteInt( section.c_str(),   "GazeFadeOpacity",        int(data.ConfigFloat[configid_float_overlay_gazefade_opacity]  * 100.0f));
+    config.WriteBool(section.c_str(),   "GazeFadeEyeTrackingEnabled", data.ConfigBool[configid_bool_overlay_gazefade_eyetracking_enabled]);
+    config.WriteInt( section.c_str(),   "UpdateLimitModeOverride",    data.ConfigInt[configid_int_overlay_update_limit_override_mode]);
+    config.WriteInt( section.c_str(),   "UpdateLimitMS",          int(data.ConfigFloat[configid_float_overlay_update_limit_override_ms] * 100.0f));
+    config.WriteInt( section.c_str(),   "UpdateLimitFPS",             data.ConfigInt[configid_int_overlay_update_limit_override_fps]);
+    config.WriteInt( section.c_str(),   "BrowserMaxFPSOverride",      data.ConfigInt[configid_int_overlay_browser_max_fps_override]);
+    config.WriteBool(section.c_str(),   "InputEnabled",               data.ConfigBool[configid_bool_overlay_input_enabled]);
+    config.WriteBool(section.c_str(),   "InputDPlusLPEnabled",        data.ConfigBool[configid_bool_overlay_input_dplus_lp_enabled]);
+    config.WriteString(section.c_str(), "Tags",                       data.ConfigStr[configid_str_overlay_tags].c_str());
+    config.WriteBool(section.c_str(),   "UpdateInvisible",            data.ConfigBool[configid_bool_overlay_update_invisible]);
 
     config.WriteBool(  section.c_str(), "ShowFloatingUI",          data.ConfigBool[configid_bool_overlay_floatingui_enabled]);
     config.WriteBool(  section.c_str(), "ShowDesktopButtons",      data.ConfigBool[configid_bool_overlay_floatingui_desktops_enabled]);
@@ -552,6 +554,8 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_input_drag_snap_rotation_y]                  = config.ReadBool("Input", "DragSnapRotationY", true);
     m_ConfigBool[configid_bool_input_drag_snap_rotation_z]                  = config.ReadBool("Input", "DragSnapRotationZ", true);
     m_ConfigInt[configid_int_input_drag_snap_rotation_angle]                = config.ReadInt( "Input", "DragSnapRotationAngle", 45);
+
+    m_ConfigBool[configid_bool_input_eyetracking_was_available]             = config.ReadBool( "Input", "EyeTrackingWasAvailable", false);
 
     m_ConfigBool[configid_bool_input_mouse_render_cursor]                   = config.ReadBool("Mouse", "RenderCursor", true);
     m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]        = config.ReadBool("Mouse", "RenderIntersectionBlob", false);
@@ -1540,6 +1544,8 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Input", "DragSnapRotationY",                  m_ConfigBool[configid_bool_input_drag_snap_rotation_y]);
     config.WriteBool("Input", "DragSnapRotationZ",                  m_ConfigBool[configid_bool_input_drag_snap_rotation_z]);
     config.WriteInt( "Input", "DragSnapRotationAngle",              m_ConfigInt[configid_int_input_drag_snap_rotation_angle]);
+
+    config.WriteBool("Input", "EyeTrackingWasAvailable",            m_ConfigBool[configid_bool_state_input_eyetracking_available]);
 
     config.WriteBool("Mouse", "RenderCursor",              m_ConfigBool[configid_bool_input_mouse_render_cursor]);
     config.WriteBool("Mouse", "RenderIntersectionBlob",    m_ConfigBool[configid_bool_input_mouse_render_intersection_blob]);

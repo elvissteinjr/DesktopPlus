@@ -675,7 +675,7 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     LOG_IF_F(INFO, (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1), "WMR headset detected, ignoring additional virtual displays");
 
     //Set pen simulation support state so the UI can act on it
-    ConfigManager::SetValue(configid_bool_state_pen_simulation_supported, m_InputSim.IsPenSimulationSupported());
+    ConfigManager::SetValue(configid_bool_state_input_pen_simulation_supported, m_InputSim.IsPenSimulationSupported());
     LOG_F(INFO, "Pen input simulation is %s", (m_InputSim.IsPenSimulationSupported()) ? "supported" : "not supported");
 
     //Init background overlay if needed
@@ -1300,7 +1300,8 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_selectmode,                   ConfigManager::GetValue(configid_bool_state_overlay_selectmode));
                     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_dragselectmode_show_hidden,   ConfigManager::GetValue(configid_bool_state_overlay_dragselectmode_show_hidden));
                     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_overlay_dragmode_temp,                ConfigManager::GetValue(configid_bool_state_overlay_dragmode_temp));
-                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_pen_simulation_supported,             ConfigManager::GetValue(configid_bool_state_pen_simulation_supported));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_input_eyetracking_available,               ConfigManager::GetValue(configid_bool_state_input_eyetracking_available));
+                    IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_input_pen_simulation_supported,             ConfigManager::GetValue(configid_bool_state_input_pen_simulation_supported));
                     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_window_focused_process_elevated,      ConfigManager::GetValue(configid_bool_state_window_focused_process_elevated));
                     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_elevated,                ConfigManager::GetValue(configid_bool_state_misc_process_elevated));
                     IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_misc_process_started_by_steam,        ConfigManager::GetValue(configid_bool_state_misc_process_started_by_steam));
@@ -7577,6 +7578,20 @@ void OutputManager::DetachedOverlayGazeFade()
                 Matrix4 mat_overlay = m_OverlayDragger.GetBaseOffsetMatrix();
                 mat_overlay *= ConfigManager::Get().GetOverlayDetachedTransform();
 
+                //Eye-Tracking
+                int gaze_distance_sign = -1; 
+                if (ConfigManager::GetValue(configid_bool_overlay_gazefade_eyetracking_enabled))
+                {
+                    vr::VREyeTrackingData_t data = m_VRInput.GetEyeTrackingState();
+
+                    if (data.bValid)
+                    {
+                        //Rotate existing HMD transform towards out gaze target. The rest works as normal
+                        vr::VRSystemEx()->TransformLookAt(mat_pose, data.vGazeTarget);
+                        gaze_distance_sign = 1; //Usually we translate backwards but in this case we actually have a proper forward vector
+                    }
+                }
+
                 //Infinite/Auto distance mode
                 if (gaze_distance == 0.0f) 
                 {
@@ -7587,7 +7602,7 @@ void OutputManager::DetachedOverlayGazeFade()
                     gaze_distance += 0.20f; //Useful range starts at ~0.20 - 0.25 (lower is in HMD or culled away), so offset the settings value
                 }
 
-                mat_pose.translate_relative(0.0f, 0.0f, -gaze_distance);
+                mat_pose.translate_relative(0.0f, 0.0f, gaze_distance * gaze_distance_sign);
 
                 Vector3 pos_gaze = mat_pose.getTranslation();
                 float distance = mat_overlay.getTranslation().distance(pos_gaze);

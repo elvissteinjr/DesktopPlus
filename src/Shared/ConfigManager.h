@@ -31,6 +31,7 @@ enum ConfigID_Bool
     configid_bool_overlay_origin_hmd_floor_use_turning,
     configid_bool_overlay_transform_locked,
     configid_bool_overlay_gazefade_enabled,
+    configid_bool_overlay_gazefade_eyetracking_enabled,
     configid_bool_overlay_input_enabled,
     configid_bool_overlay_input_dplus_lp_enabled,
     configid_bool_overlay_winrt_window_matching_strict,
@@ -109,6 +110,7 @@ enum ConfigID_Bool
     configid_bool_input_drag_snap_rotation_x,
     configid_bool_input_drag_snap_rotation_y,
     configid_bool_input_drag_snap_rotation_z,
+    configid_bool_input_eyetracking_was_available,            //Tracks if eye-tracking was last available to show related UI even without SteamVR active
     configid_bool_windows_auto_focus_scene_app_dashboard,
     configid_bool_windows_winrt_auto_focus,
     configid_bool_windows_winrt_keep_on_screen,
@@ -121,7 +123,8 @@ enum ConfigID_Bool
     configid_bool_state_overlay_selectmode,
     configid_bool_state_overlay_dragselectmode_show_hidden,   //True if mode is from a popup
     configid_bool_state_overlay_dragmode_temp,
-    configid_bool_state_pen_simulation_supported,
+    configid_bool_state_input_pen_simulation_supported,
+    configid_bool_state_input_eyetracking_available,
     configid_bool_state_window_focused_process_elevated,
     configid_bool_state_keyboard_visible,
     configid_bool_state_performance_gpu_copy_active,

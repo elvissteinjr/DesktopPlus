@@ -9,11 +9,13 @@
 #include "ConfigManager.h"
 #include "OutputManager.h"
 #include "OpenVRExt.h"
+#include "Logging.h"
 
 VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionsetLaserPointer(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionsetScrollDiscrete(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionsetScrollSmooth(vr::k_ulInvalidActionSetHandle),
+                     m_HandleActionsetHMD(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionEnableGlobalLaserPointer(vr::k_ulInvalidActionHandle),
                      m_HandleActionLaserPointerLeftClick(vr::k_ulInvalidActionHandle),
                      m_HandleActionLaserPointerRightClick(vr::k_ulInvalidActionHandle),
@@ -23,8 +25,10 @@ VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionLaserPointerScrollDiscrete(vr::k_ulInvalidActionHandle),
                      m_HandleActionLaserPointerScrollSmooth(vr::k_ulInvalidActionHandle),
                      m_HandleActionLaserPointerHaptic(vr::k_ulInvalidActionHandle),
+                     m_HandleActionHMDEyeTracking(vr::k_ulInvalidActionHandle),
                      m_IsAnyGlobalActionBound(false),
                      m_IsAnyGlobalActionBoundStateValid(false),
+                     m_IsEyeTrackingActionBound(false),
                      m_IsLaserPointerInputActive(false),
                      m_LaserPointerScrollMode(vrinput_scroll_none),
                      m_KeyboardDeviceInputValueHandle(vr::k_ulInvalidInputValueHandle),
@@ -195,6 +199,9 @@ bool VRInput::Init()
         vr::VRInput()->GetActionSetHandle("/actions/scroll_smooth",                &m_HandleActionsetScrollSmooth);
         vr::VRInput()->GetActionHandle("/actions/scroll_smooth/in/ScrollSmooth",   &m_HandleActionLaserPointerScrollSmooth);
 
+        vr::VRInput()->GetActionSetHandle("/actions/hmd",             &m_HandleActionsetHMD);
+        vr::VRInput()->GetActionHandle("/actions/hmd/in/EyeTracking", &m_HandleActionHMDEyeTracking);
+
         //This mimics OpenXR device path pattern but isn't actually formally defined (and this is OpenVR anyhow)
         vr::VRInput()->GetInputSourceHandle("/user/keyboard", &m_KeyboardDeviceInputValueHandle);
         //Frequently used gamepad device path
@@ -218,7 +225,7 @@ void VRInput::Update()
     if (m_HandleActionsetShortcuts == vr::k_ulInvalidActionSetHandle)
         return;
 
-    vr::VRActiveActionSet_t actionset_desc[3] = { 0 };
+    vr::VRActiveActionSet_t actionset_desc[4] = { 0 };
     int actionset_active_count = 1;
     actionset_desc[0].ulActionSet = m_HandleActionsetShortcuts;
     actionset_desc[0].nPriority = 100; //Arbitrary number, but probably higher than the scene application's... if that even matters
@@ -241,6 +248,14 @@ void VRInput::Update()
         }
     }
 
+    if (m_IsEyeTrackingActionBound)
+    {
+        actionset_desc[actionset_active_count].ulActionSet = m_HandleActionsetHMD;
+        actionset_desc[actionset_active_count].nPriority = vr::k_nActionSetOverlayGlobalPriorityMin + 2;    //Always use global priority (if it even matters here)
+
+        actionset_active_count++;
+    }
+
     vr::VRInput()->UpdateActionState(actionset_desc, sizeof(vr::VRActiveActionSet_t), actionset_active_count);
     UpdateKeyboardDeviceState();
 
@@ -261,7 +276,7 @@ void VRInput::RefreshAnyGlobalActionBound()
         vr::EVRInputError error = vr::VRInput()->GetActionOrigins(m_HandleActionsetShortcuts, action_handle, &action_origin, 1);
 
         if (action_origin != vr::k_ulInvalidInputValueHandle) 
-        { 
+        {
             m_IsAnyGlobalActionBoundStateValid = true;
 
             vr::InputOriginInfo_t action_origin_info = {0};
@@ -278,6 +293,17 @@ void VRInput::RefreshAnyGlobalActionBound()
 
     //Doesn't trigger on app start since its actions are not valid yet
     m_IsAnyGlobalActionBound = false;
+
+    //Check for eye tracking action being bound if it isn't yet
+    //As this is used for showing UI options, only require this to succeed once and then keep it for the session regardless of it maybe being unbound
+    if ((!m_IsEyeTrackingActionBound) && (is_action_bound(m_HandleActionHMDEyeTracking)))
+    {
+        m_IsEyeTrackingActionBound = true;
+        ConfigManager::SetValue(configid_bool_state_input_eyetracking_available, true);
+        IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_input_eyetracking_available, true);
+
+        LOG_F(INFO, "Eye tracking input action detected as bound");
+    }
 
     if (is_action_bound(m_HandleActionEnableGlobalLaserPointer))
     {
@@ -504,6 +530,14 @@ vr::InputDigitalActionData_t VRInput::GetLaserPointerDragState(vr::VRInputValueH
     return data;
 }
 
+vr::VREyeTrackingData_t VRInput::GetEyeTrackingState() const
+{
+    vr::VREyeTrackingData_t data = {0};
+    vr::VRInput()->GetEyeTrackingDataRelativeToNow(m_HandleActionHMDEyeTracking, vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), &data, sizeof(vr::VREyeTrackingData_t));
+
+    return data;
+}
+
 void VRInput::SetLaserPointerActive(bool is_active)
 {
     m_IsLaserPointerInputActive = is_active;
@@ -522,6 +556,11 @@ VRInputScrollMode VRInput::GetLaserPointerScrollMode() const
 bool VRInput::IsAnyGlobalActionBound() const
 {
     return m_IsAnyGlobalActionBound;
+}
+
+bool VRInput::IsEyeTrackingAvailable() const
+{
+    return m_IsEyeTrackingActionBound;
 }
 
 vr::VRInputValueHandle_t VRInput::GetKeyboardDeviceInputValueHandle() const
