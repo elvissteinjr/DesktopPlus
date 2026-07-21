@@ -564,7 +564,7 @@ void WindowQuickStart::UpdateOverlayPos()
 
             Vector3 pos = m_TransformAnimationEnd.getTranslation();
             m_TransformAnimationEnd.setTranslation({0.0f, 0.0f, 0.0f});
-            m_TransformAnimationEnd.rotateY(12.5f);
+            m_TransformAnimationEnd.rotateY(11.0f);
             m_TransformAnimationEnd.setTranslation(pos);
 
             m_TransformAnimationEnd.translate_relative(0.0f, 0.0f, 0.05f);
@@ -585,10 +585,10 @@ void WindowQuickStart::UpdateOverlayPos()
 
             Vector3 pos = m_TransformAnimationEnd.getTranslation();
             m_TransformAnimationEnd.setTranslation({0.0f, 0.0f, 0.0f});
-            m_TransformAnimationEnd.rotateY(-25.0f);
+            m_TransformAnimationEnd.rotateY(-30.0f);
             m_TransformAnimationEnd.setTranslation(pos);
 
-            m_TransformAnimationEnd.translate_relative(0.0f, 0.0f, 0.125f);
+            m_TransformAnimationEnd.translate_relative(0.0f, 0.0f, 0.175f);
             break;
         }
         case pageid_Settings:
@@ -610,10 +610,10 @@ void WindowQuickStart::UpdateOverlayPos()
 
             Vector3 pos = m_TransformAnimationEnd.getTranslation();
             m_TransformAnimationEnd.setTranslation({0.0f, 0.0f, 0.0f});
-            m_TransformAnimationEnd.rotateY(25.0f);
+            m_TransformAnimationEnd.rotateY(30.0f);
             m_TransformAnimationEnd.setTranslation(pos);
 
-            m_TransformAnimationEnd.translate_relative(0.0f, 0.0f, 0.125f);
+            m_TransformAnimationEnd.translate_relative(0.0f, 0.0f, 0.175f);
             break;
         }
         case pageid_FloatingUI:
