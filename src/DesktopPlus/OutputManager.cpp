@@ -553,45 +553,46 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
     //We already got rid of another instance of this app if there was any, but this loop takes care of it too if the detection failed or something uses our overlay key
     for (int tries = 0; tries < 10; ++tries)
     {
-        //Create dashboard dummy overlay. It's only used to get a button, transform origin and position the top bar in the dashboard
-        ovrl_error = vr::VROverlay()->CreateDashboardOverlay("elvissteinjr.DesktopPlusDashboard", "Desktop+", &m_OvrlHandleDashboardDummy, &m_OvrlHandleIcon);
+        //We previously just tried creating the dashboard overlay here and handled vr::VROverlayError_KeyInUse,
+        //but current versions of SteamVR appear to destroy the overlay blocking the creation, which is not exactly how we want to handle this
+        //Instead we try to get the handle of an existing overlay and try creating further below
 
-        if (ovrl_error == vr::VROverlayError_KeyInUse)  //If the key is already in use, kill the owning process (hopefully another instance of this app)
+        //If the key is already in use, kill the owning process (hopefully another instance of this app)
+        ovrl_error = vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &m_OvrlHandleDashboardDummy);
+
+        if ((ovrl_error == vr::VROverlayError_None) && (m_OvrlHandleDashboardDummy != vr::k_ulOverlayHandleInvalid))
         {
-            ovrl_error = vr::VROverlay()->FindOverlay("elvissteinjr.DesktopPlusDashboard", &m_OvrlHandleDashboardDummy);
+            LOG_F(INFO, "Overlay key already in use, killing owning process...");
 
-            if ((ovrl_error == vr::VROverlayError_None) && (m_OvrlHandleDashboardDummy != vr::k_ulOverlayHandleInvalid))
+            uint32_t pid = vr::VROverlay()->GetOverlayRenderingPid(m_OvrlHandleDashboardDummy);
+
+            HANDLE phandle = ::OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, TRUE, pid);
+
+            if (phandle != nullptr)
             {
-                LOG_F(INFO, "Overlay key already in use, killing owning process...");
-
-                uint32_t pid = vr::VROverlay()->GetOverlayRenderingPid(m_OvrlHandleDashboardDummy);
-
-                HANDLE phandle = ::OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, TRUE, pid);
-
-                if (phandle != nullptr)
-                {
-                    ::TerminateProcess(phandle, 0);
-                    ::CloseHandle(phandle);
-                }
-                else
-                {
-                    ovrl_error = vr::VROverlayError_KeyInUse;
-                }
+                ::TerminateProcess(phandle, 0);
+                ::CloseHandle(phandle);
             }
             else
             {
                 ovrl_error = vr::VROverlayError_KeyInUse;
             }
         }
-        else
+        else if (m_OvrlHandleDashboardDummy == vr::k_ulOverlayHandleInvalid)
         {
             break;
+        }
+        else
+        {
+            ovrl_error = vr::VROverlayError_KeyInUse;
         }
 
         //Try again in a bit to check if it's just a race with some external cleanup
         ::Sleep(200);
     }
 
+    //Create dashboard dummy overlay. It's only used to get a button, transform origin and position the top bar in the dashboard
+    ovrl_error = vr::VROverlay()->CreateDashboardOverlay("elvissteinjr.DesktopPlusDashboard", "Desktop+", &m_OvrlHandleDashboardDummy, &m_OvrlHandleIcon);
 
     if (m_OvrlHandleDashboardDummy != vr::k_ulOverlayHandleInvalid)
     {
