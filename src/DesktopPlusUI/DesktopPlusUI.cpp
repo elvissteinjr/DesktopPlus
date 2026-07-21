@@ -356,6 +356,24 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 break; //Breaks the message loop, causing clean shutdown
             }
         }
+        else
+        {
+            //Check if dashboard app has starting appearing while we're in OpenVR-less desktop mode
+            if ((!ui_manager.IsOpenVRLoaded()) && (IPCManager::IsDashboardAppRunning()))
+            {
+                //When this happens it means the dashboard app loaded the old config since we only save when closing the desktop mode window
+                //To avoid config de-sync, we save the config, and restart the dashboard app + load OpenVR
+                LOG_F(INFO, "Desktop+ started while UI in standalone desktop mode. Saving config and restarting dashboard app...");
+
+                ConfigManager::Get().SaveConfigToFile();
+                ui_manager.RestartDashboardApp();
+
+                if (ui_manager.InitOverlay() != vr::VRInitError_None)
+                {
+                    LOG_F(ERROR, "OpenVR init failed!");
+                }
+            }
+        }
 
         ui_manager.GetPerformanceWindow().UpdateVisibleState();
 
