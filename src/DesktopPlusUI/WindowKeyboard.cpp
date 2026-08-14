@@ -1343,7 +1343,7 @@ void WindowKeyboard::ResetTransform(FloatingWindowOverlayStateID state_id)
 
     //Offset keyboard position depending on the scaled size
     const float overlay_height_m = (m_Size.y / m_Size.x) * OVERLAY_WIDTH_METERS_KEYBOARD;
-    const float offset_up        = -0.55f - ((overlay_height_m * overlay_state.Size) / 2.0f);
+    const float offset_up        = -0.65f - ((overlay_height_m * overlay_state.Size) / 2.0f);
 
     overlay_state.Transform.rotateX(-45);
     overlay_state.Transform.translate_relative(0.0f, offset_up, 0.00f);
