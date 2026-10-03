@@ -765,8 +765,6 @@ void WindowSettings::UpdateWarnings()
     }
 }
 
-#include "implot.h"
-
 void WindowSettings::UpdatePageMain()
 {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
