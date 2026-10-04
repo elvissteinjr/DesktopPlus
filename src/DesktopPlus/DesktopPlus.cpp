@@ -394,44 +394,46 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 }
             }
 
-            Ret = OutMgr.InitOutput(WindowHandle, SingleOutput, OutputCount, DeskBounds);
-            if (Ret == ddp_dupl_return_success)
+            if (!OutMgr.IsOutputInvalid())  //Don't try if we already gave up
             {
-                HANDLE SharedHandle = OutMgr.GetSharedHandle();
-                if (SharedHandle)
+                Ret = OutMgr.InitOutput(WindowHandle, SingleOutput, OutputCount, DeskBounds);
+                if (Ret == ddp_dupl_return_success)
                 {
-                    Ret = ThreadMgr.Initialize(SingleOutput, OutputCount, UnexpectedErrorEvent, ExpectedErrorEvent, NewFrameProcessedEvent, PauseDuplicationEvent,
-                                               ResumeDuplicationEvent, TerminateThreadsEvent, SharedHandle, DeskBounds, OutMgr.GetDXGIAdapter(), 
-                                               (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1));
-                }
-                else
-                {
-                    DisplayMsg(L"Failed to get handle of shared surface", L"Desktop+ Error", E_FAIL);
+                    HANDLE SharedHandle = OutMgr.GetSharedHandle();
+                    if (SharedHandle)
+                    {
+                        Ret = ThreadMgr.Initialize(SingleOutput, OutputCount, UnexpectedErrorEvent, ExpectedErrorEvent, NewFrameProcessedEvent, PauseDuplicationEvent,
+                                                   ResumeDuplicationEvent, TerminateThreadsEvent, SharedHandle, DeskBounds, OutMgr.GetDXGIAdapter(), 
+                                                   (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1));
+                    }
+                    else
+                    {
+                        DisplayMsg(L"Failed to get handle of shared surface", L"Desktop+ Error", E_FAIL);
 
-                    Ret = ddp_dupl_return_error_unexpected;
-                }
+                        Ret = ddp_dupl_return_error_unexpected;
+                    }
 
-                if (FirstTime)
+                    if (FirstTime)
+                    {
+                        // First time through the loop
+                        FirstTime = false;
+                    }
+                    else
+                    {
+                        ForceScreenRefresh();
+                    }
+                }
+                else if (Ret == ddp_dupl_return_error_expected)
                 {
-                    // First time through the loop
+                    if (OutputCount == 0) //No outputs right now, oops
+                    {
+                        OutMgr.SetOutputInvalid();
+                        Ret = ddp_dupl_return_success; //Entered "valid" state now, prevent auto-retry to needlessly kick in
+                    }
+
                     FirstTime = false;
-                }
-                else
-                {
-                    ForceScreenRefresh();
-                }
+                } 
             }
-            else if (Ret == ddp_dupl_return_error_expected)
-            {
-                if (OutputCount == 0) //No outputs right now, oops
-                {
-                    OutMgr.SetOutputInvalid();
-                    Ret = ddp_dupl_return_success; //Entered "valid" state now, prevent auto-retry to needlessly kick in
-                }
-
-                FirstTime = false;
-            }
-
         }
         else //Present frame or handle events as fast as needed
         {

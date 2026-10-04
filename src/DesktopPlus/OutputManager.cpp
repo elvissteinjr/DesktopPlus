@@ -4205,7 +4205,7 @@ DDPDuplReturn OutputManager::DrawMouseToOverlayTex(DDPPtrInfo& PtrInfo)
 
 DDPDuplReturnUpdate OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy)
 {
-    if (m_OvrlHandleDesktopTexture != vr::k_ulOverlayHandleInvalid)
+    if ((m_OvrlHandleDesktopTexture != vr::k_ulOverlayHandleInvalid) && (!m_OutputInvalid))
     {
         vr::Texture_t vrtex = {};
         vrtex.eType       = vr::TextureType_DirectX;
@@ -6234,7 +6234,7 @@ void OutputManager::ApplySetting3DMode()
         {
             OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_desktop_duplication_3dou_converted);
         }
-        else
+        else if (!m_OutputInvalid)
         {
             OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_desktop_duplication);
         }
