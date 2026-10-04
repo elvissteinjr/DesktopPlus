@@ -365,9 +365,22 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 ThreadMgr.Clean();
                 OutMgr.CleanRefsDesktopDuplicationOnly();
 
-                // As we have encountered an error due to a system transition we wait before trying again, using this dynamic wait
-                // the wait periods will get progressively long to avoid wasting too much system resource if this state lasts a long time
-                DynamicWait.Wait();
+                //Desktop Duplication is currently entirely unimplemented in Wine or Proton, but the return value of DuplicateOutput() is ambiguous as it officially can also mean we should wait and retry
+                //In order to not get stuck in a retry loop, we also just set the output as invalid if Wine is detected
+                if (IsProbablyRunningUnderWine())
+                {
+                    LOG_F(WARNING, "Desktop Duplication returned an error and Wine was detected. Setting output as invalid instead of retrying...");
+
+                    OutMgr.SetOutputInvalid();
+                    Ret = ddp_dupl_return_success; //Entered "valid" state now, prevent auto-retry to needlessly kick in
+                }
+                else
+                {
+                    // As we have encountered an error due to a system transition we wait before trying again, using this dynamic wait
+                    // the wait periods will get progressively long to avoid wasting too much system resource if this state lasts a long time
+                    DynamicWait.Wait();
+                }
+
             }
 
             // Re-initialize

@@ -337,6 +337,14 @@ bool IsProcessElevated(DWORD process_id)
     return ret;
 }
 
+bool IsProbablyRunningUnderWine()
+{
+    //This is only used to avoid infinite looping on ambiguous return values on unimplemented APIs
+    //The export can be hidden to my knowledge, but this only really needs to work on default setups
+    HMODULE h_ntdll = ::GetModuleHandleW(L"ntdll.dll");
+    return ((h_ntdll != nullptr) && (::GetProcAddress(h_ntdll, "wine_get_version") != nullptr));
+}
+
 bool FileExists(LPCTSTR path)
 {
     DWORD attrib = GetFileAttributes(path);
