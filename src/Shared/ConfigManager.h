@@ -182,6 +182,7 @@ enum ConfigID_Int
     configid_int_browser_max_fps,                           //Browser overlays use this instead of update limits
     configid_int_performance_update_limit_mode,
     configid_int_performance_update_limit_fps,              //This is the enum ID, not the actual number. See ApplySettingUpdateLimiter() code for more info
+    configid_int_performance_gpu_priority,                  //-1 to 1 exposed range, offset applied to normal priority enum value
     configid_int_performance_ui_frameskip,
     configid_int_misc_force_gpu_deviceid,
     configid_int_misc_force_gpu_vr_deviceid,
@@ -488,6 +489,7 @@ class ConfigManager
         const ConfigHotkeyList& GetHotkeys() const;
 
         void InitConfigForHMD();        //Setup WMR-specific default values if needed
+        void ApplyGPUPrioritySetting();
         void ResetConfigStateValues();  //Reset all configid_*_state_* settings. Used when restarting a Desktop+ process
 
         ActionManager& GetActionManager();

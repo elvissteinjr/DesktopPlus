@@ -4,6 +4,8 @@
 #include <sstream>
 #include <fstream>
 
+#include <d3dkmthk.h>
+
 #include "Util.h"
 #include "OpenVRExt.h"
 #include "Logging.h"
@@ -596,6 +598,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]     = config.ReadBool("Performance", "RapidLaserPointerUpdates", false);
     m_ConfigBool[configid_bool_performance_single_desktop_mirroring]        = config.ReadBool("Performance", "SingleDesktopMirroring", false);
     m_ConfigBool[configid_bool_performance_alternative_cursor_rendering]    = config.ReadBool("Performance", "AlternativeCursorRendering", false);
+    m_ConfigInt[configid_int_performance_gpu_priority]                      = config.ReadInt( "Performance", "GPUPriority", 0);
     m_ConfigBool[configid_bool_performance_hdr_mirroring]                   = config.ReadBool("Performance", "HDRMirroring", false);
     m_ConfigBool[configid_bool_performance_show_fps]                        = config.ReadBool("Performance", "ShowFPS", false);
     m_ConfigBool[configid_bool_performance_ui_auto_throttle]                = config.ReadBool("Performance", "UIAutoThrottle", true);
@@ -705,6 +708,8 @@ bool ConfigManager::LoadConfigFromFile()
     LoadMultiOverlayProfile(config);
 
     m_AppProfileManager.LoadProfilesFromFile();
+
+    ApplyGPUPrioritySetting();
 
     LOG_F(INFO, "Loaded config");
 
@@ -1586,6 +1591,7 @@ void ConfigManager::SaveConfigToFile()
     config.WriteBool("Performance", "RapidLaserPointerUpdates",               m_ConfigBool[configid_bool_performance_rapid_laser_pointer_updates]);
     config.WriteBool("Performance", "SingleDesktopMirroring",                 m_ConfigBool[configid_bool_performance_single_desktop_mirroring]);
     config.WriteBool("Performance", "AlternativeCursorRendering",             m_ConfigBool[configid_bool_performance_alternative_cursor_rendering]);
+    config.WriteInt( "Performance", "GPUPriority",                            m_ConfigInt[configid_int_performance_gpu_priority]);
     config.WriteBool("Performance", "HDRMirroring",                           m_ConfigBool[configid_bool_performance_hdr_mirroring]);
     config.WriteBool("Performance", "ShowFPS",                                m_ConfigBool[configid_bool_performance_show_fps]);
     config.WriteBool("Performance", "UIAutoThrottle",                         m_ConfigBool[configid_bool_performance_ui_auto_throttle]);
@@ -1947,6 +1953,24 @@ void ConfigManager::InitConfigForHMD()
         UIManager::Get()->GetOverlayBarWindow().SetMenuBottomAligned((strcmp(buffer, "frame_hmd") == 0));
     }
     #endif
+}
+
+void ConfigManager::ApplyGPUPrioritySetting()
+{
+    D3DKMT_SCHEDULINGPRIORITYCLASS priority_prev = D3DKMT_SCHEDULINGPRIORITYCLASS_NORMAL;
+    D3DKMT_SCHEDULINGPRIORITYCLASS priority_new  = clamp(D3DKMT_SCHEDULINGPRIORITYCLASS(D3DKMT_SCHEDULINGPRIORITYCLASS_NORMAL + m_ConfigInt[configid_int_performance_gpu_priority]), 
+                                                         D3DKMT_SCHEDULINGPRIORITYCLASS_IDLE, D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME);
+
+    //Get previous priority and only apply if different 
+    ::D3DKMTGetProcessSchedulingPriorityClass(::GetCurrentProcess(), &priority_prev);
+
+    if (priority_new != priority_prev)
+    {
+        NTSTATUS ret = ::D3DKMTSetProcessSchedulingPriorityClass(::GetCurrentProcess(), priority_new);
+
+        LOG_IF_F(INFO,    (ret == 0), "GPU Priority level %d applied successfully",              m_ConfigInt[configid_int_performance_gpu_priority]);
+        LOG_IF_F(WARNING, (ret != 0), "GPU Priority level %d failed to apply (status code %ld)", m_ConfigInt[configid_int_performance_gpu_priority], ret);
+    }
 }
 
 void ConfigManager::ResetConfigStateValues()

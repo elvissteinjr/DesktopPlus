@@ -1815,6 +1815,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         ApplySettingUpdateLimiter();
                         break;
                     }
+                    case configid_int_performance_gpu_priority:
+                    {
+                        ConfigManager::Get().ApplyGPUPrioritySetting();
+                        break;
+                    }
                     case configid_int_browser_max_fps:
                     {
                         DPBrowserAPIClient::Get().DPBrowser_GlobalSetFPS(msg.lParam);

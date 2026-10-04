@@ -2090,6 +2090,28 @@ void WindowSettings::UpdatePageMainCatPerformance()
             ImGui::NextColumn();
             ImGui::Spacing();
 
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(TranslationManager::GetString(tstr_SettingsPerformanceGPUPriority));
+
+            ImGui::NextColumn();
+            ImGui::Spacing();
+
+            int& gpu_priority = ConfigManager::Get().GetRef(configid_int_performance_gpu_priority);
+            const int gpu_priority_max = tstr_SettingsPerformanceGPUPriorityAboveNormal - tstr_SettingsPerformanceGPUPriorityBelowNormal - 1;   //The minimum value is -1 here
+            gpu_priority = clamp(gpu_priority, -1, gpu_priority_max);
+
+            if (ImGui::SliderWithButtonsInt("GPUPriority", gpu_priority, 1, 1, -1, gpu_priority_max, "##%d", ImGuiSliderFlags_NoInput, nullptr, 
+                                            TranslationManager::GetString( (TRMGRStrID)(tstr_SettingsPerformanceGPUPriorityNormal + gpu_priority) )))
+            {
+                gpu_priority = clamp(gpu_priority, -1, gpu_priority_max);
+
+                IPCManager::Get().PostConfigMessageToDashboardApp(configid_int_performance_gpu_priority, gpu_priority);
+                ConfigManager::Get().ApplyGPUPrioritySetting();
+            }
+
+            ImGui::NextColumn();
+            ImGui::Spacing();
+
             bool& use_hdr = ConfigManager::Get().GetRef(configid_bool_performance_hdr_mirroring);
             if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceUseHDR), &use_hdr))
             {
