@@ -13,6 +13,7 @@ class WindowOverlayBar
         ImVec2 m_Size;
         bool m_Visible; //This and m_Alpha default to visible state, meaning the dashboard UI, where it's always visible doesn't need to call Show()
         float m_Alpha;
+        float m_FadeDelay;
         bool m_IsScrollBarVisible;
 
         unsigned int m_OverlayHoveredID;
@@ -20,6 +21,8 @@ class WindowOverlayBar
         bool m_IsAddOverlayButtonActive;
         float m_MenuAlpha;
         bool m_IsMenuRemoveConfirmationVisible;
+        bool m_IsMenuBottomAligned;
+        bool m_IsMenuBottomAlignedPending;
         bool m_IsDraggingOverlayButtons;
 
         void DisplayTooltipIfHovered(const char* text, unsigned int overlay_id = k_ulOverlayID_None);
@@ -45,4 +48,8 @@ class WindowOverlayBar
         bool IsDraggingOverlayButtons() const;
 
         float GetAlpha() const;
+
+        void SetMenuBottomAligned(bool is_bottom);
+        bool IsMenuBottomAligned() const;
+        bool IsMenuBottomAlignedOrPending() const;
 };

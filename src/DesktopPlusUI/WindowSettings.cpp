@@ -932,6 +932,40 @@ void WindowSettings::UpdatePageMainCatInterface()
             UIManager::Get()->RepeatFrame();
         }
 
+        if (ConfigManager::GetValue(configid_bool_interface_show_advanced_settings))
+        {
+            ImGui::NextColumn();
+            ImGui::Spacing();
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text(TranslationManager::GetString(tstr_SettingsInterfaceOverlayBarMenuAlignment));
+
+            ImGui::NextColumn();
+            ImGui::Spacing();
+
+            bool is_bottom_aligned = UIManager::Get()->GetOverlayBarWindow().IsMenuBottomAlignedOrPending();
+
+            if (ImGui::RadioButton(TranslationManager::GetString(tstr_SettingsInterfaceOverlayBarMenuAlignmentTop), !is_bottom_aligned))
+            {
+                if (is_bottom_aligned)
+                {
+                    UIManager::Get()->GetOverlayBarWindow().SetMenuBottomAligned(false);
+                    ConfigManager::SetValue(configid_int_interface_overlaybar_menu_bottom_aligned, 0);
+                }
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::RadioButton(TranslationManager::GetString(tstr_SettingsInterfaceOverlayBarMenuAlignmentBottom), is_bottom_aligned))
+            {
+                if (!is_bottom_aligned)
+                {
+                    UIManager::Get()->GetOverlayBarWindow().SetMenuBottomAligned(true);
+                    ConfigManager::SetValue(configid_int_interface_overlaybar_menu_bottom_aligned, 1);
+                }
+            }
+        }
+
         ImGui::Columns(1);
     }
 

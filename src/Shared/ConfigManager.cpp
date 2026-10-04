@@ -442,6 +442,7 @@ bool ConfigManager::LoadConfigFromFile()
     m_ConfigInt[configid_int_interface_overlay_current_id]                 = config.ReadInt(   "Interface", "OverlayCurrentID", 0);
     m_ConfigInt[configid_int_interface_desktop_listing_style]              = config.ReadInt(   "Interface", "DesktopButtonCyclingMode", desktop_listing_style_individual);
     m_ConfigBool[configid_bool_interface_desktop_buttons_include_combined] = config.ReadBool(  "Interface", "DesktopButtonIncludeAll", false);
+    m_ConfigInt[configid_int_interface_overlaybar_menu_bottom_aligned]     = config.ReadInt(   "Interface", "OverlayBarMenuBottomAligned", -1);
 
     //Read color string as unsigned int but store it as signed
     m_ConfigInt[configid_int_interface_background_color] = pun_cast<unsigned int, int>( std::stoul(config.ReadString("Interface", "EnvironmentBackgroundColor", "00000080"), nullptr, 16) );
@@ -470,6 +471,8 @@ bool ConfigManager::LoadConfigFromFile()
     #ifdef DPLUS_UI
         TranslationManager::Get().LoadTranslationFromFile( m_ConfigString[configid_str_interface_language_file].c_str() );
         LoadConfigPersistentWindowState(config);
+
+        UIManager::Get()->GetOverlayBarWindow().SetMenuBottomAligned((m_ConfigInt[configid_int_interface_overlaybar_menu_bottom_aligned] == 1));
     #endif
 
     m_ConfigHandle[configid_handle_input_go_home_action_uid] = std::strtoull(config.ReadString("Input", "GoHomeButtonActionUID", "0").c_str(), nullptr, 10);
@@ -1414,12 +1417,13 @@ void ConfigManager::SaveConfigToFile()
         SaveMultiOverlayProfile(config);
     }
 
-    config.WriteString("Interface", "LanguageFile",             m_ConfigString[configid_str_interface_language_file].c_str());
-    config.WriteInt(   "Interface", "OverlayCurrentID",         m_ConfigInt[configid_int_interface_overlay_current_id]);
-    config.WriteInt(   "Interface", "DesktopButtonCyclingMode", m_ConfigInt[configid_int_interface_desktop_listing_style]);
-    config.WriteBool(  "Interface", "ShowAdvancedSettings",     m_ConfigBool[configid_bool_interface_show_advanced_settings]);
-    config.WriteBool(  "Interface", "DisplaySizeLarge",         m_ConfigBool[configid_bool_interface_large_style]);
-    config.WriteBool(  "Interface", "DesktopButtonIncludeAll",  m_ConfigBool[configid_bool_interface_desktop_buttons_include_combined]);
+    config.WriteString("Interface", "LanguageFile",                m_ConfigString[configid_str_interface_language_file].c_str());
+    config.WriteInt(   "Interface", "OverlayCurrentID",            m_ConfigInt[configid_int_interface_overlay_current_id]);
+    config.WriteInt(   "Interface", "DesktopButtonCyclingMode",    m_ConfigInt[configid_int_interface_desktop_listing_style]);
+    config.WriteBool(  "Interface", "ShowAdvancedSettings",        m_ConfigBool[configid_bool_interface_show_advanced_settings]);
+    config.WriteBool(  "Interface", "DisplaySizeLarge",            m_ConfigBool[configid_bool_interface_large_style]);
+    config.WriteBool(  "Interface", "DesktopButtonIncludeAll",     m_ConfigBool[configid_bool_interface_desktop_buttons_include_combined]);
+    config.WriteInt(   "Interface", "OverlayBarMenuBottomAligned", m_ConfigInt[configid_int_interface_overlaybar_menu_bottom_aligned]);
 
     //Write color string
     std::stringstream ss;
@@ -1912,8 +1916,9 @@ const ConfigHotkeyList& ConfigManager::GetHotkeys() const
     return m_ConfigHotkey;
 }
 
-void ConfigManager::InitConfigForWMR()
+void ConfigManager::InitConfigForHMD()
 {
+    //Windows Mixed Reality: Ignore virtual displays (this is *old* and might not apply anymore)
     int& wmr_ignore_vscreens = m_ConfigInt[configid_int_interface_wmr_ignore_vscreens];
 
     //Check if system is WMR and set WMR-specific default values if needed
@@ -1927,12 +1932,21 @@ void ConfigManager::InitConfigForWMR()
         if (wmr_ignore_vscreens == -1)
         {
             wmr_ignore_vscreens = 1;
-        }        
+        }
     }
     else //Not a WMR system, set values to -1. -1 settings will not be save to disk so a WMR user's settings is preserved if they switch around HMDs, but the setting is still false
     {
         wmr_ignore_vscreens = -1;
     }
+
+    #ifdef DPLUS_UI
+    //Steam Frame: Default to bottom-aligned Overlay Bar menus to avoid always-on-top dashboard from covering them
+    if (m_ConfigInt[configid_int_interface_overlaybar_menu_bottom_aligned] == -1)
+    {
+        vr::VRSystem()->GetStringTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_ControllerType_String, buffer, vr::k_unMaxPropertyStringSize);
+        UIManager::Get()->GetOverlayBarWindow().SetMenuBottomAligned((strcmp(buffer, "frame_hmd") == 0));
+    }
+    #endif
 }
 
 void ConfigManager::ResetConfigStateValues()

@@ -163,6 +163,7 @@ enum ConfigID_Int
     configid_int_overlay_MAX,
     configid_int_interface_overlay_current_id,
     configid_int_interface_desktop_listing_style,
+    configid_int_interface_overlaybar_menu_bottom_aligned,  //-1 means auto/unset which determines default on launch based on HMD
     configid_int_interface_background_color,
     configid_int_interface_background_color_display_mode,
     configid_int_interface_wmr_ignore_vscreens,             //-1 means auto/unset which is the value non-WMR users get
@@ -486,7 +487,7 @@ class ConfigManager
         ConfigHotkeyList& GetHotkeys();
         const ConfigHotkeyList& GetHotkeys() const;
 
-        void InitConfigForWMR();        //Setup WMR-specific default values if needed
+        void InitConfigForHMD();        //Setup WMR-specific default values if needed
         void ResetConfigStateValues();  //Reset all configid_*_state_* settings. Used when restarting a Desktop+ process
 
         ActionManager& GetActionManager();

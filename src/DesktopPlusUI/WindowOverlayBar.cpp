@@ -10,15 +10,17 @@
 #include "DesktopPlusWinRT.h"
 #include "DPBrowserAPIClient.h"
 
-
 WindowOverlayBar::WindowOverlayBar() : m_Visible(true),
-                                       m_Alpha(1.0f), 
+                                       m_Alpha(1.0f),
+                                       m_FadeDelay(0.0f),
                                        m_IsScrollBarVisible(false),
                                        m_OverlayHoveredID(k_ulOverlayID_None),
                                        m_OverlayButtonActiveMenuID(k_ulOverlayID_None),
                                        m_IsAddOverlayButtonActive(false),
                                        m_MenuAlpha(0.0f),
                                        m_IsMenuRemoveConfirmationVisible(false),
+                                       m_IsMenuBottomAligned(false),
+                                       m_IsMenuBottomAlignedPending(false),
                                        m_IsDraggingOverlayButtons(false)
 {
     m_Size.x = 32.0f;
@@ -30,13 +32,13 @@ void WindowOverlayBar::DisplayTooltipIfHovered(const char* text, unsigned int ov
     if ((text == nullptr) || (text[0] == '\0'))
         return;
 
-    if (ImGui::IsItemHovered())
+    if ((ImGui::IsItemHovered()) && ((m_MenuAlpha == 0.0f) || (!m_IsMenuBottomAligned)))
     {
         const ImGuiStyle& style = ImGui::GetStyle();
 
         static ImVec2 button_pos_last; //Remember last position and use it when posible. This avoids flicker when the same tooltip string is used in different places
         ImVec2 pos = ImGui::GetItemRectMin();
-        pos.y = ImGui::GetIO().DisplaySize.y;
+        pos.y = (m_IsMenuBottomAligned) ? m_Size.y + ImGui::GetTextLineHeightWithSpacing() + (style.WindowPadding.y * 2.0f) : ImGui::GetIO().DisplaySize.y;
         float button_width = ImGui::GetItemRectSize().x;
 
         //Default tooltips are not suited for this as there's too much trouble with resize flickering and stuff
@@ -325,7 +327,8 @@ void WindowOverlayBar::UpdateOverlayButtons()
             if (m_OverlayButtonActiveMenuID == i)
             {
                 float dist = width / 2.0f;
-                float menu_y = m_Pos.y + ImGui::GetStyle().WindowBorderSize + dist - (dist * m_MenuAlpha);
+                float menu_y = (m_IsMenuBottomAligned) ? (m_Pos.y + m_Size.y - ImGui::GetStyle().WindowBorderSize) - dist + (dist * m_MenuAlpha) : 
+                                                          m_Pos.y + ImGui::GetStyle().WindowBorderSize             + dist - (dist * m_MenuAlpha);
 
                 MenuOverlayButton(i, {pos.x + width / 2.0f, menu_y}, button_active);
 
@@ -591,7 +594,7 @@ void WindowOverlayBar::MenuOverlayButton(unsigned int overlay_id, ImVec2 pos, bo
         //Position window while clamping to overlay bar size
         ImVec2 window_size = ImGui::GetWindowSize();
         pos.x = clamp(pos.x - (window_size.x / 2.0f), m_Pos.x, m_Pos.x + m_Size.x - window_size.x);
-        pos.y -= window_size.y;
+        pos.y -= (m_IsMenuBottomAligned) ? 0.0f : window_size.y;
 
         ImGui::SetWindowPos(pos);
 
@@ -770,7 +773,7 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
         //Position window while clamping to overlay bar size
         ImVec2 window_size = ImGui::GetWindowSize();
         pos.x = clamp(pos.x - (window_size.x / 2.0f), m_Pos.x, m_Pos.x + m_Size.x - window_size.x);
-        pos.y -= window_size.y;
+        pos.y -= (m_IsMenuBottomAligned) ? 0.0f : window_size.y;
 
         ImGui::SetWindowPos(pos);
 
@@ -790,6 +793,10 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
 
 void WindowOverlayBar::Show(bool skip_fade)
 {
+    //With a pending menu alignment value it's already scheduled to be shown, skip
+    if (m_IsMenuBottomAligned != m_IsMenuBottomAlignedPending)
+        return;
+
     m_Visible = true;
 
     if (skip_fade)
@@ -831,18 +838,32 @@ void WindowOverlayBar::Update()
         const float alpha_step = ImGui::GetIO().DeltaTime * 6.0f;
 
         //Alpha fade animation
-        m_Alpha += (m_Visible) ? alpha_step : -alpha_step;
-
-        if (m_Alpha > 1.0f)
-            m_Alpha = 1.0f;
-        else if (m_Alpha < 0.0f)
-            m_Alpha = 0.0f;
-
-        //Prevent overlay highlight from sticking around
-        if ((m_Alpha == 0.0f) && (m_OverlayHoveredID != k_ulOverlayID_None))
+        if (m_FadeDelay == 0.0f)
         {
-            UIManager::Get()->HighlightOverlay(k_ulOverlayID_None);
-            m_OverlayHoveredID = k_ulOverlayID_None;
+            m_Alpha = clamp(m_Alpha + ((m_Visible) ? alpha_step : -alpha_step), 0.0f, 1.0f);
+
+            if (m_Alpha == 0.0f)
+            {
+                //Prevent overlay highlight from sticking around
+                if (m_OverlayHoveredID != k_ulOverlayID_None)
+                {
+                    UIManager::Get()->HighlightOverlay(k_ulOverlayID_None);
+                    m_OverlayHoveredID = k_ulOverlayID_None;
+                }
+
+                //If we have a pending alignment change, apply alignment and fade in again after a delay
+                if (m_IsMenuBottomAligned != m_IsMenuBottomAlignedPending)
+                {
+                    m_IsMenuBottomAligned = m_IsMenuBottomAlignedPending;
+                    m_FadeDelay = 1.0f;
+                    Show();
+                    UIManager::Get()->GetIdleState().AddActiveTime();
+                }
+            }
+        }
+        else //Deplete fade delay first
+        {
+            m_FadeDelay = std::max(m_FadeDelay - alpha_step, 0.0f);
         }
     }
 
@@ -864,7 +885,9 @@ void WindowOverlayBar::Update()
     float tooltip_padding = ImGui::GetTextLineHeightWithSpacing() + (style.WindowPadding.y * 2.0f);
     float min_width = io.DisplaySize.x * 0.50f;
     ImGui::SetNextWindowSizeConstraints({min_width, -1.0f}, {io.DisplaySize.x * 0.95f, -1.0f});
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y - tooltip_padding), 0, ImVec2(0.5f, 1.0f));  //Center window at bottom of the overlay with space for tooltips
+    //Center window at bottom or top of the overlay with space for tooltips if at top
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, (m_IsMenuBottomAligned) ? 0.0f : (io.DisplaySize.y - tooltip_padding) ), 0, 
+                            ImVec2(0.5f,                    (m_IsMenuBottomAligned) ? 0.0f : 1.0f));
 
     ImGui::Begin("WindowOverlayBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing |
                                               ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_HorizontalScrollbar);
@@ -929,7 +952,8 @@ void WindowOverlayBar::Update()
         if (m_IsAddOverlayButtonActive)
         {
             float dist   = width / 2.0f;
-            float menu_y = m_Pos.y + style.WindowBorderSize + dist - (dist * m_MenuAlpha);
+            float menu_y = (m_IsMenuBottomAligned) ? (m_Pos.y + m_Size.y - ImGui::GetStyle().WindowBorderSize) - dist + (dist * m_MenuAlpha) : 
+                                                      m_Pos.y + ImGui::GetStyle().WindowBorderSize             + dist - (dist * m_MenuAlpha);
 
             MenuAddOverlayButton({pos.x + width / 2.0f, menu_y}, button_active);
         }
@@ -1047,4 +1071,28 @@ bool WindowOverlayBar::IsDraggingOverlayButtons() const
 float WindowOverlayBar::GetAlpha() const
 {
     return m_Alpha;
+}
+
+void WindowOverlayBar::SetMenuBottomAligned(bool is_bottom)
+{
+    if (m_Alpha == 0.0f)
+    {
+        m_IsMenuBottomAligned = is_bottom;
+    }
+    else
+    {
+        m_IsMenuBottomAlignedPending = is_bottom;
+        Hide();
+    }
+}
+
+bool WindowOverlayBar::IsMenuBottomAligned() const
+{
+    return m_IsMenuBottomAligned;
+}
+
+bool WindowOverlayBar::IsMenuBottomAlignedOrPending() const
+{
+    //For settings UI display, pending has the value before the animation finishes
+    return m_IsMenuBottomAlignedPending;
 }

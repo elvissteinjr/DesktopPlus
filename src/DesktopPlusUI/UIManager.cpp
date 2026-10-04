@@ -616,7 +616,7 @@ vr::EVRInitError UIManager::InitOverlay()
     m_WindowPerformance.ResetCumulativeValues();
     m_WindowPerformance.RefreshTrackerBatteryList();
 
-    ConfigManager::Get().InitConfigForWMR();
+    ConfigManager::Get().InitConfigForHMD();
 
     if ((ovrl_error == vr::VROverlayError_None))
         return vr::VRInitError_None;
@@ -2086,29 +2086,35 @@ void UIManager::PositionOverlay()
         }
 
         //Offset the overlay
-        //It's offset in so it's as close to the dashboard as possible while not messing up pointer input. 
-        //Most problematic dashboard element is the current application button (SystemUI) and dashboard reposition bar (GamepadUI & SystemUI).
-        if (m_WindowOverlayBar.IsScrollBarVisible())
+        //It's offset to keep the grab handle clear but still stay close to the dashboard overall
+        const bool is_bottom_aligned = m_WindowOverlayBar.IsMenuBottomAligned();
+
+        if (!is_legacy_dashboard_active)
         {
-            if (!is_legacy_dashboard_active)
+            if ((m_WindowOverlayBar.IsScrollBarVisible()) && (!is_bottom_aligned))
             {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.373f, 0.470f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.403f, 0.51f);
             }
             else
             {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.482f, 0.265f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.356f, 0.50f);
             }
         }
         else
         {
-            if (!is_legacy_dashboard_active)
+            if ((m_WindowOverlayBar.IsScrollBarVisible()) && (!is_bottom_aligned))
             {
-                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.326f, 0.460f);
+                vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.482f, 0.265f);
             }
             else
             {
                 vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, 0.0f, -0.445f, 0.255f);
             }
+        }
+
+        if (is_bottom_aligned)
+        {
+            vr::IVRSystemEx::TransformOpenVR34TranslateRelative(matrix_ovr, -0.00f, -0.35f, 0.087f);
         }
 
         //Rotate slightly forward (local rotation)

@@ -670,8 +670,8 @@ std::tuple<vr::EVRInitError, vr::EVROverlayError, bool> OutputManager::InitOverl
 
     const bool vrinput_init_success = m_VRInput.Init();
 
-    //Check if it's a WMR system and set up for that if needed
-    ConfigManager::Get().InitConfigForWMR();
+    //Check if HMD-specific init is required (like for WMR)
+    ConfigManager::Get().InitConfigForHMD();
     DPWinRT_SetDesktopEnumerationFlags( (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1) );
     LOG_IF_F(INFO, (ConfigManager::GetValue(configid_int_interface_wmr_ignore_vscreens) == 1), "WMR headset detected, ignoring additional virtual displays");
 
