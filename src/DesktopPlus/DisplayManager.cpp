@@ -330,20 +330,17 @@ DDPDuplReturn DDPDisplayManager::CopyDirty(_In_ ID3D11Texture2D* SrcSurface, _In
         }
     }
 
-    //Create shader resource view if needed (format and such should in theory not change during duplication...)
-    if (m_DirtyVertexShaderResource == nullptr)
-    {
-        D3D11_SHADER_RESOURCE_VIEW_DESC ShaderDesc = {};
-        ShaderDesc.Format = ThisDesc.Format;
-        ShaderDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-        ShaderDesc.Texture2D.MostDetailedMip = ThisDesc.MipLevels - 1;
-        ShaderDesc.Texture2D.MipLevels = ThisDesc.MipLevels;
+    //Always create a new shader resource view. Keeping it is not safe even if that only seems to manifest in exclusive fullscreen...
+    D3D11_SHADER_RESOURCE_VIEW_DESC ShaderDesc = {};
+    ShaderDesc.Format = ThisDesc.Format;
+    ShaderDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    ShaderDesc.Texture2D.MostDetailedMip = ThisDesc.MipLevels - 1;
+    ShaderDesc.Texture2D.MipLevels = ThisDesc.MipLevels;
 
-        hr = m_Device->CreateShaderResourceView(SrcSurface, &ShaderDesc, &m_DirtyVertexShaderResource);
-        if (FAILED(hr))
-        {
-            return ProcessFailure(m_Device.Get(), L"Failed to create shader resource view for dirty rects", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
-        }
+    hr = m_Device->CreateShaderResourceView(SrcSurface, &ShaderDesc, &m_DirtyVertexShaderResource);
+    if (FAILED(hr))
+    {
+        return ProcessFailure(m_Device.Get(), L"Failed to create shader resource view for dirty rects", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
     const FLOAT BlendFactor[4] = {0.f, 0.f, 0.f, 0.f};
