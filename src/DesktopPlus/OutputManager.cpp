@@ -349,9 +349,47 @@ DDPDuplReturn OutputManager::InitOutput(HWND Window, INT& SingleOutput, UINT& Ou
                 return ProcessFailure(m_Device.Get(), L"Secondary device creation failed", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
 
+            //Get used device IDs for logging
+            //Device IDs are not unique to DXGI adapters, but in practice the first adapter on a device has the desktops or is the target we want to use
+            //This is fine for the purpose of telling if the right GPU is being used
+            UINT deviceid_desktop = UINT_MAX;
+            UINT deviceid_vr      = UINT_MAX;
+
+            DXGI_ADAPTER_DESC adapter_desc;
+            hr = adapter_ptr_preferred->GetDesc(&adapter_desc);
+
+            if (SUCCEEDED(hr))
+            {
+                deviceid_desktop = adapter_desc.DeviceId;
+            }
+
+            hr = adapter_ptr_vr->GetDesc(&adapter_desc);
+            if (SUCCEEDED(hr))
+            {
+                deviceid_vr = adapter_desc.DeviceId;
+            }
+
             adapter_ptr_vr = nullptr;
 
-            LOG_F(INFO, "Using cross-GPU copy");
+            if ((deviceid_desktop != UINT_MAX) && (deviceid_vr != UINT_MAX))
+            {
+                LOG_F(INFO, "Using cross-GPU copy (%u -> %u)", deviceid_desktop, deviceid_vr);
+            }
+            else //This is very unlikely to happen...
+            {
+                LOG_F(WARNING, "Using cross-GPU copy, but failed to query device IDs");
+            }
+        }
+        else
+        {
+            //Log the used device ID
+            DXGI_ADAPTER_DESC adapter_desc;
+            hr = adapter_ptr_preferred->GetDesc(&adapter_desc);
+
+            if (SUCCEEDED(hr))
+            {
+                LOG_F(INFO, "Using GPU with Device ID %u", adapter_desc.DeviceId);
+            }
         }
     }
 
@@ -3070,8 +3108,9 @@ int OutputManager::EnumerateOutputs(int target_desktop_id, Microsoft::WRL::ComPt
             //Check if there are gonna be any outputs before logging the GPU to avoid confusion (there may be multiple adapters per GPU with no outputs attached)
             if (adapter_ptr->EnumOutputs(0, &output_ptr) == DXGI_ERROR_NOT_FOUND)
             {
-                //Still log them with higher verbosity level just in case
-                LOG_F(1, "GPU %u: %s (Device ID %u) (No Outputs)", i + 1, StringConvertFromUTF16(adapter_desc.Description).c_str(), adapter_desc.DeviceId);
+                //Still log them with higher verbosity level or when used as VR GPU
+                LOG_IF_F(1,    (adapter_ptr_vr != adapter_ptr), "GPU %u: %s (Device ID %u) (No Outputs)",              i + 1, StringConvertFromUTF16(adapter_desc.Description).c_str(), adapter_desc.DeviceId);
+                LOG_IF_F(INFO, (adapter_ptr_vr == adapter_ptr), "GPU %u: %s (Device ID %u) (No Outputs, SteamVR GPU)", i + 1, StringConvertFromUTF16(adapter_desc.Description).c_str(), adapter_desc.DeviceId);
 
                 ++i;
                 continue;
