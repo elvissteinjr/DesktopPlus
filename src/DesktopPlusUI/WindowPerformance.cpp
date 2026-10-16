@@ -1023,7 +1023,7 @@ void WindowPerformance::DisplayStatsMinimal()
     static const float text_ms_width             = ImGui::CalcTextSize("00.00 ms").x;
     static const float text_gb_width             = ImGui::CalcTextSize("00.00 GB").x;
     static const float text_temperature_width    = ImGui::CalcTextSize("00\xC2\xB0""C").x;
-    static const float text_time_width           = ImGui::CalcTextSize("00:00").x;
+    static const float text_time_width           = ImGui::CalcTextSize("00:00 AM").x;
 
     const float frame_time_warning_limit = m_FrameTimeVsyncLimit * 0.95f;
 
