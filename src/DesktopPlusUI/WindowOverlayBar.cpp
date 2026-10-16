@@ -763,6 +763,12 @@ void WindowOverlayBar::MenuAddOverlayButton(ImVec2 pos, bool is_item_active)
                 default: capsource = ovrl_capsource_desktop_duplication;
             }
 
+            //Use Graphics Capture instead of Desktop Duplication in the rare case of Desktop Duplication being disabled
+            if ((capsource == ovrl_capsource_desktop_duplication) && (ConfigManager::GetValue(configid_bool_misc_disable_desktop_duplication)))
+            {
+                capsource = ovrl_capsource_winrt_capture;
+            }
+
             //Add overlay and sent to dashboard app
             OverlayManager::Get().AddOverlay(capsource, new_overlay_desktop_id);
             IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_overlay_new_drag, MAKELPARAM(new_overlay_desktop_id, int(pointer_distance * 100.0f) ));

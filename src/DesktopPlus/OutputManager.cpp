@@ -240,6 +240,14 @@ void OutputManager::CleanRefsDesktopDuplicationOnly()
 //
 DDPDuplReturn OutputManager::InitOutput(HWND Window, INT& SingleOutput, UINT& OutCount, RECT& DeskBounds)
 {
+    if (ConfigManager::GetValue(configid_bool_misc_disable_desktop_duplication))
+    {
+        LOG_F(INFO, "Desktop Duplication is disabled in the config. Setting output as invalid instead of initializing...");
+
+        OutCount = 0;
+        return ddp_dupl_return_error_expected;
+    }
+
     LOG_F(INFO, "Initializing Desktop Duplication...");
 
     HRESULT hr = S_OK;
@@ -1141,6 +1149,12 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         case -3: capsource = ovrl_capsource_ui;                  break;
                         case -4: capsource = ovrl_capsource_browser;             break;
                         default: capsource = ovrl_capsource_desktop_duplication;
+                    }
+
+                    //Use Graphics Capture instead of Desktop Duplication in the rare case of Desktop Duplication being disabled
+                    if ((capsource == ovrl_capsource_desktop_duplication) && (ConfigManager::GetValue(configid_bool_misc_disable_desktop_duplication)))
+                    {
+                        capsource = ovrl_capsource_winrt_capture;
                     }
 
                     AddOverlayDrag(pointer_distance, capsource, desktop_id, (HWND)ConfigManager::GetValue(configid_handle_state_arg_hwnd));

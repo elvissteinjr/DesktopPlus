@@ -119,6 +119,7 @@ enum ConfigID_Bool
     configid_bool_browser_content_blocker,
     configid_bool_misc_no_steam,                              //Restarts without Steam when it detects to have been launched by Steam
     configid_bool_misc_uiaccess_was_enabled,                  //Tracks if UIAccess was enabled to show a warning after it isn't anymore due to updates or modified executable
+    configid_bool_misc_disable_desktop_duplication,
     configid_bool_state_overlay_dragmode,
     configid_bool_state_overlay_selectmode,
     configid_bool_state_overlay_dragselectmode_show_hidden,   //True if mode is from a popup
