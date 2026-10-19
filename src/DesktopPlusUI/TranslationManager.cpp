@@ -6,6 +6,7 @@
 #include "Logging.h"
 
 #include <clocale>
+#include <cassert>
 
 const char* TranslationManager::s_StringIDNames[tstr_MAX] =
 {
@@ -704,6 +705,7 @@ TranslationManager::TranslationManager()
     //Init strings with ID names in case even fallback English doesn't have them
     for (size_t i = 0; i < tstr_MAX; ++i)
     {
+        assert(s_StringIDNames[i] != nullptr);  //Likely s_StringIDNames and TRMGRStrID content size mismatch
         m_Strings[i] = s_StringIDNames[i];
     }
 }
