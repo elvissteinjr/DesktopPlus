@@ -444,7 +444,12 @@ void Overlay::OnDesktopDuplicationUpdate()
 {
     if ( (m_Visible) && (m_TextureSource == ovrl_texsource_desktop_duplication_3dou_converted) )
     {
-        OutputManager::Get()->ConvertOUtoSBS(*this, m_OUtoSBSConverter);
+        //For now ovrl_texsource_desktop_duplication_3dou_converted can mean any Desktop Duplication overlay using a separate texture,
+        //so we need to check if it's really OU3D or extra textures are being used
+        const OverlayConfigData& data = OverlayManager::Get().GetConfigData(m_ID);
+        const bool is_ou3d = ( (data.ConfigBool[configid_bool_overlay_3D_enabled]) && (data.ConfigInt[configid_int_overlay_3D_mode] >= ovrl_3Dmode_hou) );
+
+        (is_ou3d) ? OutputManager::Get()->ConvertOUtoSBS(*this, m_OUtoSBSConverter) : OutputManager::Get()->CopyToDesktopDuplicationExtraTexture(*this, m_OUtoSBSConverter);
     }
 }
 

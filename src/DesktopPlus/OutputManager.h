@@ -98,6 +98,7 @@ class OutputManager
         bool CropToActiveWindow(int& crop_x, int& crop_y, int& crop_width, int& crop_height);             //Returns true if values have changed
 
         void ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter);
+        void CopyToDesktopDuplicationExtraTexture(Overlay& overlay, OUtoSBSConverter& converter);
 
     private:
         DDPDuplReturn ProcessMonoMask(bool is_mono, DDPPtrInfo& ptr_info, int& ptr_width, int& ptr_height, int& ptr_left, int& ptr_top, 

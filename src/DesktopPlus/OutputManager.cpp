@@ -1615,6 +1615,24 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                         m_MouseCursorNeedsUpdate = true;
                         break;
                     }
+                    case configid_bool_performance_desktop_duplication_extra_textures:
+                    {
+                        //For now we borrow ApplySetting3DMode() to apply things even if not 3D
+                        unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
+                        for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
+                        {
+                            if (OverlayManager::Get().GetConfigData(i).ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication)
+                            {
+                                OverlayManager::Get().SetCurrentOverlayID(i);
+                                ApplySetting3DMode();
+                            }
+                        }
+                        OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
+                        //Intersection mask will change from this, apply mouse input even if other mouse stuff was already set by ApplySetting3DMode()
+                        ApplySettingMouseInput();
+                        break;
+                    }
                     case configid_bool_input_mouse_render_cursor:
                     {
                         m_OutputPendingFullRefresh = true;
@@ -3283,6 +3301,29 @@ void OutputManager::ConvertOUtoSBS(Overlay& overlay, OUtoSBSConverter& converter
     else
     {
         ProcessFailure(m_Device.Get(), L"Failed to convert OU texture to SBS", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
+    }
+}
+
+void OutputManager::CopyToDesktopDuplicationExtraTexture(Overlay& overlay, OUtoSBSConverter& converter)
+{
+    //Same as ConvertOUtoSBS()
+    const DPRect& crop_rect = overlay.GetValidatedCropRect();
+
+    HRESULT hr = converter.CopyCrop(m_Device.Get(), m_DeviceContext.Get(), m_MultiGPUTargetDevice.Get(), m_MultiGPUTargetDeviceContext.Get(), GetOverlayTexture(),
+                                    m_DDPDesktopWidth, m_DDPDesktopHeight, crop_rect.GetTL().x, crop_rect.GetTL().y, crop_rect.GetWidth(), crop_rect.GetHeight());
+
+    if (hr == S_OK)
+    {
+        vr::Texture_t vrtex = {};
+        vrtex.eType       = vr::TextureType_DirectX;
+        vrtex.eColorSpace = vr::ColorSpace_Gamma;
+        vrtex.handle      = converter.GetTexture(); //OUtoSBSConverter takes care of multi-gpu support automatically, so no further processing needed
+
+        vr::VROverlayEx()->SetOverlayTextureEx(overlay.GetHandle(), &vrtex, converter.GetTextureSizeSBS());
+    }
+    else
+    {
+        ProcessFailure(m_Device.Get(), L"Failed to copy to Desktop Duplication extra texture", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 }
 
@@ -6227,7 +6268,7 @@ void OutputManager::ApplySettingCaptureSource()
 
 void OutputManager::ApplySetting3DMode()
 {
-    const Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
+    Overlay& overlay_current = OverlayManager::Get().GetCurrentOverlay();
     const OverlayConfigData& data = OverlayManager::Get().GetCurrentConfigData();
 
     vr::VROverlayHandle_t ovrl_handle = overlay_current.GetHandle();
@@ -6285,11 +6326,13 @@ void OutputManager::ApplySetting3DMode()
     {
         if ( (is_enabled) && ((mode == ovrl_3Dmode_ou) || (mode == ovrl_3Dmode_hou)) )
         {
-            OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_desktop_duplication_3dou_converted);
+            overlay_current.SetTextureSource(ovrl_texsource_desktop_duplication_3dou_converted);
         }
         else if (!m_OutputInvalid)
         {
-            OverlayManager::Get().GetCurrentOverlay().SetTextureSource(ovrl_texsource_desktop_duplication);
+            //It's a bit hacky but for now ovrl_texsource_desktop_duplication_3dou_converted stands for individual texture in converter class even if not OU3D
+            overlay_current.SetTextureSource( (ConfigManager::GetValue(configid_bool_performance_desktop_duplication_extra_textures)) ? 
+                                               ovrl_texsource_desktop_duplication_3dou_converted : ovrl_texsource_desktop_duplication );
         }
 
         RefreshOpenVROverlayTexture(DPRect(-1, -1, -1, -1), true);
@@ -6581,9 +6624,11 @@ void OutputManager::ApplySettingCrop()
     const bool is_3d_enabled = ConfigManager::GetValue(configid_bool_overlay_3D_enabled);
     const int mode_3d = ConfigManager::GetValue(configid_int_overlay_3D_mode);
     const bool is_ou3d = ( (is_3d_enabled) && ((mode_3d == ovrl_3Dmode_ou) || (mode_3d == ovrl_3Dmode_hou)) );
+    const bool tex_is_precropped = ( (is_ou3d) || ( (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication_3dou_converted) &&
+                                                    (data.ConfigInt[configid_int_overlay_capture_source] == ovrl_capsource_desktop_duplication) ) );
 
-    //Use full texture if everything checks out or 3D mode is Over-Under (converted to a 1:1 fitting texture)
-    if ( (is_ou3d) || ( (crop_rect.GetTL().x == 0) && (crop_rect.GetTL().y == 0) && (crop_rect.GetWidth() == content_width) && (crop_rect.GetHeight() == content_height) ) )
+    //Use full texture if everything checks out or the texture is already cropped to fit (Over-Under 3D / Extra Texture)
+    if ( (tex_is_precropped) || ( (crop_rect.GetTL().x == 0) && (crop_rect.GetTL().y == 0) && (crop_rect.GetWidth() == content_width) && (crop_rect.GetHeight() == content_height) ) )
     {
         tex_bounds.uMin = 0.0f;
         tex_bounds.vMin = 0.0f;
@@ -6614,9 +6659,8 @@ void OutputManager::ApplySettingCrop()
     }
     else
     {
-        //For Desktop Duplication, compare old to new bounds to see if a full refresh is required
-        //However, for Over-Under 3D this won't work and we just always do the full refresh
-        bool needs_full_refresh = is_ou3d;
+        //For Desktop Duplication, compare old to new bounds to see if a full refresh is required (unless pre-cropped, where we always refresh)
+        bool needs_full_refresh = tex_is_precropped;
 
         if (!needs_full_refresh)
         {
@@ -6742,8 +6786,8 @@ void OutputManager::ApplySettingMouseInput()
 
         ApplySettingMouseScale();
 
-        //Set intersection mask for desktop duplication overlays
-        if (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication)
+        //Set intersection mask for desktop duplication overlays, unless they use extra textures
+        if ( (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication) && (!ConfigManager::GetValue(configid_bool_performance_desktop_duplication_extra_textures)) )
         {
             std::vector<vr::VROverlayIntersectionMaskPrimitive_t> primitives;
             primitives.reserve(m_DesktopRects.size());
@@ -6807,8 +6851,19 @@ void OutputManager::ApplySettingMouseScale()
         {
             case ovrl_capsource_desktop_duplication:
             {
-                mouse_scale.v[0] = m_DDPDesktopWidth;
-                mouse_scale.v[1] = m_DDPDesktopHeight;
+                if (ConfigManager::GetValue(configid_bool_performance_desktop_duplication_extra_textures))
+                {
+                    const DPRect& crop_rect = overlay.GetValidatedCropRect();
+
+                    mouse_scale.v[0] = crop_rect.GetWidth();
+                    mouse_scale.v[1] = crop_rect.GetHeight();
+                }
+                else
+                {
+                    mouse_scale.v[0] = m_DDPDesktopWidth;
+                    mouse_scale.v[1] = m_DDPDesktopHeight;
+                }
+
                 break;
             }
             case ovrl_capsource_winrt_capture:

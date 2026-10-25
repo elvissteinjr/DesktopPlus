@@ -9,6 +9,7 @@
 #include "Vectors.h"
 
 //This class rearranges an OU 3D texture to a SBS 3D texture
+//It can also be used to just crop-copy a region of a texture until a better class for general post-processing exists
 class OUtoSBSConverter
 {
     private:
@@ -21,6 +22,9 @@ class OUtoSBSConverter
         ID3D11Texture2D* GetTexture() const; //Does not add a reference
         Vector2Int GetTextureSizeSBS() const;
         HRESULT Convert(ID3D11Device* device, ID3D11DeviceContext* device_context, ID3D11Device* multi_gpu_device, ID3D11DeviceContext* multi_gpu_device_context, 
+                        ID3D11Texture2D* tex_source, int tex_source_width, int tex_source_height, int crop_x, int crop_y, int crop_width, int crop_height);
+        //Texture copy with crop  but without 3D conversion. Shouldn't be here, but is for now as the all the handling the converted textures apply to this as well
+        HRESULT CopyCrop(ID3D11Device* device, ID3D11DeviceContext* device_context, ID3D11Device* multi_gpu_device, ID3D11DeviceContext* multi_gpu_device_context, 
                         ID3D11Texture2D* tex_source, int tex_source_width, int tex_source_height, int crop_x, int crop_y, int crop_width, int crop_height);
         void CleanRefs();
 

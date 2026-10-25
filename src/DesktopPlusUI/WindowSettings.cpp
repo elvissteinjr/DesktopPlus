@@ -2079,6 +2079,14 @@ void WindowSettings::UpdatePageMainCatPerformance()
             ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
             HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceSingleDesktopMirrorTip));
 
+            bool& extra_textures = ConfigManager::Get().GetRef(configid_bool_performance_desktop_duplication_extra_textures);
+            if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceDesktopDuplicationExtraTextures), &extra_textures))
+            {
+                IPCManager::Get().PostMessageToDashboardApp(ipcmsg_set_config, ConfigManager::GetWParamForConfigID(configid_bool_performance_desktop_duplication_extra_textures), extra_textures);
+            }
+            ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+            HelpMarker(TranslationManager::GetString(tstr_SettingsPerformanceDesktopDuplicationExtraTexturesTip));
+
             bool& alt_cursor_render = ConfigManager::Get().GetRef(configid_bool_performance_alternative_cursor_rendering);
             if (ImGui::Checkbox(TranslationManager::GetString(tstr_SettingsPerformanceAlternativeCursorRendering), &alt_cursor_render))
             {
