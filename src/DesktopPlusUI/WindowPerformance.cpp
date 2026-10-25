@@ -1023,7 +1023,19 @@ void WindowPerformance::DisplayStatsMinimal()
     static const float text_ms_width             = ImGui::CalcTextSize("00.00 ms").x;
     static const float text_gb_width             = ImGui::CalcTextSize("00.00 GB").x;
     static const float text_temperature_width    = ImGui::CalcTextSize("00\xC2\xB0""C").x;
-    static const float text_time_width           = ImGui::CalcTextSize("00:00").x;
+
+    //Time Width based off locale.
+    float text_time_width = 0.0f;
+    for (WORD hour : {0, 11, 23})
+    {
+        SYSTEMTIME time_test = {};
+        time_test.wHour = hour;
+        time_test.wMinute = 59;
+
+        wchar_t time_wstr[64];
+        if (::GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, TIME_NOSECONDS, &time_test, nullptr, time_wstr, 63) != 0)
+            text_time_width = std::max(text_time_width, ImGui::CalcTextSize(StringConvertFromUTF16(time_wstr).c_str()).x);
+    }
 
     const float frame_time_warning_limit = m_FrameTimeVsyncLimit * 0.95f;
 
