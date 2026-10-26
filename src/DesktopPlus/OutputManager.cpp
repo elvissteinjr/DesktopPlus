@@ -866,6 +866,10 @@ DDPDuplReturnUpdate OutputManager::Update(DDPPtrInfo& PointerInfoDDP,  DPRect& D
     //Check all overlays for overlap and collect clipping region from matches
     DPRect clipping_region(-1, -1, -1, -1);
 
+    //Overlays doing straight copies from the backing texture may end up without a cursor if it's outside of the dirty region
+    //When those are active we have to always draw the cursor
+    bool do_always_draw_cursor = false;
+
     if (!m_OutputPendingFullRefresh)
     {
         for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
@@ -875,6 +879,11 @@ DDPDuplReturnUpdate OutputManager::Update(DDPPtrInfo& PointerInfoDDP,  DPRect& D
             if ( (overlay.IsVisible()) && ( (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication) || (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication_3dou_converted) ) )
             {
                 const DPRect& cropping_region = overlay.GetValidatedCropRect();
+
+                if ( (!do_always_draw_cursor) && (overlay.GetTextureSource() == ovrl_texsource_desktop_duplication_3dou_converted) && (mouse_rect.Overlaps(cropping_region)) )
+                {
+                    do_always_draw_cursor = true;
+                }
 
                 if (DirtyRectTotal.Overlaps(cropping_region))
                 {
@@ -907,8 +916,8 @@ DDPDuplReturnUpdate OutputManager::Update(DDPPtrInfo& PointerInfoDDP,  DPRect& D
         bool is_full_texture = DirtyRectTotal.Contains({0, 0, m_DDPDesktopWidth, m_DDPDesktopHeight});
         DrawFrameToOverlayTex(is_full_texture, DirtyRectTotal);
 
-        //Only handle cursor if it's in cropping region
-        if (mouse_rect.Overlaps(DirtyRectTotal))
+        //Only handle cursor if it's in the region that was updated (unless we need to draw unconditionally)
+        if ( (do_always_draw_cursor) || (mouse_rect.Overlaps(DirtyRectTotal)) )
         {
             DrawMouseToOverlayTex(*PointerInfo);
         }
