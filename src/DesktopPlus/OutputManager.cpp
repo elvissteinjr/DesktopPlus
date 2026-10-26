@@ -903,13 +903,9 @@ DDPDuplReturnUpdate OutputManager::Update(DDPPtrInfo& PointerInfoDDP,  DPRect& D
 
     if (clipping_region.GetTL().x != -1) //Overlapped with at least one overlay
     {
-        //Set scissor rect for overlay drawing function
-        const D3D11_RECT rect_scissor = { DirtyRectTotal.GetTL().x, DirtyRectTotal.GetTL().y, DirtyRectTotal.GetBR().x, DirtyRectTotal.GetBR().y };
-        m_DeviceContext->RSSetScissorRects(1, &rect_scissor);
-
         //Draw shared surface to overlay texture to avoid trouble with transparency on some systems
         bool is_full_texture = DirtyRectTotal.Contains({0, 0, m_DDPDesktopWidth, m_DDPDesktopHeight});
-        DrawFrameToOverlayTex(is_full_texture);
+        DrawFrameToOverlayTex(is_full_texture, DirtyRectTotal);
 
         //Only handle cursor if it's in cropping region
         if (mouse_rect.Overlaps(DirtyRectTotal))
@@ -923,10 +919,6 @@ DDPDuplReturnUpdate OutputManager::Update(DDPPtrInfo& PointerInfoDDP,  DPRect& D
 
         //Set Overlay texture
         ret = RefreshOpenVROverlayTexture(DirtyRectTotal);
-
-        //Reset scissor rect
-        const D3D11_RECT rect_scissor_full = { 0, 0, m_DDPDesktopWidth, m_DDPDesktopHeight };
-        m_DeviceContext->RSSetScissorRects(1, &rect_scissor_full);
 
         has_updated_overlay = (ret == ddp_dupl_return_update_success_refreshed_overlay);
     }
@@ -4048,7 +4040,7 @@ DDPDuplReturn OutputManager::CreateTextures(INT SingleOutput, UINT& OutCount, RE
     return ddp_dupl_return_success;
 }
 
-void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
+void OutputManager::DrawFrameToOverlayTex(bool clear_rtv, const DPRect& dirty_rect)
 {
     //Do a straight copy if there are no issues with that or do the alpha check if it's still pending
     if ((!m_OutputAlphaCheckFailed) || (m_OutputAlphaChecksPending > 0))
@@ -4069,6 +4061,10 @@ void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
     if (m_OutputAlphaCheckFailed)
     {
         GetOverlayTexture();
+
+        //Clip to dirty rect
+        const D3D11_RECT rect_scissor = { dirty_rect.GetTL().x, dirty_rect.GetTL().y, dirty_rect.GetBR().x, dirty_rect.GetBR().y };
+        m_DeviceContext->RSSetScissorRects(1, &rect_scissor);
 
         // Set resources
         UINT Stride = sizeof(DDPVertex);
@@ -4092,6 +4088,10 @@ void OutputManager::DrawFrameToOverlayTex(bool clear_rtv)
         }
 
         m_DeviceContext->Draw(DDP_NUMVERTICES, 0);
+
+        //Reset scissor rect
+        const D3D11_RECT rect_scissor_full = { 0, 0, m_DDPDesktopWidth, m_DDPDesktopHeight };
+        m_DeviceContext->RSSetScissorRects(1, &rect_scissor_full);
     }
 }
 
@@ -4323,7 +4323,7 @@ DDPDuplReturnUpdate OutputManager::RefreshOpenVROverlayTexture(DPRect& DirtyRect
                 return (DDPDuplReturnUpdate)ProcessFailure(m_Device.Get(), L"Failed to acquire keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
             }
 
-            DrawFrameToOverlayTex(true);
+            DrawFrameToOverlayTex(true, { 0, 0, m_DDPDesktopWidth, m_DDPDesktopHeight });
 
             //Release keyed mutex
             hr = m_KeyMutex->ReleaseSync(0);

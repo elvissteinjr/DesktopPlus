@@ -107,7 +107,7 @@ class OutputManager
                                              Microsoft::WRL::ComPtr<ID3D11Texture2D>& out_tex, DXGI_FORMAT& out_tex_format, D3D11_BOX& box);
         DDPDuplReturn InitShaders();
         DDPDuplReturn CreateTextures(INT SingleOutput, UINT& OutCount, RECT& DeskBounds);
-        void DrawFrameToOverlayTex(bool clear_rtv = true);
+        void DrawFrameToOverlayTex(bool clear_rtv, const DPRect& dirty_rect); //Dirty rect only limits the alpha fixing render pass, usually redraws the whole texture by copying
         DDPDuplReturn DrawMouseToOverlayTex(DDPPtrInfo& PtrInfo);
         DDPDuplReturnUpdate RefreshOpenVROverlayTexture(DPRect& DirtyRectTotal, bool force_full_copy = false); //Refreshes the overlay texture of the VR runtime with content of the m_OvrlTex backing texture
         bool RecreateOverlayTex();
