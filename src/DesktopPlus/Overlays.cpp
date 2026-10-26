@@ -302,8 +302,8 @@ void Overlay::UpdateValidatedCropRect()
 
     if (data.ConfigBool[configid_bool_overlay_crop_enabled])
     {
-        x      = std::min( std::max(0, data.ConfigInt[configid_int_overlay_crop_x]), data.ConfigInt[configid_int_overlay_state_content_width]);
-        y      = std::min( std::max(0, data.ConfigInt[configid_int_overlay_crop_y]), data.ConfigInt[configid_int_overlay_state_content_height]);
+        x      = clamp(data.ConfigInt[configid_int_overlay_crop_x], 0, data.ConfigInt[configid_int_overlay_state_content_width]  - 1);
+        y      = clamp(data.ConfigInt[configid_int_overlay_crop_y], 0, data.ConfigInt[configid_int_overlay_state_content_height] - 1);
         width  = data.ConfigInt[configid_int_overlay_crop_width];
         height = data.ConfigInt[configid_int_overlay_crop_height];
     }
@@ -323,18 +323,18 @@ void Overlay::UpdateValidatedCropRect()
         }
     }
 
-    int width_max  = std::max(data.ConfigInt[configid_int_overlay_state_content_width]  - x, 1);
-    int height_max = std::max(data.ConfigInt[configid_int_overlay_state_content_height] - y, 1);
+    const int width_max  = std::max(data.ConfigInt[configid_int_overlay_state_content_width]  - x, 1);
+    const int height_max = std::max(data.ConfigInt[configid_int_overlay_state_content_height] - y, 1);
 
     if (width == -1)
         width = width_max;
     else
-        width = std::min(width, width_max);
+        width = clamp(width, 1, width_max);
 
     if (height == -1)
         height = height_max;
     else
-        height = std::min(height, height_max);
+        height = clamp(height, 1, height_max);
 
     m_ValidatedCropRect = DPRect(x, y, x + width, y + height);
 }
