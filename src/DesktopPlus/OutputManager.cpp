@@ -5240,18 +5240,32 @@ void OutputManager::OnOpenVRMouseEvent(const vr::VREvent_t& vr_event, unsigned i
                 offset_y = m_DDPDesktopY;
             }
 
-            //SteamVR ignores 3D properties when adjusting coordinates for custom UV values, so we need to add offsets manually
-            if (data.ConfigBool[configid_bool_overlay_3D_enabled])
+            //3D or extra texture
+            if ( (data.ConfigBool[configid_bool_overlay_3D_enabled]) || (ConfigManager::GetValue(configid_bool_performance_desktop_duplication_extra_textures)) )
             {
-                Overlay3DMode mode_3D = (Overlay3DMode)data.ConfigInt[configid_int_overlay_3D_mode];
+                const DPRect& crop_rect = overlay_current.GetValidatedCropRect();
 
-                if (mode_3D >= ovrl_3Dmode_hou)
+                //Over-Under 3D or extra texture, separate overlay texture handling
+                if (overlay_current.GetTextureSource() == ovrl_texsource_desktop_duplication_3dou_converted)
                 {
-                    offset_x += overlay_current.GetValidatedCropRect().GetTL().x;
+                    offset_x += crop_rect.GetTL().x;
+
+                    //Separate textures are pre-cropped, so the flip below has to be around the cropped area's bottom edge instead of the shared desktop texture's
+                    content_height = crop_rect.GetBR().y; //Same as the desktop height unless cropping is active
                 }
-                else
+                else if (data.ConfigBool[configid_bool_overlay_3D_enabled])
                 {
-                    offset_x += overlay_current.GetValidatedCropRect().GetTL().x / 2;
+                    //Not separate texture, but SteamVR ignores 3D properties when adjusting coordinates for custom UV values, so we still need to add offsets manually
+                    Overlay3DMode mode_3D = (Overlay3DMode)data.ConfigInt[configid_int_overlay_3D_mode];
+
+                    if (mode_3D >= ovrl_3Dmode_hou)
+                    {
+                        offset_x += crop_rect.GetTL().x;
+                    }
+                    else
+                    {
+                        offset_x += crop_rect.GetTL().x / 2;
+                    }
                 }
             }
 
