@@ -384,6 +384,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             TextureManager::Get().LoadAllTexturesAndBuildFonts();
         }
 
+        idle_state.UpdateFrameState();
+
         //While we still need to poll, greatly reduce the rate and don't do any ImGui stuff to not waste resources (hopefully this does not mess up ImGui input state)
         if ((idle_state.ShouldIdle()) && (!ui_manager.HasDelayedIPCMessages()))
         {
@@ -391,14 +393,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             idle_state.DoIdleTimestep(); //Delta time won't be updated by ImGui while idle, but some parts of the app still rely on it so we do it ourselves
 
             //Deep idle allows us to free some resources while idle for longer times. Only makes sense in VR mode, though
-            if ((!desktop_mode) && (g_vrTex) && (idle_state.ShouldDeepIdle()))
+            if ((!desktop_mode) && (g_vrTex != nullptr) && (idle_state.ShouldDeepIdle()))
             {
                 CleanupRenderTarget();
             }
 
             continue;
         }
-        else if ((!desktop_mode) && (!g_vrTex) && (!idle_state.ShouldDeepIdle()))   //Restore render target after exiting deep idle
+        else if ((!desktop_mode) && (g_vrTex == nullptr) && (!idle_state.ShouldDeepIdle()))   //Restore render target after exiting deep idle
         {
             CreateRenderTarget(desktop_mode);
         }
@@ -504,10 +506,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
 
         // Rendering
-        if (ui_manager.GetRepeatFrame()) //If frame repeat is enabled, don't actually render and skip vsync
+
+        //If frame repeat is enabled or we got here despite deep idling while having no D3D resources (to process delayed messages), don't actually render and skip vsync
+        if ( (ui_manager.GetRepeatFrame()) || ((!desktop_mode) && (g_vrTex == nullptr)) )
         {
             ImGui::EndFrame();
-            ui_manager.DecreaseRepeatFrameCount();
+            ui_manager.DecreaseRepeatFrameCount();  //This is fine to just call in both cases
         }
         else
         {
@@ -560,7 +564,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
                     //RSV is kept around by IVROverlayEx and not released here
                 }
-                else if ((ui_manager.GetOverlayHandleOverlayBar() != vr::k_ulOverlayHandleInvalid) && (g_vrTex))
+                else if ((ui_manager.GetOverlayHandleOverlayBar() != vr::k_ulOverlayHandleInvalid) && (g_vrTex != nullptr))
                 {
                     vr::Texture_t vrtex = {};
                     vrtex.handle = g_vrTex.Get();

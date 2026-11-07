@@ -116,15 +116,18 @@ void UIManager::IdleState::SetLastActiveTick(ULONGLONG value)
     }
 }
 
-bool UIManager::IdleState::ShouldIdle()
+void UIManager::IdleState::UpdateFrameState()
 {
+    m_WasIdleLastFrame = m_IsIdleFrame;
+
     if (::IsIconic(UIManager::Get()->GetWindowHandle()))
     {
-        m_WasIdleLastFrame = true;
-        return true;
+        m_IsIdleFrame = true;
+        return;
     }
 
     UIManager& ui_manager = *UIManager::Get();
+    const ULONGLONG current_tick = ::GetTickCount64();
 
     //Temporary setting to disable throttling in case it causes issues somewhere, matches old basic idle logic
     if (!ConfigManager::GetValue(configid_bool_performance_ui_auto_throttle))
@@ -133,67 +136,82 @@ bool UIManager::IdleState::ShouldIdle()
 
         if (!ui_manager.IsInDesktopMode())
         {
-            const bool do_idle = ( (!ui_manager.IsOverlayBarOverlayVisible())                     &&
-                                   (!ui_manager.GetFloatingUI().IsVisible())                      &&
-                                   (!ui_manager.GetSettingsWindow().IsVisibleOrFading())          &&
-                                   (!ui_manager.GetOverlayPropertiesWindow().IsVisibleOrFading()) &&
-                                   (!ui_manager.GetPerformanceWindow().IsVisible())               &&
-                                   (!ui_manager.GetVRKeyboard().GetWindow().IsVisibleOrFading())  &&
-                                   (!ui_manager.GetAuxUI().IsActive()) );
-
-            return do_idle;
+            m_IsIdleFrame = ( (!ui_manager.IsOverlayBarOverlayVisible())                     &&
+                              (!ui_manager.GetFloatingUI().IsVisible())                      &&
+                              (!ui_manager.GetSettingsWindow().IsVisibleOrFading())          &&
+                              (!ui_manager.GetOverlayPropertiesWindow().IsVisibleOrFading()) &&
+                              (!ui_manager.GetPerformanceWindow().IsVisible())               &&
+                              (!ui_manager.GetVRKeyboard().GetWindow().IsVisibleOrFading())  &&
+                              (!ui_manager.GetAuxUI().IsActive()) );
         }
-
-        return false;
-    }
-
-    //Performance Monitor needs constant updates, but it'll be throttled in GetFrameSkipValue() if possible
-    if (ui_manager.GetPerformanceWindow().IsVisible())
-    {
-        return false;
-    }
-
-    //Quick-Start Guide needs updates for its automatic timeout to work
-    if (ui_manager.GetAuxUI().GetQuickStartWindow().IsVisible())
-    {
-        return false;
-    }
-
-    //If any text input is active, we need to deal with the blinking caret so we wake up occasionally for it to animate
-    if (ImGui::IsAnyInputTextActive())
-    {
-        if (m_LastCaretTick + 100 < ::GetTickCount64())
+        else
         {
-            m_LastCaretTick = ::GetTickCount64();
-            m_WasIdleLastFrame = false; //Explicitly avoid doing the idle timestep when only waking up for a single frame as the caret blinking relies on it advancing in real time
-            return false;
+            m_IsIdleFrame = false;
+        }
+    }
+    else
+    {
+        m_IsIdleFrame = false;
+        bool has_set_value = false;
+
+        //Performance Monitor needs constant updates, but it'll be throttled in GetFrameSkipValue() if possible
+        if (ui_manager.GetPerformanceWindow().IsVisible())
+        {
+            m_IsIdleFrame = false;
+            has_set_value = true;
+        }
+        else if (ui_manager.GetAuxUI().GetQuickStartWindow().IsVisible())
+        {
+            //Quick-Start Guide needs updates for its automatic timeout to work
+            m_IsIdleFrame = false;
+            has_set_value = true;
+        }
+        else if (ImGui::IsAnyInputTextActive())
+        {
+            //If any text input is active, we need to deal with the blinking caret so we wake up occasionally for it to animate
+            if (m_LastCaretTick + s_MsCaretTick < current_tick)
+            {
+                m_LastCaretTick = current_tick;
+                m_WasIdleLastFrame = false; //Explicitly avoid doing the idle timestep when only waking up for a single frame as the caret blinking relies on it advancing in real time
+                m_IsIdleFrame = false;
+
+                has_set_value = true;
+            }
+        }
+
+        if (!has_set_value)
+        {
+            if (ImGui::IsAnyMouseDown())
+            {
+                m_IsIdleFrame = false;
+            }
+            else if (m_LastActiveTick + s_MsBeforeIdle < current_tick)
+            {
+                m_IsIdleFrame = true;
+            }
         }
     }
 
-    if (ImGui::IsAnyMouseDown())
-    {
-        return false;
-    }
+    m_IsDeepIdleFrame = ( (m_IsIdleFrame) && (m_LastActiveTick + s_MsBeforeDeepIdle < current_tick) );
 
-    if (m_LastActiveTick + s_MsBeforeIdle < ::GetTickCount64())
-    {
-        m_WasIdleLastFrame = true;
-        return true;
-    }
-
-    return false;
-}
-
-bool UIManager::IdleState::ShouldDeepIdle()
-{
-    return ((ShouldIdle()) && (m_LastActiveTick + s_MsBeforeDeepIdle < ::GetTickCount64()));
-}
-
-int UIManager::IdleState::GetFrameSkipValue()
-{
     //If outside of active time, throttle to 1 frameskip or just use user frameskip value if it's higher
     //This mainly causes Performance Monitor to animated at half rate. Other animating things are supposed to add active time
-    return std::max((m_LastActiveTick + s_MsBeforeIdle < ::GetTickCount64()) ? 1 : 0, ConfigManager::GetValue(configid_int_performance_ui_frameskip));
+    m_FrameSkipValue = std::max((m_LastActiveTick + s_MsBeforeIdle < current_tick) ? 1 : 0, ConfigManager::GetValue(configid_int_performance_ui_frameskip));
+}
+
+bool UIManager::IdleState::ShouldIdle() const
+{
+    return m_IsIdleFrame;
+}
+
+bool UIManager::IdleState::ShouldDeepIdle() const
+{
+    return m_IsDeepIdleFrame;
+}
+
+int UIManager::IdleState::GetFrameSkipValue() const
+{
+    return m_FrameSkipValue;
 }
 
 void UIManager::IdleState::OnImGuiNewFrame()
@@ -203,8 +221,6 @@ void UIManager::IdleState::OnImGuiNewFrame()
     {
         DoIdleTimestep();
     }
-
-    m_WasIdleLastFrame = false;
 }
 
 void UIManager::IdleState::OnWindowMessage(UINT message_id)

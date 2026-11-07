@@ -71,12 +71,17 @@ class UIManager
         {
             private:
                 static const unsigned int s_MsBeforeIdle     = 1000;    //A general 1 second buffer before idling saves us from adding active time for every short animation
-                static const unsigned int s_MsBeforeDeepIdle = 10000;   //Deep idle causes some GPU resources to be freed. Should be as trigger happy as normal idle
+                static const unsigned int s_MsBeforeDeepIdle = 10000;   //Deep idle causes some GPU resources to be freed. Shouldn't be as trigger happy as normal idle
+                static const unsigned int s_MsCaretTick      = 100;     //ImGui's caret blinking cycle is 400ms but we don't want to awkwardly sit between states so keeping this lower
 
                 ULONGLONG m_LastActiveTick = 0;
                 ULONGLONG m_LastCaretTick  = 0;
                 POINT m_LastCursorPos{0};
+
+                bool m_IsIdleFrame      = false;
+                bool m_IsDeepIdleFrame  = false;
                 bool m_WasIdleLastFrame = false;
+                int m_FrameSkipValue = 0;
 
                 LARGE_INTEGER m_TimestepTime{0};
                 LARGE_INTEGER m_TimestepTicks{0};
@@ -86,9 +91,11 @@ class UIManager
             public:
                 IdleState();
 
-                bool ShouldIdle();
-                bool ShouldDeepIdle();
-                int GetFrameSkipValue();
+                void UpdateFrameState();    //Called once per frame loop before deciding whether to idle or start an ImGui frame
+
+                bool ShouldIdle() const;
+                bool ShouldDeepIdle() const;
+                int GetFrameSkipValue() const;
 
                 void OnImGuiNewFrame();
                 void OnWindowMessage(UINT message_id);
