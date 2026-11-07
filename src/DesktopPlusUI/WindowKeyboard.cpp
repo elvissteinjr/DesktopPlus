@@ -13,6 +13,9 @@
 
 #include "imgui_internal.h"
 
+//Additional offset from the D+ tab, applied on positioning and counteracted after drags
+static const Vector3 g_DPlusTabPositionOffset = {0.0f, -0.30f, 0.15f};
+
 //-WindowKeyboard
 WindowKeyboard::WindowKeyboard() : 
     m_WindowWidth(-1.0f),
@@ -135,6 +138,8 @@ void WindowKeyboard::UpdateVisibility()
                 {
                     vr::TrackingUniverseOrigin origin = vr::TrackingUniverseStanding;
                     Matrix4 matrix_m4 = UIManager::Get()->GetOverlayDragger().GetBaseOffsetMatrix(ovrl_origin_dplus_tab) * m_OverlayStateCurrent->Transform;
+
+                    matrix_m4.translate_relative(g_DPlusTabPositionOffset);
 
                     vr::HmdMatrix34_t matrix_ovr = matrix_m4.toOpenVR34();
                     vr::VROverlay()->SetOverlayTransformAbsolute(overlay_handle, origin, &matrix_ovr);
@@ -1329,6 +1334,13 @@ void WindowKeyboard::RebaseTransform()
         mat_origin_inverse.invert();
         m_OverlayStateCurrent->Transform = mat_origin_inverse * mat_abs;
     }
+    else if (m_OverlayStateCurrentID == floating_window_ovrl_state_dashboard_tab)
+    {
+        FloatingWindow::RebaseTransform();
+
+        //In the dashboard tab we apply an additional offset which needs to be counteracted after a drag
+        m_OverlayStateCurrent->Transform.translate_relative(-g_DPlusTabPositionOffset);
+    }
     else
     {
         FloatingWindow::RebaseTransform();
@@ -1343,9 +1355,8 @@ void WindowKeyboard::ResetTransform(FloatingWindowOverlayStateID state_id)
 
     //Offset keyboard position depending on the scaled size
     const float overlay_height_m = (m_Size.y / m_Size.x) * OVERLAY_WIDTH_METERS_KEYBOARD;
-    const float offset_up        = -0.90f - ((overlay_height_m * overlay_state.Size) / 2.0f);
+    const float offset_up        = -0.65f - ((overlay_height_m * overlay_state.Size) / 2.0f);
 
-    overlay_state.Transform.translate_relative(0.0f, 0.0f, 0.15f);
     overlay_state.Transform.rotateX(-45);
     overlay_state.Transform.translate_relative(0.0f, offset_up, 0.00f);
 
