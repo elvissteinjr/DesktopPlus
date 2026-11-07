@@ -2817,14 +2817,16 @@ void WindowOverlayProperties::UpdatePageCropChange(bool only_restore_settings)
 
     if (ImGui::DraggableRectArea("DragArea", draggable_rect_area, draggable_rect_state))
     {
-        crop_x      = clamp((int)floorf(draggable_rect_state.RectPos.x / draggable_rect_scale), 0, ovrl_width  - 1);
-        crop_y      = clamp((int)floorf(draggable_rect_state.RectPos.y / draggable_rect_scale), 0, ovrl_height - 1);
+        crop_width  = clamp((int)ceilf( draggable_rect_state.RectSize.x / draggable_rect_scale), 1, ovrl_width);
+        crop_height = clamp((int)ceilf( draggable_rect_state.RectSize.y / draggable_rect_scale), 1, ovrl_height);
+        crop_x      = clamp((int)floorf(draggable_rect_state.RectPos.x  / draggable_rect_scale), 0, ovrl_width  - crop_width);
+        crop_y      = clamp((int)floorf(draggable_rect_state.RectPos.y  / draggable_rect_scale), 0, ovrl_height - crop_height);
+
+        //Keep max values in sync
         crop_width_max  = ovrl_width  - crop_x;
         crop_height_max = ovrl_height - crop_y;
-        crop_width  = clamp((int)ceilf(draggable_rect_state.RectSize.x / draggable_rect_scale), 1, crop_width_max);
-        crop_height = clamp((int)ceilf(draggable_rect_state.RectSize.y / draggable_rect_scale), 1, crop_height_max);
 
-        //Set to max if width/height matches total width (we don't do it partial crops which could still use max values tho)
+        //Set to max if width/height matches total width (we don't do it for partial crops which could still use max values tho)
         if (crop_width >= ovrl_width)
         {
             crop_width = -1;
