@@ -237,15 +237,21 @@ void FloatingUI::UpdateUITargetState()
                 const float distance = overlay_data.ConfigTransform.getTranslation().distance({0.0f, 0.0f, 0.0f});
                 use_fixed_size = (distance < 0.25f);
 
-                m_Width = 1.2f;
-                vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle_floating_ui, m_Width);
+                if (use_fixed_size)
+                {
+                    m_Width = 1.2f;
+                    vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle_floating_ui, m_Width);
+                }
             }
             else if (overlay_data.ConfigInt[configid_int_overlay_origin] == ovrl_origin_theater_screen) //Fixed size for theater screen too
             {
+                use_fixed_size = true;
+
                 m_Width = 3.0f;
                 vr::VROverlay()->SetOverlayWidthInMeters(ovrl_handle_floating_ui, m_Width);
             }
-            else
+
+            if (!use_fixed_size)
             {
                 vr::TrackedDevicePose_t poses[vr::k_unTrackedDeviceIndex_Hmd + 1];
                 vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), poses, vr::k_unTrackedDeviceIndex_Hmd + 1);
