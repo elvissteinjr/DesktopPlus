@@ -1188,6 +1188,11 @@ bool OutputManager::HandleIPCMessage(const MSG& msg)
                     OverlayManager::Get().ConvertDuplicatedOverlayToStandalone((unsigned int)msg.lParam);
                     break;
                 }
+                case ipcact_binding_ui_show:
+                {
+                    vr::VRInput()->OpenBindingUI(g_AppKeyDashboardApp, vr::k_ulInvalidActionSetHandle, vr::k_ulInvalidInputValueHandle, (bool)msg.lParam);
+                    break;
+                }
                 case ipcact_browser_navigate_to_url:
                 {
                     unsigned int overlay_id = (unsigned int)msg.lParam;

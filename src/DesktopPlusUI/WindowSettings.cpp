@@ -1291,13 +1291,21 @@ void WindowSettings::UpdatePageMainCatActions()
             ImGui::SameLine(ImGui::GetContentRegionAvail().x - button_binding_width - 1.0f);
             if (ImGui::SmallButton(TranslationManager::GetString(tstr_SettingsActionsShowBindings)))
             {
-                //See comment on the active shortcuts
-                vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
-                vr::VRInput()->OpenBindingUI(g_AppKeyDashboardApp, vr::k_ulInvalidActionSetHandle, vr::k_ulInvalidInputValueHandle, UIManager::Get()->IsInDesktopMode());
-                vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
+                //While doing the trickery with switching app identity (see comment on the active buttons) seems to work for vrcompositor,
+                //the binding UI behaves weird for the dashboard app... honestly not sure if this is even at fault, but if the dashboard app is running, make that process show the UI instead
+                if (IPCManager::IsDashboardAppRunning())
+                {
+                    IPCManager::Get().PostMessageToDashboardApp(ipcmsg_action, ipcact_binding_ui_show, (LPARAM)UIManager::Get()->IsInDesktopMode());
+                }
+                else
+                {
+                    vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyDashboardApp);
+                    vr::VRInput()->OpenBindingUI(g_AppKeyDashboardApp, vr::k_ulInvalidActionSetHandle, vr::k_ulInvalidInputValueHandle, UIManager::Get()->IsInDesktopMode());
+                    vr::VRApplications()->IdentifyApplication(::GetCurrentProcessId(), g_AppKeyUIApp);
+                }
             }
 
-            //See Active Shortcuts comment
+            //See Active Buttons comment
             ImGui::SameLine();
             ImGui::Dummy({0.0f, 0.0f});
         }
