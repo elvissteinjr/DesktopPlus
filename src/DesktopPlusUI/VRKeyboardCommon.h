@@ -8,6 +8,7 @@ enum KeyboardLayoutSubLayout : unsigned char
     kbdlayout_sub_base,
     kbdlayout_sub_shift,
     kbdlayout_sub_altgr,
+    kbdlayout_sub_altgr_shift,
     kbdlayout_sub_aux,
     kbdlayout_sub_MAX
 };

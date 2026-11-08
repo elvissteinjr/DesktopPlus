@@ -10,7 +10,7 @@
 #include "imgui_internal.h"
 #include "imgui_impl_win32_openvr.h"
 
-static const char* const g_KeyboardSublayoutNames[kbdlayout_sub_MAX]    = {"Base", "Shift", "AltGr", "Aux"};
+static const char* const g_KeyboardSublayoutNames[kbdlayout_sub_MAX]    = {"Base", "Shift", "AltGr", "AltGrShift", "Aux"};
 static const char* const g_KeyboardClusterNames[kbdlayout_cluster_MAX]  = {"Base", "Function", "Navigation", "Numpad", "Extra"};
 static const char* const g_KeyboardKeyTypeNames[kbdlayout_key_MAX]      = {"Blank", "VirtualKey", "VirtualKeyToggle", "VirtualKeyIsoEnter", "String", "SubLayoutToggle", "Action"};
 

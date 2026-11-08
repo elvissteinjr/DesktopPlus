@@ -20,7 +20,7 @@ void KeyboardEditor::UpdateWindowKeyList()
         {
             KeyboardLayoutSubLayout current_sublayout = (KeyboardLayoutSubLayout)i_sublayout;
 
-            if ((current_sublayout == kbdlayout_sub_altgr) && (!vr_keyboard.GetLayoutMetadata().HasAltGr))
+            if (((current_sublayout == kbdlayout_sub_altgr) || (current_sublayout == kbdlayout_sub_altgr_shift)) && (!vr_keyboard.GetLayoutMetadata().HasAltGr))
                 continue;
 
             if (ImGui::BeginTabItem( TranslationManager::GetString((TRMGRStrID)(tstr_KeyboardEditorSublayoutBase + i_sublayout) ), nullptr))
@@ -34,7 +34,7 @@ void KeyboardEditor::UpdateWindowKeyList()
                     {
                         for (int i_sublayout_menu = kbdlayout_sub_base; i_sublayout_menu < kbdlayout_sub_MAX; ++i_sublayout_menu)
                         {
-                            if ((i_sublayout_menu == kbdlayout_sub_altgr) && (!vr_keyboard.GetLayoutMetadata().HasAltGr))
+                            if (((i_sublayout_menu == kbdlayout_sub_altgr) || (i_sublayout_menu == kbdlayout_sub_altgr_shift)) && (!vr_keyboard.GetLayoutMetadata().HasAltGr))
                                 continue;
 
                             if ((i_sublayout_menu != i_sublayout) && (ImGui::MenuItem( TranslationManager::GetString((TRMGRStrID)(tstr_KeyboardEditorSublayoutBase + i_sublayout_menu)) )))

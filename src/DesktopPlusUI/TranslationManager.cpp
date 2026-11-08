@@ -654,6 +654,7 @@ const char* TranslationManager::s_StringIDNames[tstr_MAX] =
     "tstr_KeyboardEditorSublayoutBase",
     "tstr_KeyboardEditorSublayoutShift",
     "tstr_KeyboardEditorSublayoutAltGr",
+    "tstr_KeyboardEditorSublayoutAltGrShift",
     "tstr_KeyboardEditorSublayoutAux",
     "tstr_DialogOk",
     "tstr_DialogCancel",

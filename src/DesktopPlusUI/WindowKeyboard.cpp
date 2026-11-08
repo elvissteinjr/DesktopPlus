@@ -380,6 +380,10 @@ void WindowKeyboard::WindowUpdate()
     {
         current_sublayout = m_SubLayoutOverride;
     }
+    else if ((vr_keyboard.GetLayoutMetadata().HasAltGr) && (vr_keyboard.GetKeyDown(VK_RMENU)) && (vr_keyboard.GetKeyDown(VK_SHIFT) != vr_keyboard.IsCapsLockToggled()) && (!vr_keyboard.GetLayout(kbdlayout_sub_altgr_shift).empty()))
+    {
+        current_sublayout = kbdlayout_sub_altgr_shift;
+    }
     else if ((vr_keyboard.GetLayoutMetadata().HasAltGr) && (vr_keyboard.GetKeyDown(VK_RMENU)) && (!vr_keyboard.GetLayout(kbdlayout_sub_altgr).empty()))
     {
         current_sublayout = kbdlayout_sub_altgr;
