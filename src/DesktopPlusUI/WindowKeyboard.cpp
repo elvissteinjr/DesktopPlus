@@ -579,9 +579,8 @@ void WindowKeyboard::WindowUpdate()
                     ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, false);
 
                 const bool is_down = vr_keyboard.GetKeyDown(key.KeyCode);
-                const bool push_color = ((is_down) && (button_state.IsDown));
 
-                if (push_color)
+                if (is_down)
                     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
                 //Allow right click too to be consistent with toggling normal virtual keys
@@ -596,7 +595,7 @@ void WindowKeyboard::WindowUpdate()
                     }
                 }
 
-                if (push_color)
+                if (is_down)
                     ImGui::PopStyleColor();
 
                 if (use_key_repeat)
