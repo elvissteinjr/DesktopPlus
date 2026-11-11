@@ -374,6 +374,17 @@ void DPBrowserAPIClient::HandleIPCMessage(const MSG& msg)
             if (overlay_id != k_ulOverlayID_None)
             {
                 OverlayManager::Get().GetConfigData(overlay_id).ConfigInt[configid_int_overlay_state_fps] = (int)msg.lParam;
+
+                #ifdef DPLUS_UI
+                    //Applied directly, so the UI has to add active time to ensure update while idle
+                    if (ConfigManager::GetValue(configid_bool_performance_show_fps))
+                    {
+                        if (UIManager* uimgr = UIManager::Get())
+                        {
+                            uimgr->GetIdleState().AddActiveTime(50);
+                        }
+                    }
+                #endif
             }
             break;
         }
