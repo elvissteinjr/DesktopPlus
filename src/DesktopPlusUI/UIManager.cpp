@@ -1769,6 +1769,7 @@ void UIManager::OnOverlayNameChanged()
     }
 
     RepeatFrame();
+    m_IdleState.AddActiveTime();
 }
 
 void UIManager::UpdateOverlayDimming()
