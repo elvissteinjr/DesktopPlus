@@ -228,12 +228,13 @@ class OutputManager
         ULONGLONG m_OvrlDesktopDuplInactiveTick; //Tick when m_OvrlDesktopDuplActiveCount went 0, for delayed idle cleanup
         bool m_OvrlDashboardActive;
         bool m_OvrlInputActive;
+        ULONGLONG m_GlobalInputDetectionTick;    //We delay the race to idle to give a window for detecting any globally bound input actions, reset on dashboard close and input reload events
         bool m_OvrlDirectDragActive;
         ULONGLONG m_OvrlTempDragStartTick;
         float m_PendingDashboardDummyHeight;
         ULONGLONG m_LastApplyTransformTick;
         ULONGLONG m_LastFrameTransformUpdateTick;
-        bool m_OvrlTheaterJustDocked;           //Current implementation will receive one OvrlHidden event right after docking which we need to ignore
+        bool m_OvrlTheaterJustDocked;            //Current implementation will receive one OvrlHidden event right after docking which we need to ignore
 
         Microsoft::WRL::ComPtr<ID3D11Texture2D> m_MouseTex;
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_MouseShaderRes;

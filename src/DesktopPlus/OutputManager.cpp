@@ -69,6 +69,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_OvrlDesktopDuplInactiveTick{0},
     m_OvrlDashboardActive(false),
     m_OvrlInputActive(false),
+    m_GlobalInputDetectionTick(0),
     m_OvrlDirectDragActive(false),
     m_OvrlTempDragStartTick(0),
     m_PendingDashboardDummyHeight(0.0f),
@@ -97,6 +98,7 @@ OutputManager::OutputManager(HANDLE PauseDuplicationEvent, HANDLE ResumeDuplicat
     m_MouseLastInfo.ShapeInfo.Type = DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR;
     ::QueryPerformanceFrequency(&m_MouseLaserPointerScrollDeltaFrequency);
     m_OvrlDesktopDuplInactiveTick = ::GetTickCount64();
+    m_GlobalInputDetectionTick = ::GetTickCount64();
 
     //Initialize ConfigManager and set first launch state based on existence of config file (used to detect first launch in Steam version)
     m_IsFirstLaunch = !ConfigManager::Get().LoadConfigFromFile();
@@ -2318,6 +2320,11 @@ DWORD OutputManager::GetMaxRefreshDelay() const
     }
     else if ( (m_VRInput.IsAnyGlobalActionBound()) || (IsAnyOverlayUsingGazeFade()) || (m_IsAnyHotkeyActive) )
     {
+        return m_MaxActiveRefreshDelay * 2;
+    }
+    else if (::GetTickCount64() < m_GlobalInputDetectionTick + 5000)
+    {
+        //SteamVR does not report global actions as active when polling at a low rate, so we delay dropping to the highest refresh delay for a few seconds in hope to catch bound actions
         return m_MaxActiveRefreshDelay * 2;
     }
     else
@@ -4802,6 +4809,7 @@ bool OutputManager::HandleOpenVREvents()
                 }
 
                 IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 0);
+                m_GlobalInputDetectionTick = ::GetTickCount64();
                 break;
             }
             case vr::VREvent_SeatedZeroPoseReset:
@@ -4825,13 +4833,11 @@ bool OutputManager::HandleOpenVREvents()
             case vr::VREvent_Input_BindingsUpdated:
             case vr::VREvent_Input_BindingLoadSuccessful:
             {
-                m_VRInput.RefreshAnyGlobalActionBound();
+                m_GlobalInputDetectionTick = ::GetTickCount64();
                 break;
             }
             case vr::VREvent_TrackedDeviceActivated:
             {
-                m_VRInput.RefreshAnyGlobalActionBound();
-
                 //Apply transforms of all device origin overlays in case a previously unavailable device was used by one of them
                 unsigned int current_overlay_old = OverlayManager::Get().GetCurrentOverlayID();
                 for (unsigned int i = 0; i < OverlayManager::Get().GetOverlayCount(); ++i)
@@ -4846,11 +4852,12 @@ bool OutputManager::HandleOpenVREvents()
                 }
 
                 OverlayManager::Get().SetCurrentOverlayID(current_overlay_old);
+
+                m_GlobalInputDetectionTick = ::GetTickCount64();
                 break;
             }
             case vr::VREvent_TrackedDeviceDeactivated:
             {
-                m_VRInput.RefreshAnyGlobalActionBound();
                 m_LaserPointer.RemoveDevice(vr_event.trackedDeviceIndex);
 
                 IPCManager::Get().PostConfigMessageToUIApp(configid_int_state_drag_hint_type, 0);

@@ -45,8 +45,7 @@ class VRInput
 
         vr::VRActionHandle_t m_HandleActionHMDEyeTracking;
 
-        bool m_IsAnyGlobalActionBound;            //"Bound" meaning assigned and the device is actually active
-        bool m_IsAnyGlobalActionBoundStateValid;
+        bool m_IsAnyGlobalActionBound;      //"Bound" meaning device with active action set was seen
         bool m_IsEyeTrackingActionBound;
 
         bool m_IsLaserPointerInputActive;
@@ -67,7 +66,7 @@ class VRInput
         VRInput();
         bool Init();
         void Update();
-        void RefreshAnyGlobalActionBound();
+        void RefreshAnyActionBound();
         void HandleGlobalActionShortcuts(OutputManager& outmgr);
         void TriggerLaserPointerHaptics(vr::VRInputValueHandle_t restrict_to_device = vr::k_ulInvalidInputValueHandle) const;
         vr::InputOriginInfo_t GetOriginTrackedDeviceInfoEx(vr::VRInputValueHandle_t origin) const; //Wraps GetOriginTrackedDeviceInfo() with keyboard device support

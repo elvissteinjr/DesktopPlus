@@ -27,7 +27,6 @@ VRInput::VRInput() : m_HandleActionsetShortcuts(vr::k_ulInvalidActionSetHandle),
                      m_HandleActionLaserPointerHaptic(vr::k_ulInvalidActionHandle),
                      m_HandleActionHMDEyeTracking(vr::k_ulInvalidActionHandle),
                      m_IsAnyGlobalActionBound(false),
-                     m_IsAnyGlobalActionBoundStateValid(false),
                      m_IsEyeTrackingActionBound(false),
                      m_IsLaserPointerInputActive(false),
                      m_LaserPointerScrollMode(vrinput_scroll_none),
@@ -248,75 +247,72 @@ void VRInput::Update()
         }
     }
 
-    if (m_IsEyeTrackingActionBound)
-    {
-        actionset_desc[actionset_active_count].ulActionSet = m_HandleActionsetHMD;
-        actionset_desc[actionset_active_count].nPriority = vr::k_nActionSetOverlayGlobalPriorityMin + 2;    //Always use global priority (if it even matters here)
+    //Eye-tracking. Always include this as it needs to be there to detect eye tracking to begin with
+    actionset_desc[actionset_active_count].ulActionSet = m_HandleActionsetHMD;
+    actionset_desc[actionset_active_count].nPriority = vr::k_nActionSetOverlayGlobalPriorityMin + 2;    //Always use global priority (if it even matters here)
 
-        actionset_active_count++;
-    }
+    actionset_active_count++;
 
     vr::VRInput()->UpdateActionState(actionset_desc, sizeof(vr::VRActiveActionSet_t), actionset_active_count);
     UpdateKeyboardDeviceState();
 
-    //SteamVR Input is incredibly weird with the initial action state. The first couple attempts at getting any action state will fail. Probably some async loading stuff
-    //However, SteamVR also does not send any events once the initial state goes valid (it does for binding state changes after this)
-    //As we don't want to needlessly refresh the any-action-bound state on every update, we poll it until it succeeds once and then rely on events afterwards
-    if (!m_IsAnyGlobalActionBoundStateValid)
-    {
-        RefreshAnyGlobalActionBound();
-    }
+    //We reduce polling when no inputs are bound, but we still need to keep checking if that changes
+    RefreshAnyActionBound();
 }
 
-void VRInput::RefreshAnyGlobalActionBound()
+void VRInput::RefreshAnyActionBound()
 {
-    auto is_action_bound = [&](vr::VRActionHandle_t action_handle)
+    //Past attempts at this have failed over time, so now we poll for active action sets to steer idle wait duration
+    //This only checks if not previously found active in the same session, but that's good enough
+    vr::EVRInputError input_error = vr::VRInputError_None;
+
+    //"Shortcuts" action set
+    if (!m_IsAnyGlobalActionBound)
     {
-        vr::VRInputValueHandle_t action_origin = vr::k_ulInvalidInputValueHandle;
-        vr::EVRInputError error = vr::VRInput()->GetActionOrigins(m_HandleActionsetShortcuts, action_handle, &action_origin, 1);
+        vr::InputDigitalActionData_t data = {0};
 
-        if (action_origin != vr::k_ulInvalidInputValueHandle) 
+        //Global Shortcuts
+        int shortcut_id = 0;
+        for (const auto shortcut_handle : m_HandleActionDoGlobalShortcuts)
         {
-            m_IsAnyGlobalActionBoundStateValid = true;
+            input_error = vr::VRInput()->GetDigitalActionData(shortcut_handle, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
 
-            vr::InputOriginInfo_t action_origin_info = {0};
-            vr::EVRInputError error = vr::VRInput()->GetOriginTrackedDeviceInfo(action_origin, &action_origin_info, sizeof(vr::InputOriginInfo_t));
-
-            if ( (error == vr::VRInputError_None) && (vr::VRSystem()->IsTrackedDeviceConnected(action_origin_info.trackedDeviceIndex)) )
+            if ((input_error == vr::VRInputError_None) && (data.bActive))
             {
-                return true;
+                m_IsAnyGlobalActionBound = true;
+
+                LOG_F(INFO, "Global Shortcut #%d input action detected as bound", (unsigned int)shortcut_id+1);
+                break;
             }
+
+            ++shortcut_id;
         }
 
-        return false;
-    };
-
-    //Doesn't trigger on app start since its actions are not valid yet
-    m_IsAnyGlobalActionBound = false;
-
-    //Check for eye tracking action being bound if it isn't yet
-    //As this is used for showing UI options, only require this to succeed once and then keep it for the session regardless of it maybe being unbound
-    if ((!m_IsEyeTrackingActionBound) && (is_action_bound(m_HandleActionHMDEyeTracking)))
-    {
-        m_IsEyeTrackingActionBound = true;
-        ConfigManager::SetValue(configid_bool_state_input_eyetracking_available, true);
-        IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_input_eyetracking_available, true);
-
-        LOG_F(INFO, "Eye tracking input action detected as bound");
-    }
-
-    if (is_action_bound(m_HandleActionEnableGlobalLaserPointer))
-    {
-        m_IsAnyGlobalActionBound = true;
-        return;
-    }
-
-    for (auto handle : m_HandleActionDoGlobalShortcuts)
-    {
-        if (is_action_bound(handle))
+        //Global Laser Pointer toggle
         {
-            m_IsAnyGlobalActionBound = true;
-            return;
+            input_error = vr::VRInput()->GetDigitalActionData(m_HandleActionEnableGlobalLaserPointer, &data, sizeof(data), vr::k_ulInvalidInputValueHandle);
+            if ((input_error == vr::VRInputError_None) && ((data.bActive)))
+            {
+                m_IsAnyGlobalActionBound = true;
+
+                LOG_F(INFO, "Global Laser Pointer input action detected as bound");
+            }
+        }
+    }
+
+    //Eye-Tracking
+    if (!m_IsEyeTrackingActionBound)
+    {
+        vr::VREyeTrackingData_t data = {0};
+        vr::VRInput()->GetEyeTrackingDataRelativeToNow(m_HandleActionHMDEyeTracking, vr::TrackingUniverseStanding, vr::IVRSystemEx::GetTimeNowToPhotons(), &data, sizeof(vr::VREyeTrackingData_t));
+
+        if ((input_error == vr::VRInputError_None) && (data.bActive))
+        {
+            m_IsEyeTrackingActionBound = true;
+            ConfigManager::SetValue(configid_bool_state_input_eyetracking_available, true);
+            IPCManager::Get().PostConfigMessageToUIApp(configid_bool_state_input_eyetracking_available, true);
+
+            LOG_F(INFO, "Eye-Tracking input action detected as bound");
         }
     }
 }
