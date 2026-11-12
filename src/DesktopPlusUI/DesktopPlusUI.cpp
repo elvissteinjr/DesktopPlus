@@ -541,7 +541,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                 ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
                 //Set Overlay texture
-                ID3D11ShaderResourceView* ovrl_shader_rsv = vr::VROverlayEx()->GetOverlayTextureEx(ui_manager.GetOverlayHandleOverlayBar(), g_vrTex.Get());
+                ID3D11ShaderResourceView* ovrl_shader_rsv = vr::VROverlayEx()->GetOverlayTextureEx(ui_manager.GetOverlayHandleTexture(), g_vrTex.Get());
                 if (ovrl_shader_rsv != nullptr)
                 {
                     //Do a partial update, only copying the active texture space into the overlay texture
@@ -564,14 +564,21 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
                     //RSV is kept around by IVROverlayEx and not released here
                 }
-                else if ((ui_manager.GetOverlayHandleOverlayBar() != vr::k_ulOverlayHandleInvalid) && (g_vrTex != nullptr))
+                else if ((ui_manager.GetOverlayHandleTexture() != vr::k_ulOverlayHandleInvalid) && (g_vrTex != nullptr))
                 {
+                    bool refresh_shared_texture = false;
+
                     vr::Texture_t vrtex = {};
                     vrtex.handle = g_vrTex.Get();
                     vrtex.eType = vr::TextureType_DirectX;
                     vrtex.eColorSpace = vr::ColorSpace_Gamma;
 
-                    vr::VROverlayEx()->SetOverlayTextureEx(ui_manager.GetOverlayHandleOverlayBar(), &vrtex, {(int)io.DisplaySize.x, (int)io.DisplaySize.y});
+                    vr::VROverlayEx()->SetOverlayTextureEx(ui_manager.GetOverlayHandleTexture(), &vrtex, {(int)io.DisplaySize.x, (int)io.DisplaySize.y}, &refresh_shared_texture);
+                    
+                    if (refresh_shared_texture)
+                    {
+                        RefreshOverlayTextureSharing();
+                    }
                 }
 
                 //Set overlay intersection mask... there doesn't seem to be much overhead from doing this every frame, even though we only need to update this sometimes
@@ -801,11 +808,12 @@ void CleanupRenderTarget()
 void RefreshOverlayTextureSharing()
 {
     //Set up advanced texture sharing between the overlays
-    vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleFloatingUI(),        g_vrTex.Get());
-    vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleSettings(),          g_vrTex.Get());
-    vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleOverlayProperties(), g_vrTex.Get());
-    vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleKeyboard(),          g_vrTex.Get());
-    vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleOverlayBar(), UIManager::Get()->GetOverlayHandleAuxUI(),             g_vrTex.Get());
+    vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleTexture(), UIManager::Get()->GetOverlayHandleOverlayBar(),        g_vrTex.Get());
+    vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleTexture(), UIManager::Get()->GetOverlayHandleFloatingUI(),        g_vrTex.Get());
+    vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleTexture(), UIManager::Get()->GetOverlayHandleSettings(),          g_vrTex.Get());
+    vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleTexture(), UIManager::Get()->GetOverlayHandleOverlayProperties(), g_vrTex.Get());
+    vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleTexture(), UIManager::Get()->GetOverlayHandleKeyboard(),          g_vrTex.Get());
+    vr::VROverlayEx()->SetSharedOverlayTexture(UIManager::Get()->GetOverlayHandleTexture(), UIManager::Get()->GetOverlayHandleAuxUI(),             g_vrTex.Get());
     //Also schedule for performance overlays, in case there are any
     UIManager::Get()->GetPerformanceWindow().ScheduleOverlaySharedTextureUpdate();
 }

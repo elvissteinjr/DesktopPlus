@@ -141,6 +141,7 @@ class UIManager
 
         bool m_ElevatedTaskSetUp;
 
+        vr::VROverlayHandle_t m_OvrlHandleTexture;
         vr::VROverlayHandle_t m_OvrlHandleOverlayBar;
         vr::VROverlayHandle_t m_OvrlHandleFloatingUI;
         vr::VROverlayHandle_t m_OvrlHandleSettings;
@@ -205,6 +206,7 @@ class UIManager
         ID3D11Resource* GetSharedTextureRef() const;
         OverlayDragger& GetOverlayDragger();
 
+        vr::VROverlayHandle_t GetOverlayHandleTexture()            const;
         vr::VROverlayHandle_t GetOverlayHandleOverlayBar()         const;
         vr::VROverlayHandle_t GetOverlayHandleFloatingUI()         const;
         vr::VROverlayHandle_t GetOverlayHandleSettings()           const;

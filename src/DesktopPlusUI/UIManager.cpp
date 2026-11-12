@@ -489,7 +489,7 @@ vr::EVRInitError UIManager::InitOverlay()
         //This loop gets rid of any other process hogging our overlay key. Though in normal situations another Desktop+UI process would've already be killed before this
         for (int tries = 0; tries < 10; ++tries)
         {
-            ovrl_error = vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusUI", "Desktop+UI", &m_OvrlHandleOverlayBar);
+            ovrl_error = vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusUI", "Desktop+ Overlay Bar", &m_OvrlHandleOverlayBar);
 
             if (ovrl_error == vr::VROverlayError_KeyInUse)  //If the key is already in use, kill the owning process (hopefully another instance of this app)
             {
@@ -533,6 +533,7 @@ vr::EVRInitError UIManager::InitOverlay()
             vr::VROverlay()->SetOverlayWidthInMeters(m_OvrlHandleOverlayBar, OVERLAY_WIDTH_METERS_DASHBOARD_UI);
 
             //Init additional overlays
+            vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusUITexture",           "Desktop+ UI Texture",  &m_OvrlHandleTexture);
             vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusUIFloating",          "Desktop+ Floating UI", &m_OvrlHandleFloatingUI);
             vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusUISettings",          "Desktop+ Settings UI", &m_OvrlHandleSettings);
             vr::VROverlay()->CreateOverlay("elvissteinjr.DesktopPlusUIOverlayProperties", "Desktop+ Settings UI", &m_OvrlHandleOverlayProperties);
@@ -1256,6 +1257,11 @@ ID3D11Resource* UIManager::GetSharedTextureRef() const
 OverlayDragger& UIManager::GetOverlayDragger()
 {
     return m_OverlayDragger;
+}
+
+vr::VROverlayHandle_t UIManager::GetOverlayHandleTexture() const
+{
+    return m_OvrlHandleTexture;
 }
 
 vr::VROverlayHandle_t UIManager::GetOverlayHandleOverlayBar() const
