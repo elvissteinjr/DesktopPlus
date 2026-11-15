@@ -3891,6 +3891,7 @@ DDPDuplReturn OutputManager::CreateTextures(INT SingleOutput, UINT& OutCount, RE
 {
     HRESULT hr;
     OutCount = 0;
+    DeskBounds = {0};
     const int desktop_count = m_DesktopRects.size();
 
     //Output doesn't exist. This will result in a soft-error invalid output state (system may be in an transition state, in which case we'll automatically recover)

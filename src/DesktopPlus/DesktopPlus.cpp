@@ -285,8 +285,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     DDPThreadManager ThreadMgr;
     OutputManager OutMgr(PauseDuplicationEvent, ResumeDuplicationEvent);
-    RECT DeskBounds;
-    UINT OutputCount;
+    RECT DeskBounds = {0};
+    UINT OutputCount = 0;
 
     //Start up UI process unless disabled or already running
     if ( (!ConfigManager::GetValue(configid_bool_interface_no_ui)) && (!IPCManager::IsUIAppRunning()) )
