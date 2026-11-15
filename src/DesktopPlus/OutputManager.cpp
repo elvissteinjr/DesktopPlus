@@ -4597,6 +4597,9 @@ bool OutputManager::DesktopTextureAlphaCheck()
 
 void OutputManager::DesktopTextureIdleRelease()
 {
+    //Release so next submission of same size will gets detected as new texture
+    vr::VROverlayEx()->ReleaseSharedOverlayTexture(m_OvrlHandleDesktopTexture);
+
     m_OvrlTex.Reset();
     m_OvrlRTV.Reset();
 

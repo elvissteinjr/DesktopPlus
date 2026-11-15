@@ -80,7 +80,7 @@ namespace vr
             //-OverlayTextureEx functions
             //These functions wrap around base OpenVR functions to keep track texture sizes and shared texture handles (when used once)
             //This is under the assumption that nothing except these functions invalidate existing shared texture handles
-            //Size difference is assumed to trigger backing texture change
+            //Size difference is assumed to trigger backing texture change, in other situations an explicit release is required
             //These functions should only be called on application-owned overlays with textures previously set with SetOverlayTextureEx()
 
             //Calls IVROverlay::SetOverlayTextureEx() and adds overlay book-keeping data
@@ -94,7 +94,7 @@ namespace vr
             //Takes the shared texture of the source overlay and sets it as texture on the target overlay. This only works as long as the backing texture exists
             EVROverlayError SetSharedOverlayTexture(VROverlayHandle_t overlay_handle_source, VROverlayHandle_t overlay_handle_target, ID3D11Resource* device_texture_ref);
 
-            //Releases the shared texture of the overlay, but doesn't touch the overlay in any other way. Use when letting another process/module take over rendering to it
+            //Releases the shared texture of the overlay, but doesn't touch the overlay in any other way. Use when letting another process/module take over rendering to it, or texture gets released for idling
             EVROverlayError ReleaseSharedOverlayTexture(VROverlayHandle_t overlay_handle);
 
             //Calls IVROverlay::ClearOverlayTexture(), frees the shared texture if needed, and removes the overlay book-keeping data

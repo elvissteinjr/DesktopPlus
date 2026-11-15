@@ -788,6 +788,9 @@ void CreateRenderTarget(bool desktop_mode)
 
 void CleanupRenderTarget()
 {
+    //Release so next submission of same size will gets detected as new texture
+    vr::VROverlayEx()->ReleaseSharedOverlayTexture(UIManager::Get()->GetOverlayHandleTexture());
+
     g_desktopRenderTargetView.Reset();
     g_vrRenderTargetView.Reset();
     g_vrTex.Reset();
