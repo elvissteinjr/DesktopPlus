@@ -956,14 +956,14 @@ DDPDuplReturnUpdate OutputManager::Update(DDPPtrInfo& PointerInfoDDP,  DPRect& D
         return (DDPDuplReturnUpdate)ProcessFailure(m_Device.Get(), L"Failed to Release keyed mutex", L"Desktop+ Error", hr, SystemTransitionsExpectedErrors);
     }
 
-    //Count frames
+    //Count frames and reset pending values if update was successful
     if (has_updated_overlay)
     {
         m_PerformanceFrameCount++;
-    }
 
-    m_OutputPendingSkippedFrame = false;
-    m_OutputPendingDirtyRect = {-1, -1, -1, -1};
+        m_OutputPendingSkippedFrame = false;
+        m_OutputPendingDirtyRect = {-1, -1, -1, -1};
+    }
 
     return ret;
 }
