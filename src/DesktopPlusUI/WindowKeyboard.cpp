@@ -406,15 +406,13 @@ void WindowKeyboard::WindowUpdate()
         std::vector<ButtonLaserState> button_states_prev = m_ButtonStates;
         std::fill(m_ButtonStates.begin(), m_ButtonStates.end(), ButtonLaserState());
 
-        const bool sticky_modifiers_enabled = ConfigManager::GetValue(configid_bool_input_keyboard_sticky_modifiers);
-
         int key_index = 0;
         for (const auto& key : vr_keyboard.GetLayout(m_LastSubLayout))
         {
             ButtonLaserState& button_state = button_states_prev[key_index];
 
-            //If down, try to find same keys in both layouts
-            if (button_state.IsDown)
+            //If down or held, try to find same keys in both layouts
+            if ((button_state.IsDown) || (button_state.IsHeld))
             {
                 int key_index_new = FindSameKeyInNewSubLayout(key_index, m_LastSubLayout, current_sublayout);
 
@@ -422,7 +420,7 @@ void WindowKeyboard::WindowUpdate()
                 {
                     m_ButtonStates[key_index_new] = button_state;
                 }
-                else
+                else if (button_state.IsDown)
                 {
                     switch (key.KeyType)
                     {
@@ -534,10 +532,6 @@ void WindowKeyboard::WindowUpdate()
             case kbdlayout_key_virtual_key:
             {
                 const bool is_down = vr_keyboard.GetKeyDown(key.KeyCode);
-                const bool push_color = ((is_down) && (button_state.IsDown));  //Prevent flickering when repeat is active and there are multiple keys with the same key code
-
-                if (push_color)
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
                 //We don't want key repeat on backspace for ImGui since it does that itself
                 const bool repeat_on_backspace = ((vr_keyboard.GetInputTarget() != kbdtarget_ui) || (key.KeyCode != VK_BACK));
@@ -568,9 +562,6 @@ void WindowKeyboard::WindowUpdate()
                     SetManualStickyModifierState(key.KeyCode, !is_down);
                 }
 
-                if (push_color)
-                    ImGui::PopStyleColor();
-
                 break;
             }
             case kbdlayout_key_virtual_key_toggle:
@@ -579,9 +570,6 @@ void WindowKeyboard::WindowUpdate()
                     ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, false);
 
                 const bool is_down = vr_keyboard.GetKeyDown(key.KeyCode);
-
-                if (is_down)
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
                 //Allow right click too to be consistent with toggling normal virtual keys
                 if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state, key.IsLabelMultiline)) || (button_state.IsRightClicked) )
@@ -594,9 +582,6 @@ void WindowKeyboard::WindowUpdate()
                         SetManualStickyModifierState(key.KeyCode, !is_down);
                     }
                 }
-
-                if (is_down)
-                    ImGui::PopStyleColor();
 
                 if (use_key_repeat)
                     ImGui::PopItemFlag();
@@ -680,10 +665,10 @@ void WindowKeyboard::WindowUpdate()
                     else if (!iso_enter_hovered)
                         iso_enter_button_state = 0;
 
-                    if (iso_enter_button_state == 1)
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered));
-                    else if ( (iso_enter_button_state >= 2) || (push_color) )
+                    if ( (iso_enter_button_state >= 2) || (push_color) )
                         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+                    else if (iso_enter_button_state == 1)
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered));
 
                     //Upper part without label
                     ImGui::SetCursorPos(iso_enter_top_pos);
@@ -737,11 +722,6 @@ void WindowKeyboard::WindowUpdate()
             }
             case kbdlayout_key_string:
             {
-                const bool is_down = button_state.IsDown;
-
-                if (is_down)
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-
                 if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state, key.IsLabelMultiline)) && (use_key_repeat) )
                 {
                     (button_state.IsDown) ? OnStringKeyUp(key.KeyString) : OnStringKeyDown(key.KeyString);
@@ -766,9 +746,6 @@ void WindowKeyboard::WindowUpdate()
                     button_state.IsDown = !button_state.IsDown;
                 }
 
-                if (is_down)
-                    ImGui::PopStyleColor();
-
                 break;
             }
             case kbdlayout_key_sublayout_toggle:
@@ -778,17 +755,11 @@ void WindowKeyboard::WindowUpdate()
 
                 const bool is_down = (m_SubLayoutOverride == key.KeySubLayoutToggle);
 
-                if (is_down)
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-
                 //Allow right click too to be consistent with toggling normal virtual keys
                 if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state, key.IsLabelMultiline)) || (button_state.IsRightClicked) )
                 {
                     m_SubLayoutOverride = (is_down) ? kbdlayout_sub_base : key.KeySubLayoutToggle;
                 }
-
-                if (is_down)
-                    ImGui::PopStyleColor();
 
                 if (use_key_repeat)
                     ImGui::PopItemFlag();
@@ -797,11 +768,6 @@ void WindowKeyboard::WindowUpdate()
             }
             case kbdlayout_key_action:
             {
-                const bool is_down = button_state.IsDown;
-
-                if (is_down)
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-
                 if ( (ButtonLaser(key.Label.c_str(), {key_width, key_height}, button_state, key.IsLabelMultiline)) && (use_key_repeat) )
                 {
                     vr_keyboard.SetActionDown(key.KeyActionUID, !button_state.IsDown);
@@ -825,9 +791,6 @@ void WindowKeyboard::WindowUpdate()
                     vr_keyboard.SetActionDown(key.KeyActionUID, !button_state.IsDown);
                     button_state.IsDown = !button_state.IsDown;
                 }
-
-                if (is_down)
-                    ImGui::PopStyleColor();
 
                 break;
             }
@@ -1250,7 +1213,7 @@ bool WindowKeyboard::ButtonLaser(const char* label, const ImVec2& size_arg, Butt
     }
 
     //Render button
-    const ImU32 col = ImGui::GetColorU32((button_state.IsHeld) ? ImGuiCol_ButtonActive : (is_any_hovering) ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+    const ImU32 col = ImGui::GetColorU32( ((button_state.IsHeld) || (button_state.IsDown)) ? ImGuiCol_ButtonActive : (is_any_hovering) ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
     ImGui::RenderNavCursor(bb, id);
     ImGui::RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
 
