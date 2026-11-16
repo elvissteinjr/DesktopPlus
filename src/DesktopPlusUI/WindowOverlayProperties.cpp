@@ -737,7 +737,7 @@ void WindowOverlayProperties::UpdatePageMainCatAppearance()
     ImGui::NextColumn();
 
     float& width = ConfigManager::GetRef(configid_float_overlay_width);
-    const float width_slider_max = (mode_origin >= ovrl_origin_right_hand) ? 1.5f : 5.0f;
+    const float width_slider_max = ((mode_origin >= ovrl_origin_left_hand) && (mode_origin <= ovrl_origin_aux))? 1.5f : 5.0f;
 
     vr_keyboard.VRKeyboardInputBegin( ImGui::SliderWithButtonsGetSliderID("OverlayWidth") );
     if (ImGui::SliderWithButtonsFloat("OverlayWidth", width, 0.1f, 0.01f, 0.05f, width_slider_max, "%.2f m", ImGuiSliderFlags_Logarithmic))
