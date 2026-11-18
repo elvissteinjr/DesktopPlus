@@ -96,6 +96,52 @@ TextureManager& TextureManager::Get()
     return g_TextureManager;
 }
 
+bool TextureManager::CopyBitmapToAtlas(ImFontAtlas& fonts, unsigned char* tex_pixels, int tex_width, Gdiplus::Bitmap* bmp, int& rect_id, ImVec2& atlas_size, ImVec4& atlas_uvs)
+{
+    const ImFontAtlasCustomRect* rect = fonts.GetCustomRectByIndex(rect_id);
+    if (!rect)
+    {
+        rect_id = -1;
+        return false;
+    }
+
+    Gdiplus::BitmapData bitmap_data;
+    Gdiplus::Rect gdi_rect(0, 0, rect->Width, rect->Height);
+    if (bmp->LockBits(&gdi_rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bitmap_data) != Gdiplus::Ok)  //Access bitmap data from GDI+
+    {
+        rect_id = -1;
+        return false;
+    }
+
+    for (int y = 0; y < rect->Height; ++y)
+    {
+        UINT8* p = tex_pixels + 4 * ((size_t)(rect->Y + y) * tex_width + rect->X);
+        UINT8* pgdi = (UINT8*)bitmap_data.Scan0 + (y * bitmap_data.Stride);
+
+        for (int x = 0; x < rect->Width; ++x)
+        {
+            //GDI+ order is BGRA, convert
+            const ImU32 col = IM_COL32(*(pgdi + 2), *(pgdi + 1), *pgdi, *(pgdi + 3));
+            memcpy(p, &col, sizeof(col));      //The atlas is a byte array, storing through a wider pointer would be UB
+            p += 4;
+            pgdi += 4;
+        }
+    }
+
+    bmp->UnlockBits(&bitmap_data);
+
+    //Store UVs and size since we succeeded with copying
+    atlas_size.x = rect->Width;
+    atlas_size.y = rect->Height;
+
+    atlas_uvs.x = (float)rect->X * fonts.TexUvScale.x;                  //Min U
+    atlas_uvs.y = (float)rect->Y * fonts.TexUvScale.y;                  //Min V
+    atlas_uvs.z = (float)(rect->X + rect->Width)  * fonts.TexUvScale.x; //Max U
+    atlas_uvs.w = (float)(rect->Y + rect->Height) * fonts.TexUvScale.y; //Max V
+
+    return true;
+}
+
 bool TextureManager::LoadAllTexturesAndBuildFonts()
 {
     bool all_ok = true;     //We don't need to abort when something fails, but let's not ignore it completely
@@ -117,7 +163,7 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     ActionManager& action_manager = ConfigManager::Get().GetActionManager();
     for (ActionUID uid : action_manager.GetActionOrderListUI())
     {
-        const Action action = action_manager.GetAction(uid);
+        const Action& action = action_manager.GetAction(uid);
 
         builder.AddText(action.Name.c_str());
         builder.AddText(action.Label.c_str());
@@ -259,11 +305,11 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         }
     }
 
-    //Initialize GDI+.
+    //Initialize GDI+ if not done yet. Keeping it loaded with the unchanging portion of the icons is worth the little extra memory it takes
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
-    ULONG_PTR gdiplusToken;
-    if (GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr) != Gdiplus::Ok)
+    if ( (m_GdiplusToken == 0) && (GdiplusStartup(&m_GdiplusToken, &gdiplusStartupInput, nullptr) != Gdiplus::Ok) )
     {
+        m_GdiplusToken = 0;   //Try again next time
         LOG_F(ERROR, "Initializing GDI+ failed! Icons will not be loaded");
 
         //Still build the font so we can have text at least
@@ -292,22 +338,18 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     }
 
     //Load images and add custom rects for them
-    //Since we have to build the font before actually copying the image data, we have to keep the bitmaps loaded, which is a bit messy, especially with custom action icons
-    std::vector< std::unique_ptr<Gdiplus::Bitmap> > bitmaps;
+    //Since we have to build the font before actually copying the image data, we have to load and keep all bitmaps around for that
+
     //Load application icons
     int icon_id = 0;
     for (; icon_id < tmtex_MAX; ++icon_id)
     {
-        std::unique_ptr<Gdiplus::Bitmap> bmp;
+        const wchar_t* wstr_filename = GetTextureFilename((TMNGRTexID)icon_id);
 
-        if (icon_id == tmtex_icon_temp)
-        {
-            bmp = std::unique_ptr<Gdiplus::Bitmap>( new Gdiplus::Bitmap(m_TextureFilenameIconTemp.c_str()) );
-        }
-        else
-        {
-            bmp = std::unique_ptr<Gdiplus::Bitmap>( new Gdiplus::Bitmap(s_TextureFilenames[icon_id]) );
-        }
+        if (m_IconBitmaps[icon_id] == nullptr)
+            m_IconBitmaps[icon_id] = std::unique_ptr<Gdiplus::Bitmap>( new Gdiplus::Bitmap(wstr_filename) );
+
+        Gdiplus::Bitmap* bmp = m_IconBitmaps[icon_id].get();
 
         if (bmp->GetLastStatus() == Gdiplus::Ok)
         {
@@ -321,14 +363,24 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
                 io.Fonts->TexDesiredWidth = (bmp->GetWidth() >= 2048) ? 4096 : (bmp->GetWidth() >= 1024) ? 2048 : (bmp->GetWidth() >= 512) ? 1024 : 512;
             }
         }
+        else
+        {
+            //Reset so we try again next time
+            m_IconBitmaps[icon_id].reset();
 
-        bitmaps.push_back(std::move(bmp));
+            if ( (icon_id != tmtex_icon_temp) || (!m_TextureFilenameIconTemp.empty()) )
+            {
+                LOG_F(ERROR, "Failed to load icon file \"%s\"", StringConvertFromUTF16(wstr_filename).c_str() );
+                all_ok = false;
+            }
+        }
     }
 
     //Load custom action icons
     struct ActionIconTextureData
     {
         int IconImGuiRectID  = -1;
+        std::unique_ptr<Gdiplus::Bitmap> IconBitmap;
         ImVec2 IconAtlasSize;
         ImVec4 IconAtlasUV;
     };
@@ -345,7 +397,8 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         if (!action.IconFilename.empty())
         {
             std::string icon_path = "images/icons/" + action.IconFilename;
-            std::unique_ptr<Gdiplus::Bitmap> bmp( new Gdiplus::Bitmap(WStringConvertFromUTF8(icon_path.c_str()).c_str()) );
+            tex_data.IconBitmap = std::unique_ptr<Gdiplus::Bitmap>( new Gdiplus::Bitmap(WStringConvertFromUTF8(icon_path.c_str()).c_str()));
+            Gdiplus::Bitmap* bmp = tex_data.IconBitmap.get();
 
             if (bmp->GetLastStatus() == Gdiplus::Ok)
             {
@@ -357,11 +410,14 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
                     io.Fonts->TexDesiredWidth = (bmp->GetWidth() >= 2048) ? 4096 : (bmp->GetWidth() >= 1024) ? 2048 : (bmp->GetWidth() >= 512) ? 1024 : 512;
                 }
             }
-
-            bitmaps.push_back(std::move(bmp));
+            else
+            {
+                LOG_F(ERROR, "Failed to load action icon file \"%s\"", icon_path.c_str());
+                all_ok = false;
+            }
         }
 
-        action_icon_tex_data.push_back(tex_data);
+        action_icon_tex_data.push_back(std::move(tex_data));
     }
 
     //Set up already loaded window icons
@@ -404,93 +460,33 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
     io.Fonts->GetTexDataAsRGBA32(&tex_pixels, &tex_width, &tex_height);
 
     //Actually do the copying now
-    icon_id = 0;
-    auto action_tex_data_it = action_icon_tex_data.begin();
-    for (auto& bmp : bitmaps)
+
+    //Copy stock icons
+    for (icon_id = 0; icon_id < tmtex_MAX; ++icon_id)
     {
-        if (bmp->GetLastStatus() == Gdiplus::Ok)
+        //No rect means loading failed
+        if (m_ImGuiRectIDs[icon_id] == -1) 
+            continue;
+
+        if (!CopyBitmapToAtlas(*io.Fonts, tex_pixels, tex_width, m_IconBitmaps[icon_id].get(), m_ImGuiRectIDs[icon_id], m_AtlasSizes[icon_id], m_AtlasUVs[icon_id]))
         {
-            int*    rect_id    = nullptr;
-            ImVec2* atlas_size = nullptr;
-            ImVec4* atlas_uvs  = nullptr;
+            all_ok = false;
 
-            if (icon_id < tmtex_MAX)
-            {
-                rect_id    = &m_ImGuiRectIDs[icon_id];
-                atlas_size = &m_AtlasSizes[icon_id];
-                atlas_uvs  = &m_AtlasUVs[icon_id];
-            }
-            else
-            {
-                //Get the next action, skipping the ones with no icon
-                do
-                {
-                    if (action_tex_data_it == action_icon_tex_data.end())
-                    {
-                        break;
-                    }
-
-                    ActionIconTextureData& tex_data = *action_tex_data_it;
-                    rect_id    = &tex_data.IconImGuiRectID;
-                    atlas_size = &tex_data.IconAtlasSize;
-                    atlas_uvs  = &tex_data.IconAtlasUV;
-
-                    action_tex_data_it++;
-                }
-                while (*rect_id == -1);
-            }
-
-            if ( (rect_id != nullptr) && (*rect_id != -1) )
-            {
-                if (const ImFontAtlasCustomRect* rect = io.Fonts->GetCustomRectByIndex(*rect_id))
-                {
-                    Gdiplus::BitmapData bitmapData;
-                    Gdiplus::Rect gdirect(0, 0, rect->Width, rect->Height);
-                    if (bmp->LockBits(&gdirect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bitmapData) == Gdiplus::Ok)  //Access bitmap data from GDI+
-                    {
-                        for (int y = 0; y < rect->Height; ++y)
-                        {
-                            ImU32* p = (ImU32*)tex_pixels + (rect->Y + y) * tex_width + (rect->X);
-                            UINT8* pgdi = (UINT8*)bitmapData.Scan0 + (y * bitmapData.Stride);
-
-                            for (int x = 0; x < rect->Width; ++x)
-                            {
-                                //GDI+ order is BGRA, convert
-                                *p++ = IM_COL32(*(pgdi + 2), *(pgdi + 1), *pgdi, *(pgdi + 3));
-                                pgdi += 4;
-                            }
-                        }
-
-                        bmp->UnlockBits(&bitmapData);
-
-                        //Store UVs and size since we succeeded with copying
-                        atlas_size->x = rect->Width;
-                        atlas_size->y = rect->Height;
-
-                        atlas_uvs->x = (float)rect->X * io.Fonts->TexUvScale.x;                  //Min U
-                        atlas_uvs->y = (float)rect->Y * io.Fonts->TexUvScale.y;                  //Min V
-                        atlas_uvs->z = (float)(rect->X + rect->Width)  * io.Fonts->TexUvScale.x; //Max U
-                        atlas_uvs->w = (float)(rect->Y + rect->Height) * io.Fonts->TexUvScale.y; //Max V
-                    }
-                    else
-                    {
-                        *rect_id = -1;
-                        all_ok = false;
-                    }
-                }
-                else
-                {
-                    *rect_id = -1;
-                    all_ok = false;
-                }
-            }
-            else
-            {
-                all_ok = false;
-            }
+            //Reset so we try again from scratch next time
+            m_IconBitmaps[icon_id].reset();
         }
+    }
 
-        icon_id++;
+    //Copy the custom action icons
+    for (ActionIconTextureData& tex_data : action_icon_tex_data)
+    {
+        if (tex_data.IconImGuiRectID == -1) 
+            continue;
+
+        if (!CopyBitmapToAtlas(*io.Fonts, tex_pixels, tex_width, tex_data.IconBitmap.get(), tex_data.IconImGuiRectID, tex_data.IconAtlasSize, tex_data.IconAtlasUV))
+        {
+            all_ok = false;
+        }
     }
 
     //Copy cached window icons into atlas
@@ -499,12 +495,11 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         if (const ImFontAtlasCustomRect* rect = io.Fonts->GetCustomRectByIndex(window_icon.ImGuiRectID))
         {
             UINT8* psrc = (UINT8*)window_icon.PixelData.get();
-            size_t stride = rect->Width * 4;
+            size_t stride = (size_t)rect->Width * 4;
             //Copy RGBA pixels line-by-line
             for (int y = 0; y < rect->Height; ++y, psrc += stride)
             {
-                ImU32* p = (ImU32*)tex_pixels + (rect->Y + y) * tex_width + (rect->X);
-                memcpy(p, psrc, stride);
+                memcpy(tex_pixels + 4 * ((size_t)(rect->Y + y) * tex_width + rect->X), psrc, stride);
             }
 
             //Store UVs
@@ -539,11 +534,9 @@ bool TextureManager::LoadAllTexturesAndBuildFonts()
         }
     }
 
-    //Delete Bitmaps before shutting down GDI+
-    bitmaps.clear();
+    //Temp icon is always reloaded from scratch as the path may change
+    m_IconBitmaps[tmtex_icon_temp].reset();
 
-    //Shutdown GDI+, we won't need it again
-    Gdiplus::GdiplusShutdown(gdiplusToken);
     m_ReloadLater = false;
 
     //We don't need to keep this around, reduces RAM use a lot
@@ -724,15 +717,17 @@ int TextureManager::GetWindowIconCacheID(HICON icon_handle)
                 }
 
                 //Convert BGRA to RGBA for ImGui's texture atlas
-                window_icon.PixelData = std::unique_ptr<BYTE[]>{new BYTE[icon_pixel_count * 4]};
-                psrc         = PixelData.get();
-                UINT32* pdst = (UINT32*)window_icon.PixelData.get();
-                for (; psrc < psrc_end; psrc += 4, ++pdst)
+                psrc = PixelData.get();
+                for (; psrc < psrc_end; psrc += 4)
                 {
-                    *pdst = IM_COL32(*(psrc + 2), *(psrc + 1), *psrc, *(psrc + 3));
+                    //Only need to swap blue and red, so we just do this in-place
+                    const BYTE blue = *psrc;
+                    *psrc = *(psrc + 2);
+                    *(psrc + 2) = blue;
                 }
 
                 //Fill out other data and move the icon to the cache
+                window_icon.PixelData = std::move(PixelData);
                 window_icon.IconHandle = icon_handle;
                 window_icon.Size = {(float)icon_width, (float)icon_height};
                 m_WindowIcons.push_back(std::move(window_icon));

@@ -13,6 +13,11 @@
 #include <memory>
 #include "imgui.h"
 
+namespace Gdiplus
+{
+    class Bitmap;
+}
+
 struct Action;
 
 enum TMNGRTexID
@@ -91,6 +96,9 @@ class TextureManager
 {
     private:
         static const wchar_t* s_TextureFilenames[tmtex_MAX];
+
+        ULONG_PTR m_GdiplusToken = 0;
+        std::unique_ptr<Gdiplus::Bitmap> m_IconBitmaps[tmtex_MAX];   //Cached icon bitmaps. Stock icons are cached between texture reloads (GDI+ does not keep raw RGBA in these so negligible memory use)
         int m_ImGuiRectIDs[tmtex_MAX];  //-1 when not loaded (ID on ImGui end is not valid after building the font as data is cleared to save memory)
         ImVec2 m_AtlasSizes[tmtex_MAX];
         ImVec4 m_AtlasUVs[tmtex_MAX];
@@ -99,6 +107,9 @@ class TextureManager
         std::vector<TMNGRWindowIcon> m_WindowIcons;
 
         bool m_ReloadLater;
+
+        //Used by LoadAllTexturesAndBuildFonts to fill-in the font atlas, returns true on success
+        bool CopyBitmapToAtlas(ImFontAtlas& fonts, unsigned char* tex_pixels, int tex_width, Gdiplus::Bitmap* bmp, int& rect_id, ImVec2& atlas_size, ImVec4& atlas_uvs);
 
     public:
         TextureManager();
