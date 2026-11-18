@@ -126,7 +126,8 @@ One of the capture methods available for capturing desktops and windows for over
 
 ### Gaze Fade
 
-A method to automatically adjust an overlay's opacity based on the user's gaze. The method in Desktop+ is distance-based, as opposed to other angle-based approaches.
+A method to automatically adjust an overlay's opacity based on the user's gaze. The method in Desktop+ is distance-based, as opposed to other angle-based approaches.  
+If the HMD has support for eye-tracking, the eye gaze direction can be used.
 
 ### Browser Overlay
 
@@ -244,6 +245,10 @@ Press the button to manage the [Persistent UI settings](#persistent-ui-page).
 Changes the way the desktops are listed on the Action Bar or if at all.
   - **[x] Add Combined Desktop**:  
   Adds a button for the combined desktop to the Action Bar.
+
+- **Overlay Bar Menu Alignment** (Adv.):  
+Sets where the menus opened from the Overlay Bar's buttons appear.  
+This defaults to top, except on Steam Frame, where the dashboard is always rendered on top of streamed overlays.
 
 #### Environment
 
@@ -443,12 +448,22 @@ These settings allow tweaking the performance characteristics of Desktop+. Howev
   Enables use of alternative methods to retrieve the software cursor image, instead of relying on the cursor returned by the Desktop Duplication API.  
   This rendering method is slightly slower than the regular one and doesn't support cursor animation. It is intended for users experiencing issues with the hardware cursor capture using Desktop Duplication.  
   If other means to retrieve the current cursor fail, it may additionally fall back to using the default cursor image or a built-in alternative.
+  - **[x] Per-Overlay Textures**:  
+  Gives every Desktop Duplication overlay its own texture instead of cropping all of them out of one combined desktop texture.  
+  Can resolve some laser pointer issues on Steam Frame. Increases VRAM usage and may negatively impact performance.  
+  This setting always uses extra resources and copies from the normally used combined desktop texture even when only one overlays is active.  
+  Per-overlay textures are released when overlays are hidden.
 
-- **[x] HDR Mirroring**  
+- **GPU Priority** (Adv.):  
+  Sets the GPU scheduling priority assigned to the Desktop+ processes.  
+  The effect of this neglible if not GPU-bound.
+  
+- **[x] HDR Mirroring** (Adv.):  
   Enables mirroring of desktops and windows using higher bit-depth textures, supporting HDR output.  
   While the full bit-depth is passed to SteamVR, there are no known HMDs capable of making use of HDR output.  
   The primary use-case for this setting is to fix SDR content not being captured correctly while HDR is enabled in the OS.  
   This setting is still considered experimental.
+  
 - **[x] Show FPS in Floating UI**  
   When this is active, the number of captured or rendered frames per second, at which the overlay is updated, is displayed in the Floating UI.  
   This number will be the same for all Desktop Duplication overlays, since they share a single backing texture.
@@ -829,7 +844,8 @@ Click on the drop-down list to select the position origin of the overlay. This c
   Attach overlay to the SteamVR seated position. This origin may have an unexpected position if the active VR game isn't using the seated space.  
   Update the origin position by resetting the seated position in SteamVR. Games may also trigger updates to this position.
   - **Dashboard**:  
-  Attach overlay to the SteamVR dashboard. If visibility isn't restricted to dashboard, the origin position updates when the dashboard is brought up.
+  Attach overlay to the SteamVR dashboard. If visibility isn't restricted to dashboard, the origin position updates when the dashboard is brought up.  
+  When the legacy SteamVR dashboard is active, such overlays only follow the Desktop+ dashboard tab due to limitations in SteamVR.
   - **HMD**:  
   Attach overlay to the HMD. This origin is matches head movement 1:1 and essentially looks static in the headset view.
   - **Left Controller**:  
@@ -957,7 +973,8 @@ Sets if the 3D properties are applied.
 
 - **[x] Gaze Fade**  
 Sets if the Gaze Fade properties are applied.
-Gaze Fade gradually fades the overlay to 0% opacity when not looking at it. When the overlay is at 0% opacity, it is considered inactive and will not react to laser pointer input.
+Gaze Fade gradually fades the overlay to 0% opacity when not looking at it. When the overlay is at 0% opacity, it is considered inactive and will not react to laser pointer input.  
+Not applied while overlay drag-mode is active.
   - **[Auto-Configure]**:  
   Configure distance and sensitivity values automatically from the current gaze and overlay settings. After clicking, a pop-up will appear asking to look at the overlay for 3 seconds.
   - **Distance** (Adv.):  
@@ -966,6 +983,8 @@ Gaze Fade gradually fades the overlay to 0% opacity when not looking at it. When
   Rate at which the fading occurs. As Gaze Fade only takes the center point of the overlay in account, adjusting this value depending on the overlay size is recommended.
   - **Target Opacity** (Adv.):  
   Minimum opacity Gaze Fade will set when not looking at the overlay. If this value is higher than the overlay's opacity property, Gaze Fade will be reversed and fade the overlay in when not looking at it.
+  - **[x] Use Tracked Gaze** (Adv.) (only visible if eye-tracking support is detected):  
+  Sets if the eye gaze direction is used instead of the HMD rotation. Experimental.
   
 - **[x] Laser Pointer Input**  
 Sets if laser pointer input is enabled for this overlay. The laser pointer will pass through the overlay if this is disabled.
@@ -1168,9 +1187,13 @@ Normal layout displayed by default.
 Shifted layout displayed when any of the shift keys are held, or caps lock is active.  
 Usually features capital letters and special characters.
 
-- **AltGr** (only available if "[x] Has AltGR" is ticked):  
+- **AltGr** (only available if "[x] Has AltGr" is ticked):  
 AltGr layout displayed when AltGr is being held. Not present on US-style layouts.  
 Usually features third-level letters and special characters.
+
+- **AltGr+Shift** (only available if "[x] Has AltGr" is ticked):  
+Fourth-level layout displayed while AltGr and a shift key are held at the same time. Not switched to if left completely blank.  
+Usually features shifted third-level letters and special characters.
 
 - **Aux**:  
 Auxiliary layout. Only displayed if explicitly switched to via a "Toggle Sub-Layout" key.  
@@ -1245,7 +1268,7 @@ The string input simulated when pressing the key.
 ##### Toggle Sub-Layout
 
 Explicitly switch to a different sub-layout. This is always a toggle. Place an identical key in the target sub-layout to allow switching back.  
-Shift and AltGr sub-layouts are switched to automatically depending on the related modifier's state, making this only necessary to reach the Aux sub-layout.
+Shift, AltGr and AltGr+Shift sub-layouts are switched to automatically depending on the related modifier's state, making this only necessary to reach the Aux sub-layout.
 
 - **Sub-Layout**:  
 Sets the sub-layout to toggle.
@@ -1267,7 +1290,7 @@ Name of the keyboard layout's author. This is displayed in the [Keyboard Layout 
 Official layouts leave this field blank.
 
 - **[x] Has AltGr**:  
-Sets if the AltGr sub-layout should be present. This is typically left unticked for US-style layouts.
+Sets if the AltGr and AltGr+Shift sub-layouts should be present. This is typically left unticked for US-style layouts.
 
 - **Preview Clusters**:  
 Untick clusters to check how the layout will look with different [key clusters settings](#key-clusters) set.  
@@ -1291,7 +1314,7 @@ Left-click individual keys to select them in the key list or right-click a key t
 
 Desktop+ was written to be lean in both computational load and memory footprint. However, functionality does not come without a price, so knowing the performance characteristics of the application can be helpful.
 
-In general, configured, but inactive overlays are without noticeable performance penalty. Mirroring of the desktops or windows is paused completely while no overlays using the source are active.  
+In general, configured, but inactive overlays are without noticeable performance penalty. Mirroring of the desktops or windows is paused completely while no overlays using the source are active, and most textures are released from GPU memory after a few seconds.  
 An overlay is considered inactive when it's not enabled or visible. This means display modes hiding an overlay and Gaze Fade setting its opacity to 0% are ways to set an overlay inactive.
 Overlays merely outside the view are *not* considered inactive, but may still have a lower GPU load from being culled from rendering by the VR Compositor.
 
@@ -1300,7 +1323,7 @@ On certain multi-GPU setups, such as laptops with a hybrid GPU solution, texture
 
 ## Desktop Duplication
 
-All Desktop Duplication overlays share a single texture, meaning additional overlays are fairly cheap. Mirroring is stopped when no Desktop Duplication overlays are active.  
+All Desktop Duplication overlays share a single texture, meaning additional overlays are fairly cheap. Mirroring is stopped when no Desktop Duplication overlays are active (unless [Per-Overlay Textures](#performance) is enabled).  
 Cursor movement is decoupled from the screen's refresh-rate and can cause GPU load spikes, especially when a mouse with a high polling rate is used. If this is undesirable, use the Update Limiter with a low frame time limit to mitigate this.
 
 ## Graphics Capture
