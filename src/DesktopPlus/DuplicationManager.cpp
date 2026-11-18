@@ -208,7 +208,7 @@ DDPDuplReturn DDPDuplicationManager::GetMouse(DDPPtrInfo& PtrInfo, DXGI_OUTDUPL_
 // Get next frame and write it into Data
 //
 _Success_(Timeout == false && return == ddp_dupl_return_success)
-DDPDuplReturn DDPDuplicationManager::GetFrame(DDPFrameData& Data, bool& Timeout)
+DDPDuplReturn DDPDuplicationManager::GetFrame(DDPFrameData& Data, bool& Timeout, UINT& PendingFullFrameCount)
 {
     Microsoft::WRL::ComPtr<IDXGIResource> DesktopResource;
     DXGI_OUTDUPL_FRAME_INFO FrameInfo;
@@ -234,8 +234,18 @@ DDPDuplReturn DDPDuplicationManager::GetFrame(DDPFrameData& Data, bool& Timeout)
         return ProcessFailure(nullptr, L"Failed get ID3D11Texture2D from acquired IDXGIResource", L"Desktop+ Error", hr);
     }
 
+    //Frames counted at PendingFullFrameCount get copied across in full instead of through their move and dirty rects
+    Data.IsForcedFullFrame = (PendingFullFrameCount > 0);
+
     // Get metadata
-    if (FrameInfo.TotalMetadataBufferSize)
+    if (Data.IsForcedFullFrame)
+    {
+        //Skip actual metadata for forced full frames
+        Data.MoveCount = 0;
+        Data.DirtyCount = 0;
+        --PendingFullFrameCount;
+    }
+    else if (FrameInfo.TotalMetadataBufferSize)
     {
         // Old buffer too small
         if (FrameInfo.TotalMetadataBufferSize > m_MetaDataBuffer.size())

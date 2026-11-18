@@ -431,10 +431,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
                         // First time through the loop
                         FirstTime = false;
                     }
-                    else
-                    {
-                        ForceScreenRefresh();
-                    }
                 }
                 else if (Ret == ddp_dupl_return_error_expected)
                 {
@@ -830,13 +826,16 @@ DWORD WINAPI CaptureThreadEntry(_In_ void* Param)
                 SetEvent((Ret == ddp_dupl_return_error_expected) ? TData.ExpectedErrorEvent : TData.UnexpectedErrorEvent);
                 return 0;
             }
+
+            //Force some full frames after idling to avoid any incomplete textures
+            TData.PendingForcedFullFrameCount = DDP_FORCE_FULL_FRAMES_COUNT;
         }
 
         if (!WaitToProcessCurrentFrame)
         {
             // Get new frame from desktop duplication
             bool TimeOut;
-            Ret = DuplMgr.GetFrame(CurrentData, TimeOut);
+            Ret = DuplMgr.GetFrame(CurrentData, TimeOut, TData.PendingForcedFullFrameCount);
             if (Ret != ddp_dupl_return_success)
             {
                 // An error occurred getting the next frame drop out of loop which

@@ -9,7 +9,7 @@
 class DDPDuplicationManager
 {
     public:
-        _Success_(Timeout == false && return == ddp_dupl_return_success) DDPDuplReturn GetFrame(DDPFrameData& Data, bool& Timeout);
+        _Success_(Timeout == false && return == ddp_dupl_return_success) DDPDuplReturn GetFrame(DDPFrameData& Data, bool& Timeout, UINT& PendingForcedFullFrameCount);
         DDPDuplReturn DoneWithFrame();
         DDPDuplReturn InitDupl(const Microsoft::WRL::ComPtr<ID3D11Device>& Device, UINT Output, bool WMRIgnoreVScreens, bool UseHDR);
         DDPDuplReturn GetMouse(DDPPtrInfo& PtrInfo, DXGI_OUTDUPL_FRAME_INFO& FrameInfo, INT OffsetX, INT OffsetY);

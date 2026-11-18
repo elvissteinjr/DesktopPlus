@@ -286,15 +286,6 @@ void CenterWindowToMonitor(HWND hwnd, bool use_cursor_pos)
     ::SetWindowPos(hwnd, nullptr, rc.left, rc.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
-void ForceScreenRefresh()
-{
-    //This is a hacky workaround for occasionally not getting a full desktop image after resetting duplication until a screen change occurs
-    //For secondary screens that could possibly not happen until manual user interaction, so instead we force the desktop to redraw itself
-    //Unproblematic, but proper fix would be welcome too
-    if (HWND shell_window = ::GetShellWindow())
-        ::SendMessage(shell_window, WM_SETTINGCHANGE, 0, 0); 
-}
-
 bool IsProcessElevated() 
 {
     TOKEN_ELEVATION elevation;

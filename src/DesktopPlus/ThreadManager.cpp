@@ -34,19 +34,20 @@ DDPDuplReturn DDPThreadManager::Initialize(INT SingleOutput, UINT OutputCount, H
     {
         DDPThreadData& ThreadData = m_ThreadData[i];
 
-        ThreadData.UnexpectedErrorEvent   = UnexpectedErrorEvent;
-        ThreadData.ExpectedErrorEvent     = ExpectedErrorEvent;
-        ThreadData.NewFrameProcessedEvent = NewFrameProcessedEvent;
-        ThreadData.PauseDuplicationEvent  = PauseDuplicationEvent;
-        ThreadData.ResumeDuplicationEvent = ResumeDuplicationEvent;
-        ThreadData.TerminateThreadsEvent  = TerminateThreadsEvent;
-        ThreadData.Output                 = (SingleOutput < 0) ? i : SingleOutput;
-        ThreadData.TexSharedHandle        = SharedHandle;
-        ThreadData.OffsetX                = DesktopDim.left;
-        ThreadData.OffsetY                = DesktopDim.top;
-        ThreadData.PtrInfo                = &m_PtrInfo;
-        ThreadData.DirtyRegionTotal       = &m_DirtyRegionTotal;
-        ThreadData.WMRIgnoreVScreens      = WMRIgnoreVScreens;
+        ThreadData.UnexpectedErrorEvent        = UnexpectedErrorEvent;
+        ThreadData.ExpectedErrorEvent          = ExpectedErrorEvent;
+        ThreadData.NewFrameProcessedEvent      = NewFrameProcessedEvent;
+        ThreadData.PauseDuplicationEvent       = PauseDuplicationEvent;
+        ThreadData.ResumeDuplicationEvent      = ResumeDuplicationEvent;
+        ThreadData.TerminateThreadsEvent       = TerminateThreadsEvent;
+        ThreadData.Output                      = (SingleOutput < 0) ? i : SingleOutput;
+        ThreadData.TexSharedHandle             = SharedHandle;
+        ThreadData.OffsetX                     = DesktopDim.left;
+        ThreadData.OffsetY                     = DesktopDim.top;
+        ThreadData.PtrInfo                     = &m_PtrInfo;
+        ThreadData.DirtyRegionTotal            = &m_DirtyRegionTotal;
+        ThreadData.PendingForcedFullFrameCount = DDP_FORCE_FULL_FRAMES_COUNT;
+        ThreadData.WMRIgnoreVScreens           = WMRIgnoreVScreens;
 
         Ret = InitializeDx(ThreadData.DxRes, DXGIAdapter.Get());
         if (Ret != ddp_dupl_return_success)

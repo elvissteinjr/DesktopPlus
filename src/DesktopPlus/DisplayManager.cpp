@@ -17,11 +17,22 @@ void DDPDisplayManager::InitD3D(const DDPDxResources& Data)
 }
 
 //
-// Process a given frame and its metadata
+// Process a given frame and its metadata (if needed)
 //
-DDPDuplReturn DDPDisplayManager::ProcessFrame(const DDPFrameData& Data, _Inout_ ID3D11Texture2D* SharedSurf, INT OffsetX, INT OffsetY, const DXGI_OUTPUT_DESC& DeskDesc, _Inout_ DPRect& DirtyRectTotal)
+DDPDuplReturn DDPDisplayManager::ProcessFrame(const DDPFrameData& Data, _Inout_ ID3D11Texture2D* SharedSurf, INT OffsetX, INT OffsetY, const DXGI_OUTPUT_DESC& DeskDesc, DPRect& DirtyRectTotal)
 {
     DDPDuplReturn Ret = ddp_dupl_return_success;
+
+    //Full frame forced, do a simple dirty copy covering everything
+    if (Data.IsForcedFullFrame)
+    {
+        D3D11_TEXTURE2D_DESC FrameDesc;
+        Data.Frame->GetDesc(&FrameDesc);
+
+        RECT full_rect = { 0, 0, static_cast<LONG>(FrameDesc.Width), static_cast<LONG>(FrameDesc.Height) };
+
+        return CopyDirty(Data.Frame.Get(), SharedSurf, &full_rect, 1, OffsetX, OffsetY, DeskDesc, DirtyRectTotal);
+    }
 
     // Process dirties and moves
     if (Data.FrameInfo.TotalMetadataBufferSize)

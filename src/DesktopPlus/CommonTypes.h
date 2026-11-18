@@ -31,6 +31,7 @@
 #include "VertexShader.h"
 
 #define DDP_NUMVERTICES 6
+#define DDP_FORCE_FULL_FRAMES_COUNT 60    //Frames copied in full after a capture thread starts, resumes from idle or is signaled by the corresponding event. One doesn't do the trick, a few more don't hurt
 
 extern HRESULT SystemTransitionsExpectedErrors[];
 extern HRESULT CreateDuplicationExpectedErrors[];
@@ -111,9 +112,10 @@ struct DDPThreadData
     UINT Output = 0;
     INT OffsetX = 0;
     INT OffsetY = 0;
-    DDPPtrInfo* PtrInfo = nullptr;                  //Should only be called when shared surface mutex has be aquired, always points to DDPThreadManager::m_PtrInfo
+    DDPPtrInfo* PtrInfo = nullptr;                  //Should only be called when shared surface mutex has been acquired, always points to DDPThreadManager::m_PtrInfo
     DDPDxResources DxRes;
-    DPRect* DirtyRegionTotal = nullptr;             //Should only be called when shared surface mutex has be aquired, always points to DDPThreadManager::m_DirtyRegionTotal
+    DPRect* DirtyRegionTotal = nullptr;             //Should only be called when shared surface mutex has been acquired, always points to DDPThreadManager::m_DirtyRegionTotal
+    UINT PendingForcedFullFrameCount = 0;
     bool WMRIgnoreVScreens = false;
 };
 
@@ -125,6 +127,7 @@ struct DDPFrameData
     Microsoft::WRL::ComPtr<ID3D11Texture2D> Frame;
     DXGI_OUTDUPL_FRAME_INFO FrameInfo = {};
     std::vector<BYTE>* MetaDataBuffer = nullptr;    //Should only be called when shared surface mutex has be aquired, always points to DDPDuplicationManager::m_MetaDataBuffer
+    bool IsForcedFullFrame = false;                 //Set by GetFrame() when the frame is to be copied across in full, ignoring move and dirty metadata
     UINT DirtyCount = 0;
     UINT MoveCount = 0;
 };

@@ -59,7 +59,6 @@ int GetDisplayIDFromHMonitor(HMONITOR monitor_handle, bool wmr_ignore_vscreens);
 int GetMonitorRefreshRate(int display_id, bool wmr_ignore_vscreens);
 void CenterRectToMonitor(LPRECT prc);
 void CenterWindowToMonitor(HWND hwnd, bool use_cursor_pos = false);
-void ForceScreenRefresh();
 
 //Misc
 bool IsProcessElevated();

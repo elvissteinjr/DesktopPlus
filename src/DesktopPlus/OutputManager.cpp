@@ -4634,8 +4634,6 @@ void OutputManager::DesktopDuplicationResume()
 {
     ::ResetEvent(m_PauseDuplicationEvent);
     ::SetEvent(m_ResumeDuplicationEvent);
-
-    ForceScreenRefresh();
 }
 
 bool OutputManager::HandleOpenVREvents()
